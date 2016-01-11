@@ -3,7 +3,11 @@
 Configuration
 -------------
 
-There will be a configuration file found in ~/.groundfailure/config.ini, with the following format:
+There will be a configuration file found in ~/.groundfailure/config.ini, with the format described below.
+
+The config file format is a modified version of the "INI" format.  It is described in detail here:
+
+http://configobj.readthedocs.org/en/latest/configobj.html#config-files
 
 <pre>
 [logistic_models]
