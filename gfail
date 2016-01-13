@@ -1,0 +1,87 @@
+#!/usr/bin/env python
+
+#stdlib imports
+import argparse
+import os.path
+import sys
+import pprint
+
+#third party imports
+from mapio.shake import ShakeGrid
+from mapio.multihaz import MultiHazardGrid
+from mapio.dataset import DataSetException
+from validate import Validator,VdtTypeError,VdtParamError
+
+#local imports
+from groundfailure.conf import validate
+
+def listModels(config):
+    defaultLandslide = None
+    defaultLiquefaction = None
+    lmodel_space = config['logistic_models']
+    for key,value in lmodel_space.iteritems():
+        if isinstance(value,str) or isinstance(value,unicode):
+            if key == 'default_landslide':
+                defaultLandslide = value
+            elif key == 'default_liquefaction':
+                defaultLiquefaction = value
+            else:
+                continue
+        else: #this is a model
+            desc = value['description']
+            gfetype = value['gfetype']
+            if gfetype == 'liquefaction':
+                if key == defaultLiquefaction:
+                    print 'Liquefaction model %s (default):\n\t%s\n' % (key,desc)
+                else:
+                    print 'Liquefaction model %s:\n\t%s\n' % (key,desc)
+            if gfetype == 'landslide':
+                if key == defaultLandslide:
+                    print 'Landslide model %s (default):\n\t%s\n' % (key,desc)
+                else:
+                    print 'Landslide model %s:\n\t%s\n' % (key,desc)
+
+def main(args):
+    if args.list_models:
+        try:
+            config = validate(args.config)
+            listModels(config)            
+            sys.exit(0)
+                
+        except TypeError as te:
+            print 'Could not validate config file %s.  Here are the results:' % args.config
+            print str(te)
+            sys.exit(1)
+            
+    #check the input gridfile to see what kind of thing it is
+    shakemap = None
+    try:
+        shakemap = MultiHazardGrid.load(args.gridfile)
+    except DataSetException as dse:
+        try:
+            shakemap = ShakeGrid.load(args.gridfile)
+        except Exception as e:
+            print 'Input does not appear to be either of the two valid forms of ShakeMap grid.  Exiting.'
+            sys.exit(1)
+        
+
+if __name__ == '__main__':
+    defaultconfig = os.path.join(os.path.expanduser('~'),'.groundfailure','config.ini')
+    hasDefault = os.path.isfile(defaultconfig)
+    parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
+    parser.add_argument('gridfile', nargs='?',help='Specify the ShakeMap grid.xml or grid.hdf file') 
+    parser.add_argument('-q','--set-liquefaction', nargs=1,type=str,
+                        help='Specify specific logistic regression liquefaction model to use')
+    parser.add_argument('-a','--set-landslide', nargs=1,type=str,
+                        help='Specify specific logistic regression landslide model to use')
+    parser.add_argument('-l','--list-models', action='store_true',default=False,
+                        help='List models available in config file.')
+    parser.add_argument('-c','--config', metavar='configfile', nargs='?',default=defaultconfig,
+                        help='Override default config file')
+    parser.add_argument('-v','--validate-config', action='store_true',default=False,
+                        help='Validate config file parameters.')
+    parser.add_argument('-e','--exercise', action='store_true',default=False,
+                        help='Exercise tests (for developers)')
+
+    pargs = parser.parse_args()
+    main(pargs)
