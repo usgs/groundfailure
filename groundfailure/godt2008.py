@@ -17,7 +17,7 @@ warnings.filterwarnings('ignore')
 #local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
-from secondary.mapnew import makeMap#, saveMap
+from groundfailure.mapnew import makeMap#, saveMap
 
 #third party imports
 import numpy as np

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #local imports
-from secondary.godt2008 import runmodel
+from groundfailure.godt2008 import runmodel
 
 configfile = '/Users/kallstadt/SecondaryHazards/Codes/inputs/confignew.ini'
 shakefile = '/Users/kallstadt/SecondaryHazards/Northridge.xml'  # URL or filename
