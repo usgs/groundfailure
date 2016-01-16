@@ -10,10 +10,13 @@ import pprint
 from mapio.shake import ShakeGrid
 from mapio.multihaz import MultiHazardGrid
 from mapio.dataset import DataSetException
+from mapio.grid2d import Grid2D
+from mapio.gmt import GMTGrid
 from validate import Validator,VdtTypeError,VdtParamError
 
 #local imports
 from groundfailure.conf import validate
+from groundfailure.logisticmodel import validateLogisticModels,getLogisticModelNames,LogisticModel
 
 def listModels(config):
     defaultLandslide = None
@@ -52,24 +55,70 @@ def main(args):
             print 'Could not validate config file %s.  Here are the results:' % args.config
             print str(te)
             sys.exit(1)
-            
-    #check the input gridfile to see what kind of thing it is
-    shakemap = None
-    try:
-        shakemap = MultiHazardGrid.load(args.gridfile)
-    except DataSetException as dse:
+
+    if args.validate_config:
         try:
-            shakemap = ShakeGrid.load(args.gridfile)
+            config = validate(args.config)
+            result = validateLogisticModels(config)
+            print 'Input config file %s has been validated.' % args.config
+            sys.exit(0)
         except Exception as e:
-            print 'Input does not appear to be either of the two valid forms of ShakeMap grid.  Exiting.'
+            print 'Could not validate config file %s.  Here are the results:' % args.config
+            print str(e)
             sys.exit(1)
+            
+    if args.gridfile is not None: #user intends to actually run some models
+        try:
+            config = validate(args.config)
+            result = validateLogisticModels(config)
+            if args.set_liquefaction is not None:
+                if args.set_liquefaction not in getLogisticModelNames(config):
+                    print 'Could not find model %s in config file.  Returning.' % args.set_liquefaction
+                    sys.exit(1)
+                lqmodel = LogisticModel(config,args.gridfile,args.set_liquefaction)
+            else:
+                lqmodelname = config['logistic_models']['default_liquefaction']
+                lqmodel = LogisticModel(config,args.gridfile,lqmodelname)
+            if args.set_landslide is not None:
+                if args.set_landslide not in getLogisticModelNames(config):
+                    print 'Could not find model %s in config file.  Returning.' % args.set_landslide
+                    sys.exit(1)
+                lsmodel = LogisticModel(config,args.gridfile,args.set_landslide)
+            else:
+                lsmodelname = config['logistic_models']['default_landslide']
+                lsmodel = LogisticModel(config,args.gridfile,lsmodelname)
+            print lqmodel.getEquation()
+            print lsmodel.getEquation()
+            lqP = lqmodel.calculate()
+            lsP = lsmodel.calculate()
+            lqdict = lqmodel.getGeoDict()
+            lqgrid = GMTGrid.copyFromGrid(Grid2D(data=lqP,geodict=lqdict))
+            cwd = os.getcwd()
+            lqfile = os.path.join(cwd,'liquefaction_%s.grd' % lqmodelname)
+            print 'Saving liquefaction output to %s' % lqfile
+            lqgrid.save(lqfile)
+
+            lsdict = lsmodel.getGeoDict()
+            lsgrid = GMTGrid.copyFromGrid(Grid2D(data=lsP,geodict=lsdict))
+            cwd = os.getcwd()
+            lsfile = os.path.join(cwd,'landslide_%s.grd' % lsmodelname)
+            print 'Saving landslide output to %s' % lsfile
+            lsgrid.save(lsfile)
+            sys.exit(0)
+        except Exception as e:
+            print 'Could not validate config file %s.  Here are the results:' % args.config
+            print str(e)
+            sys.exit(1)
+            
+        
+        
         
 
 if __name__ == '__main__':
     defaultconfig = os.path.join(os.path.expanduser('~'),'.groundfailure','config.ini')
     hasDefault = os.path.isfile(defaultconfig)
     parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
-    parser.add_argument('gridfile', nargs='?',help='Specify the ShakeMap grid.xml or grid.hdf file') 
+    parser.add_argument('gridfile', nargs='?',help='Specify the ShakeMap grid.xml file') 
     parser.add_argument('-q','--set-liquefaction', nargs=1,type=str,
                         help='Specify specific logistic regression liquefaction model to use')
     parser.add_argument('-a','--set-landslide', nargs=1,type=str,
