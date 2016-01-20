@@ -193,8 +193,10 @@ class LogisticModel(object):
             if ftype == 'gmt':
                 #TODO - add config section called interpolation where you specify sampling method for each layer
                 self.layerdict[layername] = GMTGrid.load(layerfile,sampledict,preserve='dims',resample=True,method='linear',doPadding=True)
-            elif ftype == 'gmt':
+            elif ftype == 'esri':
                 self.layerdict[layername] = GDALGrid.load(layerfile,sampledict,preserve='dims',resample=True,method='linear',doPadding=True)
+            else:
+                raise Exception('Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,layerfile))
 
         shapes = {}
         for layername,layer in self.layerdict.iteritems():
