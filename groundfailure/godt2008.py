@@ -35,7 +35,7 @@ def getGridURL(gridurl):
         f.close()
         fh.close()
     except:
-        raise IOError, 'Could not retrieve data from %s' % gridurl
+        raise IOError('Could not retrieve data from %s' % gridurl)
     return gridfile
 
 
@@ -106,22 +106,23 @@ def runmodel(shakefile, configfile, maproads=True, mapcities=True, mapProb=True,
 
     # Read in all the slope files, divide all by 100 to get to slope in degrees (input files are multiplied by 100.)
     slopes = []
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope10.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope30.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope50.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope70.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope90.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_max.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
+    temp = GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear')
+    slopes.append(temp.getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope10.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope30.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope50.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope70.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope90.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_max.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
     slopestack = np.dstack(slopes)
 
     # Change any zero slopes to a very small number to avoid dividing by zero later
     slopestack[slopestack == 0] = 0.00001
 
     # Read in the cohesion and friction files and duplicate layers so they are same shape as slope structure
-    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis], 7, axis=2)
+    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='nearest').getData()[:, :, np.newaxis], 7, axis=2)
     cohesion[np.isnan(cohesion)] = nodata_cohesion
-    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis], 7, axis=2)
+    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='nearest').getData()[:, :, np.newaxis], 7, axis=2)
     friction[np.isnan(friction)] = nodata_friction
 
     # Do the calculations using Jibson (2007) PGA only model for Dn
