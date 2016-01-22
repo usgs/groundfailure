@@ -46,6 +46,9 @@ def isURL(gridurl):
     return isURL
 
 
+def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', threshold=False):
+    pass
+
 def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
     """
     godt2008.py applies the Godt et al. 2008 method to a given ShakeMap as written at 1km resolution, applicable globally. Factor of Safety calculated using infinite slope analysis for 2.4m thickness, no water. This applies Jibson (2007) regression equation relating Newmark displacement to critical acceleration and PGA only. Uses threshold displacement of 5cm and estimates 'probabilities' by doing the calculations for each slope quartile (which basically means probabilities are areal and 100 percent failure after threshold)
