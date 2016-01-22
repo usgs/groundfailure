@@ -3,7 +3,6 @@
 #stdlib imports
 import os.path
 import math
-from configobj import ConfigObj
 import glob
 
 #third party imports
@@ -113,16 +112,20 @@ def makeMap_KML(grids, edict, modelname=None, filename=None):
     pass
 
 
-def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=True, isScenario=False, vlims=None, lowthreshes=None, plotorder=None, colormaps=None, boundaries=None):
+def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True, isScenario=False, lowthreshes=None, plotorder=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None):
     """
-    Creates single map of either liquefaction or landslide model with options for showing roads, choosing colors, and showing cities
-    grids must be dictionary of mapio grids, label of dictionary will be label on colorbar key and will appear in title. Easy to build, example -> grids['probability'] = lsgrid
+    Creates maps of either liquefaction or landslide model with options for showing roads, choosing colors, and showing cities
+    config object
+    grids must be dictionary of mapio grids, label of dictionary will be label on colorbar key and will appear in title. Easy to build, example -> grids['probability'] = lsgrid - using an ordered dictionary instead of a regular one will mean you don't need plotorder and the order of vlims, colormaps, etc. will be correct
+    zthresh = theshold for computing zooming bounds, only used if boundaries = 'zoom'
     All grids must use same exact bounds (FUTURE ALTERATION, ALLOW THEM TO BE DIFFERENT?)
-    boundaries = dictionary with xmin, xmax, ymin, ymax in it to use as boundaries for plotting, when boundaries=None, boundaries are taken from first grid in grids
-    vlims = list of tuples of vmin and vmax corresponding to each grid
-    lowthreshes = list of lower threshold values for each grid (below this value won't be plotted)
-    plotorder = list of keys in order they should be plotted
-    list of colormaps corresponding to each grid, None uses default jet
+    boundaries = 'zoom' will automatically search for bounds around a probability file using zthresh, else a dictionary with xmin, xmax, ymin, ymax in it to use as boundaries for plotting, when boundaries=None, boundaries are taken from first grid in grids
+    lowthreshes = list of lower threshold values for each grid (below this value will be transparent)
+    plotorder = list of keys in order they should be plotted, if None, will search for probability grid to plot first and rest will be random
+    list of colormaps corresponding to each grid in plotorder, defaults set to search for certain types of outputs using their key and label
+    scaletype - binned or continuous scale to apply to all
+    lims = if scaletype is continuous, this is a list of tuples of vmin and vmax corresponding to each grid, if None, will search for this info in config file, otherwise will just use automatic bounds
+        if scaletype is binned, this is a list of arrays of bin boundaries corresponding to each layer, any layers that you don't want to specify, insert None, or None for all
 
     """
     # Set some defaults that may be overwritten by config file
@@ -137,24 +140,24 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
     ALPHA = 0.7
 
     if modelname is None:
-        modelname = 'unknown'
+        modelname = ' '
 
-    # Parse config file
+    # Parse config object
     try:
-        config = ConfigObj(configfile)['MAPDATA']
-        if 'topofile' in config.keys():
-            topofile = config['topofile']
-        if 'hillshade' in config.keys():
-            hillshade = config['hillshade']
-        if 'topofile' not in config.keys() and 'hillshade' not in config.keys():
+        config1 = config['MAPDATA']
+        if 'topofile' in config1.keys():
+            topofile = config1['topofile']
+        if 'hillshade' in config1.keys():
+            hillshade = config1['hillshade']
+        if 'topofile' not in config1.keys() and 'hillshade' not in config1.keys():
             print('No hillshade or topomap provided, you will have a sad flat map\n')
-        if 'roadfolder' in config.keys() and maproads is True:
-            roadfolder = config['roadfolder']
+        if 'roadfolder' in config1.keys() and maproads is True:
+            roadfolder = config1['roadfolder']
             if os.path.exists(roadfolder) is False:
                 print('roadfolder not valid - roads will not be displayed\n')
                 maproads = False
-        if 'cityfile' in config.keys() and mapcities is True:
-            cityfile = config['cityfile']
+        if 'cityfile' in config1.keys() and mapcities is True:
+            cityfile = config1['cityfile']
             if os.path.exists(cityfile):
                 try:
                     cities = PagerCity(cityfile)
@@ -165,19 +168,19 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
             else:
                 print('cities file not valid - cities will not be displayed\n')
                 mapcities = False
-        if 'roadcolor' in config.keys():
-            roadcolor = config['roadcolor']
-        if 'countrycolor' in config.keys():
-            countrycolor = config['countrycolor']
-        if 'watercolor' in config.keys():
-            watercolor = config['watercolor']
-        if 'defaultcolormap' in config.keys():
-            defaultcolormap = config['defaultcolormap']
-        if 'alpha' in config.keys():
-            ALPHA = config['alpha']
+        if 'roadcolor' in config1.keys():
+            roadcolor = config1['roadcolor']
+        if 'countrycolor' in config1.keys():
+            countrycolor = config1['countrycolor']
+        if 'watercolor' in config1.keys():
+            watercolor = config1['watercolor']
+        if 'defaultcolormap' in config1.keys():
+            defaultcolormap = config1['defaultcolormap']
+        if 'alpha' in config1.keys():
+            ALPHA = float(config1['alpha'])
     except Exception as e:
         print e
-        print('MAPDATA missing from or misformatted in configfile, map will be missing most components\n')
+        print('MAPDATA missing from or misformatted in config, map will be missing components\n')
 
     countrycolor = '#'+countrycolor
     watercolor = '#'+watercolor
@@ -186,12 +189,72 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
     # Get boundaries to use for all plots
     if boundaries is None:
         keytemp = grids.keys()
-        boundaries = grids[keytemp[0]].getGeoDict()
+        boundaries = grids[keytemp[0]]['grid'].getGeoDict()
+    elif boundaries == 'zoom':
+        # Find probability layer (will just take the maximum bounds if there is more than one)
+        keytemp = grids.keys()
+        key1 = [key for key in keytemp if 'prob' in key.lower()]
+        if len(key1) == 0:
+            print('Could not find probability layer to use for zoom, using default boundaries')
+            keytemp = grids.keys()
+            boundaries = grids[keytemp[0]].getGeoDict()
+        else:
+            lonmax = -1.e10
+            lonmin = 1.e10
+            latmax = -1.e10
+            latmin = 1.e10
+            for key in key1:
+                # get lat lons of areas affected and add, if no areas affected, switch to shakemap boundaries
+                temp = grids[key]['grid']
+                xmin, xmax, ymin, ymax = temp.getBounds()
+                lons = np.arange(xmin, xmax, temp.getGeoDict()['xdim'])
+                lons = lons[:temp.getGeoDict()['ncols']]  # make sure right length
+                lats = np.arange(ymax, ymin, -temp.getGeoDict()['ydim'])  # backwards so it plots right
+                lats = lats[:temp.getGeoDict()['nrows']]
+                llons, llats = np.meshgrid(lons, lats)  # make meshgrid
+                llons1 = llons[temp.getData() > zthresh]
+                llats1 = llats[temp.getData() > zthresh]
+                if llons1.min() < lonmin:
+                    lonmin = llons1.min()
+                if llons1.max() > lonmax:
+                    lonmax = llons1.max()
+                if llats1.min() < latmin:
+                    latmin = llats1.min()
+                if llats1.max() > latmax:
+                    latmax = llats1.max()
+            boundaries1 = {}
+            if xmin < lonmin-0.1*(lonmax-lonmin):
+                boundaries1['xmin'] = lonmin-0.1*(lonmax-lonmin)
+            else:
+                boundaries1['xmin'] = xmin
+            if xmax > lonmax+0.1*(lonmax-lonmin):
+                boundaries1['xmax'] = lonmax+0.1*(lonmax-lonmin)
+            else:
+                boundaries1['xmax'] = xmax
+            if ymin < latmin-0.1*(latmax-latmin):
+                boundaries1['ymin'] = latmin-0.1*(latmax-latmin)
+            else:
+                boundaries1['ymin'] = ymin
+            if ymax > latmax+0.1*(latmax-latmin):
+                boundaries1['ymax'] = latmax+0.1*(latmax-latmin)
+            else:
+                boundaries1['ymax'] = ymax
+            boundaries = boundaries1
+    else:
+        try:
+            if boundaries['xmin'] > boundaries['xmax'] or boundaries['ymin'] > boundaries['ymax']:
+                print('Input boundaries are not usable, using default boundaries')
+                keytemp = grids.keys()
+                boundaries = grids[keytemp[0]].getGeoDict()
+        except:
+            print('Input boundaries are not usable, using default boundaries')
+            keytemp = grids.keys()
+            boundaries = grids[keytemp[0]].getGeoDict()
 
     # Load in topofile and load in or compute hillshade
     if topofile is not None and hillshade is None:
         gdict = GMTGrid.getBoundsWithin(topofile, boundaries)
-        # if no hillshade expand a little to avoid edge cutoff
+        # Only load in if no hillshade is available, expand a little to avoid edge cutoff
         lonrange = gdict['xmax'] - gdict['xmin']
         latrange = gdict['ymax'] - gdict['ymin']
         gdict['xmin'] = gdict['xmin'] - lonrange*0.2
@@ -224,8 +287,8 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
         llons, llats = np.meshgrid(lons, lats)  # make meshgrid
 
     # Get output file location
-    if 'OUTPUT'in ConfigObj(configfile).keys():
-        outfile = ConfigObj(configfile)['OUTPUT']['folder']
+    if 'OUTPUT'in config.keys():
+        outfile = config['OUTPUT']['folder']
     else:  # Use current directory
         print('No output location given, using current directory for outputs\n')
         outfile = os.getcwd()
@@ -241,7 +304,7 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
         colpan = 1
         # create the figure and axes instances.
         fig.set_figwidth(5)
-    elif numpanels == 4:
+    elif numpanels == 2 or numpanels == 4:
         rowpan = np.ceil(numpanels/2.)
         colpan = 2
         fig.set_figwidth(10)
@@ -250,11 +313,13 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
         colpan = 3
         fig.set_figwidth(15)
     fig.set_figheight(rowpan*5.1)
+
+    # Need to update naming to reflect the shakemap version once can get getHeaderData to work, add edict['version'] back into title, maybe shakemap id also?
     if isScenario:
-        title = edict['loc']
+        title = edict['event_description']
     else:
-        timestr = edict['time'].strftime('%b %d %Y')
-        title = 'M%.1f %s v%i - %s' % (edict['mag'], timestr, edict['version'], edict['loc'])
+        timestr = edict['event_timestamp'].strftime('%b %d %Y')
+        title = 'M%.1f %s v%i - %s' % (edict['magnitude'], timestr, edict['version'], edict['event_description'])
     plt.suptitle(title+'\n'+'model:'+modelname)
 
     clear_color = [0, 0, 0, 0.0]
@@ -263,6 +328,11 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
         plotorder = grids.keys()
     val = 1
     for k, layer in enumerate(plotorder):
+        layergrid = grids[layer]['grid']
+        if 'label' in grids[layer].keys():
+            label1 = grids[layer]['label']
+        else:
+            label1 = layer
         ax = fig.add_subplot(rowpan, colpan, val)
         val += 1
         xmin, xmax, ymin, ymax = boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax']
@@ -286,14 +356,21 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
             m.pcolormesh(x, y, hillshm/np.abs(hillshm).max(), cmap='Greys', lw=0, rasterized=True, vmin=0., vmax=3.)
             plt.draw()
 
-        dat = grids[layer].getData().copy()
+        dat = layergrid.getData().copy()
         if colormaps is not None and len(colormaps) == len(grids):
             palette = colormaps[k]
-        else:
-            palette = defaultcolormap
+        else:  # Find preferred default color map for each type of layer
+            if 'prob' in layer.lower() or 'pga' in layer.lower() or 'pgv' in layer.lower() or 'cohesion' in layer.lower() or 'friction' in layer.lower():
+                palette = cm.jet
+            elif 'slope' in layer.lower():
+                palette = cm.gnuplot2
+            elif 'precip' in layer.lower():
+                palette = cm.s3pcpn
+            else:
+                palette = defaultcolormap
         if topofile is not None:
             # resample topomap to the same as current layer
-            topomap2 = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=grids[layer].getGeoDict())
+            topomap2 = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=layergrid.getGeoDict())
             iwater = np.where(topomap2.getData() == SEA_LEVEL)
             dat[iwater] = 0
         if lowthreshes is not None and len(lowthreshes) == len(grids):
@@ -303,22 +380,35 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
         datm = np.ma.masked_equal(dat, 0)
         palette.set_bad(clear_color, alpha=0.0)
 
-        xmin, xmax, ymin, ymax = grids[layer].getBounds()
-        lons = np.arange(xmin, xmax, grids[layer].getGeoDict()['xdim'])
-        lons = lons[:grids[layer].getGeoDict()['ncols']]  # make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
-        lats = np.arange(ymax, ymin, -grids[layer].getGeoDict()['ydim'])  # backwards so it plots right side up
-        lats = lats[:grids[layer].getGeoDict()['nrows']]  # make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
+        xmin, xmax, ymin, ymax = layergrid.getBounds()
+        lons = np.arange(xmin, xmax+layergrid.getGeoDict()['xdim'], layergrid.getGeoDict()['xdim'])
+        lons = lons[:layergrid.getGeoDict()['ncols']]  # make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
+        lats = np.arange(ymax, ymin-layergrid.getGeoDict()['ydim'], -layergrid.getGeoDict()['ydim'])  # backwards so it plots right side up
+        lats = lats[:layergrid.getGeoDict()['nrows']]  # make sure it's the right length, sometimes it is one too long, sometimes it isn't because of GMTGrid issue
         #make meshgrid
         llons1, llats1 = np.meshgrid(lons, lats)
         x1, y1 = m(llons1, llats1)  # get projection coordinates
-        if vlims is not None and len(vlims) == len(grids):
-            panelhandle = m.pcolormesh(x1, y1, datm, lw=0, cmap=palette, vmin=vlims[k][0], vmax=vlims[k][1], alpha=ALPHA, rasterized=True)
+        #x2, y2 = m(lons, lats)
+        if scaletype == 'binned':
+            if lims is None or len(lims) != len(grids):
+                clev = np.linspace(np.floor(datm.min()), np.ceil(datm.max()), 6)
+            else:
+                if lims[k] is None:
+                    clev = np.linspace(np.floor(datm.min()), np.ceil(datm.max()), 6)
+                else:
+                    clev = lims[k]
+            panelhandle = m.contourf(x1, y1, datm, clev, cmap=palette, lw=0, alpha=ALPHA, rasterized=True)
         else:
-            panelhandle = m.pcolormesh(x1, y1, datm, lw=0, cmap=palette, alpha=ALPHA, rasterized=True)
-
+            if lims is not None and len(lims) == len(grids):
+                vmin = lims[k][0]
+                vmax = lims[k][1]
+            else:
+                vmin = None
+                vmax = None
+            panelhandle = m.pcolormesh(x1, y1, datm, lw=0, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True)
         # add colorbar
         cbar = fig.colorbar(panelhandle, fraction=0.046, pad=0.04)
-        cbar.set_label(layer, fontsize=10)
+        cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
 
         #this stuff has to be added after something has been rendered on the map
@@ -387,7 +477,7 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
 
             #draw star at epicenter
             plt.sca(ax)
-            elat, elon = edict['epicenter']
+            elat, elon = edict['lat'], edict['lon']
             ex, ey = m(elon, elat)
             plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.5, ms=24)
 
@@ -402,7 +492,7 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
         xmax, xmin, ymax, ymin = boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax']
         clat = ymin + (ymax-ymin)/2.0
         clon = xmin + (xmax-xmin)/2.0
-        m.drawmapscale((xmax+xmin)/2., (ymin+(ymax-ymin)/10.), clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
+        #m.drawmapscale((xmax+xmin)/2., (ymin+(ymax-ymin)/5.), clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
         #draw coastlines
         m.drawcoastlines(color='#476C91', linewidth=0.5)
 
@@ -413,6 +503,7 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
             plt.text(cx, cy, 'SCENARIO', rotation=45, alpha=0.10, size=72, ha='center', va='center', color='red')
 
     plt.tight_layout()
+    plt.subplots_adjust(top=0.92)
     #plt.title(ptitle,axes=ax)
     outfile = os.path.join(outfolder, '%s_%s.pdf' % (edict['eventid'], modelname))
     pngfile = os.path.join(outfolder, '%s_%s.png' % (edict['eventid'], modelname))
@@ -422,26 +513,18 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
     print 'Saving map output to %s' % pngfile
 
 
-if bounds == 'shakemap':
-boundaries1 = shakemap.getGeoDict()
-else:
-# get lat lons of areas affected and add, if no areas affected, switch to shakemap boundaries
-xmin, xmax, ymin, ymax = shakemap.getBounds()
-lons = np.arange(xmin, xmax, shakemap.getGeoDict()['xdim'])
-lons = lons[:shakemap.getGeoDict()['ncols']]  # make sure right length
-lats = np.arange(ymax, ymin, -shakemap.getGeoDict()['ydim'])  # backwards so it plots right
-lats = lats[:shakemap.getGeoDict()['nrows']]
-llons, llats = np.meshgrid(lons, lats)  # make meshgrid
-llons1 = llons[PROB > 0]
-llats1 = llats[PROB > 0]
-boundaries1 = {}
-boundaries1['xmin'] = llons1.min()-0.2*(llons1.max()-llons1.min())
-boundaries1['xmax'] = llons1.max()+0.2*(llons1.max()-llons1.min())
-boundaries1['ymin'] = llats1.min()-0.2*(llats1.max()-llats1.min())
-boundaries1['ymax'] = llats1.max()+0.2*(llats1.max()-llats1.min())
+def comparisonMap():
+    """
+    Compare maps from different models
+    """
+    pass
 
 
-def saveMap():
+def compareModelInventory():
+    pass
+
+
+def saveGrid():
     pass
 
 

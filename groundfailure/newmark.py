@@ -8,6 +8,7 @@ import os.path
 import warnings
 import urllib2
 import tempfile
+import collections
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')
@@ -49,9 +50,10 @@ def isURL(gridurl):
 def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', threshold=False):
     pass
 
+
 def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
     """
-    godt2008.py applies the Godt et al. 2008 method to a given ShakeMap as written at 1km resolution, applicable globally. Factor of Safety calculated using infinite slope analysis for 2.4m thickness, no water. This applies Jibson (2007) regression equation relating Newmark displacement to critical acceleration and PGA only. Uses threshold displacement of 5cm and estimates 'probabilities' by doing the calculations for each slope quartile (which basically means probabilities are areal and 100 percent failure after threshold)
+    Applies the Godt et al. 2008 global method to a given ShakeMap. Factor of Safety calculated using infinite slope analysis assumuing dry conditions. Uses threshold newmark displacement and estimates 'probabilities' by doing the calculations for each slope quartile (which basically means probabilities are areal and 100 percent failure after threshold)
     INPUTS
     shakefile = url or filepath to shakemap xml file
     config = ConfigObj of config file
@@ -79,8 +81,7 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
         fsthresh = float(config['mechanistic_models']['godt_2008']['values']['fsthresh'])
         acthresh = float(config['mechanistic_models']['godt_2008']['values']['acthresh'])
     except Exception as e:
-        print e
-        raise NameError('Could not parse configfile, missing necessary values or incorrect structure')
+        raise NameError('Could not parse configfile, %s' % e)
         return
 
     # Load in shakefile
@@ -88,7 +89,7 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
         if isURL(shakefile):
             shakefile = getGridURL(shakefile)  # returns a file object
         else:
-            raise NameError('Could not find "%s" as a file or a url' % (shakefile))
+            raise NameError('Could not find "%s" as a file or a valid url' % (shakefile))
             return
 
     shakemap = ShakeGrid.load(shakefile)
@@ -96,8 +97,7 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
 
     # Read in all the slope files, divide all by 100 to get to slope in degrees (because input files are multiplied by 100.)
     slopes = []
-    temp = GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear')
-    slopes.append(temp.getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
     slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope10.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
     slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope30.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
     slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope50.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, preserve='shape', method='linear').getData()/100.)
@@ -132,59 +132,21 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
     if regressionmodel is 'J_PGA':
-        # Estimate Newmark displacement
-        C1 = 0.215  # additive constant in newmark displacement calculation
-        C2 = 2.341  # first exponential constant
-        C3 = -1.438  # second exponential constant
-        Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))  # Equation from Jibson (2007)
-        Dn[np.isnan(Dn)] = 0.
-        PROB = Dn.copy()
-        PROB[PROB < dnthresh] = 0.
-        PROB[PROB >= dnthresh] = 1.
-        PROB = np.sum(PROB, axis=2)
+        Dn = J_PGA(Ac, PGA)
 
     if regressionmodel is 'J_PGA_M':
-        C1 = -2.71  # additive constant in newmark displacement calculation
-        C2 = 2.335  # first exponential constant
-        C3 = -1.478  # second exponential constant
-        C4 = 0.424
-        Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)  # Equation from Jibson (2007)
-        Dn[np.isnan(Dn)] = 0.
-        PROB = Dn.copy()
-        PROB[PROB < dnthresh] = 0.
-        PROB[PROB >= dnthresh] = 1.
-        PROB = np.sum(PROB, axis=2)
+        Dn = J_PGA_M(Ac, PGA, M)
 
     if regressionmodel is 'RS_PGA_M':
-        C1 = 4.89
-        C2 = -4.85
-        C3 = -19.64
-        C4 = 42.49
-        C5 = -29.06
-        C6 = 0.72
-        C7 = 0.89
-        Dn = np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
-        Dn[np.isnan(Dn)] = 0.
-        PROB = Dn.copy()
-        PROB[PROB < dnthresh] = 0.
-        PROB[PROB >= dnthresh] = 1.
-        PROB = np.sum(PROB, axis=2)
+        Dn = RS_PGA_M(Ac, PGA, M)
 
     if regressionmodel is 'RS_PGA_PGV':
-        C1 = -1.56
-        C2 = -4.58
-        C3 = -20.84
-        C4 = 44.75
-        C5 = -30.50
-        C6 = -0.64
-        C7 = 1.55
-        Dn = np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
-        Dn[np.isnan(Dn)] = 0.
-        PROB = Dn.copy()
-        PROB[PROB < dnthresh] = 0.
-        PROB[PROB >= dnthresh] = 1.
-        PROB = np.sum(PROB, axis=2)
+        Dn = RS_PGA_PGV(Ac, PGA, PGV)
 
+    PROB = Dn.copy()
+    PROB[PROB < dnthresh] = 0.
+    PROB[PROB >= dnthresh] = 1.
+    PROB = np.sum(PROB, axis=2)
     PROB[PROB == 1.] = 0.01
     PROB[PROB == 2.] = 0.10
     PROB[PROB == 3.] = 0.30
@@ -194,15 +156,63 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
     PROB[PROB == 7.] = 0.99
 
     # Turn output and inputs into into grids and put in mapLayers dictionary
-    maplayers = {}
+    maplayers = collections.OrderedDict()
 
     maplayers['probability'] = {'grid': GDALGrid(PROB, shakemap.getGeoDict()), 'label': 'Areal probability', 'type': 'output'}
 
     if saveinputs is True:
         maplayers['pga'] = {'grid': GDALGrid(PGA[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA (g)', 'type': 'input'}
         maplayers['max slope'] = {'grid': GDALGrid(slopestack[:, :, -1], shakemap.getGeoDict()), 'label': 'Maximum slope ($^\circ$)', 'type': 'input'}
-        maplayers['med slope'] = {'grid': GDALGrid(slopestack[:, :, 3], shakemap.getGeoDict()), 'label': 'Median slope ($^\circ$)', 'type': 'input'}
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion[:, :, 0], shakemap.getGeoDict()), 'label': 'Cohesion (kPa)', 'type': 'input'}
         maplayers['friction angle'] = {'grid': GDALGrid(friction[:, :, 0], shakemap.getGeoDict()), 'label': 'Friction angle ($^\circ$)', 'type': 'input'}
 
     return maplayers
+
+
+def J_PGA(Ac, PGA):
+    np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
+    C1 = 0.215  # additive constant in newmark displacement calculation
+    C2 = 2.341  # first exponential constant
+    C3 = -1.438  # second exponential constant
+    Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
+    Dn[np.isnan(Dn)] = 0.
+    return Dn
+
+
+def J_PGA_M(Ac, PGA, M):
+    np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
+    C1 = -2.71  # additive constant in newmark displacement calculation
+    C2 = 2.335  # first exponential constant
+    C3 = -1.478  # second exponential constant
+    C4 = 0.424
+    Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
+    Dn[np.isnan(Dn)] = 0.
+    return Dn
+
+
+def RS_PGA_M(Ac, PGA, M):
+    np.seterr(invalid='ignore')
+    C1 = 4.89
+    C2 = -4.85
+    C3 = -19.64
+    C4 = 42.49
+    C5 = -29.06
+    C6 = 0.72
+    C7 = 0.89
+    Dn = np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+    Dn[np.isnan(Dn)] = 0.
+    return Dn
+
+
+def RS_PGA_PGV(Ac, PGA, PGV):
+    np.seterr(invalid='ignore')
+    C1 = -1.56
+    C2 = -4.58
+    C3 = -20.84
+    C4 = 44.75
+    C5 = -30.50
+    C6 = -0.64
+    C7 = 1.55
+    Dn = np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+    Dn[np.isnan(Dn)] = 0.
+    return Dn
