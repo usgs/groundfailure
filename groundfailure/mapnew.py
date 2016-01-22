@@ -422,6 +422,25 @@ def makeMap(grids, edict, configfile, modelname=None, maproads=True, mapcities=T
     print 'Saving map output to %s' % pngfile
 
 
+if bounds == 'shakemap':
+boundaries1 = shakemap.getGeoDict()
+else:
+# get lat lons of areas affected and add, if no areas affected, switch to shakemap boundaries
+xmin, xmax, ymin, ymax = shakemap.getBounds()
+lons = np.arange(xmin, xmax, shakemap.getGeoDict()['xdim'])
+lons = lons[:shakemap.getGeoDict()['ncols']]  # make sure right length
+lats = np.arange(ymax, ymin, -shakemap.getGeoDict()['ydim'])  # backwards so it plots right
+lats = lats[:shakemap.getGeoDict()['nrows']]
+llons, llats = np.meshgrid(lons, lats)  # make meshgrid
+llons1 = llons[PROB > 0]
+llats1 = llats[PROB > 0]
+boundaries1 = {}
+boundaries1['xmin'] = llons1.min()-0.2*(llons1.max()-llons1.min())
+boundaries1['xmax'] = llons1.max()+0.2*(llons1.max()-llons1.min())
+boundaries1['ymin'] = llats1.min()-0.2*(llats1.max()-llats1.min())
+boundaries1['ymax'] = llats1.max()+0.2*(llats1.max()-llats1.min())
+
+
 def saveMap():
     pass
 
