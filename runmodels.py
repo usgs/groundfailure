@@ -10,7 +10,7 @@ from mapio.shake import ShakeGrid
 from groundfailure.makemaps import modelMap
 
 configfile = '/Users/kallstadt/SecondaryHazards/Codes/inputs/confignew.ini'
-shakefile = '/Users/kallstadt/SecondaryHazards/haywired.xml'  # URL or filename
+shakefile = '/Users/kallstadt/SecondaryHazards/Nepal.xml'  # URL or filename
 
 edict = ShakeGrid.load(shakefile).getEventDict()
 temp = ShakeGrid.load(shakefile).getShakeDict()
@@ -23,7 +23,9 @@ maplayers = godt2008(shakefile, config, saveinputs=True, regressionmodel='J_PGA'
 
 probonly = {}
 probonly['probability'] = maplayers['probability']
-modelMap(probonly, edict, config, modelname='Godt et al. 2008_prob', maproads=True, mapcities=True, boundaries='zoom', scaletype='binned', lims=[[0, 0.2, 0.4, 0.6, 0.8, 1.]])
+modelMap(probonly, edict, config, modelname='Godt et al. 2008 - J_PGA', maproads=True, mapcities=True, boundaries=None, scaletype='binned', lims=[[0, 0.2, 0.4, 0.6, 0.8, 1.]])
 
 
-modelMap(maplayers, edict, config, modelname='Godt et al. 2008', maproads=True, mapcities=True, boundaries='zoom', scaletype='binned', lims=[[0, 0.2, 0.4, 0.6, 0.8, 1.], np.linspace(0., 2., 15), None, None, None])
+modelMap(maplayers, edict, config, modelname='Godt et al. 2008 - J_PGA - all', maproads=True, mapcities=True, boundaries=None, scaletype='binned', lims=[[0, 0.2, 0.4, 0.6, 0.8, 1.], np.linspace(0., 1.5, 15), None, None, None])
+
+#np.linspace(0., 2., 15)

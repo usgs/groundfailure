@@ -479,7 +479,7 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
             plt.sca(ax)
             elat, elon = edict['lat'], edict['lon']
             ex, ey = m(elon, elat)
-            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.5, ms=24)
+            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.5, ms=12)
 
         #fill in the lakes and rivers
         m.fillcontinents(color=clear_color, lake_color=watercolor)
