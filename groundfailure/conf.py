@@ -19,7 +19,9 @@ def __getCustomValidator():
       Validator object with custom types embedded.
     '''
     fdict = {
-        'file_type': __file_type,}
+        'file_type': __file_type,
+        'path_type': __path_type,
+        }
     
     validator = Validator(fdict)
     return validator
@@ -35,6 +37,20 @@ def __file_type(value):
       When path is invalid.
     '''
     if not os.path.isfile(value):
+        raise VdtTypeError(value)
+    return value
+
+def __path_type(value):
+    '''Describes a path_type from the groundfailure config spec.
+    A path_type object is simply a string that must be a valid file OR directory on the system.
+    :param value:
+      String representing valid path to a file or directory on the local system.
+    :return:
+      Input string, if a valid file/directory name.
+    :raises VdtTypeError:
+      When path is invalid.
+    '''
+    if not os.path.isfile(value) and not os.path.isdir(value):
         raise VdtTypeError(value)
     return value
 

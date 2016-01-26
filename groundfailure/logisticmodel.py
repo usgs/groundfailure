@@ -9,9 +9,10 @@ from xml.dom import minidom
 import ConfigParser
 import re
 import tempfile
+import warnings
 
 #third party imports
-from mapio.shake import ShakeGrid
+from mapio.shake import ShakeGrid,getHeaderData
 from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
@@ -20,12 +21,13 @@ PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'
 TERM_PATTERN = 'term'
 
-SM_TERMS = ['MW','pga','pgv','mmi']
+SM_TERMS = ['MW','YEAR','MONTH','DAY','HOUR','pga','pgv','mmi']
 SM_GRID_TERMS = ['pga','pgv','mmi']
 OPERATORS = ['log','log10','power','sqrt'] #these will get np. prepended
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
 INTPAT = '[0-9]+'
 OPERATORPAT = '[\+\-\*\/]*'
+MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
 def getLogisticModelNames(config):
     names = []
@@ -38,16 +40,31 @@ def getLogisticModelNames(config):
     return names
 
 def getFileType(filename):
+    if os.path.isdir(filename):
+        return 'dir'
     ftype = GMTGrid.getFileType(filename)
     if ftype != 'unknown':
         return 'gmt'
+    #skip over ESRI header files
+    if filename.endswith('.hdr'):
+            return 'unknown'
     try:
         GDALGrid.getFileGeoDict(filename)
         return 'esri'
     except:
         pass
     return 'unknown'
-        
+
+def getAllGridFiles(indir):
+    tflist = os.listdir(indir)
+    flist = []
+    for tf in tflist:
+        fullfile = os.path.join(indir,tf)
+        ftype = getFileType(fullfile)
+        if ftype in ['gmt','esri']:
+            flist.append(fullfile)
+    return flist
+
 def validateCoefficients(cmodel):
     coeffs = {}
     for key,value in cmodel['coefficients'].iteritems():
@@ -61,11 +78,11 @@ def validateCoefficients(cmodel):
 def validateLayers(cmodel):
     layers = {}
     for key,value in cmodel['layers'].iteritems():
-        if not os.path.isfile(value):
-            raise Exception('layer file %s is not a valid file name.' % value)
         ftype = getFileType(value)
         if ftype == 'unknown':
             raise Exception('layer file %s is not a valid GMT or ESRI file.' % value)
+        if ftype == 'dir':
+            value = getAllGridFiles(value)
         layers[key] = value
     return layers
 
@@ -74,13 +91,13 @@ def validateTerms(cmodel,coeffs,layers):
     for key,value in cmodel['terms'].iteritems():
         if key not in coeffs.keys():
             raise Exception('Term names must match names of coefficients')
-        term,rem = checkTerm(value,layers) #replace log with np.log, make sure variables are all in layers list, etc.
+        term,rem,timeField = checkTerm(value,layers) #replace log with np.log, make sure variables are all in layers list, etc.
         if len(rem):
             msg = 'Term "%s" contains the unknown text fragment "%s".  This may cause the expression to fail.\n'
             tpl = (term,rem)
             raise Exception(msg % tpl)
         terms[key] = term
-    return terms
+    return (terms,timeField)
 
 def validateInterpolations(cmodel,layers):
     interpolations = {}
@@ -96,6 +113,18 @@ def validateInterpolations(cmodel,layers):
             raise Exception('No interpolation method configured for layer %s' % key)
     return interpolations
 
+def validateUnits(cmodel,layers):
+    units = {}
+    for key,value in cmodel['units'].iteritems():
+        if key not in layers.keys():
+            raise Exception('Interpolation key %s does not match any names of layers' % key)
+        
+        units[key] = value
+    for key in layers.keys():
+        if key not in units.keys():
+            raise Exception('No unit string configured for layer %s' % key)
+    return units
+
 def validateLogisticModels(config):
     mnames = getLogisticModelNames(config)
     for cmodelname in mnames:
@@ -103,7 +132,13 @@ def validateLogisticModels(config):
             cmodel = config['logistic_models'][cmodelname]
             coeffs = validateCoefficients(cmodel)
             layers = validateLayers(cmodel)#key = layer name, value = file name
-            terms = validateTerms(cmodel,coeffs,layers)
+            terms,timeField = validateTerms(cmodel,coeffs,layers)
+            if timeField is not None:
+                for (layer,layerfile) in layers.items():
+                    if isinstance(layerfile,list):
+                        for lfile in layerfile:
+                            if timeField == 'MONTH':
+                                pass
             interpolations = validateInterpolations(cmodel,layers)
             if cmodel['baselayer'] not in layers:
                 raise Exception('Model %s missing baselayer parameter.' % cmodelname)
@@ -144,14 +179,22 @@ def checkTerm(term,layers):
     for sm_term in SM_GRID_TERMS:
         term = term.replace(sm_term,"self.shakemap.getLayer('%s').getData()" % sm_term)
 
+    #replace the macro MW with the magnitude value from the shakemap
     term = term.replace('MW',"self.shakemap.getEventDict()['magnitude']")
+
+    #term.replace('YEAR',"self.shakemap.getEventDict()['event_time'].year")
+    hasTime = False
+    timeField = None
+    for unit in ['YEAR','MONTH','DAY','HOUR']:
+        if term.find(unit) > -1:
+            term = term.replace(unit,'')
+            timeField = unit
 
     for layer in layers:
         term = term.replace(layer,"self.layerdict['%s'].getData()" % layer)
-    return (term,tterm)
+    return (term,tterm,timeField)
 
 class LogisticModel(object):
-    
     def __init__(self,config,shakefile,model):
         if model not in getLogisticModelNames(config):
             raise Exception,'Could not find a model called "%s" in config %s.' % (model,config)
@@ -160,8 +203,9 @@ class LogisticModel(object):
         cmodel = config['logistic_models'][model]
         self.coeffs = validateCoefficients(cmodel)
         self.layers = validateLayers(cmodel)#key = layer name, value = file name
-        self.terms = validateTerms(cmodel,self.coeffs,self.layers)
+        self.terms,timeField = validateTerms(cmodel,self.coeffs,self.layers)
         self.interpolations = validateInterpolations(cmodel,self.layers)
+        self.units = validateUnits(cmodel,self.layers)
 
         if not cmodel.has_key('baselayer'):
             raise Exception('You must specify a base layer file in config.')
@@ -170,6 +214,11 @@ class LogisticModel(object):
         
         #get the geodict for the shakemap
         geodict = ShakeGrid.getFileGeoDict(shakefile)
+        griddict,eventdict,specdict,fields,uncertainties = getHeaderData(shakefile)
+        YEAR = eventdict['event_timestamp'].year
+        MONTH = MONTHS[(eventdict['event_timestamp'].month)-1]
+        DAY = eventdict['event_timestamp'].day
+        HOUR = eventdict['event_timestamp'].hour
 
         #now find the layer that is our base layer and get the largest bounds we can guaranteed not to exceed shakemap bounds
         basefile = self.layers[cmodel['baselayer']]
@@ -187,16 +236,33 @@ class LogisticModel(object):
         #load the predictor layers into a dictionary
         self.layerdict = {} #key = layer name, value = grid object
         for layername,layerfile in self.layers.iteritems():
-            #first, figure out what kind of file we have
-            ftype = getFileType(layerfile)
-            interp = self.interpolations[layername]
-            if ftype == 'gmt':
-                #TODO - add config section called interpolation where you specify sampling method for each layer
-                self.layerdict[layername] = GMTGrid.load(layerfile,sampledict,preserve='dims',resample=True,method='linear',doPadding=True)
-            elif ftype == 'esri':
-                self.layerdict[layername] = GDALGrid.load(layerfile,sampledict,preserve='dims',resample=True,method='linear',doPadding=True)
+            if isinstance(layerfile,list):
+                for lfile in layerfile:
+                    if timeField == 'MONTH':
+                        if lfile.find(MONTH) > -1:
+                            layerfile = lfile
+                            ftype = getFileType(layerfile)
+                            interp = self.interpolations[layername]
+                            if ftype == 'gmt':
+                                lyr = GMTGrid.load(layerfile,sampledict,preserve='shape',resample=True,method=interp,doPadding=True)
+                            elif ftype == 'esri':
+                                lyr = GDALGrid.load(layerfile,sampledict,preserve='shape',resample=True,method=interp,doPadding=True)
+                            else:
+                                msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,layerfile)
+                                raise Exception(msg)
+                            self.layerdict[layername] = lyr
             else:
-                raise Exception('Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,layerfile))
+                #first, figure out what kind of file we have (or is it a directory?)
+                ftype = getFileType(layerfile)
+                interp = self.interpolations[layername]
+                if ftype == 'gmt':
+                    lyr = GMTGrid.load(layerfile,sampledict,preserve='shape',resample=True,method=interp,doPadding=True)
+                elif ftype == 'esri':
+                    lyr = GDALGrid.load(layerfile,sampledict,preserve='shape',resample=True,method=interp,doPadding=True)
+                else:
+                    msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,layerfile)
+                    raise Exception(msg)
+                self.layerdict[layername] = lyr
 
         shapes = {}
         for layername,layer in self.layerdict.iteritems():
@@ -223,21 +289,34 @@ class LogisticModel(object):
     def calculate(self):
         X = eval(self.equation)
         P = 1/(1 + np.exp(-X))
-        return P
+        Pgrid = Grid2D(P,self.geodict)
+        rdict = {'probability':{'grid':Pgrid,
+                                'label':'Probability',
+                                'type':'output',
+                                'units':'probability'}}
+        for layername,layergrid in self.layerdict.items():
+            units = self.units[layername]
+            rdict[layername] = {'grid':layergrid,
+                                'label':'%s (%s)' % (layername,units),
+                                'type':'input',
+                                'units':units}
+        return rdict
 
     
 
-def _test(shakefile,cofile,slopefile):
+def _test(shakefile,cofile,slopefile,precipfolder):
     model = {'logistic_models':{'nowicki_2014':{'description':'This is the Nowicki Model of 2014, which uses cohesion and slope max as input.',
                                                 'gfetype':'landslide',
                                                 'baselayer':'cohesion',
                                                 'layers':{'cohesion':'%s' % cofile,
-                                                          'slope':'%s' % slfile},
+                                                          'slope':'%s' % slfile,
+                                                          'precip':'%s' % precipfolder},
                                                 'interpolations':{'cohesion':'linear',
-                                                                  'slope':'linear'},
+                                                                  'slope':'linear',
+                                                                  'precip':'nearest'},
                                                 'terms':{'b1':'pga',
                                                          'b2':'slope',
-                                                         'b3':'cohesion/10.0',
+                                                         'b3':'precipMONTH',
                                                          'b4':'pga*slope*MW'},
                                                 'coefficients':{'b0':-7.15,
                                                                 'b1':0.0604,
@@ -248,11 +327,12 @@ def _test(shakefile,cofile,slopefile):
     lm = LogisticModel(model,shakefile,'nowicki_2014')
     print lm.getEquation()
     P = lm.calculate()
-    print np.nanmin(P),np.nanmax(P)
+    
     
 if __name__ == '__main__':
-    shakefile = sys.argv[1]
+    shakefile = sys.argv[1] #needs to be an event occurring in January
     cofile = sys.argv[2]
     slfile = sys.argv[3]
-    _test(shakefile,cofile,slfile)
+    precip = sys.argv[4]
+    _test(shakefile,cofile,slfile,precip)
 
