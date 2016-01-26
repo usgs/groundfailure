@@ -5,9 +5,11 @@ import argparse
 import os.path
 import sys
 import pprint
+from collections import OrderedDict
+import datetime
 
 #third party imports
-from mapio.shake import ShakeGrid
+from mapio.shake import ShakeGrid,getHeaderData
 from mapio.multihaz import MultiHazardGrid
 from mapio.dataset import DataSetException
 from mapio.grid2d import Grid2D
@@ -17,6 +19,8 @@ from validate import Validator,VdtTypeError,VdtParamError
 #local imports
 from groundfailure.conf import validate
 from groundfailure.logisticmodel import validateLogisticModels,getLogisticModelNames,LogisticModel
+
+CODEVERSION = '1.0.0'
 
 def listModels(config):
     defaultLandslide = None
@@ -43,6 +47,39 @@ def listModels(config):
                     print 'Landslide model %s (default):\n\t%s\n' % (key,desc)
                 else:
                     print 'Landslide model %s:\n\t%s\n' % (key,desc)
+
+def setHeaders(shakefile,probdict):
+    griddict,eventdict,specdict,fields,uncertainties = getHeaderData(shakefile)
+
+    origin = {}
+    origin['id'] = eventdict['event_id']
+    origin['source'] = eventdict['event_network']
+    origin['time'] = eventdict['event_timestamp']
+    origin['lat'] = eventdict['lat']
+    origin['lon'] = eventdict['lon']
+    origin['depth'] = eventdict['depth']
+    origin['magnitude'] = eventdict['magnitude']
+
+    header = {}
+    header['type'] = 'groundfailure'
+    header['version'] = 1 #TODO - figure out product versioning
+    header['process_time'] = datetime.datetime.utcnow()
+    header['code_version'] = CODEVERSION #TODO figure out code versioning
+    header['originator'] = 'us'
+    header['product_id'] = origin['id']
+    header['map_status'] = griddict['map_status']
+    header['event_type'] = griddict['shakemap_event_type']
+
+    metadata = {}
+    for (layer,vdict) in probdict.items():
+        layerdict = {}
+        for (key,value) in vdict.items():
+            if key == 'grid':
+                continue
+            layerdict[key] = value
+        metadata[layer] = layerdict    
+
+    return (origin,header,metadata)
 
 def main(args):
     if args.list_models:
@@ -87,23 +124,46 @@ def main(args):
             else:
                 lsmodelname = config['logistic_models']['default_landslide']
                 lsmodel = LogisticModel(config,args.gridfile,lsmodelname)
-            print lqmodel.getEquation()
-            print lsmodel.getEquation()
-            lqP = lqmodel.calculate()
-            lsP = lsmodel.calculate()
-            lqdict = lqmodel.getGeoDict()
-            lqgrid = GMTGrid.copyFromGrid(Grid2D(data=lqP,geodict=lqdict))
-            cwd = os.getcwd()
-            lqfile = os.path.join(cwd,'liquefaction_%s.grd' % lqmodelname)
-            print 'Saving liquefaction output to %s' % lqfile
-            lqgrid.save(lqfile)
 
-            lsdict = lsmodel.getGeoDict()
-            lsgrid = GMTGrid.copyFromGrid(Grid2D(data=lsP,geodict=lsdict))
+            print 'Liquefaction model:\t\n%s' % lqmodel.getEquation()
+            print
+            print 'Liquefaction model:\t\n%s' % lsmodel.getEquation()
+
+            lqdict = lqmodel.calculate()
+            lsdict = lsmodel.calculate()
+            
+            #save these out to our HDF format
+            cwd = config['output']['folder']
+            if not os.path.isdir(cwd):
+                os.makedirs(cwd)
+            lqfile = os.path.join(cwd,'liquefaction_%s.hdf' % lqmodelname)
+            print 'Saving liquefaction output to %s' % lqfile
+            #create a MultiHazardGrid object from our liquefaction grid
+            qlayers = OrderedDict()
+            for (key,vdict) in lqdict.items():
+                qlayers[key] = vdict['grid'].getData()
+            
+            qgeodict = vdict['grid'].getGeoDict()
+            
+            qorigin,qheader,qmetadata = setHeaders(args.gridfile,lqdict)
+            mqgrid = MultiHazardGrid(qlayers,qgeodict,qorigin,qheader,metadata=qmetadata)
+            mqgrid.save(lqfile)
+
+            #save these out to our HDF format
             cwd = os.getcwd()
-            lsfile = os.path.join(cwd,'landslide_%s.grd' % lsmodelname)
+            lsfile = os.path.join(cwd,'landslide_%s.hdf' % lqmodelname)
             print 'Saving landslide output to %s' % lsfile
-            lsgrid.save(lsfile)
+            #create a MultiHazardGrid object from our landslide grid
+            slayers = OrderedDict()
+            for (key,vdict) in lsdict.items():
+                slayers[key] = vdict['grid'].getData()
+                
+            sgeodict = vdict['grid'].getGeoDict()
+            
+            sorigin,sheader,smetadata = setHeaders(args.gridfile,lsdict)
+            msgrid = MultiHazardGrid(slayers,sgeodict,sorigin,sheader,metadata=smetadata)
+            msgrid.save(lsfile)
+            
             sys.exit(0)
         except Exception as e:
             print 'Could not validate config file %s.  Here are the results:' % args.config

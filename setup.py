@@ -7,5 +7,5 @@ setup(name='groundfailure',
       author_email='kallstadt@usgs.gov,mhearne@usgs.gov,emthompson@usgs.gov',
       url='',
       packages=['groundfailure'],
-      scripts = ['gfe'],
+      scripts = ['gfail'],
 )

@@ -1,5 +1,37 @@
 # groundfailure
 
+Introduction
+------------
+groundfailure is a project designed to implement as many methods for calculating landslide and liquefaction probability 
+given an input ShakeMap.  
+
+Installation and Dependencies
+-----------------------------
+This package depends on a number of other libraries, most of which are installed with Anaconda.  We strongly suggest that
+users install that software or one of the other Scipy Stack distributions described here:
+
+http://www.scipy.org/install.html
+
+Some of those that may not be installed with a distribution:
+
+ - configobj (installed with Anaconda)
+ - fiona
+
+Usually these packages can be installed with either conda (Anaconda installs) or pip.
+
+The final dependency, mapio, can be installed with:
+
+pip install git+git://github.com/usgs/MapIO.git  
+
+To install this package:
+
+pip install git+git://github.com/usgs/groundfailure.git
+
+To upgrade this package:
+
+pip install -U git+git://github.com/usgs/groundfailure.git
+
+
 Configuration
 -------------
 
@@ -8,6 +40,9 @@ There will be a configuration file found in ~/.groundfailure/config.ini, with th
 The config file format is a modified version of the "INI" format.  It is described in detail here:
 
 http://configobj.readthedocs.org/en/latest/configobj.html#config-files
+
+**Note** - The configuration below does not represent any valid landslide or liquefaction model.  The parameters
+and layers are shown here for the purpose of explaining how to configure models. 
 
 <pre>
 [logistic_models]
@@ -31,9 +66,28 @@ http://configobj.readthedocs.org/en/latest/configobj.html#config-files
     #These include, but may not be limited to:
     #https://github.com/usgs/MapIO/blob/master/mapio/gdal.py
     #https://github.com/usgs/MapIO/blob/master/mapio/gmt.py
+    #OR
+    #A layer can point to a directory containing 12 data files (from above format list), one for each month.
+    #The input event time will be used to choose the appropriate file from the list of 12.
+    #The files MUST be named with the capitalized three-letter abbreviation of the month name, like "precip_Jan.grd", or "slope_May.grd".
+    #If some files contain more than one of these three-letter abbreviations, you will get unexpected results. (i.e., "DecimatedSlope_Jan.grd")
     [[[layers]]]
-      cohesion = /Users/mhearne/secondary/data/cohesion_10i.grd
-      slope = /Users/mhearne/secondary/data/slope_max.grd
+      cohesion = /Users/user/secondary/data/cohesion_10i.grd
+      slope = /Users/user/secondary/data/slope_max.grd
+      precip = /Users/user/secondary/data/precipdata
+
+    #indicate what kind of interpolation should be used for each of the above layers (nearest, linear, cubic)
+    [[[interpolations]]]
+      cohesion = nearest
+      slope = linear
+      precip = nearest
+      
+    #What are the physical units of the various predictive layers?  These will be displayed on output plots
+    #and preserved in the output data files. 
+    [[[units]]]
+      cohesion = kPa
+      slope = degrees
+      precip = cm/hr
 
     [[[terms]]]
       #These terms must be named as b1-bN, where N is the number of coefficients
@@ -74,8 +128,18 @@ http://configobj.readthedocs.org/en/latest/configobj.html#config-files
     #https://github.com/usgs/MapIO/blob/master/mapio/gdal.py
     #https://github.com/usgs/MapIO/blob/master/mapio/gmt.py
     [[[layers]]]
-      vs30 = /Users/mhearne/secondary/data/global_vs30.grd
-      cti = /Users/mhearne/secondary/data/globalcti.grd 
+      vs30 = /Users/user/secondary/data/global_vs30.grd
+      cti = /Users/user/secondary/data/globalcti.grd 
+
+    #What are the physical units of the various predictive layers?  These will be displayed on output plots
+    #and preserved in the output data files. 
+    [[[units]]]
+      vs30 = m/s
+      cti = cm/m
+
+    [[[interpolations]]]
+      vs30 = nearest
+      cti = linear
 
     [[[terms]]]
       b1 = 'log((PGA/100.0)*(power(MW,2.56)/power(10,2.24)))'
@@ -91,4 +155,7 @@ http://configobj.readthedocs.org/en/latest/configobj.html#config-files
     [[[colormaps]]]
       vs30_colormap = jet_r
 
+
+[output]
+  folder = '/Users/user/failureoutput/
 </pre>
