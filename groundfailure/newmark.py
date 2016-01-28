@@ -74,7 +74,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     :param config: Model configuration file object containing locations of input files and other input values config = ConfigObj(configfilepath)
     :type config: ConfigObj
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
-    :type saveinputs: Binary
+    :type saveinputs: boolean
     :param regressionmodel:
         Newmark displacement regression model to use
         'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6
@@ -217,7 +217,7 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
     :param config: ConfigObj of config file containing inputs required for running the model
     :type config: ConfigObj
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
-    :type saveinputs: Binary
+    :type saveinputs: boolean
     :param regressionmodel:
         Newmark displacement regression model to use
         'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6
@@ -331,6 +331,8 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
 
     if saveinputs is True:
         maplayers['pga'] = {'grid': GDALGrid(PGA[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA (g)', 'type': 'input'}
+        if 'PGV' in regressionmodel:
+            maplayers['pgv'] = {'grid': GDALGrid(PGV[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV (cm/s)', 'type': 'input'}
         maplayers['minFS'] = {'grid': GDALGrid(np.min(FS, axis=2), shakemap.getGeoDict()), 'label': 'Min Factor of Safety', 'type': 'input'}
         maplayers['max slope'] = {'grid': GDALGrid(slopestack[:, :, -1], shakemap.getGeoDict()), 'label': 'Maximum slope ($^\circ$)', 'type': 'input'}
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion[:, :, 0], shakemap.getGeoDict()), 'label': 'Cohesion (kPa)', 'type': 'input'}
