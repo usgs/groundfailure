@@ -4,6 +4,8 @@
 import os.path
 import math
 import glob
+from matplotlib.path import Path
+from mpl_toolkits.basemap import maskoceans
 
 #third party imports
 import matplotlib.cm as cm
@@ -11,108 +13,31 @@ import numpy as np
 import matplotlib.pyplot as plt
 import fiona
 from mpl_toolkits.basemap import Basemap
+from matplotlib.patches import Polygon
+from matplotlib.collections import PatchCollection
 
 #local imports
 from mapio.gmt import GMTGrid
 from neicmap.city import PagerCity
 from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
 
-SEA_LEVEL = 0
 
-
-def hillshade(topogrid, azimuth, angle_altitude):
-    """
-    Most of this script borrowed from http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html last accessed 9/2/2015
-    """
-    topotmp = topogrid.getData().copy()
-    #make a masked array
-    topotmp = np.ma.array(topotmp)
-    topodat = np.ma.masked_where(np.isnan(topotmp), topotmp)
-    topodat = np.ma.masked_where(topodat == SEA_LEVEL, topodat)
-    x, y = np.gradient(topodat)
-    slope = np.pi/2. - np.arctan(np.sqrt(x*x + y*y))
-    aspect = np.arctan2(-x, y)
-    azimuthrad = azimuth*np.pi / 180.
-    altituderad = angle_altitude*np.pi / 180.
-    shaded = np.sin(altituderad) * np.sin(slope) + np.cos(altituderad) * np.cos(slope) * np.cos(azimuthrad - aspect)
-    return 255*(shaded + 1)/2
-
-
-def getMapLines(dmin, dmax):
-    NLINES = 4
-    drange = dmax-dmin
-    if drange > 4:
-        near = 1
-    else:
-        if drange >= 0.5:
-            near = 0.25
-        else:
-            near = 0.125
-    inc = roundToNearest(drange/NLINES, near)
-    if inc == 0:
-        near = np.power(10, round(math.log10(drange)))  # make the increment the closest power of 10
-        inc = ceilToNearest(drange/NLINES, near)
-        newdmin = floorToNearest(dmin, near)
-        newdmax = ceilToNearest(dmax, near)
-    else:
-        newdmin = ceilToNearest(dmin, near)
-        newdmax = floorToNearest(dmax, near)
-    darray = np.arange(newdmin, newdmax+inc, inc)
-    if darray[-1] > dmax:
-        darray = darray[0:-1]
-    return darray
-
-
-def latstr(parallel):
-    if parallel < 0:
-        parstr = '%.2f' % (-1*parallel) + '$\degree$ S'
-    else:
-        parstr = '%.2f' % (parallel) + '$\degree$ N'
-    return parstr
-
-
-def lonstr(meridian):
-    if meridian < 0:
-        merstr = '%.2f' % (-1*meridian) + '$\degree$ W'
-    else:
-        merstr = '%.2f' % (meridian) + '$\degree$ E'
-    return merstr
-
-
-def getMapTicks(m, xmin, xmax, ymin, ymax):
-    meridians = getMapLines(xmin, xmax)
-    parallels = getMapLines(ymin, ymax)
-    #do tick stuff
-    xlabels = [lonstr(mer) for mer in meridians]
-    ylabels = [latstr(par) for par in parallels]
-    xticks = []
-    yticks = []
-    for i in range(0, len(meridians)):
-        lat = ymin
-        lon = meridians[i]
-        x, y = m(lon, lat)
-        xticks.append(x)
-    for i in range(0, len(parallels)):
-        lon = xmin
-        lat = parallels[i]
-        x, y = m(lon, lat)
-        yticks.append(y)
-
-    return (xticks, xlabels, yticks, ylabels)
-
-
-def makeMap_OSM(grids, edict, modelname=None):
-    """
-    Plot results over Open Street Map base
-    """
+def parseMapConfig():
     pass
 
 
-def makeMap_KML(grids, edict, modelname=None, filename=None):
-    pass
+def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities=True, isScenario=False, lowthreshes=None, plotorder=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None):
+    """This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers) with the same boundaries with many plotting options, some in config file, others in
 
+    :param grids: Grid of layers and metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle'}
+    :type name: Ordered dictionary - import collections; grids = collections.OrderedDict()
+    :param edict: Optional event dictionary for ShakeMap, used only for title
+    :param state: Current state to be in.
+    :type state: bool.
+    :returns:  int -- the return code.
+    :raises: AttributeError, KeyError
 
-def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True, isScenario=False, lowthreshes=None, plotorder=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None):
+    """
     """
     Creates maps of either liquefaction or landslide model with options for showing roads, choosing colors, and showing cities
     config object
@@ -175,7 +100,7 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
         if 'watercolor' in config1.keys():
             watercolor = config1['watercolor']
         if 'defaultcolormap' in config1.keys():
-            defaultcolormap = config1['defaultcolormap']
+            defaultcolormap = eval(config1['defaultcolormap'])
         if 'alpha' in config1.keys():
             ALPHA = float(config1['alpha'])
     except Exception as e:
@@ -207,9 +132,9 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
                 # get lat lons of areas affected and add, if no areas affected, switch to shakemap boundaries
                 temp = grids[key]['grid']
                 xmin, xmax, ymin, ymax = temp.getBounds()
-                lons = np.arange(xmin, xmax, temp.getGeoDict()['xdim'])
+                lons = np.arange(xmin, xmax+temp.getGeoDict()['xdim'], temp.getGeoDict()['xdim'])
                 lons = lons[:temp.getGeoDict()['ncols']]  # make sure right length
-                lats = np.arange(ymax, ymin, -temp.getGeoDict()['ydim'])  # backwards so it plots right
+                lats = np.arange(ymax, ymin-temp.getGeoDict()['ydim'], -temp.getGeoDict()['ydim'])  # backwards so it plots right
                 lats = lats[:temp.getGeoDict()['nrows']]
                 llons, llats = np.meshgrid(lons, lats)  # make meshgrid
                 llons1 = llons[temp.getData() > zthresh]
@@ -223,19 +148,19 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
                 if llats1.max() > latmax:
                     latmax = llats1.max()
             boundaries1 = {}
-            if xmin < lonmin-0.1*(lonmax-lonmin):
+            if xmin < lonmin-0.15*(lonmax-lonmin):
                 boundaries1['xmin'] = lonmin-0.1*(lonmax-lonmin)
             else:
                 boundaries1['xmin'] = xmin
-            if xmax > lonmax+0.1*(lonmax-lonmin):
+            if xmax > lonmax+0.15*(lonmax-lonmin):
                 boundaries1['xmax'] = lonmax+0.1*(lonmax-lonmin)
             else:
                 boundaries1['xmax'] = xmax
-            if ymin < latmin-0.1*(latmax-latmin):
+            if ymin < latmin-0.15*(latmax-latmin):
                 boundaries1['ymin'] = latmin-0.1*(latmax-latmin)
             else:
                 boundaries1['ymin'] = ymin
-            if ymax > latmax+0.1*(latmax-latmin):
+            if ymax > latmax+0.15*(latmax-latmin):
                 boundaries1['ymax'] = latmax+0.1*(latmax-latmin)
             else:
                 boundaries1['ymax'] = ymax
@@ -251,40 +176,17 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
             keytemp = grids.keys()
             boundaries = grids[keytemp[0]].getGeoDict()
 
-    # Load in topofile and load in or compute hillshade
-    if topofile is not None and hillshade is None:
-        gdict = GMTGrid.getBoundsWithin(topofile, boundaries)
-        # Only load in if no hillshade is available, expand a little to avoid edge cutoff
-        lonrange = gdict['xmax'] - gdict['xmin']
-        latrange = gdict['ymax'] - gdict['ymin']
-        gdict['xmin'] = gdict['xmin'] - lonrange*0.2
-        gdict['xmax'] = gdict['xmax'] + lonrange*0.2
-        gdict['ymin'] = gdict['ymin'] - latrange*0.2
-        gdict['ymax'] = gdict['ymax'] + latrange*0.2
-        topomap = GMTGrid.load(topofile, samplegeodict=gdict)
+    # Load in topofile and load in or compute hillshade, resample to same grid as first layer NEED ERROR HANDLING TO MAKE SURE ALL ARE SAME BOUNDARIES
+    gdict = grids[grids.keys()[0]]['grid'].getGeoDict()
     if hillshade is not None:
-        gdict = GMTGrid.getBoundsWithin(hillshade, boundaries)
-        # expand a little to avoid edge cutoff
-        lonrange = gdict['xmax'] - gdict['xmin']
-        latrange = gdict['ymax'] - gdict['ymin']
-        gdict['xmin'] = gdict['xmin'] - lonrange*0.2
-        gdict['xmax'] = gdict['xmax'] + lonrange*0.2
-        gdict['ymin'] = gdict['ymin'] - latrange*0.2
-        gdict['ymax'] = gdict['ymax'] + latrange*0.2
-        hillsmap = GMTGrid.load(hillshade, samplegeodict=gdict)
-    elif topofile is not None:
-            hillsmap = hillshade(topomap, 315, 50)
+        hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', preserve='shape', samplegeodict=gdict)
+    elif topofile is not None and hillshade is None:
+        topomap = GMTGrid.load(topofile, resample=True, method='linear', preserve='shape', samplegeodict=gdict)
+        hillsmap = hillshade(topomap, 315, 50)
     else:
         print('no hillshade is possible\n')
         hillsmap = None
         ALPHA = 1.
-    if hillsmap is not None:  # Make mesh for later
-        xmin, xmax, ymin, ymax = hillsmap.getBounds()
-        lons = np.arange(xmin, xmax, hillsmap.getGeoDict()['xdim'])
-        lons = lons[:hillsmap.getGeoDict()['ncols']]  # make sure right length
-        lats = np.arange(ymax, ymin, -hillsmap.getGeoDict()['ydim'])  # backwards so it plots right
-        lats = lats[:hillsmap.getGeoDict()['nrows']]
-        llons, llats = np.meshgrid(lons, lats)  # make meshgrid
 
     # Get output file location
     if 'OUTPUT'in config.keys():
@@ -344,23 +246,12 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
                     rsphere=(6378137.00, 6356752.3142),
                     resolution='i', area_thresh=1000., projection='lcc',
                     lat_1=clat, lon_0=clon, ax=ax)
-        if hillsmap is not None:
-            x, y = m(llons, llats)  # get projection coordinates
-            if topofile is not None:
-                topomap5 = GMTGrid.load(topofile, resample=True, samplegeodict=hillsmap.getGeoDict())
-                hillsh = hillsmap.getData()
-                hillsh[topomap5.getData() == SEA_LEVEL] = 0
-                hillshm = np.ma.masked_equal(hillsh, 0)
-            else:
-                hillshm = hillsmap.getData()
-            m.pcolormesh(x, y, hillshm/np.abs(hillshm).max(), cmap='Greys', lw=0, rasterized=True, vmin=0., vmax=3.)
-            plt.draw()
 
         dat = layergrid.getData().copy()
         if colormaps is not None and len(colormaps) == len(grids):
             palette = colormaps[k]
         else:  # Find preferred default color map for each type of layer
-            if 'prob' in layer.lower() or 'pga' in layer.lower() or 'pgv' in layer.lower() or 'cohesion' in layer.lower() or 'friction' in layer.lower():
+            if 'prob' in layer.lower() or 'pga' in layer.lower() or 'pgv' in layer.lower() or 'cohesion' in layer.lower() or 'friction' in layer.lower() or 'fs' in layer.lower():
                 palette = cm.jet
             elif 'slope' in layer.lower():
                 palette = cm.gnuplot2
@@ -368,17 +259,6 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
                 palette = cm.s3pcpn
             else:
                 palette = defaultcolormap
-        if topofile is not None:
-            # resample topomap to the same as current layer
-            topomap2 = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=layergrid.getGeoDict())
-            iwater = np.where(topomap2.getData() == SEA_LEVEL)
-            dat[iwater] = 0
-        if lowthreshes is not None and len(lowthreshes) == len(grids):
-            dat[dat <= lowthreshes[k]] = 0
-        else:
-            dat[dat <= 0.] = 0
-        datm = np.ma.masked_equal(dat, 0)
-        palette.set_bad(clear_color, alpha=0.0)
 
         xmin, xmax, ymin, ymax = layergrid.getBounds()
         lons = np.arange(xmin, xmax+layergrid.getGeoDict()['xdim'], layergrid.getGeoDict()['xdim'])
@@ -388,45 +268,73 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
         #make meshgrid
         llons1, llats1 = np.meshgrid(lons, lats)
         x1, y1 = m(llons1, llats1)  # get projection coordinates
-        #x2, y2 = m(lons, lats)
-        if scaletype == 'binned':
+
+        if hillsmap is not None:
+            hillshm = hillsmap.getData()
+            hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
+            m.pcolormesh(x1, y1, hillshm/np.abs(hillshm).max(), cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1)
+            plt.draw()
+
+        # mask out anything below any specified thresholds
+        if lowthreshes is not None and len(lowthreshes) == len(grids):
+            if lowthreshes[k] is not None:
+                dat[dat <= lowthreshes[k]] = float('NaN')
+                dat = np.ma.array(dat, mask=np.isnan(dat))
+        #datm = np.ma.masked_values(dat, -1.)
+        #import pdb; pdb.set_trace()
+
+        if scaletype.lower() == 'binned':
             if lims is None or len(lims) != len(grids):
-                clev = np.linspace(np.floor(datm.min()), np.ceil(datm.max()), 6)
+                clev = np.linspace(np.floor(dat.min()), np.ceil(dat.max()), 10)
             else:
                 if lims[k] is None:
-                    clev = np.linspace(np.floor(datm.min()), np.ceil(datm.max()), 6)
+                    clev = np.linspace(np.floor(dat.min()), np.ceil(dat.max()), 10)
                 else:
                     clev = lims[k]
-            panelhandle = m.contourf(x1, y1, datm, clev, cmap=palette, lw=0, alpha=ALPHA, rasterized=True)
+            # Adjust to colorbar levels
+            dat[dat < clev[0]] = clev[0]
+            for j, level in enumerate(clev[:-1]):
+                dat[(dat >= clev[j]) & (dat < clev[j+1])] = clev[j]
+            # So colorbar saturates at top
+            dat[dat > clev[-1]] = clev[-1]
+            #panelhandle = m.contourf(x1, y1, datm, clev, cmap=palette, linewidth=0., alpha=ALPHA, rasterized=True)
+            vmin = clev[0]
+            vmax = clev[-1]
         else:
             if lims is not None and len(lims) == len(grids):
-                vmin = lims[k][0]
-                vmax = lims[k][1]
+                if lims[k] is None:
+                    vmin = None
+                    vmax = None
+                else:
+                    vmin = lims[k][0]
+                    vmax = lims[k][-1]
             else:
                 vmin = None
                 vmax = None
-            panelhandle = m.pcolormesh(x1, y1, datm, lw=0, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True)
+            # Tried to use imshow, but doesn't quite work right yet, not lining up properly so still using pcolormesh
+            # interpolate to a rectangular map projection grid.
+            # dat1 = m.transform_scalar(datm, lons, np.flipud(lats), 500, 500, returnxy=False, order=1, checkbounds=True, masked=True)
+            # extent_xy = (m.xmin, m.xmax, m.ymin, m.ymax)
+            # panelhandle = m.imshow(np.flipud(dat1), cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2, extent=extent_xy)
+        datm = maskoceans(llons1, llats1, dat, resolution='h', grid=1.25, inlands=True)
+        palette.set_bad(clear_color, alpha=0.0)
+        panelhandle = m.pcolormesh(x1, y1, datm, linewidth=0.0, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, edgecolor='None')
         # add colorbar
-        cbar = fig.colorbar(panelhandle, fraction=0.046, pad=0.04)
+        if scaletype.lower() == 'binned':
+            cbar = fig.colorbar(panelhandle, spacing='proportional', ticks=clev, boundaries=clev, format='%1.1f', extend='both')
+        else:
+            cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04, extend='both')
+
         cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
 
-        #this stuff has to be added after something has been rendered on the map
-        #draw the map ticks on outside of all edges
-        fig.canvas.draw()  # have to do this for tick stuff to show
-        xticks, xlabels, yticks, ylabels = getMapTicks(m, boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax'])
-        plt.sca(ax)
-        plt.tick_params(axis='both', direction='in', right='on', colors='gray')
-        plt.xticks(xticks, xlabels, size=6)
-        plt.yticks(yticks, ylabels, size=6)
-        for tick in ax.axes.yaxis.get_major_ticks():
-            tick.set_pad(-38)
-            tick.label2.set_horizontalalignment('right')
-        for tick in ax.axes.xaxis.get_major_ticks():
-            tick.set_pad(-15)
-            tick.label2.set_verticalalignment('top')
-        [j.set_color("gray") for j in plt.gca().get_xticklabels()]
-        [j.set_color("gray") for j in plt.gca().get_yticklabels()]
+        parallels = m.drawparallels(getMapLines(ymin, ymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=6, xoffset=-0.8, color='gray')
+        m.drawmeridians(getMapLines(xmin, xmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=6, color='gray')
+        for par in parallels:
+            try:
+                parallels[par][1][0].set_rotation(90)
+            except:
+                pass
 
         #draw roads on the map, if they were provided to us
         if maproads is True:
@@ -445,10 +353,10 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
                 xy = list(road['geometry']['coordinates'])
                 roadx, roady = zip(*xy)
                 mapx, mapy = m(roadx, roady)
-                m.plot(mapx, mapy, roadcolor, lw=0.5)
+                m.plot(mapx, mapy, roadcolor, lw=0.5, zorder=9)
             plt.draw()
 
-        #add city names to map with population >50,000 (add option later)
+        #add city names to map
         if mapcities is True:
             dmin = 0.04*(m.ymax-m.ymin)
             xyplotted = []
@@ -456,7 +364,11 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
             #Find cities within bounding box
             boundcity = cities.findCitiesByRectangle(bounds=(boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax']))
             #Just keep 5 biggest cities
-            thresh = sorted([cit['pop'] for cit in boundcity])[-5]
+            if len(boundcity) < 5:
+                value = len(boundcity)
+            else:
+                value = 5
+            thresh = sorted([cit['pop'] for cit in boundcity])[-value]
             plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
             #For cities that are more than one xth of the xwidth apart, keep only the larger one
             pass  # do later
@@ -465,23 +377,18 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
                 xi, yi = m(cit['lon'], cit['lat'])
                 dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
                 if not dist or np.min(dist) > dmin:
-                    m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.')
-                    ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8)
+                    m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
+                    ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8, zorder=100000)
                     xyplotted.append((xi, yi))
 
-            #draw a map boundary, fill in oceans with water
-            m.drawmapboundary(fill_color=watercolor)
+        #draw star at epicenter
+        plt.sca(ax)
+        elat, elon = edict['lat'], edict['lon']
+        ex, ey = m(elon, elat)
+        plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.0, ms=12)
 
-            # add the subtitle
-            #ax.set_title(layer) # DONT NEED BECAUSE COLORBAR IS LABELED
+        m.drawmapboundary(fill_color=watercolor)
 
-            #draw star at epicenter
-            plt.sca(ax)
-            elat, elon = edict['lat'], edict['lon']
-            ex, ey = m(elon, elat)
-            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.5, ms=12)
-
-        #fill in the lakes and rivers
         m.fillcontinents(color=clear_color, lake_color=watercolor)
         m.drawrivers(color=watercolor)
 
@@ -493,8 +400,8 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
         clat = ymin + (ymax-ymin)/2.0
         clon = xmin + (xmax-xmin)/2.0
         #m.drawmapscale((xmax+xmin)/2., (ymin+(ymax-ymin)/5.), clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
-        #draw coastlines
-        m.drawcoastlines(color='#476C91', linewidth=0.5)
+
+        plt.title(label1, axes=ax)
 
         #draw scenario watermark, if scenario
         if isScenario:
@@ -504,7 +411,6 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
 
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)
-    #plt.title(ptitle,axes=ax)
     outfile = os.path.join(outfolder, '%s_%s.pdf' % (edict['eventid'], modelname))
     pngfile = os.path.join(outfolder, '%s_%s.png' % (edict['eventid'], modelname))
     plt.savefig(outfile, dpi=300)
@@ -513,9 +419,62 @@ def modelMap(grids, edict, config, modelname=None, maproads=True, mapcities=True
     print 'Saving map output to %s' % pngfile
 
 
+def hillshade(topogrid, azimuth, angle_altitude):
+    """
+    Most of this script borrowed from http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html last accessed 9/2/2015
+    """
+    topotmp = topogrid.getData().copy()
+    #make a masked array
+    topotmp = np.ma.array(topotmp)
+    topodat = np.ma.masked_where(np.isnan(topotmp), topotmp)
+    #topodat = np.ma.masked_where(topodat == SEA_LEVEL, topodat)
+    x, y = np.gradient(topodat)
+    slope = np.pi/2. - np.arctan(np.sqrt(x*x + y*y))
+    aspect = np.arctan2(-x, y)
+    azimuthrad = azimuth*np.pi / 180.
+    altituderad = angle_altitude*np.pi / 180.
+    shaded = np.sin(altituderad) * np.sin(slope) + np.cos(altituderad) * np.cos(slope) * np.cos(azimuthrad - aspect)
+    return 255*(shaded + 1)/2
+
+
+def getMapLines(dmin, dmax, nlines):
+    drange = dmax-dmin
+    if drange > 4:
+        near = 1
+    else:
+        if drange >= 0.5:
+            near = 0.25
+        else:
+            near = 0.125
+    inc = roundToNearest(drange/nlines, near)
+    if inc == 0:
+        near = np.power(10, round(math.log10(drange)))  # make the increment the closest power of 10
+        inc = ceilToNearest(drange/nlines, near)
+        newdmin = floorToNearest(dmin, near)
+        newdmax = ceilToNearest(dmax, near)
+    else:
+        newdmin = ceilToNearest(dmin, near)
+        newdmax = floorToNearest(dmax, near)
+    darray = np.arange(newdmin, newdmax+inc, inc)
+    if darray[-1] > dmax:
+        darray = darray[0:-1]
+    return darray
+
+
+def makeMap_OSM(grids, edict, modelname=None):
+    """
+    Plot results over Open Street Map base
+    """
+    pass
+
+
+def makeMap_KML(grids, edict, modelname=None, filename=None):
+    pass
+
+
 def comparisonMap():
     """
-    Compare maps from different models
+    Compare output probability maps from different models, compile statistics
     """
     pass
 
