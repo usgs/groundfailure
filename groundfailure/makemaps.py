@@ -22,94 +22,130 @@ from neicmap.city import PagerCity
 from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
 
 
-def parseMapConfig():
-    pass
-
-
-def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities=True, isScenario=False, lowthreshes=None, plotorder=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None):
-    """This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers) with the same boundaries with many plotting options, some in config file, others in
-
-    :param grids: Grid of layers and metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle'}
-    :type name: Ordered dictionary - import collections; grids = collections.OrderedDict()
-    :param edict: Optional event dictionary for ShakeMap, used only for title
-    :param state: Current state to be in.
-    :type state: bool.
-    :returns:  int -- the return code.
-    :raises: AttributeError, KeyError
-
-    """
-    """
-    Creates maps of either liquefaction or landslide model with options for showing roads, choosing colors, and showing cities
-    config object
-    grids must be dictionary of mapio grids, label of dictionary will be label on colorbar key and will appear in title. Easy to build, example -> grids['probability'] = lsgrid - using an ordered dictionary instead of a regular one will mean you don't need plotorder and the order of vlims, colormaps, etc. will be correct
-    zthresh = theshold for computing zooming bounds, only used if boundaries = 'zoom'
-    All grids must use same exact bounds (FUTURE ALTERATION, ALLOW THEM TO BE DIFFERENT?)
-    boundaries = 'zoom' will automatically search for bounds around a probability file using zthresh, else a dictionary with xmin, xmax, ymin, ymax in it to use as boundaries for plotting, when boundaries=None, boundaries are taken from first grid in grids
-    lowthreshes = list of lower threshold values for each grid (below this value will be transparent)
-    plotorder = list of keys in order they should be plotted, if None, will search for probability grid to plot first and rest will be random
-    list of colormaps corresponding to each grid in plotorder, defaults set to search for certain types of outputs using their key and label
-    scaletype - binned or continuous scale to apply to all
-    lims = if scaletype is continuous, this is a list of tuples of vmin and vmax corresponding to each grid, if None, will search for this info in config file, otherwise will just use automatic bounds
-        if scaletype is binned, this is a list of arrays of bin boundaries corresponding to each layer, any layers that you don't want to specify, insert None, or None for all
-
-    """
-    # Set some defaults that may be overwritten by config file
+def parseMapConfig(config):
+    # Parse config object
+    # ADD PLOTORDER TO CONFIG? OTHER THINGS LIKE COLORMAPS?
+    topofile = None
+    hillshade = None
+    roadfolder = None
+    cityfile = None
     roadcolor = '6E6E6E'
     countrycolor = '177F10'
-    defaultcolormap = cm.jet
     watercolor = 'B8EEFF'
-    cityfile = None
-    roadfolder = None
-    hillshade = None
-    topofile = None
     ALPHA = 0.7
+    outputdir = None
 
-    if modelname is None:
-        modelname = ' '
-
-    # Parse config object
     try:
         config1 = config['MAPDATA']
         if 'topofile' in config1.keys():
             topofile = config1['topofile']
         if 'hillshade' in config1.keys():
             hillshade = config1['hillshade']
-        if 'topofile' not in config1.keys() and 'hillshade' not in config1.keys():
-            print('No hillshade or topomap provided, you will have a sad flat map\n')
-        if 'roadfolder' in config1.keys() and maproads is True:
+        if 'roadfolder' in config1.keys():
             roadfolder = config1['roadfolder']
             if os.path.exists(roadfolder) is False:
                 print('roadfolder not valid - roads will not be displayed\n')
-                maproads = False
-        if 'cityfile' in config1.keys() and mapcities is True:
+                roadfolder = None
+        if 'cityfile' in config1.keys():
             cityfile = config1['cityfile']
             if os.path.exists(cityfile):
                 try:
-                    cities = PagerCity(cityfile)
+                    PagerCity(cityfile)
                 except Exception as e:
                     print e
                     print('cities file not valid - cities will not be displayed\n')
-                    mapcities = False
+                    cityfile = None
             else:
                 print('cities file not valid - cities will not be displayed\n')
-                mapcities = False
+                cityfile = False
         if 'roadcolor' in config1.keys():
             roadcolor = config1['roadcolor']
         if 'countrycolor' in config1.keys():
             countrycolor = config1['countrycolor']
         if 'watercolor' in config1.keys():
             watercolor = config1['watercolor']
-        if 'defaultcolormap' in config1.keys():
-            defaultcolormap = eval(config1['defaultcolormap'])
         if 'alpha' in config1.keys():
             ALPHA = float(config1['alpha'])
+        outputdir = config['OUTPUT']['folder']
     except Exception as e:
         print e
-        print('MAPDATA missing from or misformatted in config, map will be missing components\n')
+        print('MAPDATA missing from or misformatted in config')
 
     countrycolor = '#'+countrycolor
     watercolor = '#'+watercolor
     roadcolor = '#'+roadcolor
+
+    return topofile, hillshade, roadfolder, cityfile, roadcolor, countrycolor, watercolor, ALPHA, outputdir
+
+
+def modelMap(grids, edict=None, modelname=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, hillshade=None, cityfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True):
+
+    """
+    This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers)
+    All grids must use the same bounds
+    TO DO change so that all input layers do not have to have the same bounds, test plotting multiple probability layers, and add option so that if PDF and PNG aren't output, opens plot on screen using plt.show()
+
+    :param grids: Dictionary of N layers and metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle'}. Layer names must be unique.
+    :type name: Dictionary or Ordered dictionary - import collections; grids = collections.OrderedDict()
+    :param edict: Optional event dictionary for ShakeMap, used for title and naming output folder
+    :type edit: Shakemap Event Dictionary
+    :param modelname: Name of model being run, this will be displayed at the top of the plots and in the figure names
+    :type modelname: string
+    :param plotorder: List of keys describing the order to plot the grids, if None and grids is an ordered dictionary, it will use the order of the dictionary, otherwise it will choose order which may be somewhat random but it will always put a probability grid first
+    :type plotorder: list
+    :param maskthreshes: N x 1 array or list of lower thresholds for masking corresponding to order in plotorder or order of OrderedDict if plotorder is None. If grids is not an ordered dict and plotorder is not specified, this will not work right. If None (default), nothing will be masked
+    :param colormaps: List of strings of matplotlib colormaps (e.g. cm.autumn_r) corresponding to plotorder or order of dictionary if plotorder is None. The list can contain both strings and None e.g. colormaps = ['cm.autumn', None, None, 'cm.jet'] and None's will default to default colormap
+    :param boundaries: None to show entire study area, 'zoom' to zoom in on the area of action (only works if there is a probability layer) using zthresh as a threshold, or a dictionary defining lats and lons in the form of boundaries['xmin'] = minlon, boundaries['xmax'] = maxlon, boundaries['ymin'] = min lat, boundaries['ymax'] = max lat
+    :param zthresh: threshold for computing zooming bounds, only used if boundaries = 'zoom'
+    :type zthresh: float
+    :param scaletype: Type of scale for plotting, 'continuous' or 'binned' - will be reflected in colorbar
+    :type scaletype: string
+    :param lims: None or Nx1 list of tuples or numpy arrays corresponding to plotorder defining the limits for saturating the colorbar (vmin, vmax) if scaletype is continuous or the bins to use (clev) if scaletype if binned. The list can contain tuples, arrays, and Nones, e.g. lims = [(0., 10.), None, (0.1, 1.5), np.linspace(0., 1.5, 15)]. When None is specified, the program will estimate the limits, when an array is specified but the scaletype is continuous, vmin will be set to min(array) and vmax will be set to max(array)
+    :param lims: None or Nx1 list of Trues and Falses corresponding to plotorder defining whether to use a linear or log scale (log10) for plotting the layer. This will be reflected in the labels
+    :param ALPHA: Transparency for mapping, if there is a hillshade that will plot below each layer, it is recommended to set this to at least 0.7
+    :type ALPHA: float
+    :param maproads: Whether to show roads or not, default True, but requires that roadfile is specified and valid to work
+    :type maproads: boolean
+    :param mapcities: Whether to show cities or not, default True, but requires that cityfile is specified and valid to work
+    :type mapcities: boolean
+    :param isScenario: Whether this is a scenario (True) or a real event (False) (default False)
+    :type isScenario: boolean
+    :param roadfolder: Full file path to folder containing road shapefiles
+    :type roadfolder: string
+    :param topofile: Full file path to topography grid (GDAL compatible) - this is only needed to make a hillshade if a premade hillshade is not specified
+    :type topofile: string
+    :param hillshade: Full file path to hillshade grid (GDAL compatible)
+    :type hillshade: string
+    :param cityfile: Full file path to Pager file containing city & population information
+    :type cityfile: string
+    :param roadcolor: Color to use for roads, if plotted, default #6E6E6E
+    :type roadcolor: Hex color or other matplotlib compatible way of defining color
+    :param watercolor: Color to use for oceans, lakes, and rivers, default #B8EEFF
+    :type watercolor: Hex color or other matplotlib compatible way of defining color
+    :param countrycolor: Color for country borders, default #177F10
+    :type countrycolor: Hex color or other matplotlib compatible way of defining color
+    :param outputdir: File path for outputting figures, if edict is defined, a subfolder based on the event id will be created in this folder. If None, will use current directory
+    :param savepdf: True to save pdf figure, False to not
+    :param savepng: True to save png figure, False to not
+
+
+    :returns:  PDF's or PNG's
+    """
+    if modelname is None:
+        modelname = ' '
+
+    defaultcolormap = cm.jet
+
+    # Get output file location
+    if outputdir is None:
+        print('No output location given, using current directory for outputs\n')
+        outputdir = os.getcwd()
+    if edict is not None:
+        outfolder = os.path.join(outputdir, edict['eventid'])
+    else:
+        outfolder = outputdir
+    if not os.path.isdir(outfolder):
+        os.makedirs(outfolder)
 
     # Get boundaries to use for all plots
     if boundaries is None:
@@ -137,8 +173,8 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
                 lats = np.arange(ymax, ymin-temp.getGeoDict()['ydim'], -temp.getGeoDict()['ydim'])  # backwards so it plots right
                 lats = lats[:temp.getGeoDict()['nrows']]
                 llons, llats = np.meshgrid(lons, lats)  # make meshgrid
-                llons1 = llons[temp.getData() > zthresh]
-                llats1 = llats[temp.getData() > zthresh]
+                llons1 = llons[temp.getData() > float(zthresh)]
+                llats1 = llats[temp.getData() > float(zthresh)]
                 if llons1.min() < lonmin:
                     lonmin = llons1.min()
                 if llons1.max() > lonmax:
@@ -182,21 +218,11 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
         hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', preserve='shape', samplegeodict=gdict)
     elif topofile is not None and hillshade is None:
         topomap = GMTGrid.load(topofile, resample=True, method='linear', preserve='shape', samplegeodict=gdict)
-        hillsmap = hillshade(topomap, 315, 50)
+        hillsmap = make_hillshade(topomap, 315, 50)
     else:
         print('no hillshade is possible\n')
         hillsmap = None
         ALPHA = 1.
-
-    # Get output file location
-    if 'OUTPUT'in config.keys():
-        outfile = config['OUTPUT']['folder']
-    else:  # Use current directory
-        print('No output location given, using current directory for outputs\n')
-        outfile = os.getcwd()
-    outfolder = os.path.join(outfile, edict['eventid'])
-    if not os.path.isdir(outfolder):
-        os.makedirs(outfolder)
 
     # Determine if need a single panel or multi-panel plot and if multi-panel, how many and how it will be arranged
     fig = plt.figure()
@@ -248,8 +274,8 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
                     lat_1=clat, lon_0=clon, ax=ax)
 
         dat = layergrid.getData().copy()
-        if colormaps is not None and len(colormaps) == len(grids):
-            palette = colormaps[k]
+        if colormaps is not None and len(colormaps) == len(grids) and colormaps[k] is not None:
+            palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
             if 'prob' in layer.lower() or 'pga' in layer.lower() or 'pgv' in layer.lower() or 'cohesion' in layer.lower() or 'friction' in layer.lower() or 'fs' in layer.lower():
                 palette = cm.jet
@@ -276,13 +302,15 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
             plt.draw()
 
         # mask out anything below any specified thresholds
-        if lowthreshes is not None and len(lowthreshes) == len(grids):
-            if lowthreshes[k] is not None:
-                dat[dat <= lowthreshes[k]] = float('NaN')
+        if maskthreshes is not None and len(maskthreshes) == len(grids):
+            if maskthreshes[k] is not None:
+                dat[dat <= maskthreshes[k]] = float('NaN')
                 dat = np.ma.array(dat, mask=np.isnan(dat))
-        #datm = np.ma.masked_values(dat, -1.)
-        #import pdb; pdb.set_trace()
 
+        if logscale is not None and len(logscale) == len(grids):
+            if logscale[k] is True:
+                dat = np.log10(dat)
+                label1 = r'$log_{10}$(' + label1 + ')'
         if scaletype.lower() == 'binned':
             if lims is None or len(lims) != len(grids):
                 clev = np.linspace(np.floor(dat.min()), np.ceil(dat.max()), 10)
@@ -314,16 +342,19 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
             # Tried to use imshow, but doesn't quite work right yet, not lining up properly so still using pcolormesh
             # interpolate to a rectangular map projection grid.
             # dat1 = m.transform_scalar(datm, lons, np.flipud(lats), 500, 500, returnxy=False, order=1, checkbounds=True, masked=True)
-            # extent_xy = (m.xmin, m.xmax, m.ymin, m.ymax)
-            # panelhandle = m.imshow(np.flipud(dat1), cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2, extent=extent_xy)
+            # panelhandle = m.imshow(np.flipud(dat1), cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2)
+
+        # Mask out cells overlying oceans
         datm = maskoceans(llons1, llats1, dat, resolution='h', grid=1.25, inlands=True)
         palette.set_bad(clear_color, alpha=0.0)
-        panelhandle = m.pcolormesh(x1, y1, datm, linewidth=0.0, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, edgecolor='None')
+        # Plot it up
+        panelhandle = m.pcolormesh(x1, y1, datm, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True)
+        panelhandle.set_edgecolors('face')
         # add colorbar
         if scaletype.lower() == 'binned':
-            cbar = fig.colorbar(panelhandle, spacing='proportional', ticks=clev, boundaries=clev, format='%1.1f', extend='both')
+            cbar = fig.colorbar(panelhandle, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format='%1.1f', extend='both')
         else:
-            cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04, extend='both')
+            cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04, extend='both', format='%1.1f')
 
         cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
@@ -337,49 +368,54 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
                 pass
 
         #draw roads on the map, if they were provided to us
-        if maproads is True:
-            roadslist = []
-            for folder in os.listdir(roadfolder):
-                road1 = os.path.join(roadfolder, folder)
-                shpfiles = glob.glob(os.path.join(road1, '*.shp'))
-                if len(shpfiles):
-                    shpfile = shpfiles[0]
-                    f = fiona.open(shpfile)
-                    shapes = list(f.items(bbox=(boundaries['xmin'], boundaries['ymin'], boundaries['xmax'], boundaries['ymax'])))
-                    for shapeid, shapedict in shapes:
-                        roadslist.append(shapedict)
-                    f.close()
-            for road in roadslist:
-                xy = list(road['geometry']['coordinates'])
-                roadx, roady = zip(*xy)
-                mapx, mapy = m(roadx, roady)
-                m.plot(mapx, mapy, roadcolor, lw=0.5, zorder=9)
-            plt.draw()
+        if maproads is True and roadfolder is not None:
+            try:
+                roadslist = []
+                for folder in os.listdir(roadfolder):
+                    road1 = os.path.join(roadfolder, folder)
+                    shpfiles = glob.glob(os.path.join(road1, '*.shp'))
+                    if len(shpfiles):
+                        shpfile = shpfiles[0]
+                        f = fiona.open(shpfile)
+                        shapes = list(f.items(bbox=(boundaries['xmin'], boundaries['ymin'], boundaries['xmax'], boundaries['ymax'])))
+                        for shapeid, shapedict in shapes:
+                            roadslist.append(shapedict)
+                        f.close()
+                for road in roadslist:
+                    xy = list(road['geometry']['coordinates'])
+                    roadx, roady = zip(*xy)
+                    mapx, mapy = m(roadx, roady)
+                    m.plot(mapx, mapy, roadcolor, lw=0.5, zorder=9)
+            except Exception as e:
+                print('Failed to plot roads, %s' % e)
 
         #add city names to map
-        if mapcities is True:
-            dmin = 0.04*(m.ymax-m.ymin)
-            xyplotted = []
-            cities = PagerCity(cityfile)
-            #Find cities within bounding box
-            boundcity = cities.findCitiesByRectangle(bounds=(boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax']))
-            #Just keep 5 biggest cities
-            if len(boundcity) < 5:
-                value = len(boundcity)
-            else:
-                value = 5
-            thresh = sorted([cit['pop'] for cit in boundcity])[-value]
-            plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
-            #For cities that are more than one xth of the xwidth apart, keep only the larger one
-            pass  # do later
-            #Plot cities
-            for cit in plotcity:  # should sort so it plots them in order of population so larger cities are preferentially plotted - do later
-                xi, yi = m(cit['lon'], cit['lat'])
-                dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
-                if not dist or np.min(dist) > dmin:
-                    m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
-                    ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8, zorder=100000)
-                    xyplotted.append((xi, yi))
+        if mapcities is True and cityfile is not None:
+            try:
+                dmin = 0.04*(m.ymax-m.ymin)
+                xyplotted = []
+                cities = PagerCity(cityfile)
+                #Find cities within bounding box
+                boundcity = cities.findCitiesByRectangle(bounds=(boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax']))
+                #Just keep 5 biggest cities
+                if len(boundcity) < 5:
+                    value = len(boundcity)
+                else:
+                    value = 5
+                thresh = sorted([cit['pop'] for cit in boundcity])[-value]
+                plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
+                #For cities that are more than one xth of the xwidth apart, keep only the larger one
+                pass  # do later
+                #Plot cities
+                for cit in plotcity:  # should sort so it plots them in order of population so larger cities are preferentially plotted - do later
+                    xi, yi = m(cit['lon'], cit['lat'])
+                    dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
+                    if not dist or np.min(dist) > dmin:
+                        m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
+                        ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8, zorder=100000)
+                        xyplotted.append((xi, yi))
+            except Exception as e:
+                print('Failed to plot cities, %s' % e)
 
         #draw star at epicenter
         plt.sca(ax)
@@ -396,10 +432,11 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
         m.drawcountries(color=countrycolor, linewidth=1.0)
 
         #add map scale
-        xmax, xmin, ymax, ymin = boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax']
-        clat = ymin + (ymax-ymin)/2.0
-        clon = xmin + (xmax-xmin)/2.0
-        #m.drawmapscale((xmax+xmin)/2., (ymin+(ymax-ymin)/5.), clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
+        # xmax, xmin, ymax, ymin = boundaries['xmin'], boundaries['xmax'], boundaries['ymin'], boundaries['ymax']
+        # clat = ymin + (ymax-ymin)/2.0
+        # clon = xmin + (xmax-xmin)/2.0
+        # #m.drawmapscale((xmax+xmin)/2., (ymin+(ymax-ymin)/5.), clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
+        # m.drawmapscale((xmax+xmin)/2., ymin, clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
 
         plt.title(label1, axes=ax)
 
@@ -413,15 +450,28 @@ def modelMap(grids, config, edict=None, modelname=None, maproads=True, mapcities
     plt.subplots_adjust(top=0.92)
     outfile = os.path.join(outfolder, '%s_%s.pdf' % (edict['eventid'], modelname))
     pngfile = os.path.join(outfolder, '%s_%s.png' % (edict['eventid'], modelname))
-    plt.savefig(outfile, dpi=300)
-    plt.savefig(pngfile)
-    print 'Saving map output to %s' % outfile
-    print 'Saving map output to %s' % pngfile
+    if savepdf is True:
+        print 'Saving map output to %s' % outfile
+        plt.savefig(outfile, dpi=300)
+    if savepng is True:
+        print 'Saving map output to %s' % pngfile
+        plt.savefig(pngfile)
 
 
-def hillshade(topogrid, azimuth, angle_altitude):
+def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
     """
-    Most of this script borrowed from http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html last accessed 9/2/2015
+    Computes a hillshade from a digital elevation model. Most of this script borrowed from http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html last accessed 9/2/2015
+
+    :param topogrid: Digital elevation model
+    :type topogrid: Grid2D object
+    :param azimuth: azimuth of illumination in degrees
+    :type azimuth: float
+    :param angle_altitude: altitude angle of illumination
+    :type angle_altitude: float
+
+    :returns hillshade: Hillshade map layer
+    :rtype hillshade: Grid2D object
+
     """
     topotmp = topogrid.getData().copy()
     #make a masked array
@@ -434,7 +484,10 @@ def hillshade(topogrid, azimuth, angle_altitude):
     azimuthrad = azimuth*np.pi / 180.
     altituderad = angle_altitude*np.pi / 180.
     shaded = np.sin(altituderad) * np.sin(slope) + np.cos(altituderad) * np.cos(slope) * np.cos(azimuthrad - aspect)
-    return 255*(shaded + 1)/2
+    hillshade = topogrid.copy()
+    hillshade.setData(255*(shaded + 1)/2)
+
+    return hillshade
 
 
 def getMapLines(dmin, dmax, nlines):
@@ -465,10 +518,6 @@ def makeMap_OSM(grids, edict, modelname=None):
     """
     Plot results over Open Street Map base
     """
-    pass
-
-
-def makeMap_KML(grids, edict, modelname=None, filename=None):
     pass
 
 
