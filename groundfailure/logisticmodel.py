@@ -87,11 +87,15 @@ def validateLayers(cmodel):
     return layers
 
 def validateTerms(cmodel,coeffs,layers):
+    #TODO - return a time field for every term, not just one global one.
     terms = {}
+    timeField = None
     for key,value in cmodel['terms'].iteritems():
         if key not in coeffs.keys():
             raise Exception('Term names must match names of coefficients')
-        term,rem,timeField = checkTerm(value,layers) #replace log with np.log, make sure variables are all in layers list, etc.
+        term,rem,tTimeField = checkTerm(value,layers) #replace log with np.log, make sure variables are all in layers list, etc.
+        if tTimeField is not None:
+            timeField = tTimeField
         if len(rem):
             msg = 'Term "%s" contains the unknown text fragment "%s".  This may cause the expression to fail.\n'
             tpl = (term,rem)
