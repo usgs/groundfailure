@@ -171,6 +171,7 @@ The *description* dictionary should have the following fields:
  - name Short name, suitable for use as a plot title if necessary.
  - longref Full citation, USGS format as described here: http://internal.usgs.gov/publishing/sta/sta28.pdf
  - units Physical units for input data layers, and one of the following for output "probability" layers:
+
          * index Relative (low to high) index of occurrence in a given cell (not necessarily bounded).
          * probability Probability of event (landslide,liquefaction) of a given size occurring in a given cell (0 to 1).
          * coverage Fractional coverage of groundfailure in a given cell (0 to 1).
