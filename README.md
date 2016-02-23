@@ -166,22 +166,27 @@ API for Model Output
 Each model should output a single dictionary, which has keys that correspond to the names of the 
 input and output layers from the model.
 
-The *description* dictionary should have the following fields:
+Each layer in the dictionary is itself a dictionary, with the following fields:
+ - *description* A dictionary with the fields:
 
- - name Short name, suitable for use as a plot title if necessary.
- - longref Full citation, USGS format as described here: http://internal.usgs.gov/publishing/sta/sta28.pdf
- - units Physical units for input data layers, and one of the following for output "probability" layers:
+   * *name* Short name, suitable for use as a plot title if necessary.
+   * *longref* Full citation, USGS format as described here: http://internal.usgs.gov/publishing/sta/sta28.pdf
+   * *units* Physical units for input data layers, and one of the following for output "probability" layers:
 
-         * index Relative (low to high) index of occurrence in a given cell (not necessarily bounded).
-         * probability Probability of event (landslide,liquefaction) of a given size occurring in a given cell (0 to 1).
-         * coverage Fractional coverage of groundfailure in a given cell (0 to 1).
-         * displacement Distance material will move from or in given cell (unbounded).
+     * *index* Relative (low to high) index of occurrence in a given cell (not necessarily bounded).
+     * *probability* Probability of event (landslide,liquefaction) of a given size occurring in a given cell (0 to 1).
+     * *coverage* Fractional coverage of groundfailure in a given cell (0 to 1).
+     * *displacement* Distance material will move from or in given cell (unbounded).
 
-The *parameters* dictionary should contain key/value pairs, where the values must be either numbers or strings.
+   * *parameters* (Not required for input layers) A dictionary of key/value pairs, where the values must be either numbers or strings.
 
+ - *type* Indicates whether this grid contains input data or output from a model.
 
+ - *label* What will be written next to the colorbar for the data layer.
 
-Template Model Function:
+ - *grid* Input data or model output, in the form of a Grid2D object. 
+
+A template model function implementation is shown below.
 <pre>
 def failure_model():
     geodict = GeoDict({'xmin':0.5,'xmax':3.5,
