@@ -41,11 +41,189 @@ The config file format is a modified version of the "INI" format.  It is describ
 
 http://configobj.readthedocs.org/en/latest/configobj.html#config-files
 
-**Note** - The configuration below does not represent any valid landslide or liquefaction model.  The parameters
+**Notes** 
+- The configuration below does not represent any valid landslide or liquefaction model.  The parameters
 and layers are shown here for the purpose of explaining how to configure models. 
+- References and other inputs with commas within them need to be enclosed in quotes or else they will not be read in properly (commas will be used to separate) - for example: 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
+- Arrays should be not be enclosed in brackets and should be comma separated, for example: model = 0, 0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99, 1.
 
 <pre>
+[output]
+  folder = '/Users/user/failureoutput/
+
+[mapdata]
+  [[dem]]
+    # Optional, don't need if have hillshade, just for making hillshade
+    file = /Users/kallstadt/SecondaryHazards/Codes/inputs/md30_gmted_gmt.grd
+
+  [[[hillshade]]]
+    file = /Users/kallstadt/SecondaryHazards/Codes/inputs/gmted_global_hillshade.grd
+
+  [[roads]]
+    folder = /Users/kallstadt/SecondaryHazards/Codes/inputs/roads
+    longref = 'Center for International Earth Science Information Network - CIESIN, 2013, Global Roads Open Access Data Set, Version 1 (gROADSv1): Columbia University, and Information Technology Outreach Services - ITOS - University of Georgia, Palisades, NY, NASA Socioeconomic Data and Applications Center (SEDAC). http://dx.doi.org/10.7927/H4VD6WCT.'
+    shortref = 'CIESIN (2013)'
+
+  [[cities]]
+    file = /Users/kallstadt/SecondaryHazards/Codes/inputs/cities1000.txt
+    longref = GeoNames, http://geonames.org/ Accessed: 2 Sept 2015
+    shortref = GeoNames
+
+  [[lims]]
+    # Corresponding to different possible layer keys - don't need these, will just use defaults if missing, don't need full name of layer, just something that is part of it
+    model = 0, 0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99, 1.
+    pga = None
+    pgv = None
+    FS = 0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0
+    slope = None
+    cohesion = None
+    friction = None
+
+  [[colors]]
+    # Define basic colors and transparencies
+    roadcolor = 808080
+    countrycolor = 474747
+    watercolor = B8EEFF
+    alpha = 0.7
+    default = cm.jet
+    # Corresponding to different possible layer keys - don't need these, will just use defaults if missing
+    model = cm.jet
+    pga = cm.jet
+    pgv = cm.jet
+    FS = cm.jet
+    slope = cm.gnuplot2
+    cohesion = cm.jet
+    friction = cm.jet
+
+  [[logscale]]
+    # Corresponding to different possible layer keys - don't need these, will just use defaults if missing, don't need full name of layer, just something that is part of it
+    model = False
+    pga = True
+    pgv = True
+    FS = False 
+    slope = False
+    cohesion = False
+    friction = False
+
+  [[maskthresholds]]
+    # Corresponding to different possible layer keys - don't need these, will just use defaults if missing, don't need full name of layer, just something that is part of it
+    model = 0.
+    pga = None
+    pgv = None
+    FS = None 
+    slope = None
+    cohesion = None
+    friction = None
+
+[mechanistic_models]
+  [[godt_2008]]
+    #Detailed description of the model, its inputs, etc.
+    longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
+    shortref = 'Godt and others (2008)'
+
+    #which type of ground failure model is this? Options are landslide or liquefaction.
+    gfetype = landslide
+    
+    [[[layers]]]
+      [[[[cohesion]]]]
+        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/cohesion_10i.flt
+        units = kPa
+        longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
+        shortref = 'Godt and others (2008)'
+
+      [[[[friction]]]]
+        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/friction.flt
+        units = degrees
+        longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
+        shortref = 'Godt and others (2008)'
+
+      [[[[slope]]]]
+        filepath = /Users/kallstadt/SecondaryHazards/Datasets/Verdin_slopes_resampled
+        units = degrees*100
+        longref = 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
+        shortref = 'Verdin et al. (2007)'
+
+    [[[parameters]]]
+      #Slope thickness in meters
+      thick = 2.4
+      #Soil unit weight
+      uwt = 15.7 
+      #Cohesion value for no_data grid cells
+      nodata_cohesion = 1.0
+      #Friction angle value for no_data grid cells
+      nodata_friction = 26.
+      #Newmark displacement threshold in cm
+      dnthresh = 5.
+      #Minimum Factor of safety allowed (unitless)
+      fsthresh = 1.01
+      #Minimum critical acceleration allowed (in g's)
+      acthresh = 0.05
+
+  [[classic_newmark]]
+    longref = 'Jibson, R. W., Harp, E. L. and Michael, J. A., 2000, A method for producing digital probabilistic seismic landslide hazard maps: Engineering Geology, v. 58, p. 271-289.'
+    shortref = 'Jibson and others (2000)'
+
+    [[[layers]]]
+      [[[[cohesion]]]]
+        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/cohesion_10i.flt
+        interpolation = nearest
+        units = kPa
+        longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
+        shortref = 'Godt and others (2008)'
+
+      [[[[friction]]]]
+        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/friction.flt
+        units = degrees
+        longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
+        shortref = 'Godt and others (2008)'
+
+      [[[[slope]]]]
+        file = /Users/kallstadt/SecondaryHazards/Datasets/Verdin_slopes_resampled/slope_max.bil
+        units = degrees
+        longref = 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
+        shortref = 'Verdin and others (2007)'
+
+      [[[[watertable]]]]
+        file = /Users/kallstadt/SecondaryHazards/Datasets/Fan2013WaterTable/wtd_fan2013_zhu_fil_na.grd
+        units = meters
+        longref = 'Fan, Y., Li, H., and Miguez-Macho, G., 2013, Global Patterns of Groundwater Table Depth: Science, 339, 940-943.'
+        shortref = 'Fan and others (2013)'
+
+     [[[parameters]]]
+        #Slope thickness in meters
+        thick = 2.4
+        #Soil unit weight (dry)
+        uwt = 15.7
+        # Soil unit weight (wet)
+        uwtw = 18.8
+        #Cohesion value for no_data grid cells
+        nodata_cohesion = 5.0
+        #Friction angle value for no_data grid cells
+        nodata_friction = 26.
+        #Newmark displacement threshold in cm - only need if probtype is threshold
+        dnthresh = 5.
+        #Minimum Factor of safety allowed (unitless)
+        fsthresh = 1.01
+        #Minimum critical acceleration allowed (in g's)
+        acthresh = 0.05
+
+  [[hazus]]
+    longref = 'Federal Emergency Management Agency, 2013, Hazus - MH MR5 Multi-hazard loss Estimation Methodology Earthquake Model: Dept. of Homeland Security, Federal Emergency Management Agency, Washington D.C., 736p. [available at: www.fema.gov/plan/prevent/hazus]'
+    shortref = 'FEMA (2013)'
+
+    [[[layers]]]
+      [[[[susceptibility]]]]
+        file = /Users/kallstadt/SecondaryHazards/Datasets/Wills_et_al_2011/Resampled/Susceptiblity_dry_WGS84.bil
+        units = N/A
+        longref = 'Wills, C.J., Perez, F.G., and Gutierrez, C.I., 2011, Susceptibility to Deep-Seated Landslides in California: California Geological Survey Map Sheet 58, 1p.'
+        shortref = 'Wills and others (2011)'
+
+    [[[parameters]]]
+      #Newmark displacement threshold for failure in cm - only need for some models
+      dnthresh = 5
+
 [logistic_models]
+  # NEEDS TO BE UPDATED FOR NEW STRUCTURE
 
   #default_landslide and default_liquefaction parameters below must refer to named models in this file
   default_landslide = nowicki_2014
@@ -154,10 +332,6 @@ and layers are shown here for the purpose of explaining how to configure models.
 
     [[[colormaps]]]
       vs30_colormap = jet_r
-
-
-[output]
-  folder = '/Users/user/failureoutput/
 </pre>
 
 API for Model Output
@@ -196,10 +370,12 @@ def failure_model():
     pgrid = Grid2D(data = np.arange(0,16).reshape(4,4),geodict=geodict)
     cgrid = Grid2D(data = np.arange(1,17).reshape(4,4),geodict=geodict)
     sgrid = Grid2D(data = np.arange(2,18).reshape(4,4),geodict=geodict)
+    mgrid = Grid2D(data = np.arange(3,19).reshape(4,4),geodict=geodict)
 
-    problayer = {'description':{'name':'Nowicki 2014',
+    modellayer = {'description':{'name':'Nowicki 2014',
                                 'longref':'Nowicki, A., 2014, A logistic regression landslide model: Failure Monthly, v. 2, p. 1-7.',
                                 'units':'index',
+                                'shakemap': '19940117123055_ver2'
                                 'parameters':{'b0':1.045,
                                               'b1':5.435}},
                  'type':'output',
@@ -207,23 +383,30 @@ def failure_model():
                  'grid':pgrid,
                  }
     
-    layer1 = {'description':{'name':'cohesion',
+    layer1 = {'description':{'name':'Smith and Jones 1994',
                              'longref':'Smith J. and Jones, J., 1994, Holding on to things: Journal of Geophysical Sciences, v. 17,  p. 100-105',
                              'units':'kPa'},
               'type':'input',
               'label':'cohesion (kPa)',
               'grid':cgrid}
     
-    layer2 = {'description':{'name':'slope',
+    layer2 = {'description':{'name':'Garfunkel and Oates 2001',
                              'longref':'Garfunkel, A., and Oates, J., 2001, I'm afraid to look down: Journal of Steepness, v. 8, p. 10-25',
                              'units':'degrees'},
               'type':'input',
               'label':'slope (degrees)',
               'grid':sgrid}
 
-    output = {'probability':problayer,
+    layer3 = {'description':{'units':'g'
+                             'shakemap': '19940117123055_ver2'},
+              'type':'input',
+              'label':'PGA (g)',
+              'grid':mgrid}
+
+    output = {'model':problayer,
               'cohesion':layer1,
-              'slope':layer2}
+              'slope':layer2,
+              'pga':layer3}
 
     return output
 </pre>
