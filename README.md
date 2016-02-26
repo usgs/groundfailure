@@ -159,3 +159,71 @@ and layers are shown here for the purpose of explaining how to configure models.
 [output]
   folder = '/Users/user/failureoutput/
 </pre>
+
+API for Model Output
+---------------------
+
+Each model should output a single dictionary, which has keys that correspond to the names of the 
+input and output layers from the model.
+
+Each layer in the dictionary is itself a dictionary, with the following fields:
+ - *description* A dictionary with the fields:
+
+   * *name* Short name, suitable for use as a plot title if necessary.
+   * *longref* Full citation, USGS format as described here: http://internal.usgs.gov/publishing/sta/sta28.pdf
+   * *units* Physical units for input data layers, and one of the following for output "probability" layers:
+
+     * *index* Relative (low to high) index of occurrence in a given cell (not necessarily bounded).
+     * *probability* Probability of event (landslide,liquefaction) of a given size occurring in a given cell (0 to 1).
+     * *coverage* Fractional coverage of groundfailure in a given cell (0 to 1).
+     * *displacement* Distance material will move from or in given cell (unbounded).
+
+   * *parameters* (Not required for input layers) A dictionary of key/value pairs, where the values must be either numbers or strings.
+
+ - *type* Indicates whether this grid contains input data or output from a model.
+
+ - *label* What will be written next to the colorbar for the data layer.
+
+ - *grid* Input data or model output, in the form of a Grid2D object. 
+
+A template model function implementation is shown below.
+<pre>
+def failure_model():
+    geodict = GeoDict({'xmin':0.5,'xmax':3.5,
+                       'ymin':0.5,'ymax':3.5,
+                       'dx':1.0,'dy':1.0,
+                       'nx':4,'ny':4})
+    pgrid = Grid2D(data = np.arange(0,16).reshape(4,4),geodict=geodict)
+    cgrid = Grid2D(data = np.arange(1,17).reshape(4,4),geodict=geodict)
+    sgrid = Grid2D(data = np.arange(2,18).reshape(4,4),geodict=geodict)
+
+    problayer = {'description':{'name':'Nowicki 2014',
+                                'longref':'Nowicki, A., 2014, A logistic regression landslide model: Failure Monthly, v. 2, p. 1-7.',
+                                'units':'index',
+                                'parameters':{'b0':1.045,
+                                              'b1':5.435}},
+                 'type':'output',
+                 'label':'Relative Index Value',
+                 'grid':pgrid,
+                 }
+    
+    layer1 = {'description':{'name':'cohesion',
+                             'longref':'Smith J. and Jones, J., 1994, Holding on to things: Journal of Geophysical Sciences, v. 17,  p. 100-105',
+                             'units':'kPa'},
+              'type':'input',
+              'label':'cohesion (kPa)',
+              'grid':cgrid}
+    
+    layer2 = {'description':{'name':'slope',
+                             'longref':'Garfunkel, A., and Oates, J., 2001, I'm afraid to look down: Journal of Steepness, v. 8, p. 10-25',
+                             'units':'degrees'},
+              'type':'input',
+              'label':'slope (degrees)',
+              'grid':sgrid}
+
+    output = {'probability':problayer,
+              'cohesion':layer1,
+              'slope':layer2}
+
+    return output
+</pre>
