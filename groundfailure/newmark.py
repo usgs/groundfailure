@@ -131,10 +131,10 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
             print('Unable to find dnthresh in config, using 5cm')
 
     # Load in shakemap, resample to susceptibility file
-    shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, resample=True, method='nearest', adjust='res', doPadding=True)
+    shakemap = ShakeGrid.load(shakefile, adjust='res')
 
-    PGA = shakemap.getLayer('pga').getData().astype(float)/100.  # in units of g
-    PGV = shakemap.getLayer('pgv').getData().astype(float)  # cm/sec
+    PGA = shakemap.getLayer('pga').subdivide(gdict).getData().astype(float)/100.  # in units of g
+    PGV = shakemap.getLayer('pgv').subdivide(gdict).getData().astype(float)  # cm/sec
     M = shakemap.getEventDict()['magnitude']
 
     # Get critical accelerations in g
