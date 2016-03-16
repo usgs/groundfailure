@@ -153,6 +153,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
 
     if modeltype == 'coverage':
         areal = np.zeros(np.shape(PGA))
+        # This seems to be slow for large matrices
         areal[(PGA >= Ac) & (susdat == 1)] = 0.6
         areal[(PGA >= Ac) & (susdat == 2)] = 0.5
         areal[(PGA >= Ac) & (susdat == 3)] = 0.4
@@ -199,12 +200,12 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
     if modeltype == 'coverage':
-        maplayers['model'] = {'grid': GDALGrid(areal, gdict), 'label': 'Areal coverage', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
+        maplayers['model'] = {'grid': GDALGrid(areal, gdict), 'label': 'Areal coverage', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
     elif modeltype == 'dn_hazus':
         maplayers['model'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
     elif modeltype == 'ac_classic_dn':
         maplayers['model'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
-    elif modeltype == 'dn_prob':
+    elif modeltype == 'dn_prob': 
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
     elif modeltype == 'ac_classic_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
