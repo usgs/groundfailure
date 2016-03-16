@@ -428,7 +428,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         if hillsmap is not None:
             hillshm = hillsmap.getData()
             hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
-            m.pcolormesh(x1, y1, hillshm/np.abs(hillshm).max(), cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1)
+            m.pcolormesh(x1, y1, hillshm/np.abs(hillshm).max(), cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
             plt.draw()
 
         # mask out anything below any specified thresholds
@@ -484,7 +484,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         datm = maskoceans(llons1, llats1, dat, resolution='h', grid=1.25, inlands=True)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        panelhandle = m.pcolormesh(x1, y1, datm, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True)
+        panelhandle = m.pcolormesh(x1, y1, datm, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True);
         panelhandle.set_edgecolors('face')
         # add colorbar
         if (np.max(clev) - np.min(clev)) < 1.:
