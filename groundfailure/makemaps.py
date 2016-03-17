@@ -17,6 +17,8 @@ import fiona
 from mpl_toolkits.basemap import Basemap
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
+from skimage.measure import block_reduce
+
 
 #local imports
 from mapio.gmt import GMTGrid
@@ -264,17 +266,19 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         os.makedirs(outfolder)
 
     # Get boundaries to use for all plots
+    cut = True
     if boundaries is None:
+        cut = False
         keytemp = grids.keys()
         boundaries = grids[keytemp[0]]['grid'].getGeoDict()
     elif boundaries == 'zoom':
         # Find probability layer (will just take the maximum bounds if there is more than one)
         keytemp = grids.keys()
-        key1 = [key for key in keytemp if 'prob' in key.lower()]
+        key1 = [key for key in keytemp if 'model' in key.lower()]
         if len(key1) == 0:
-            print('Could not find probability layer to use for zoom, using default boundaries')
+            print('Could not find model layer to use for zoom, using default boundaries')
             keytemp = grids.keys()
-            boundaries = grids[keytemp[0]].getGeoDict()
+            boundaries = grids[keytemp[0]]['grid'].getGeoDict()
         else:
             lonmax = -1.e10
             lonmin = 1.e10
@@ -286,30 +290,35 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 xmin, xmax, ymin, ymax = temp.getBounds()
                 lons = np.linspace(xmin, xmax, temp.getGeoDict().nx)
                 lats = np.linspace(ymax, ymin, temp.getGeoDict().ny)  # backwards so it plots right
-                llons, llats = np.meshgrid(lons, lats)  # make meshgrid
-                llons1 = llons[temp.getData() > float(zthresh)]
-                llats1 = llats[temp.getData() > float(zthresh)]
-                if llons1.min() < lonmin:
-                    lonmin = llons1.min()
-                if llons1.max() > lonmax:
-                    lonmax = llons1.max()
-                if llats1.min() < latmin:
-                    latmin = llats1.min()
-                if llats1.max() > latmax:
-                    latmax = llats1.max()
+                row, col = np.where(temp.getData() > float(zthresh))
+                lonmin = lons[col].min()
+                lonmax = lons[col].max()
+                latmin = lats[row].min()
+                latmax = lats[row].max()
+                # llons, llats = np.meshgrid(lons, lats)  # make meshgrid
+                # llons1 = llons[temp.getData() > float(zthresh)]
+                # llats1 = llats[temp.getData() > float(zthresh)]
+                # if llons1.min() < lonmin:
+                #     lonmin = llons1.min()
+                # if llons1.max() > lonmax:
+                #     lonmax = llons1.max()
+                # if llats1.min() < latmin:
+                #     latmin = llats1.min()
+                # if llats1.max() > latmax:
+                #     latmax = llats1.max()
             boundaries1 = {'dx': 100, 'dy': 100., 'nx': 100., 'ny': 100}  # dummy fillers, only really care about bounds
             if xmin < lonmin-0.15*(lonmax-lonmin):
                 boundaries1['xmin'] = lonmin-0.1*(lonmax-lonmin)
             else:
-                boundaries1.xmin = xmin
+                boundaries1['xmin'] = xmin
             if xmax > lonmax+0.15*(lonmax-lonmin):
                 boundaries1['xmax'] = lonmax+0.1*(lonmax-lonmin)
             else:
-                boundaries1.xmax = xmax
+                boundaries1['xmax'] = xmax
             if ymin < latmin-0.15*(latmax-latmin):
                 boundaries1['ymin'] = latmin-0.1*(latmax-latmin)
             else:
-                boundaries1.ymin = ymin
+                boundaries1['ymin'] = ymin
             if ymax > latmax+0.15*(latmax-latmin):
                 boundaries1['ymax'] = latmax+0.1*(latmax-latmin)
             else:
@@ -321,6 +330,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 print('Input boundaries are not usable, using default boundaries')
                 keytemp = grids.keys()
                 boundaries = grids[keytemp[0]]['grid'].getGeoDict()
+                cut = False
             else:
                 # Build dummy GeoDict
                 boundaries = GeoDict({'xmin': boundaries['xmin'], 'xmax': boundaries['xmax'], 'ymin': boundaries['ymin'], 'ymax': boundaries['ymax'], 'dx': 100., 'dy': 100., 'ny': 100., 'nx': 100.}, adjust='res')
@@ -328,14 +338,20 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             print('Input boundaries are not usable, using default boundaries')
             keytemp = grids.keys()
             boundaries = grids[keytemp[0]]['grid'].getGeoDict()
+            cut = False
 
     # Load in topofile and load in or compute hillshade, resample to same grid as first layer NEED ERROR HANDLING TO MAKE SURE ALL ARE SAME BOUNDARIES
 
     gdict = grids[grids.keys()[0]]['grid'].getGeoDict()
+    # NO LONGER RESAMPLING BECAUSE CRASHES BIG GRIDS, BUT MIGHT CAUSE ALIGNMENT PROBLEMS IN OCEAN MASKING. COULD RESAMPLE THIS TO DOWNSAMPLED VERSION OF DATA INSTEAD - ACTUALLY WHEN THIS IS HIGH RES, WILL NEED TO DO THAT ANYWAY
     if hillshade is not None:
-        hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', samplegeodict=gdict)
+        hdict = GMTGrid.getFileGeoDict(hillshade)
+        hdict = hdict.getBoundsWithin(gdict)
+        hillsmap = GMTGrid.load(hillshade, resample=False, samplegeodict=hdict)
     elif topofile is not None and hillshade is None:
-        topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
+        tdict = GMTGrid.getFileGeoDict(topofile)
+        tdict = tdict.getBoundsWithin(gdict)
+        topomap = GMTGrid.load(topofile, resample=False, samplegeodict=tdict)
         hillsmap = make_hillshade(topomap, 315, 50)
     else:
         print('no hillshade is possible\n')
@@ -384,7 +400,17 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         plotorder = grids.keys()
     val = 1
     for k, layer in enumerate(plotorder):
+        xmin, xmax, ymin, ymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
         layergrid = grids[layer]['grid']
+        if cut is True:
+            # lxmin, lxmax, lymin, lymax = layergrid.getBounds()
+            # lons = np.linspace(lxmin, lxmax, layergrid.getGeoDict().nx)
+            # lats = np.linspace(lymax, lymin, layergrid.getGeoDict().ny)
+            # cxmin = lons[np.abs(lons-xmin).argmin()]
+            # cxmax = lons[np.abs(lons-xmax).argmin()]
+            # cymin = lats[np.abs(lats-ymin).argmin()]
+            # cymax = lats[np.abs(lats-ymax).argmin()]
+            layergrid = layergrid.cut(xmin, xmax, ymin, ymax, align=True)
         if 'label' in grids[layer].keys():
             label1 = grids[layer]['label']
         else:
@@ -395,7 +421,6 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             sref = None
         ax = fig.add_subplot(rowpan, colpan, val)
         val += 1
-        xmin, xmax, ymin, ymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
         clat = ymin + (ymax-ymin)/2.0
         clon = xmin + (xmax-xmin)/2.0
         # setup of basemap ('lcc' = lambert conformal conic).
@@ -405,7 +430,6 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                     resolution='i', area_thresh=1000., projection='lcc',
                     lat_1=clat, lon_0=clon, ax=ax)
 
-        dat = layergrid.getData().copy()
         if colormaps is not None and len(colormaps) == len(grids) and colormaps[k] is not None:
             palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
@@ -418,16 +442,34 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             else:
                 palette = defaultcolormap
 
+        # Determine if need to downsample
+        xsize = layergrid.getGeoDict().nx
+        ysize = layergrid.getGeoDict().ny
+        inchesx, inchesy = fig.get_size_inches()
+        divx = int(np.round(xsize/(300.*inchesx)))
+        divy = int(np.round(ysize/(300.*inchesy)))
         xmin, xmax, ymin, ymax = layergrid.getBounds()
-        lons = np.linspace(xmin, xmax, layergrid.getGeoDict().nx)
-        lats = np.linspace(ymax, ymin, layergrid.getGeoDict().ny)  # backwards so it plots right side up
+        if divx > 1. or divy > 1.:
+            ds = True
+            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), func=np.nanmean)
+            lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean)
+            lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny), block_size=(divy,), func=np.mean)
+        else:
+            ds = False
+            dat = layergrid.getData().copy()
+            lons = np.linspace(xmin, xmax, layergrid.getGeoDict().nx)
+            lats = np.linspace(ymax, ymin, layergrid.getGeoDict().ny)  # backwards so it plots right side up
         #make meshgrid
         llons1, llats1 = np.meshgrid(lons, lats)
         x1, y1 = m(llons1, llats1)  # get projection coordinates
 
         if hillsmap is not None:
             hillshm = hillsmap.getData()
-            hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
+            hdict = hillsmap.getGeoDict()
+            hlons = np.linspace(hdict.xmin, hdict.xmax, hdict.nx)
+            hlats = np.linspace(hdict.ymax, hdict.ymin, hdict.ny)  # backwards so it plots right side up
+            hllons1, hllats1 = np.meshgrid(hlons, hlats)
+            hillshm = maskoceans(hllons1, hllats1, hillshm, resolution='h', grid=1.25, inlands=True)
             m.pcolormesh(x1, y1, hillshm/np.abs(hillshm).max(), cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
             plt.draw()
 
@@ -602,6 +644,9 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             plt.sca(ax)
             cx, cy = m(clon, clat)
             plt.text(cx, cy, 'SCENARIO', rotation=45, alpha=0.10, size=72, ha='center', va='center', color='red')
+
+        if ds:
+            plt.text()
 
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)
