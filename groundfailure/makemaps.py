@@ -448,6 +448,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         x1, y1 = m(llons1, llats1)  # get projection coordinates
 
         if k == 0:
+            import pdb; pdb.set_trace()
             # Load in topofile and load in or compute hillshade, resample to same grid as first layer
             if hillshade is not None:
                 hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', samplegeodict=gdict)

@@ -4,6 +4,7 @@ from mapio.multihaz import MultiHazardGrid
 import collections
 
 #NEED TO ADD ERROR CATCHING IN CASE FIELDS ARE MISSING
+#TAKES A TON OF MEMORY AND A LONG TIME WITH LARGE FILES
 
 
 def savelayers(grids, filename):
@@ -16,7 +17,7 @@ def savelayers(grids, filename):
     layers = collections.OrderedDict()
     metadata = collections.OrderedDict()
     for key in grids.keys():
-        layers[key] = grids[key]['grid']
+        layers[key] = grids[key]['grid'].getData()
         metadata[key] = {'description': grids[key]['description'], 'type': grids[key]['type'], 'label': grids[key]['label']}
     origin = {}
     header = {}
@@ -31,9 +32,6 @@ def loadlayers(filename):
     mgrid = MultiHazardGrid.load(filename)
     grids = collections.OrderedDict()
     for key in mgrid.getLayerNames():
-        grids[key]['grid'] = mgrid.getData()[key]
-        grids[key]['description'] = mgrid.getMetadata()[key]['description']
-        grids[key]['type'] = mgrid.getMetadata()[key]['type']
-        grids[key]['label'] = mgrid.getMetadata()[key]['label']
+        grids[key] = {'grid': mgrid.getData()[key], 'description': mgrid.getMetadata()[key]['description'], 'type': mgrid.getMetadata()[key]['type'], 'label': mgrid.getMetadata()[key]['label']}
 
     return grids
