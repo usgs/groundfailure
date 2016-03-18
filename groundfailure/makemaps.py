@@ -340,24 +340,6 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             boundaries = grids[keytemp[0]]['grid'].getGeoDict()
             cut = False
 
-    # Load in topofile and load in or compute hillshade, resample to same grid as first layer NEED ERROR HANDLING TO MAKE SURE ALL ARE SAME BOUNDARIES
-
-    gdict = grids[grids.keys()[0]]['grid'].getGeoDict()
-    # NO LONGER RESAMPLING BECAUSE CRASHES BIG GRIDS, BUT MIGHT CAUSE ALIGNMENT PROBLEMS IN OCEAN MASKING. COULD RESAMPLE THIS TO DOWNSAMPLED VERSION OF DATA INSTEAD - ACTUALLY WHEN THIS IS HIGH RES, WILL NEED TO DO THAT ANYWAY
-    if hillshade is not None:
-        hdict = GMTGrid.getFileGeoDict(hillshade)
-        hdict = hdict.getBoundsWithin(gdict)
-        hillsmap = GMTGrid.load(hillshade, resample=False, samplegeodict=hdict)
-    elif topofile is not None and hillshade is None:
-        tdict = GMTGrid.getFileGeoDict(topofile)
-        tdict = tdict.getBoundsWithin(gdict)
-        topomap = GMTGrid.load(topofile, resample=False, samplegeodict=tdict)
-        hillsmap = make_hillshade(topomap, 315, 50)
-    else:
-        print('no hillshade is possible\n')
-        hillsmap = None
-        ALPHA = 1.
-
     # Determine if need a single panel or multi-panel plot and if multi-panel, how many and how it will be arranged
     fig = plt.figure()
     numpanels = len(grids)
@@ -454,22 +436,38 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), func=np.nanmean)
             lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean)
             lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny), block_size=(divy,), func=np.mean)
+            gdict = GeoDict({'xmin': lons.min(), 'xmax': lons.max(), 'ymin': lats.min(), 'ymax': lats.max(), 'dx': lons[1]-lons[0], 'dy': lats[1]-lats[0], 'nx': len(lons), 'ny': len(lats)})
         else:
             ds = False
             dat = layergrid.getData().copy()
             lons = np.linspace(xmin, xmax, layergrid.getGeoDict().nx)
             lats = np.linspace(ymax, ymin, layergrid.getGeoDict().ny)  # backwards so it plots right side up
+            gdict = layergrid.getGeoDict()
         #make meshgrid
         llons1, llats1 = np.meshgrid(lons, lats)
         x1, y1 = m(llons1, llats1)  # get projection coordinates
 
+        if k == 0:
+            # Load in topofile and load in or compute hillshade, resample to same grid as first layer
+            if hillshade is not None:
+                hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', samplegeodict=gdict)
+            elif topofile is not None and hillshade is None:
+                topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
+                hillsmap = make_hillshade(topomap, 315, 50)
+            else:
+                print('no hillshade is possible\n')
+                hillsmap = None
+                ALPHA = 1.
+
         if hillsmap is not None:
-            hillshm = hillsmap.getData()
-            hdict = hillsmap.getGeoDict()
-            hlons = np.linspace(hdict.xmin, hdict.xmax, hdict.nx)
-            hlats = np.linspace(hdict.ymax, hdict.ymin, hdict.ny)  # backwards so it plots right side up
-            hllons1, hllats1 = np.meshgrid(hlons, hlats)
-            hillshm = maskoceans(hllons1, hllats1, hillshm, resolution='h', grid=1.25, inlands=True)
+            # hillshm = hillsmap.getData()
+            # hdict = hillsmap.getGeoDict()
+            # hlons = np.linspace(hdict.xmin, hdict.xmax, hdict.nx)
+            # hlats = np.linspace(hdict.ymax, hdict.ymin, hdict.ny)  # backwards so it plots right side up
+            # hllons1, hllats1 = np.meshgrid(hlons, hlats)
+            # hillshm = maskoceans(hllons1, hllats1, hillshm, resolution='h', grid=1.25, inlands=True)
+            # hx1, hy1 = m(hllons1, hllats1)
+            hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
             m.pcolormesh(x1, y1, hillshm/np.abs(hillshm).max(), cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
             plt.draw()
 
@@ -645,8 +643,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             cx, cy = m(clon, clat)
             plt.text(cx, cy, 'SCENARIO', rotation=45, alpha=0.10, size=72, ha='center', va='center', color='red')
 
-        if ds:
-            plt.text()
+        #if ds:
+        #    plt.text()
 
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)
