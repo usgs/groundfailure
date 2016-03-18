@@ -205,7 +205,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
         maplayers['model'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
     elif modeltype == 'ac_classic_dn':
         maplayers['model'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
-    elif modeltype == 'dn_prob': 
+    elif modeltype == 'dn_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
     elif modeltype == 'ac_classic_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
@@ -216,7 +216,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
         if 'pgv' in regressionmodel.lower():
             maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
         maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Ac (g)', 'type': 'output', 'description': {'units': 'g', 'shakemap': shakedetail}}
-        if 'dn' not in modeltype.lower() and modeltype != 'areal':
+        if 'dn' not in modeltype.lower() and modeltype != 'coverage':
             maplayers['dn'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
 
     return maplayers
