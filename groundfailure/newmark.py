@@ -10,6 +10,7 @@ import warnings
 import urllib2
 import tempfile
 import collections
+import gc
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')
@@ -110,7 +111,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
         bounds = susdict.getBoundsWithin(shkgdict)
         sus = GDALGrid.load(susfile, samplegeodict=bounds, resample=False)
         gdict = sus.getGeoDict()
-        susdat = sus.getData().copy()
+        susdat = sus.getData()
     except Exception as e:
         raise IOError('Unable to read in susceptibility category file specified in config, %s,' % e)
         return
@@ -151,19 +152,50 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
     Ac[susdat == 9] = 0.1
     Ac[susdat == 10] = 0.05
 
+    # can delete sus and susdat now, if don't need to output it, to free up memory
+    if saveinputs is False:
+        del susdat, sus
+
     if modeltype == 'coverage':
         areal = np.zeros(np.shape(PGA))
         # This seems to be slow for large matrices
-        areal[(PGA >= Ac) & (susdat == 1)] = 0.6
-        areal[(PGA >= Ac) & (susdat == 2)] = 0.5
-        areal[(PGA >= Ac) & (susdat == 3)] = 0.4
-        areal[(PGA >= Ac) & (susdat == 4)] = 0.35
-        areal[(PGA >= Ac) & (susdat == 5)] = 0.3
-        areal[(PGA >= Ac) & (susdat == 6)] = 0.25
-        areal[(PGA >= Ac) & (susdat == 7)] = 0.2
-        areal[(PGA >= Ac) & (susdat == 8)] = 0.15
-        areal[(PGA >= Ac) & (susdat == 9)] = 0.1
-        areal[(PGA >= Ac) & (susdat == 10)] = 0.05
+        areal[(PGA >= Ac) & (Ac == 0.6)] = 0.01
+        areal[(PGA >= Ac) & (Ac == 0.5)] = 0.02
+        areal[(PGA >= Ac) & (Ac == 0.4)] = 0.03
+        areal[(PGA >= Ac) & (Ac == 0.35)] = 0.05
+        areal[(PGA >= Ac) & (Ac == 0.3)] = 0.08
+        areal[(PGA >= Ac) & (Ac == 0.25)] = 0.1
+        areal[(PGA >= Ac) & (Ac == 0.2)] = 0.15
+        areal[(PGA >= Ac) & (Ac == 0.15)] = 0.2
+        areal[(PGA >= Ac) & (Ac == 0.1)] = 0.25
+        areal[(PGA >= Ac) & (Ac == 0.05)] = 0.3
+        # # But this way is even slower, takes 2x as long
+        # numrows, numcols = np.shape(areal)
+        # for j in np.arange(numrows):
+        #     for k in np.arange(numcols):
+        #         acval = Ac[j, k]
+        #         if PGA[j, k] >= acval:
+        #             if acval == 0.6:
+        #                 areal[j, k] = 0.01
+        #             elif acval == 0.5:
+        #                 areal[j, k] = 0.02
+        #             elif acval == 0.4:
+        #                 areal[j, k] = 0.03
+        #             elif acval == 0.35:
+        #                 areal[j, k] = 0.05
+        #             elif acval == 0.3:
+        #                 areal[j, k] = 0.08
+        #             elif acval == 0.25:
+        #                 areal[j, k] = 0.1
+        #             elif acval == 0.2:
+        #                 areal[j, k] = 0.15
+        #             elif acval == 0.15:
+        #                 areal[j, k] = 0.2
+        #             elif acval == 0.1:
+        #                 areal[j, k] = 0.25
+        #             elif acval == 0.05:
+        #                 areal[j, k] = 0.3
+
     elif modeltype == 'dn_hazus' or modeltype == 'dn_prob':
         ed_low, ed_high = est_disp(Ac, PGA)
         ed_mean = np.mean((np.dstack(ed_low, ed_high)), axis=2)  # Get mean estimated displacements
@@ -212,10 +244,10 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
 
     if saveinputs is True:
         maplayers['suscat'] = {'grid': sus, 'label': 'Susceptibility Category', 'type': 'input', 'description': {'name': sussref, 'longref': suslref, 'units': 'Category'}}
+        maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Ac (g)', 'type': 'output', 'description': {'units': 'g', 'shakemap': shakedetail}}
         maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'pgv' in regressionmodel.lower():
             maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
-        maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Ac (g)', 'type': 'output', 'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'dn' not in modeltype.lower() and modeltype != 'coverage':
             maplayers['dn'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
 
