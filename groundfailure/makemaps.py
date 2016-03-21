@@ -2,6 +2,7 @@
 
 #stdlib imports
 import os.path
+import gc
 import math
 import glob
 from matplotlib.path import Path
@@ -18,11 +19,13 @@ from mpl_toolkits.basemap import Basemap
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from skimage.measure import block_reduce
+import collections
 
 
 #local imports
 from mapio.gmt import GMTGrid
 from mapio.geodict import GeoDict
+from mapio.grid2d import Grid2D
 from neicmap.city import PagerCity
 from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
 
@@ -265,6 +268,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
 
+    # Get plotting order, if not specified
+    if plotorder is None:
+        plotorder = grids.keys()
+
     # Get boundaries to use for all plots
     cut = True
     if boundaries is None:
@@ -378,21 +385,84 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
     clear_color = [0, 0, 0, 0.0]
 
-    if plotorder is None:
-        plotorder = grids.keys()
+    # Cut all of them and release extra memory
+    if cut is True:
+        for k, layer in enumerate(plotorder):
+            xmin, xmax, ymin, ymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
+            templayer = grids[layer]['grid']
+            grids[layer]['grid'] = templayer.cut(xmin, xmax, ymin, ymax, align=True)
+        del templayer
+        gc.collect()
+
+    # Downsample all of them for plotting, if needed
+    tempgrid = grids[grids.keys()[0]]['grid']
+    xsize = tempgrid.getGeoDict().nx
+    ysize = tempgrid.getGeoDict().ny
+    inchesx, inchesy = fig.get_size_inches()
+    divx = int(np.round(xsize/(300.*inchesx)))
+    divy = int(np.round(ysize/(300.*inchesy)))
+    xmin, xmax, ymin, ymax = tempgrid.getBounds()
+    if divx <= 1:
+        divx = 1
+    if divy <= 1:
+        divy = 1
+    if divx > 1. or divy > 1.:
+        for k, layer in enumerate(plotorder):
+            layergrid = grids[layer]['grid']
+            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), func=np.nanmean)
+            if k == 0:
+                lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean)
+                lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny), block_size=(divy,), func=np.mean)
+                gdict = GeoDict({'xmin': lons.min(), 'xmax': lons.max(), 'ymin': lats.min(), 'ymax': lats.max(), 'dx': lons[1]-lons[0], 'dy': lats[1]-lats[0], 'nx': len(lons), 'ny': len(lats)})
+            grids[layer]['grid'] = Grid2D(dat, gdict)
+        del layergrid, dat
+    else:
+        lons = np.linspace(xmin, xmax, tempgrid.getGeoDict().nx)
+        lats = np.linspace(ymax, ymin, tempgrid.getGeoDict().ny)  # backwards so it plots right side up
+        gdict = tempgrid.getGeoDict()
+        del tempgrid
+    gc.collect()
+
+    #make meshgrid
+    llons1, llats1 = np.meshgrid(lons, lats)
+
+    # Load in topofile and load in or compute hillshade, resample to same grid as first layer
+    if hillshade is not None:
+        hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', samplegeodict=gdict)
+    elif topofile is not None and hillshade is None:
+        topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
+        hillsmap = make_hillshade(topomap, 315, 50)
+    else:
+        print('no hillshade is possible\n')
+        hillsmap = None
+        ALPHA = 1.
+    # Mask oceans and transform hillshade
+    if hillsmap is not None:
+        hillshm = hillsmap.getData()
+        hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
+        hillshm = hillshm/np.abs(hillshm).max()
+
+    # Load in roads, if needed
+    if maproads is True and roadfolder is not None:
+        try:
+            roadslist = []
+            for folder in os.listdir(roadfolder):
+                road1 = os.path.join(roadfolder, folder)
+                shpfiles = glob.glob(os.path.join(road1, '*.shp'))
+                if len(shpfiles):
+                    shpfile = shpfiles[0]
+                    f = fiona.open(shpfile)
+                    shapes = list(f.items(bbox=(boundaries.xmin, boundaries.ymin, boundaries.xmax, boundaries.ymax)))
+                    for shapeid, shapedict in shapes:
+                        roadslist.append(shapedict)
+                    f.close()
+        except:
+            print('Not able to plot roads')
+            roadslist = None
+
     val = 1
     for k, layer in enumerate(plotorder):
-        xmin, xmax, ymin, ymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
         layergrid = grids[layer]['grid']
-        if cut is True:
-            # lxmin, lxmax, lymin, lymax = layergrid.getBounds()
-            # lons = np.linspace(lxmin, lxmax, layergrid.getGeoDict().nx)
-            # lats = np.linspace(lymax, lymin, layergrid.getGeoDict().ny)
-            # cxmin = lons[np.abs(lons-xmin).argmin()]
-            # cxmax = lons[np.abs(lons-xmax).argmin()]
-            # cymin = lats[np.abs(lats-ymin).argmin()]
-            # cymax = lats[np.abs(lats-ymax).argmin()]
-            layergrid = layergrid.cut(xmin, xmax, ymin, ymax, align=True)
         if 'label' in grids[layer].keys():
             label1 = grids[layer]['label']
         else:
@@ -412,6 +482,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                     resolution='i', area_thresh=1000., projection='lcc',
                     lat_1=clat, lon_0=clon, ax=ax)
 
+        x1, y1 = m(llons1, llats1)  # get projection coordinates
+
         if colormaps is not None and len(colormaps) == len(grids) and colormaps[k] is not None:
             palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
@@ -424,55 +496,18 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             else:
                 palette = defaultcolormap
 
-        # Determine if need to downsample
-        xsize = layergrid.getGeoDict().nx
-        ysize = layergrid.getGeoDict().ny
-        inchesx, inchesy = fig.get_size_inches()
-        divx = int(np.round(xsize/(300.*inchesx)))
-        divy = int(np.round(ysize/(300.*inchesy)))
-        xmin, xmax, ymin, ymax = layergrid.getBounds()
-        if divx > 1. or divy > 1.:
-            ds = True
-            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), func=np.nanmean)
-            lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean)
-            lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny), block_size=(divy,), func=np.mean)
-            gdict = GeoDict({'xmin': lons.min(), 'xmax': lons.max(), 'ymin': lats.min(), 'ymax': lats.max(), 'dx': lons[1]-lons[0], 'dy': lats[1]-lats[0], 'nx': len(lons), 'ny': len(lats)})
-        else:
-            ds = False
-            dat = layergrid.getData().copy()
-            lons = np.linspace(xmin, xmax, layergrid.getGeoDict().nx)
-            lats = np.linspace(ymax, ymin, layergrid.getGeoDict().ny)  # backwards so it plots right side up
-            gdict = layergrid.getGeoDict()
-        #make meshgrid
-        llons1, llats1 = np.meshgrid(lons, lats)
-        x1, y1 = m(llons1, llats1)  # get projection coordinates
-
-        if k == 0:
-            import pdb; pdb.set_trace()
-            # Load in topofile and load in or compute hillshade, resample to same grid as first layer
-            if hillshade is not None:
-                hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', samplegeodict=gdict)
-            elif topofile is not None and hillshade is None:
-                topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
-                hillsmap = make_hillshade(topomap, 315, 50)
-            else:
-                print('no hillshade is possible\n')
-                hillsmap = None
-                ALPHA = 1.
-
         if hillsmap is not None:
-            # hillshm = hillsmap.getData()
-            # hdict = hillsmap.getGeoDict()
-            # hlons = np.linspace(hdict.xmin, hdict.xmax, hdict.nx)
-            # hlats = np.linspace(hdict.ymax, hdict.ymin, hdict.ny)  # backwards so it plots right side up
-            # hllons1, hllats1 = np.meshgrid(hlons, hlats)
-            # hillshm = maskoceans(hllons1, hllats1, hillshm, resolution='h', grid=1.25, inlands=True)
-            # hx1, hy1 = m(hllons1, hllats1)
-            hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
-            m.pcolormesh(x1, y1, hillshm/np.abs(hillshm).max(), cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
+            if k == 0:
+                hillshm_im = m.transform_scalar(np.flipud(hillshm), lons, lats[::-1], gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
+            m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1)  # vmax = 3 to soften colors to light gray
+            #m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
             plt.draw()
 
+        # Get the data
+        dat = layergrid.getData()
+
         # mask out anything below any specified thresholds
+        # Might need to move this up to before downsampling...might give illusion of no hazard in places where there is some that just got averaged out
         if maskthreshes is not None and len(maskthreshes) == len(grids):
             if maskthreshes[k] is not None:
                 dat[dat <= maskthreshes[k]] = float('NaN')
@@ -482,6 +517,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             if logscale[k] is True:
                 dat = np.log10(dat)
                 label1 = r'$log_{10}$(' + label1 + ')'
+
         if scaletype.lower() == 'binned':
             # Find order of range to know how to scale
             order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
@@ -516,17 +552,15 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             else:
                 vmin = None
                 vmax = None
-            # Tried to use imshow, but doesn't quite work right yet, not lining up properly so still using pcolormesh
-            # interpolate to a rectangular map projection grid.
-            # dat1 = m.transform_scalar(datm, lons, np.flipud(lats), 500, 500, returnxy=False, order=1, checkbounds=True, masked=True)
-            # panelhandle = m.imshow(np.flipud(dat1), cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2)
 
         # Mask out cells overlying oceans
-        datm = maskoceans(llons1, llats1, dat, resolution='h', grid=1.25, inlands=True)
+        dat = maskoceans(llons1, llats1, dat, resolution='h', grid=1.25, inlands=True)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        panelhandle = m.pcolormesh(x1, y1, datm, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True);
-        panelhandle.set_edgecolors('face')
+        dat_im = m.transform_scalar(np.flipud(dat), lons, lats[::-1], gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
+        panelhandle = m.imshow(dat_im, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, zorder=3.)
+        #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True);
+        #panelhandle.set_edgecolors('face')
         # add colorbar
         if (np.max(clev) - np.min(clev)) < 1.:
             cbfmt = '%1.2f'
@@ -551,19 +585,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 pass
 
         #draw roads on the map, if they were provided to us
-        if maproads is True and roadfolder is not None:
+        if maproads is True and roadslist is not None:
             try:
-                roadslist = []
-                for folder in os.listdir(roadfolder):
-                    road1 = os.path.join(roadfolder, folder)
-                    shpfiles = glob.glob(os.path.join(road1, '*.shp'))
-                    if len(shpfiles):
-                        shpfile = shpfiles[0]
-                        f = fiona.open(shpfile)
-                        shapes = list(f.items(bbox=(boundaries.xmin, boundaries.ymin, boundaries.xmax, boundaries.ymax)))
-                        for shapeid, shapedict in shapes:
-                            roadslist.append(shapedict)
-                        f.close()
                 for road in roadslist:
                     xy = list(road['geometry']['coordinates'])
                     roadx, roady = zip(*xy)
@@ -626,11 +649,12 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         m.drawcountries(color=countrycolor, linewidth=1.0)
 
         #add map scale
-        # xmax, xmin, ymax, ymin = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
-        # clat = ymin + (ymax-ymin)/2.0
-        # clon = xmin + (xmax-xmin)/2.0
-        # #m.drawmapscale((xmax+xmin)/2., (ymin+(ymax-ymin)/5.), clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
-        # m.drawmapscale((xmax+xmin)/2., ymin, clon, clat, np.round((((xmax-xmin)*110)/5)/10.)*10, barstyle='simple')
+        bxmax, bxmin, bymax, bymin = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
+        bclat = bymin + (bymax-bymin)/2.0
+        bclon = bxmin + (bxmax-bxmin)/2.0
+        m.drawmapscale((bxmax+bxmin)/2., (bymin+(bymax-bymin))/5., bclon, bclat, np.round((((bxmax-bxmin)*110)/5)/10.)*10, barstyle='simple')
+        import pdb; pdb.set_trace()
+        plt.draw()
 
         if sref is not None:
             label2 = '%s\nsource: %s' % (label1, sref)  # '%s\n' % label1 + r'{\fontsize{10pt}{3em}\selectfont{}%s}' % sref  #
@@ -644,7 +668,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             cx, cy = m(clon, clat)
             plt.text(cx, cy, 'SCENARIO', rotation=45, alpha=0.10, size=72, ha='center', va='center', color='red')
 
-        #if ds:
+        #if ds: # Could add this to print "downsampled" on map
         #    plt.text()
 
     plt.tight_layout()
