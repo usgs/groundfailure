@@ -147,38 +147,56 @@ def parseConfigLayers(maplayers, config):
     except:
         default = None
 
-    for key in keys:
+    for i, key in enumerate(keys):
         plotorder += [key]
         if limits is not None:
+            found = False
             for l in limits:
                 getlim = None
                 if l in key:
                     if type(limits[l]) is list:
                         getlim = np.array(limits[l]).astype(np.float)
                     lims.append(getlim)
+                    found = True
+            if not found:
+                lims.append(None)
+
         if colors is not None:
+            found = False
             for c in colors:
-                colorobject = default
+                #colorobject = default
                 if c in key:
                     getcol = colors[c]
                     colorobject = eval(getcol)
                     if colorobject is None:
                         colorobject = default
                     colormaps.append(colorobject)
+                    found = True
+            if not found:
+                colormaps.append(default)
 
         if logs is not None:
+            found = False
             for g in logs:
                 getlog = False
                 if g in key:
                     if logs[g].lower() == 'true':
                         getlog = True
                     logscale.append(getlog)
+                    found = True
+            if not found:
+                logscale.append(False)
+
         if masks is not None:
+            found = False
             for m in masks:
-                getmask = None
+                #getmask = None
                 if m in key:
                     getmask = eval(masks[m])
                     maskthreshes.append(getmask)
+                    found = True
+            if not found:
+                maskthreshes.append(None)
 
     # Reorder everything so model is first, if it's not already
     if plotorder[0] != 'model':
@@ -197,7 +215,7 @@ def parseConfigLayers(maplayers, config):
     return plotorder, logscale, lims, colormaps, maskthreshes
 
 
-def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, hillshade=None, cityfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', printparam=False):
+def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, hillshade=None, cityfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', printparam=False, ds=True, dstype='mean'):
 
     """
     This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers)
@@ -246,9 +264,12 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     :param outputdir: File path for outputting figures, if edict is defined, a subfolder based on the event id will be created in this folder. If None, will use current directory
     :param savepdf: True to save pdf figure, False to not
     :param savepng: True to save png figure, False to not
+    :param ds: True to allow downsampling for display (necessary when arrays are quite large, False to not allow)
+    :param dstype: What function to use in downsampling, options are 'min', 'max', 'median', or 'mean'
 
 
     :returns:  PDF and/or PNG of map
+    :returns newgrids: Downsampled and trimmed version of input grids. If no modification was needed for plotting, this will be identical to grids but without the metadata
     """
     if suptitle is None:
         suptitle = ' '
@@ -347,6 +368,9 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             boundaries = grids[keytemp[0]]['grid'].getGeoDict()
             cut = False
 
+    # Pull out bounds for various uses
+    bxmin, bxmax, bymin, bymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
+
     # Determine if need a single panel or multi-panel plot and if multi-panel, how many and how it will be arranged
     fig = plt.figure()
     numpanels = len(grids)
@@ -386,42 +410,58 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     clear_color = [0, 0, 0, 0.0]
 
     # Cut all of them and release extra memory
+    # COULD MAKE IT CUT A LITTLE BIGGER TO AVOID THE EDGE CUTOFF ON SOME PLOTS
     if cut is True:
+        newgrids = collections.OrderedDict()
         for k, layer in enumerate(plotorder):
-            xmin, xmax, ymin, ymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
             templayer = grids[layer]['grid']
-            grids[layer]['grid'] = templayer.cut(xmin, xmax, ymin, ymax, align=True)
+            newgrids[layer] = {'grid': templayer.cut(bxmin, bxmax, bymin, bymax, align=True)}
         del templayer
         gc.collect()
+    else:
+        newgrids = grids
 
-    # Downsample all of them for plotting, if needed
-    tempgrid = grids[grids.keys()[0]]['grid']
+    # Downsample all of them for plotting, if needed, and replace them in grids (to save memory)
+    tempgrid = newgrids[grids.keys()[0]]['grid']
     xsize = tempgrid.getGeoDict().nx
     ysize = tempgrid.getGeoDict().ny
     inchesx, inchesy = fig.get_size_inches()
-    divx = int(np.round(xsize/(300.*inchesx)))
-    divy = int(np.round(ysize/(300.*inchesy)))
+    divx = int(np.round(xsize/(500.*inchesx)))
+    divy = int(np.round(ysize/(500.*inchesy)))
     xmin, xmax, ymin, ymax = tempgrid.getBounds()
+    gdict = tempgrid.getGeoDict()  # Will be replaced if downsampled
+    del tempgrid
+    gc.collect()
+
     if divx <= 1:
         divx = 1
     if divy <= 1:
         divy = 1
-    if divx > 1. or divy > 1.:
+    if (divx > 1. or divy > 1.) and ds:
+        if dstype == 'max':
+            func = np.nanmax
+        elif dstype == 'min':
+            func = np.nanmin
+        elif dstype == 'med':
+            func = np.nanmedian
+        else:
+            func = np.nanmean
         for k, layer in enumerate(plotorder):
-            layergrid = grids[layer]['grid']
-            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), func=np.nanmean)
+            layergrid = newgrids[layer]['grid']
+            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), cval=float('nan'), func=np.nanmean)
             if k == 0:
-                lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean)
-                lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny), block_size=(divy,), func=np.mean)
-                gdict = GeoDict({'xmin': lons.min(), 'xmax': lons.max(), 'ymin': lats.min(), 'ymax': lats.max(), 'dx': lons[1]-lons[0], 'dy': lats[1]-lats[0], 'nx': len(lons), 'ny': len(lats)})
-            grids[layer]['grid'] = Grid2D(dat, gdict)
+                lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean, cval=float('nan'))
+                if math.isnan(lons[-1]):
+                    lons[-1] = lons[-2] + (lons[1]-lons[0])
+                lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny), block_size=(divy,), func=np.mean, cval=float('nan'))
+                if math.isnan(lats[-1]):
+                    lats[-1] = lats[-2] + (lats[1]-lats[0])
+                gdict = GeoDict({'xmin': lons.min(), 'xmax': lons.max(), 'ymin': lats.min(), 'ymax': lats.max(), 'dx': np.abs(lons[1]-lons[0]), 'dy': np.abs(lats[1]-lats[0]), 'nx': len(lons), 'ny': len(lats)}, adjust='res')
+            newgrids[layer]['grid'] = Grid2D(dat, gdict)
         del layergrid, dat
     else:
-        lons = np.linspace(xmin, xmax, tempgrid.getGeoDict().nx)
-        lats = np.linspace(ymax, ymin, tempgrid.getGeoDict().ny)  # backwards so it plots right side up
-        gdict = tempgrid.getGeoDict()
-        del tempgrid
-    gc.collect()
+        lons = np.linspace(xmin, xmax, xsize)
+        lats = np.linspace(ymax, ymin, ysize)  # backwards so it plots right side up
 
     #make meshgrid
     llons1, llats1 = np.meshgrid(lons, lats)
@@ -452,7 +492,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 if len(shpfiles):
                     shpfile = shpfiles[0]
                     f = fiona.open(shpfile)
-                    shapes = list(f.items(bbox=(boundaries.xmin, boundaries.ymin, boundaries.xmax, boundaries.ymax)))
+                    shapes = list(f.items(bbox=(bxmin, bymin, bxmax, bymax)))
                     for shapeid, shapedict in shapes:
                         roadslist.append(shapedict)
                     f.close()
@@ -462,7 +502,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
     val = 1
     for k, layer in enumerate(plotorder):
-        layergrid = grids[layer]['grid']
+        layergrid = newgrids[layer]['grid']
         if 'label' in grids[layer].keys():
             label1 = grids[layer]['label']
         else:
@@ -473,18 +513,18 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             sref = None
         ax = fig.add_subplot(rowpan, colpan, val)
         val += 1
-        clat = ymin + (ymax-ymin)/2.0
-        clon = xmin + (xmax-xmin)/2.0
+        clat = bymin + (bymax-bymin)/2.0
+        clon = bxmin + (bxmax-bxmin)/2.0
         # setup of basemap ('lcc' = lambert conformal conic).
         # use major and minor sphere radii from WGS84 ellipsoid.
-        m = Basemap(llcrnrlon=xmin, llcrnrlat=ymin, urcrnrlon=xmax, urcrnrlat=ymax,
+        m = Basemap(llcrnrlon=bxmin, llcrnrlat=bymin, urcrnrlon=bxmax, urcrnrlat=bymax,
                     rsphere=(6378137.00, 6356752.3142),
                     resolution='i', area_thresh=1000., projection='lcc',
                     lat_1=clat, lon_0=clon, ax=ax)
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
 
-        if colormaps is not None and len(colormaps) == len(grids) and colormaps[k] is not None:
+        if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
             palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
             if 'prob' in layer.lower() or 'pga' in layer.lower() or 'pgv' in layer.lower() or 'cohesion' in layer.lower() or 'friction' in layer.lower() or 'fs' in layer.lower():
@@ -498,7 +538,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         if hillsmap is not None:
             if k == 0:
-                hillshm_im = m.transform_scalar(np.flipud(hillshm), lons, lats[::-1], gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
+                hillshm_im = m.transform_scalar(np.flipud(hillshm), lons-0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
             m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1)  # vmax = 3 to soften colors to light gray
             #m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
             plt.draw()
@@ -508,12 +548,12 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         # mask out anything below any specified thresholds
         # Might need to move this up to before downsampling...might give illusion of no hazard in places where there is some that just got averaged out
-        if maskthreshes is not None and len(maskthreshes) == len(grids):
+        if maskthreshes is not None and len(maskthreshes) == len(newgrids):
             if maskthreshes[k] is not None:
                 dat[dat <= maskthreshes[k]] = float('NaN')
                 dat = np.ma.array(dat, mask=np.isnan(dat))
 
-        if logscale is not False and len(logscale) == len(grids):
+        if logscale is not False and len(logscale) == len(newgrids):
             if logscale[k] is True:
                 dat = np.log10(dat)
                 label1 = r'$log_{10}$(' + label1 + ')'
@@ -525,7 +565,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 scal = 10**-order
             else:
                 scal = 1.
-            if lims is None or len(lims) != len(grids):
+            if lims is None or len(lims) != len(newgrids):
                 clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
             else:
                 if lims[k] is None:
@@ -542,7 +582,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             vmin = clev[0]
             vmax = clev[-1]
         else:
-            if lims is not None and len(lims) == len(grids):
+            if lims is not None and len(lims) == len(newgrids):
                 if lims[k] is None:
                     vmin = None
                     vmax = None
@@ -557,7 +597,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         dat = maskoceans(llons1, llats1, dat, resolution='h', grid=1.25, inlands=True)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        dat_im = m.transform_scalar(np.flipud(dat), lons, lats[::-1], gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
+        dat_im = m.transform_scalar(np.flipud(dat), lons-0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
         panelhandle = m.imshow(dat_im, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, zorder=3.)
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True);
         #panelhandle.set_edgecolors('face')
@@ -576,8 +616,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
 
-        parallels = m.drawparallels(getMapLines(ymin, ymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=6, xoffset=-0.8, color='gray')
-        m.drawmeridians(getMapLines(xmin, xmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=6, color='gray')
+        parallels = m.drawparallels(getMapLines(bymin, bymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=6, xoffset=-0.8, color='gray')
+        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=6, color='gray')
         for par in parallels:
             try:
                 parallels[par][1][0].set_rotation(90)
@@ -602,7 +642,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 xyplotted = []
                 cities = PagerCity(cityfile)
                 #Find cities within bounding box
-                boundcity = cities.findCitiesByRectangle(bounds=(boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax))
+                boundcity = cities.findCitiesByRectangle(bounds=(bxmin, bxmax, bymin, bymax))
                 #Just keep 5 biggest cities
                 if len(boundcity) < 5:
                     value = len(boundcity)
@@ -649,11 +689,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         m.drawcountries(color=countrycolor, linewidth=1.0)
 
         #add map scale
-        bxmax, bxmin, bymax, bymin = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
-        bclat = bymin + (bymax-bymin)/2.0
-        bclon = bxmin + (bxmax-bxmin)/2.0
-        m.drawmapscale((bxmax+bxmin)/2., (bymin+(bymax-bymin))/5., bclon, bclat, np.round((((bxmax-bxmin)*110)/5)/10.)*10, barstyle='simple')
-        import pdb; pdb.set_trace()
+        m.drawmapscale((bxmax+bxmin)/2., (bymin+(bymax-bymin)/8.), clon, clat, np.round((((bxmax-bxmin)*111)/5)/10.)*10, barstyle='simple', zorder=10)
+        #import pdb; pdb.set_trace()
         plt.draw()
 
         if sref is not None:
@@ -707,6 +744,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         plt.savefig(pngfile)
     if showplots is True:
         plt.show()
+
+    return newgrids
 
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
