@@ -477,17 +477,18 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     llons1, llats1 = np.meshgrid(lons, lats)
 
     # See if there is an oceanfile for masking
-    bbox = PolygonSH(((bxmin, bymin), (bxmin, bymax), (bxmax, bymax), (bxmax, bymin)))
+    bbox = PolygonSH(((bxmin-xbuff, bymin-ybuff), (bxmin-xbuff, bymax+ybuff), (bxmax+xbuff, bymax+ybuff), (bxmax+xbuff, bymin-ybuff)))
     if oceanfile is not None:
-        try:
+        #try:
             f = fiona.open(oceanfile)
             oc = f.next()
+            f.close
             shapes = shape(oc['geometry'])
             # make boundaries into a shape
             ocean = shapes.intersection(bbox)
-        except:
-            print('Not able to read specified ocean file, will use default ocean masking')
-            oceanfile = None
+        #except:
+        #    print('Not able to read specified ocean file, will use default ocean masking')
+        #    oceanfile = None
     if inventory_shapefile is not None:
         try:
             f = fiona.open(inventory_shapefile)
@@ -631,6 +632,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             dat = maskoceans(llons1, llats1, dat, resolution='h', grid=1.25, inlands=True)
         else:
             #patches = []
+            if type(ocean) is PolygonSH:
+                ocean = [ocean]
             for oc in ocean:
                 x, y = m(oc.exterior.xy[0], oc.exterior.xy[1])
                 xy = zip(x, y)
