@@ -284,7 +284,7 @@ def numcycles(M):
     return n
 
 
-def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000'):
+def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1.):
     """This function uses the Newmark method to estimate probability of failure at each grid cell.
     Factor of Safety and critcal accelerations are calculated following Jibson et al. (2000) and the
     Newmark displacement is estimated using PGA, PGV, and/or Magnitude (depending on equation used)
@@ -306,6 +306,8 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     :type regressionmodel: string
     :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
+    :param slopediv: Divide slope by this number to get slope in degrees (Verdin dataset needs to be divided by 100 but others don't)
+    :type slopediv: float
 
     :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
     :type maplayers: OrderedDict
@@ -333,20 +335,20 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         frictionfile = config['mechanistic_models']['classic_newmark']['layers']['friction']['file']
         frictionunits = config['mechanistic_models']['classic_newmark']['layers']['friction']['units']
 
-        thick = float(config['mechanistic_models']['classic_newmark']['values']['thick'])
-        uwt = float(config['mechanistic_models']['classic_newmark']['values']['uwt'])
-        nodata_cohesion = float(config['mechanistic_models']['classic_newmark']['values']['nodata_cohesion'])
-        nodata_friction = float(config['mechanistic_models']['classic_newmark']['values']['nodata_friction'])
+        thick = float(config['mechanistic_models']['classic_newmark']['parameters']['thick'])
+        uwt = float(config['mechanistic_models']['classic_newmark']['parameters']['uwt'])
+        nodata_cohesion = float(config['mechanistic_models']['classic_newmark']['parameters']['nodata_cohesion'])
+        nodata_friction = float(config['mechanistic_models']['classic_newmark']['parameters']['nodata_friction'])
         try:
-            dnthresh = float(config['mechanistic_models']['classic_newmark']['values']['dnthresh'])
+            dnthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['dnthresh'])
         except:
             if probtype == 'threshold':
                 dnthresh = 5.
                 print('Unable to find dnthresh in config, using 5cm')
             else:
                 dnthresh = None
-        fsthresh = float(config['mechanistic_models']['classic_newmark']['values']['fsthresh'])
-        acthresh = float(config['mechanistic_models']['classic_newmark']['values']['acthresh'])
+        fsthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['fsthresh'])
+        acthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['acthresh'])
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
         return
@@ -370,7 +372,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     # Load in slope file
     slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=False)  # Need to divide values by 100 if using slope_max.bil
     gdict = slopegrid.getGeoDict()  # Get this again just in case it changed
-    slope = slopegrid.getData()/100.
+    slope = slopegrid.getData()/slopediv  # Adjust slope to degrees
     # Change any zero slopes to a very small number to avoid dividing by zero later
     slope[slope == 0] = 0.0000001
 
@@ -403,13 +405,17 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         except:
             print('Was not able to retrieve water table references from config file. Continuing')
     except:
+        print('Water table file not specified or readable, assuming zero saturated thickness')
         watertable = None
 
     # Factor of safety
     if watertable is not None:
+        watertable[watertable > thick] = thick
+        watertable = watertable - thick
         FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.)) - (watertable*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
     else:
         FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.))
+    import pdb; pdb.set_trace()
     FS[FS < fsthresh] = fsthresh
 
     # Compute critical acceleration, in g
@@ -639,6 +645,21 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
         maplayers['friction angle'] = {'grid': GDALGrid(friction[:, :, 0], shakemap.getGeoDict()), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
 
     return maplayers
+
+
+def Saade2016():
+    """
+    Limit equilibrium approach combining mohr-coulomb for shallower slopes and GSI for steeper. No assumption of failure depth required (this could be moved to a different module since it doesn't exactly use Newmark)
+    """
+    print('Saade2016 not implemented yet')
+
+
+def multiNewmark():
+    """
+    Run Classic or Godt model for set of different thicknesses, cell sizes, and unit weights to simulate different landslide sizes
+    (borrow from )
+    """
+    print('multiNewmark not implemented yet')
 
 
 def J_PGA(Ac, PGA):
