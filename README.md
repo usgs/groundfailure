@@ -206,6 +206,8 @@ and layers are shown here for the purpose of explaining how to configure models.
         fsthresh = 1.01
         #Minimum critical acceleration allowed (in g's)
         acthresh = 0.05
+        # Slope minimum threshold in degrees
+        slopethresh = 5.
 
   [[hazus]]
     longref = 'Federal Emergency Management Agency, 2013, Hazus - MH MR5 Multi-hazard loss Estimation Methodology Earthquake Model: Dept. of Homeland Security, Federal Emergency Management Agency, Washington D.C., 736p. [available at: www.fema.gov/plan/prevent/hazus]'

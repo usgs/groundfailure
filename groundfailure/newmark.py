@@ -284,7 +284,7 @@ def numcycles(M):
     return n
 
 
-def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1.):
+def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1., codiv=1.):
     """This function uses the Newmark method to estimate probability of failure at each grid cell.
     Factor of Safety and critcal accelerations are calculated following Jibson et al. (2000) and the
     Newmark displacement is estimated using PGA, PGV, and/or Magnitude (depending on equation used)
@@ -306,7 +306,9 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     :type regressionmodel: string
     :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
-    :param slopediv: Divide slope by this number to get slope in degrees (Verdin dataset needs to be divided by 100 but others don't)
+    :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
+    :type slopediv: float
+    :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10 because that is how it was calibrated, but values are reasonable without multiplying for regular analysis)
     :type slopediv: float
 
     :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
@@ -349,6 +351,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
                 dnthresh = None
         fsthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['fsthresh'])
         acthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['acthresh'])
+        slopethresh = float(config['mechanistic_models']['classic_newmark']['parameters']['slopethresh'])
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
         return
@@ -374,7 +377,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     gdict = slopegrid.getGeoDict()  # Get this again just in case it changed
     slope = slopegrid.getData()/slopediv  # Adjust slope to degrees
     # Change any zero slopes to a very small number to avoid dividing by zero later
-    slope[slope == 0] = 0.0000001
+    slope[slope == 0] = 1e-8
 
     # Load in shakefile
     if not os.path.isfile(shakefile):
@@ -389,7 +392,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     M = shakemap.getEventDict()['magnitude']
 
     # Read in the cohesion and friction files, resampled to slope grid
-    cohesion = GDALGrid.load(cohesionfile, samplegeodict=gdict, resample=True, method='nearest').getData()/10.
+    cohesion = GDALGrid.load(cohesionfile, samplegeodict=gdict, resample=True, method='nearest').getData()/codiv
     cohesion[np.isnan(cohesion)] = nodata_cohesion
     friction = GDALGrid.load(frictionfile, samplegeodict=gdict, resample=True, method='nearest').getData()
     friction[np.isnan(friction)] = nodata_friction
@@ -411,16 +414,16 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     # Factor of safety
     if watertable is not None:
         watertable[watertable > thick] = thick
-        watertable = watertable - thick
+        watertable = thick - watertable
         FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.)) - (watertable*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
     else:
         FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.))
-    import pdb; pdb.set_trace()
     FS[FS < fsthresh] = fsthresh
 
     # Compute critical acceleration, in g
     Ac = (FS-1)*np.sin(slope*(np.pi/180.)).astype(float)  # This gives ac in g, equations that multiply by g give ac in m/s2
     Ac[Ac < acthresh] = acthresh
+    Ac[slope < slopethresh] = float('nan')
 
     # Get PGA in g (PGA is %g in ShakeMap, convert to g)
     PGA = shakemap.getLayer('pga').getData().astype(float)/100.
@@ -462,19 +465,19 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     temp = shakemap.getShakeDict()
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
-    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh}}
+    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh, 'slopethresh': slopethresh}}
 
-    maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': label, 'type': 'output', description: 'description'}
+    maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': label, 'type': 'output', 'description': description}
 
     if saveinputs is True:
         maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
         maplayers['FS'] = {'grid': GDALGrid(FS, gdict), 'label': 'Factor of Safety', 'type': 'input', 'description': {'units': 'unitless'}}
-        #maplayers['Ac'] = {'grid': GDALGrid(FS, slopegrid.getGeoDict()), 'label': 'Critical acceleration (g)', 'type': 'input'}
+        maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Critical acceleration (g)', 'type': 'input'}
         maplayers['slope'] = {'grid': GDALGrid(slope, gdict), 'label': 'Max slope ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
         maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
         if watertable is not None:
-            maplayers['water depth'] = {'grid': GDALGrid(watertable, gdict), 'label': 'Water table depth (m)', 'type': 'input', 'description': {'units': 'meters', 'name': watersref, 'longref': waterlref}}
+            maplayers['saturated thickness'] = {'grid': GDALGrid(watertable, gdict), 'label': 'Saturated thickness (m)', 'type': 'input', 'description': {'units': 'meters', 'name': watersref, 'longref': waterlref}}
 
     return maplayers
 
