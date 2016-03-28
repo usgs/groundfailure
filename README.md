@@ -208,6 +208,8 @@ and layers are shown here for the purpose of explaining how to configure models.
         acthresh = 0.05
         # Slope minimum threshold in degrees
         slopethresh = 5.
+        # Constant proportion of saturated thickness [0-1] (used if watertable file not specified)
+        m = 1.0
 
   [[hazus]]
     longref = 'Federal Emergency Management Agency, 2013, Hazus - MH MR5 Multi-hazard loss Estimation Methodology Earthquake Model: Dept. of Homeland Security, Federal Emergency Management Agency, Washington D.C., 736p. [available at: www.fema.gov/plan/prevent/hazus]'
