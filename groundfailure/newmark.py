@@ -110,6 +110,10 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
         susfile = config['mechanistic_models']['hazus']['layers']['susceptibility']['file']
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
         susdict = GDALGrid.getFileGeoDict(susfile)
+        if bounds is not None:  # Make sure bounds are within ShakeMap Grid
+            if shkgdict.xmin > bounds[0] or shkgdict.xmax < bounds[2] or shkgdict.ymin > bounds[1] or shkgdict.ymax < bounds[3]:
+                print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
+                bounds = None
         if bounds is not None:
             tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3]})
         else:
