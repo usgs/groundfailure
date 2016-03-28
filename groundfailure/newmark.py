@@ -18,6 +18,7 @@ warnings.filterwarnings('ignore')
 #local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
+from mapio.geodict import GeoDict
 
 #third party imports
 import numpy as np
@@ -63,7 +64,7 @@ def isURL(gridurl):
     return isURL
 
 
-def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA', probtype='jibson2000'):
+def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA', probtype='jibson2000', bounds=None):
     """
     Runs HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories from defined by HAZUS manual (I-X)
 
@@ -88,6 +89,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
     :type regressionmodel: string
     :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
+    :param bounds: Boundaries to compute over if different from ShakeMap boundaries as tuple (xmin, ymin, xmax, ymax)
 
     :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
     :type maplayers: OrderedDict
@@ -108,8 +110,11 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
         susfile = config['mechanistic_models']['hazus']['layers']['susceptibility']['file']
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
         susdict = GDALGrid.getFileGeoDict(susfile)
-        bounds = susdict.getBoundsWithin(shkgdict)
-        sus = GDALGrid.load(susfile, samplegeodict=bounds, resample=False)
+        if bounds is not None:
+            tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3]})
+        else:
+            tempgdict = susdict.getBoundsWithin(shkgdict)
+        sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=False)
         gdict = sus.getGeoDict()
         susdat = sus.getData()
     except Exception as e:
@@ -284,7 +289,7 @@ def numcycles(M):
     return n
 
 
-def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1., codiv=1.):
+def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1., codiv=1., bounds=None):
     """This function uses the Newmark method to estimate probability of failure at each grid cell.
     Factor of Safety and critcal accelerations are calculated following Jibson et al. (2000) and the
     Newmark displacement is estimated using PGA, PGV, and/or Magnitude (depending on equation used)
@@ -309,7 +314,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
     :type slopediv: float
     :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10 because that is how it was calibrated, but values are reasonable without multiplying for regular analysis)
-    :type slopediv: float
+    :type codiv: float
 
     :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
     :type maplayers: OrderedDict
@@ -352,6 +357,11 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         fsthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['fsthresh'])
         acthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['acthresh'])
         slopethresh = float(config['mechanistic_models']['classic_newmark']['parameters']['slopethresh'])
+        try:
+            m = float(config['mechanistic_models']['classic_newmark']['parameters']['m'])
+        except:
+            print('no constant saturated thickness specified, m=0 if no watertable file is found')
+            m = 0.
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
         return
@@ -368,14 +378,25 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     except:
         print('Was not able to retrieve all references from config file. Continuing')
 
-    # Get boundaries from shakemap
+    # Cut and resample all files
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     slpdict = GDALGrid.getFileGeoDict(slopefile)
-    gdict = slpdict.getBoundsWithin(shkgdict)
+    if bounds is not None:  # Make sure bounds are within ShakeMap Grid
+        if shkgdict.xmin > bounds[0] or shkgdict.xmax < bounds[2] or shkgdict.ymin > bounds[1] or shkgdict.ymax < bounds[3]:
+            print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
+            bounds = None
+    if bounds is not None:
+        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3]})
+        gdict = slpdict.getBoundsWithin(tempgdict)
+    else:  # Get boundaries from shakemap if not specified
+        shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
+        slpdict = GDALGrid.getFileGeoDict(slopefile)
+        gdict = slpdict.getBoundsWithin(shkgdict)
+
     # Load in slope file
-    slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=False)  # Need to divide values by 100 if using slope_max.bil
+    slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=False)
     gdict = slopegrid.getGeoDict()  # Get this again just in case it changed
-    slope = slopegrid.getData()/slopediv  # Adjust slope to degrees
+    slope = slopegrid.getData()/slopediv  # Adjust slope to degrees, if needed
     # Change any zero slopes to a very small number to avoid dividing by zero later
     slope[slope == 0] = 1e-8
 
@@ -402,22 +423,21 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         waterfile = config['mechanistic_models']['classic_newmark']['layers']['watertable']['file']
         watertable = GDALGrid.load(waterfile, samplegeodict=gdict, resample=True, method='linear').getData()  # Needs to be in meters!
         uwtw = float(config['mechanistic_models']['classic_newmark']['parameters']['uwtw'])
+        m = 'variable'
         try:
             watersref = config['mechanistic_models']['classic_newmark']['layers']['watertable']['shortref']
             waterlref = config['mechanistic_models']['classic_newmark']['layers']['watertable']['longref']
         except:
             print('Was not able to retrieve water table references from config file. Continuing')
     except:
-        print('Water table file not specified or readable, assuming zero saturated thickness')
+        print('Water table file not specified or readable, assuming constant saturated thickness proportion of %0.1f' % m)
         watertable = None
 
     # Factor of safety
     if watertable is not None:
         watertable[watertable > thick] = thick
-        watertable = thick - watertable
-        FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.)) - (watertable*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
-    else:
-        FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.))
+        m = (thick - watertable)/thick
+    FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.)) - (m*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
     FS[FS < fsthresh] = fsthresh
 
     # Compute critical acceleration, in g
@@ -465,7 +485,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     temp = shakemap.getShakeDict()
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
-    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh, 'slopethresh': slopethresh}}
+    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh, 'slopethresh': slopethresh, 'sat_proportion': m}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': label, 'type': 'output', 'description': description}
 
@@ -477,12 +497,12 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
         maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
         if watertable is not None:
-            maplayers['saturated thickness'] = {'grid': GDALGrid(watertable, gdict), 'label': 'Saturated thickness (m)', 'type': 'input', 'description': {'units': 'meters', 'name': watersref, 'longref': waterlref}}
+            maplayers['sat thick prop'] = {'grid': GDALGrid(m, gdict), 'label': 'Saturated thickness proprtion [0,1]', 'type': 'input', 'description': {'units': 'meters', 'name': watersref, 'longref': waterlref}}
 
     return maplayers
 
 
-def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
+def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA', bounds=None, slopediv=100., codiv=10.):
     """ This function runs the Godt et al. (2008) global method for a given ShakeMap. The Factor of Safety
     is calculated using infinite slope analysis assumuing dry conditions. The method uses threshold newmark
     displacement and estimates areal coverage by doing the calculations for each slope quantile
@@ -503,6 +523,10 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
     :type regressionmodel: string
     :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
+    :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
+    :type slopediv: float
+    :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10 because that is how it was calibrated, but values are reasonable without multiplying for regular analysis)
+    :type codiv: float
 
     :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
     :type maplayers: OrderedDict
@@ -562,26 +586,37 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA'):
             raise NameError('Could not find "%s" as a file or a valid url' % (shakefile))
             return
 
-    shakemap = ShakeGrid.load(shakefile, adjust='res')
+    shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
+    if bounds is not None:  # Make sure bounds are within ShakeMap Grid
+        if shkgdict.xmin > bounds[0] or shkgdict.xmax < bounds[2] or shkgdict.ymin > bounds[1] or shkgdict.ymax < bounds[3]:
+            print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
+            bounds = None
+    if bounds is not None:
+        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': shkgdict.dx, 'dy': shkgdict.dy})
+        gdict = shkgdict.getBoundsWithin(tempgdict)
+        shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, adjust='bounds')
+    else:
+        shakemap = ShakeGrid.load(shakefile, adjust='res')
+    shkgdict = shakemap.getGeoDict()  # Get updated geodict
     M = shakemap.getEventDict()['magnitude']
 
     # Read in all the slope files, divide all by 100 to get to slope in degrees (because input files are multiplied by 100.)
     slopes = []
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope10.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope30.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope50.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope70.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope90.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_max.bil'), samplegeodict=shakemap.getGeoDict(), resample=True, method='linear').getData()/100.)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope10.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope30.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope50.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope70.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope90.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_max.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
     slopestack = np.dstack(slopes)
 
     # Change any zero slopes to a very small number to avoid dividing by zero later
-    slopestack[slopestack == 0] = 0.0000001
+    slopestack[slopestack == 0] = 1e-8
 
     # Read in the cohesion and friction files and duplicate layers so they are same shape as slope structure
     #import pdb; pdb.set_trace()
-    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis]/10., 7, axis=2)
+    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis]/codiv, 7, axis=2)
     cohesion[cohesion == -999.9] = nodata_cohesion
     cohesion[cohesion == 0] = nodata_cohesion
     friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis], 7, axis=2)
