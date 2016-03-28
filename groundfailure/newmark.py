@@ -10,7 +10,6 @@ import warnings
 import urllib2
 import tempfile
 import collections
-import gc
 
 #turn off all warnings...
 warnings.filterwarnings('ignore')

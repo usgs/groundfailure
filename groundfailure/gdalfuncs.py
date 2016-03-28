@@ -9,6 +9,20 @@ import os
 from mapio.gdal import GDALGrid
 
 
+def getfilesfromfolders(folderwildcard, filewildcard):
+    """
+    SRTM datasets come in folders, this pulls out the .bil filenames from each folder with the full file path
+    :param folderwildcard: wild card indicating how the folders are named that contain the SRTM .bil files
+    """
+    foldernames = glob.glob(folderwildcard)
+    filenames = []
+    for fold in foldernames:
+        tfile = glob.glob('%s/%s' % (fold, filewildcard))
+        if len(tfile) > 0:
+            filenames += tfile
+    return filenames
+
+
 def srtm2slope(filenames, finaloutfile, fmt='EHdr', cleanup=True):
     """
     Convert tiles of srtm to slope (with intermediate projection to transverse mercator projection)
