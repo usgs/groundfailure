@@ -385,6 +385,9 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
         modelvalyes = np.array([float(func(XX, YY)) for XX, YY in zip(yesptx, yespty)])
         modelvalno = np.array([float(func(XX, YY)) for XX, YY in zip(noptx, nopty)])
 
+    modelvalyes = np.nan_to_num(np.array(modelvalyes))  # replace nan with zeros
+    modelvalno = np.nan_to_num(np.array(modelvalno))  # replace nan with zeros
+
     # Now run the desired tests and make the desired plots
     results = {}
 
@@ -399,8 +402,8 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
         print('Brier scores: overall %0.3f\nBrier_yes score: %0.3f\nBrier_no score %0.3f' % (results['Brier'], results['Brier_yes'], results['Brier_no']))
 
         # Logarithmic score
-        tempno = modelvalno.copy()
-        tempyes = modelvalyes.copy()
+        tempno = np.array(modelvalno).copy()
+        tempyes = np.array(modelvalyes).copy()
         tempno[tempno == 0] = 1.e-15
         tempyes[tempyes == 0] = 1.e-15
         results['Log_loss'] = -(np.sum(np.log(tempyes)) + np.sum(np.log(1.-tempno)))/N
