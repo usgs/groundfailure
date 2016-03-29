@@ -29,7 +29,7 @@ from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
 from neicmap.city import PagerCity
 from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
-from mapio.mapcity import MapCities
+#from mapio.mapcity import MapCities
 
 
 def parseMapConfig(config):
@@ -81,7 +81,8 @@ def parseMapConfig(config):
                 cityref = 'unknown'
             if os.path.exists(cityfile):
                 try:
-                    MapCities.loadFromGeoNames(cityfile=cityfile)
+                    PagerCity(cityfile)
+                    #MapCities.loadFromGeoNames(cityfile=cityfile)
                 except Exception as e:
                     print e
                     print('cities file not valid - cities will not be displayed\n')
@@ -362,20 +363,28 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 boundaries1['ymax'] = ymax
             boundaries = GeoDict(boundaries1, adjust='res')
     else:
-        try:
-            if boundaries['xmin'] > boundaries['xmax'] or boundaries['ymin'] > boundaries['ymax']:
+        # SEE IF BOUNDARIES ARE SAME AS BOUNDARIES OF LAYERS
+        keytemp = grids.keys()
+        tempgdict = grids[keytemp[0]]['grid'].getGeoDict()
+        if np.abs(tempgdict.xmin-boundaries['xmin']) < 0.05 and np.abs(tempgdict.ymin-boundaries['ymin']) < 0.05 and np.abs(tempgdict.xmax-boundaries['xmax'] < 0.05 and np.abs(tempgdict.ymax - boundaries['ymax']) < 0.05):
+            print('Input boundaries are almost the same as specified boundaries, no cutting needed')
+            boundaries = tempgdict
+            cut = False
+        else:
+            try:
+                if boundaries['xmin'] > boundaries['xmax'] or boundaries['ymin'] > boundaries['ymax']:
+                    print('Input boundaries are not usable, using default boundaries')
+                    keytemp = grids.keys()
+                    boundaries = grids[keytemp[0]]['grid'].getGeoDict()
+                    cut = False
+                else:
+                    # Build dummy GeoDict
+                    boundaries = GeoDict({'xmin': boundaries['xmin'], 'xmax': boundaries['xmax'], 'ymin': boundaries['ymin'], 'ymax': boundaries['ymax'], 'dx': 100., 'dy': 100., 'ny': 100., 'nx': 100.}, adjust='res')
+            except:
                 print('Input boundaries are not usable, using default boundaries')
                 keytemp = grids.keys()
                 boundaries = grids[keytemp[0]]['grid'].getGeoDict()
                 cut = False
-            else:
-                # Build dummy GeoDict
-                boundaries = GeoDict({'xmin': boundaries['xmin'], 'xmax': boundaries['xmax'], 'ymin': boundaries['ymin'], 'ymax': boundaries['ymax'], 'dx': 100., 'dy': 100., 'ny': 100., 'nx': 100.}, adjust='res')
-        except:
-            print('Input boundaries are not usable, using default boundaries')
-            keytemp = grids.keys()
-            boundaries = grids[keytemp[0]]['grid'].getGeoDict()
-            cut = False
 
     # Pull out bounds for various uses
     bxmin, bxmax, bymin, bymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
@@ -419,14 +428,23 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     clear_color = [0, 0, 0, 0.0]
 
     # Cut all of them and release extra memory
-    # COULD MAKE IT CUT A LITTLE BIGGER TO AVOID THE EDGE CUTOFF ON SOME PLOTS
+
     xbuff = (bxmax-bxmin)/10.
     ybuff = (bymax-bymin)/10.
+    cutxmin = bxmin-xbuff
+    cutymin = bymin-ybuff
+    cutxmax = bxmax+xbuff
+    cutymax = bymax+ybuff
     if cut is True:
         newgrids = collections.OrderedDict()
         for k, layer in enumerate(plotorder):
             templayer = grids[layer]['grid']
-            newgrids[layer] = {'grid': templayer.cut(bxmin-xbuff, bxmax+xbuff, bymin-ybuff, bymax+ybuff, align=True)}
+            try:
+                newgrids[layer] = {'grid': templayer.cut(cutxmin, cutxmax, cutymin, cutymax, align=True)}
+            except Exception as e:
+                print('Cutting failed, %s, continuing with full layers' % e)
+                newgrids = grids
+                continue
         del templayer
         gc.collect()
     else:
@@ -459,7 +477,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             func = np.nanmean
         for k, layer in enumerate(plotorder):
             layergrid = newgrids[layer]['grid']
-            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), cval=float('nan'), func=np.nanmean)
+            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), cval=float('nan'), func=func)
             if k == 0:
                 lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean, cval=float('nan'))
                 if math.isnan(lons[-1]):
@@ -478,7 +496,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     llons1, llats1 = np.meshgrid(lons, lats)
 
     # See if there is an oceanfile for masking
-    bbox = PolygonSH(((bxmin-xbuff, bymin-ybuff), (bxmin-xbuff, bymax+ybuff), (bxmax+xbuff, bymax+ybuff), (bxmax+xbuff, bymin-ybuff)))
+    bbox = PolygonSH(((cutxmin, cutymin), (cutxmin, cutymax), (cutxmax, cutymax, (cutxmax, cutymin))))
     if oceanfile is not None:
         #try:
             f = fiona.open(oceanfile)
@@ -500,16 +518,16 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             print('unable to read inventory shapefile specified, will not plot inventory')
             inventory_shapefile = None
 
-    # Find cities that will be plotted
-    if mapcities is True and cityfile is not None:
-        try:
-            mycity = MapCities.load
-            bcities = mycity.limitByBounds((bxmin, bxmax, bymin, bymax))
-            bcities = boundcities.limitByPopulation(40000)
-        except:
-            print('Could not read in cityfile, not plotting cities')
-            mapcities = False
-            cityfile = None
+    # # Find cities that will be plotted
+    # if mapcities is True and cityfile is not None:
+    #     try:
+    #         mycity = MapCities.load
+    #         bcities = mycity.limitByBounds((bxmin, bxmax, bymin, bymax))
+    #         bcities = boundcities.limitByPopulation(40000)
+    #     except:
+    #         print('Could not read in cityfile, not plotting cities')
+    #         mapcities = False
+    #         cityfile = None
 
     # Load in topofile and load in or compute hillshade, resample to same grid as first layer
     if hillshade is not None:
@@ -702,17 +720,54 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 print('Failed to plot roads, %s' % e)
 
         #add city names to map
+        # if mapcities is True and cityfile is not None:
+        #     try:
+        #         fontname = 'Arial'
+        #         fontsize = 8
+        #         if k == 0:  # Only need to choose cities first time and then apply to rest
+        #             fcities = bcities.limitByMapCollision(fontname, fontsize, ax)
+        #             ctlats, ctlons, names = fcities.getCities()
+        #             cxis, cyis = m(ctlons, ctlats)
+        #         for ctlat, ctlon, cxi, cyi, name in zip(ctlats, ctlons, cxis, cyis, names):
+        #             m.scatter(ctlon, ctlat, c='k', latlon=True, marker='.', zorder=100000)
+        #             ax.text(cxi, cyi, name, fontname=fontname, fontsize=fontsize, zorder=100000)
+        #     except Exception as e:
+        #         print('Failed to plot cities, %s' % e)
+
         if mapcities is True and cityfile is not None:
             try:
-                fontname = 'Arial'
-                fontsize = 8
-                if k == 0:  # Only need to choose cities first time and then apply to rest
-                    fcities = bcities.limitByMapCollision(fontname, fontsize, ax)
-                    ctlats, ctlons, names = fcities.getCities()
-                    cxis, cyis = m(ctlons, ctlats)
-                for ctlat, ctlon, cxi, cyi, name in zip(ctlats, ctlons, cxis, cyis, names):
-                    m.scatter(ctlon, ctlat, c='k', latlon=True, marker='.', zorder=100000)
-                    ax.text(cxi, cyi, name, fontname=fontname, fontsize=fontsize, zorder=100000)
+                dmin = 0.1*(m.ymax-m.ymin)
+                xyplotted = []
+                cities = PagerCity(cityfile)
+                #Find cities within bounding box
+                boundcity = cities.findCitiesByRectangle(bounds=(boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax))
+                #Just keep 5 biggest cities
+                if len(boundcity) < 5:
+                    value = len(boundcity)
+                else:
+                    value = 5
+                thresh = sorted([cit['pop'] for cit in boundcity])[-value]
+                plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
+                #For cities that are more than one xth of the xwidth apart, keep only the larger one
+                pass  # do later
+                #Plot cities
+                for cit in plotcity:  # should sort so it plots them in order of population so larger cities are preferentially plotted - do later
+                    xi, yi = m(cit['lon'], cit['lat'])
+                    dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
+                    xdist = [np.abs(xi-x0) for x0, y0 in xyplotted]
+                    ydist = [np.abs(yi-y0) for x0, y0 in xyplotted]
+                    if not dist or np.min(dist) > dmin:
+                        if len(dist) > 0:
+                            if np.min(xdist) < 0.2*(m.xmax-m.xmin) and np.min(ydist) < 0.1*(m.ymax-m.ymin):
+                                pass
+                            else:
+                                m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
+                                ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8, zorder=100000)
+                                xyplotted.append((xi, yi))
+                        elif len(dist) == 0:
+                            m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
+                            ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8, zorder=100000)
+                            xyplotted.append((xi, yi))
             except Exception as e:
                 print('Failed to plot cities, %s' % e)
 

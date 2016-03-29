@@ -114,7 +114,8 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
                 print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
                 bounds = None
         if bounds is not None:
-            tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3]})
+            tempgdict1 = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
+            tempgdict = susdict.getBoundsWithin(tempgdict1)
         else:
             tempgdict = susdict.getBoundsWithin(shkgdict)
         sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=False)
@@ -206,7 +207,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
 
     elif modeltype == 'dn_hazus' or modeltype == 'dn_prob':
         ed_low, ed_high = est_disp(Ac, PGA)
-        ed_mean = np.mean((np.dstack(ed_low, ed_high)), axis=2)  # Get mean estimated displacements
+        ed_mean = np.mean((np.dstack((ed_low, ed_high))), axis=2)  # Get mean estimated displacements
         dn = ed_mean * numcycles(M) * PGA
     else:  # Calculate newmark displacement using a regression model
         if regressionmodel is 'J_PGA':
@@ -225,6 +226,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
     if modeltype == 'ac_classic_prob' or modeltype == 'dn_prob':
         if probtype.lower() in 'jibson2000':
             PROB = 0.335*(1-np.exp(-0.048*dn)**1.565)
+            dnthresh = None
         elif probtype.lower() in 'threshold':
             PROB = dn.copy()
             PROB[PROB <= dnthresh] = 0
@@ -232,6 +234,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
         else:
             raise NameError('invalid probtype, assuming jibson2000')
             PROB = 0.335*(1-np.exp(-0.048*dn)**1.565)
+            dnthresh = None
 
     # Turn output and inputs into into grids and put in maplayers dictionary
     maplayers = collections.OrderedDict()
@@ -389,7 +392,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3]})
+        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
         gdict = slpdict.getBoundsWithin(tempgdict)
     else:  # Get boundaries from shakemap if not specified
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
@@ -426,15 +429,20 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         waterfile = config['mechanistic_models']['classic_newmark']['layers']['watertable']['file']
         watertable = GDALGrid.load(waterfile, samplegeodict=gdict, resample=True, method='linear').getData()  # Needs to be in meters!
         uwtw = float(config['mechanistic_models']['classic_newmark']['parameters']['uwtw'])
-        m = 'variable'
         try:
             watersref = config['mechanistic_models']['classic_newmark']['layers']['watertable']['shortref']
             waterlref = config['mechanistic_models']['classic_newmark']['layers']['watertable']['longref']
         except:
             print('Was not able to retrieve water table references from config file. Continuing')
+
     except:
         print('Water table file not specified or readable, assuming constant saturated thickness proportion of %0.1f' % m)
         watertable = None
+        try:
+            uwtw = float(config['mechanistic_models']['classic_newmark']['parameters']['uwtw'])
+        except:
+            print('Could not read soil wet unit weight, using 18.8 kN/m3')
+            uwtw = 18.8
 
     # Factor of safety
     if watertable is not None:
@@ -488,7 +496,11 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     temp = shakemap.getShakeDict()
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
-    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh, 'slopethresh': slopethresh, 'sat_proportion': m}}
+    if watertable is not None:
+        des = 'variable'
+    else:
+        des = m
+    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh, 'slopethresh': slopethresh, 'sat_proportion': des}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': label, 'type': 'output', 'description': description}
 
@@ -595,7 +607,7 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA', bound
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': shkgdict.dx, 'dy': shkgdict.dy})
+        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': shkgdict.dx, 'dy': shkgdict.dy, 'nx': shkgdict.nx, 'ny': shkgdict.ny}, adjust='res')
         gdict = shkgdict.getBoundsWithin(tempgdict)
         shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, adjust='bounds')
     else:
