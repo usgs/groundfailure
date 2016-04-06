@@ -508,6 +508,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
         maplayers['FS'] = {'grid': GDALGrid(FS, gdict), 'label': 'Factor of Safety', 'type': 'input', 'description': {'units': 'unitless'}}
         maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Critical acceleration (g)', 'type': 'input'}
+        maplayers['Dn'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Newmark Displacement (cm)', 'type': 'input'}
         maplayers['slope'] = {'grid': GDALGrid(slope, gdict), 'label': 'Max slope ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
         maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
