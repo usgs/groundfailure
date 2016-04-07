@@ -225,7 +225,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
     # Calculate probability from dn, if necessary for selected model
     if modeltype == 'ac_classic_prob' or modeltype == 'dn_prob':
         if probtype.lower() in 'jibson2000':
-            PROB = 0.335*(1-np.exp(-0.048*dn)**1.565)
+            PROB = 0.335*(1-np.exp(-0.048*dn**1.565))
             dnthresh = None
         elif probtype.lower() in 'threshold':
             PROB = dn.copy()
@@ -233,7 +233,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
             PROB[PROB > dnthresh] = 1
         else:
             raise NameError('invalid probtype, assuming jibson2000')
-            PROB = 0.335*(1-np.exp(-0.048*dn)**1.565)
+            PROB = 0.335*(1-np.exp(-0.048*dn**1.565))
             dnthresh = None
 
     # Turn output and inputs into into grids and put in maplayers dictionary
@@ -477,7 +477,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     units = 'probability'
     label = 'Landslide Probability'
     if probtype.lower() in 'jibson2000':
-        PROB = 0.335*(1-np.exp(-0.048*Dn)**1.565)
+        PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
         dnthresh = None
     elif probtype.lower() in 'threshold':
         PROB = Dn.copy()
@@ -487,7 +487,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         label = 'Predicted Landslides'
     else:
         raise NameError('invalid probtype, assuming jibson2000')
-        PROB = 0.335*(1-np.exp(-0.048*Dn)**1.565)
+        PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
         dnthresh = None
 
     # Turn output and inputs into into grids and put in mapLayers dictionary
@@ -508,6 +508,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
         maplayers['FS'] = {'grid': GDALGrid(FS, gdict), 'label': 'Factor of Safety', 'type': 'input', 'description': {'units': 'unitless'}}
         maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Critical acceleration (g)', 'type': 'input'}
+        maplayers['Dn'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Newmark Displacement (cm)', 'type': 'input'}
         maplayers['slope'] = {'grid': GDALGrid(slope, gdict), 'label': 'Max slope ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
         maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}

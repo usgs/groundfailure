@@ -541,7 +541,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         ALPHA = 1.
     # Mask oceans and transform hillshade
     if hillsmap is not None:
-        hillshm = hillsmap.getData()
+        hillshm = hillsmap.getData().copy()
         if oceanfile is None:
             hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
         hillshm = hillshm/np.abs(hillshm).max()
@@ -608,7 +608,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             plt.draw()
 
         # Get the data
-        dat = layergrid.getData()
+        dat = layergrid.getData().copy()
 
         # mask out anything below any specified thresholds
         # Might need to move this up to before downsampling...might give illusion of no hazard in places where there is some that just got averaged out
