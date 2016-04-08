@@ -405,7 +405,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         rowpan = np.ceil(numpanels/3.)
         colpan = 3
         fig.set_figwidth(15)
-    fig.set_figheight(rowpan*5.1)
+    if rowpan == 1:
+        fig.set_figheight(rowpan*5.5)
+    else:
+        fig.set_figheight(rowpan*5.2)
 
     # Need to update naming to reflect the shakemap version once can get getHeaderData to work, add edict['version'] back into title, maybe shakemap id also?
     fontsizemain = 14.

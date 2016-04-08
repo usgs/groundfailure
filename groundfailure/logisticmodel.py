@@ -70,7 +70,7 @@ def validateCoefficients(cmodel):
     for key,value in cmodel['coefficients'].iteritems():
         if re.search('b[0-9]*',key) is None:
             raise Exception('coefficients must be named b0, b1, ...')
-        coeffs[key] = value
+        coeffs[key] = float(value)
     if 'b0' not in coeffs.keys():
         raise Exception('coefficients must include an intercept coefficient named b0.')
     return coeffs
@@ -281,7 +281,7 @@ class LogisticModel(object):
         for key in ckeys:
             term = self.terms[key]
             coeff = self.coeffs[key]
-            self.nuggets.append('(%g * %s)' % (coeff,term))
+            self.nuggets.append('(%g * %s)' % (coeff, eval(term)))
 
         self.equation = ' + '.join(self.nuggets)
         self.geodict = self.shakemap.getGeoDict()
@@ -296,16 +296,16 @@ class LogisticModel(object):
         X = eval(self.equation)
         P = 1/(1 + np.exp(-X))
         Pgrid = Grid2D(P,self.geodict)
-        rdict = {'probability':{'grid':Pgrid,
+        rdict = {'model':{'grid':Pgrid,
                                 'label':'Probability',
                                 'type':'output',
-                                'units':'probability'}}
+                                'description': {'units':'probability'}}}
         for layername,layergrid in self.layerdict.items():
             units = self.units[layername]
             rdict[layername] = {'grid':layergrid,
                                 'label':'%s (%s)' % (layername,units),
                                 'type':'input',
-                                'units':units}
+                                'description': {'units': units}}
         return rdict
 
     
