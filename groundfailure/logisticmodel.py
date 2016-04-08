@@ -281,7 +281,7 @@ class LogisticModel(object):
         for key in ckeys:
             term = self.terms[key]
             coeff = self.coeffs[key]
-            self.nuggets.append('(%g * %s)' % (coeff, eval(term)))
+            self.nuggets.append('(%g * %s)' % (coeff, term))
 
         self.equation = ' + '.join(self.nuggets)
         self.geodict = self.shakemap.getGeoDict()
