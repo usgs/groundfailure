@@ -512,6 +512,8 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         maplayers['slope'] = {'grid': GDALGrid(slope, gdict), 'label': 'Max slope ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
         maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
+        if 'PGV' in regressionmodel:
+            maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
         if watertable is not None:
             maplayers['sat thick prop'] = {'grid': GDALGrid(m, gdict), 'label': 'Saturated thickness proprtion [0,1]', 'type': 'input', 'description': {'units': 'meters', 'name': watersref, 'longref': waterlref}}
 
