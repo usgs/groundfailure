@@ -12,10 +12,86 @@ import matplotlib.pyplot as plt
 import matplotlib.path as mplPath
 from scipy import interpolate
 from sklearn.metrics import roc_curve, roc_auc_score, auc
+import copy
 
 #local imports
 from lsprocess.sample import pointsFromShapes
 from mapio.gdal import GDALGrid
+
+
+def modelSummary(model, outputtype=None, plottype='hist', bounds=None, bins=10, semilogy=False, thresh=0., excludenon=False, showplots=True, saveplots=False, filepath=None):
+    """
+    Function for creating a summary histogram of a model output
+    :param model: Grid2D object of model results
+    :param outputtype: Type of model output, just used for label (e.g.'probability', 'coverage', 'index')
+    :param plottype: 'hist' or 'pie' for histogram or pie chart
+    :param bounds: Bounding box to include in summary as dictionary e.g. {'xmin': -119.2, 'xmax': -118., 'ymin': 34., 'ymax': 34.7}. If None, will use entire area in model
+    :param bins: bins to use for histogram and pie chart, if a single integer, will create that number of bins using min and max of data, if a numpy array, will use those as bin edges
+    :param semilogy: = only for hist, will use log scale instead of linear on y axis if True
+    :param thresh: threshold for a nonoccurrence, default is zero but for models that never have nonzero values, can set to what you decide is insignificant
+    :param excludenon: If True, will exclude cells that are <=thresh from plot results
+    :param showplots: if True, will display the plots
+    :param saveplots: if True, will save the plots
+    :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name and time stamp
+    :returns invminusmod: Grid2D object of difference between inventory and model (inventory - model)
+    """
+    grid = model.getData()
+    if type(bins) is int:
+        bins = np.linspace(grid.min(), grid.max(), bins)
+    # Trim model, if needed
+    if bounds is not None and len(bounds) == 4:
+        model1 = copy.deepcopy(model)  # to avoid changing original file
+        model1 = model1.cut(bounds['xmin'], bounds['xmax'], bounds['ymin'], bounds['ymax'], align=True)
+
+    grid = model1.getData()
+    allvals = grid[~np.isnan(grid)]
+    total = len(allvals)
+    totalnonz = len(allvals[allvals > float(thresh)])
+    if excludenon is True:
+        totalf = totalnonz
+        allvals = allvals[allvals > float(thresh)]
+    else:
+        totalf = total
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+
+    if plottype == 'pie':
+        hist, bin_edges = np.histogram(allvals, bins=bins)
+        labels = ['%0.1f-%0.1f' % (bin_edges[i], bin_edges[i+1]) for i in range(len(bin_edges)-1)]
+        ax.pie(hist/float(totalf)*100, labels=labels, autopct='%1.1f%%', shadow=False, startangle=90)
+        #import pdb; pdb.set_trace()
+        plt.axis('equal')
+
+    else:
+        n, bins, rects = ax.hist(allvals, bins=bins)
+        for rect in rects:
+            height = rect.get_height()
+            plt.text(rect.get_x()+rect.get_width()/2., 1.05*height, '%0.1f%%' % (height/float(totalf),), ha='center', va='bottom')
+        if semilogy is True:
+            ax.set_yscale('log')
+        ax.set_ylabel('# of cells')
+        ax.set_xlabel(outputtype)
+
+    if excludenon is True:
+        plt.suptitle('%d cells > %0.1f out of %d total cells (%0.2f%%)\nTotals plotted exclude cells <= %0.1f' % (totalnonz, thresh, total, totalnonz/float(total), thresh))
+    else:
+        plt.suptitle('%d cells > %0.1f out of %d total cells (%0.2f%%)' % (totalnonz, thresh, total, totalnonz/float(total)))
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85)
+
+    if saveplots is True:
+        if filepath is None:
+            filepath = os.getcwd()
+        import datetime
+        time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+        fig.savefig(os.path.join(filepath, 'Summary_%s.pdf' % (time1,)))
+
+    if showplots is True:
+        plt.show()
+    else:
+        plt.close(fig)
+
+    return ax
 
 
 def computeCoverage_accurate(gdict, inventory, numdiv=10.):

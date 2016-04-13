@@ -866,6 +866,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         plt.savefig(pngfile)
     if showplots is True:
         plt.show()
+    else:
+        plt.close(fig)
 
     return newgrids
 
