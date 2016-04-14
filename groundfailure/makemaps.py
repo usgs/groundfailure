@@ -596,7 +596,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                     lat_1=clat, lon_0=clon, ax=ax)
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
-
+        axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        wid, ht = axsize.width, axsize.height
         if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
             palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
@@ -611,10 +612,25 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         if hillsmap is not None:
             if k == 0:
-                hillshm_im = m.transform_scalar(np.flipud(hillshm), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
+                hillshm_im = m.transform_scalar(np.flipud(hillshm), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=1, masked=False)
+                #hillshm_im = m.transform_scalar(np.flipud(hillshm), lons, lats[::-1], np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=False)
             m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1, interpolation='none')  # vmax = 3 to soften colors to light gray
             #m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
-            plt.draw()
+            # plt.draw()
+            # ptopo = m.transform_scalar(np.flipud(topodata), lons, lats[::-1], gd.nx, gd.ny, returnxy=False,
+            #                 checkbounds=False, order=1, masked=False)
+            # #use lightsource class to make our shaded topography
+            # ls = LightSource(azdeg=135,altdeg=45)
+            # # intensity = ls.hillshade(ptopo,fraction=0.25,vert_exag=1.0)
+
+            # ls1 = LightSource(azdeg = 120, altdeg = 45)
+            # ls2 = LightSource(azdeg = 225, altdeg = 45)
+            # intensity1 = ls1.hillshade(ptopo, fraction = 0.25, vert_exag = 1.0)
+            # intensity2 = ls2.hillshade(ptopo, fraction = 0.25, vert_exag = 1.0)
+            # intensity = intensity1*0.5 + intensity2*0.5
+
+            # rgb = np.squeeze(rgba_img[:,:,0:3])
+            # draped_hsv = ls.blend_hsv(rgb,np.expand_dims(intensity,2))
 
         # Get the data
         dat = layergrid.getData().copy()
@@ -690,7 +706,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 ax.add_patch(patch)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=0, masked=False)
+        dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=True)
+        #dat_im = m.transform_scalar(np.flipud(dat), lons, lats[::-1], np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=True)
         panelhandle = m.imshow(dat_im, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, zorder=3., interpolation='none')
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
         #panelhandle.set_edgecolors('face')
@@ -826,12 +843,12 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         if k == 1 and rowpan == 1:
             # adjust single level plot
-            tempbb = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-            ht = tempbb.height
             fig.set_figheight(ht*1.6)
+        else:
+            plt.tight_layout()
 
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.92)
+        # Make room for suptitle - tight layout doesn't account for it
+        plt.subplots_adjust(top=0.92)
 
     if printparam is True:
         try:
