@@ -610,10 +610,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 palette = defaultcolormap
 
         if hillsmap is not None:
-            #if k == 0:
-            #    hillshm_im = m.transform_scalar(np.flipud(hillshm), lons+0.5*gdict.dx, lats[::-1]+0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
-            #m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1)  # vmax = 3 to soften colors to light gray
-            m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
+            if k == 0:
+                hillshm_im = m.transform_scalar(np.flipud(hillshm), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
+            m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1, interpolation='none')  # vmax = 3 to soften colors to light gray
+            #m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
             plt.draw()
 
         # Get the data
@@ -690,10 +690,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 ax.add_patch(patch)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        #dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]+0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
-        #panelhandle = m.imshow(dat_im, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, zorder=3.)
-        panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
-        panelhandle.set_edgecolors('face')
+        dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=0, masked=False)
+        panelhandle = m.imshow(dat_im, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, zorder=3., interpolation='none')
+        #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
+        #panelhandle.set_edgecolors('face')
         # add colorbar
         cbfmt = '%1.1f'
         if vmax is not None and vmin is not None:
