@@ -9,6 +9,7 @@ from mpl_toolkits.basemap import maskoceans
 import copy
 import datetime
 import matplotlib as mpl
+from matplotlib.colors import LightSource
 
 #third party imports
 import matplotlib.cm as cm
@@ -41,7 +42,6 @@ def parseMapConfig(config):
     # Parse config object
     # ADD PLOTORDER TO CONFIG? OTHER THINGS LIKE COLORMAPS?
     topofile = None
-    hillshade = None
     roadfolder = None
     cityfile = None
     roadcolor = '6E6E6E'
@@ -64,11 +64,6 @@ def parseMapConfig(config):
                 oceanref = config1['ocean']['shortref']
             except:
                 oceanref = 'unknown'
-        if 'hillshade' in config1:
-            hillshade = config1['hillshade']['file']
-            if os.path.exists(hillshade) is False:
-                print('hillshade not valid - will not be displayed\n')
-                hillshade = None
         if 'roads' in config1:
             roadfolder = config1['roads']['folder']
             if os.path.exists(roadfolder) is False:
@@ -114,7 +109,7 @@ def parseMapConfig(config):
     watercolor = '#'+watercolor
     roadcolor = '#'+roadcolor
 
-    mapin = {'topofile': topofile, 'hillshade': hillshade, 'roadfolder': roadfolder, 'cityfile': cityfile, 'roadcolor': roadcolor, 'countrycolor': countrycolor, 'watercolor': watercolor, 'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref, 'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
+    mapin = {'topofile': topofile, 'roadfolder': roadfolder, 'cityfile': cityfile, 'roadcolor': roadcolor, 'countrycolor': countrycolor, 'watercolor': watercolor, 'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref, 'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
 
     return mapin
 
@@ -230,7 +225,7 @@ def parseConfigLayers(maplayers, config):
     return plotorder, logscale, lims, colormaps, maskthreshes
 
 
-def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, hillshade=None, cityfile=None, oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', oceanref='unknown', printparam=False, ds=True, dstype='mean'):
+def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, cityfile=None, oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', oceanref='unknown', printparam=False, ds=True, dstype='mean'):
 
     """
     This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers)
@@ -266,8 +261,6 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     :type roadfolder: string
     :param topofile: Full file path to topography grid (GDAL compatible) - this is only needed to make a hillshade if a premade hillshade is not specified
     :type topofile: string
-    :param hillshade: Full file path to hillshade grid (GDAL compatible)
-    :type hillshade: string
     :param cityfile: Full file path to Pager file containing city & population information
     :type cityfile: string
     :param roadcolor: Color to use for roads, if plotted, default #6E6E6E
@@ -538,22 +531,17 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     #         mapcities = False
     #         cityfile = None
 
-    # Load in topofile and load in or compute hillshade, resample to same grid as first layer
-    if hillshade is not None:
-        hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', samplegeodict=gdict)
-    elif topofile is not None and hillshade is None:
+    # Load in topofile
+    if topofile is not None:
         topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
-        hillsmap = make_hillshade(topomap, 315, 50)
+        topodata = topomap.getData().copy()
+        # mask oceans if don't have ocean shapefile
+        if oceanfile is None:
+            topodata = maskoceans(llons1, llats1, topodata, resolution='h', grid=1.25, inlands=True)
     else:
         print('no hillshade is possible\n')
-        hillsmap = None
-        ALPHA = 1.
-    # Mask oceans and transform hillshade
-    if hillsmap is not None:
-        hillshm = hillsmap.getData().copy()
-        if oceanfile is None:
-            hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
-        hillshm = hillshm/np.abs(hillshm).max()
+        topomap = None
+        topodata = None
 
     # Load in roads, if needed
     if maproads is True and roadfolder is not None:
@@ -610,27 +598,20 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             else:
                 palette = defaultcolormap
 
-        if hillsmap is not None:
+        if topodata is not None:
             if k == 0:
-                hillshm_im = m.transform_scalar(np.flipud(hillshm), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=1, masked=False)
+                ptopo = m.transform_scalar(np.flipud(topodata), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=1, masked=False)
+                #use lightsource class to make our shaded topography
+                ls = LightSource(azdeg=135, altdeg=45)
+                ls1 = LightSource(azdeg=120, altdeg=45)
+                ls2 = LightSource(azdeg=225, altdeg=45)
+                intensity1 = ls1.hillshade(ptopo, fraction=0.25, vert_exag=0.1)
+                intensity2 = ls2.hillshade(ptopo, fraction=0.25, vert_exag=0.1)
+                intensity = intensity1*0.5 + intensity2*0.5
                 #hillshm_im = m.transform_scalar(np.flipud(hillshm), lons, lats[::-1], np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=False)
-            m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1, interpolation='none')  # vmax = 3 to soften colors to light gray
+            #m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1, interpolation='none')  # vmax = 3 to soften colors to light gray
             #m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
             # plt.draw()
-            # ptopo = m.transform_scalar(np.flipud(topodata), lons, lats[::-1], gd.nx, gd.ny, returnxy=False,
-            #                 checkbounds=False, order=1, masked=False)
-            # #use lightsource class to make our shaded topography
-            # ls = LightSource(azdeg=135,altdeg=45)
-            # # intensity = ls.hillshade(ptopo,fraction=0.25,vert_exag=1.0)
-
-            # ls1 = LightSource(azdeg = 120, altdeg = 45)
-            # ls2 = LightSource(azdeg = 225, altdeg = 45)
-            # intensity1 = ls1.hillshade(ptopo, fraction = 0.25, vert_exag = 1.0)
-            # intensity2 = ls2.hillshade(ptopo, fraction = 0.25, vert_exag = 1.0)
-            # intensity = intensity1*0.5 + intensity2*0.5
-
-            # rgb = np.squeeze(rgba_img[:,:,0:3])
-            # draped_hsv = ls.blend_hsv(rgb,np.expand_dims(intensity,2))
 
         # Get the data
         dat = layergrid.getData().copy()
@@ -692,7 +673,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             for oc in ocean:
                 x, y = m(oc.exterior.xy[0], oc.exterior.xy[1])
                 xy = zip(x, y)
-                patch = Polygon(xy, facecolor=watercolor, edgecolor="#006280", lw=0.5, zorder=3.)
+                patch = Polygon(xy, facecolor=watercolor, edgecolor="#006280", lw=0.5, zorder=4.)
                 #patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
                 ax.add_patch(patch)
             #ax.add_collection(PatchCollection(patches))
@@ -707,8 +688,22 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
         dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=True)
-        #dat_im = m.transform_scalar(np.flipud(dat), lons, lats[::-1], np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=True)
-        panelhandle = m.imshow(dat_im, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, zorder=3., interpolation='none')
+        if topodata is not None:
+            #turn data into an RGBA image
+            cmap = palette
+            #adjust data so scaled between vmin and vmax and between 0 and 1
+            dat1 = dat_im.copy()
+            dat1[dat1 <= vmin] = vmin
+            dat1[dat1 >= vmax] = vmax
+            dat1 = dat1/dat1.max()
+            rgba_img = cmap(dat1)
+            maskvals = np.dstack((dat1.mask, dat1.mask, dat1.mask))
+            rgb = np.squeeze(rgba_img[:, :, 0:3])
+            rgb[maskvals] = 1.
+            draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
+            panelhandle = m.imshow(draped_hsv, zorder=3., interpolation='none')
+        else:
+            panelhandle = m.imshow(dat_im, zorder=3., vmin=vmin, vmax=vmax, interpolation='none')
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
         #panelhandle.set_edgecolors('face')
         # add colorbar
