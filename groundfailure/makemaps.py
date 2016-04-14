@@ -703,9 +703,9 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             rgb[maskvals] = 1.
             draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
             m.imshow(draped_hsv, zorder=3., interpolation='none')
-            panelhandle = m.imshow(dat, zorder=0.)  # This is just a dummy layer that will be deleted to make the colorbar look right
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=0., vmin=vmin, vmax=vmax)  # This is just a dummy layer that will be deleted to make the colorbar look right
         else:
-            panelhandle = m.imshow(dat_im, zorder=3., vmin=vmin, vmax=vmax, interpolation='none')
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3., vmin=vmin, vmax=vmax, interpolation='none')
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
         #panelhandle.set_edgecolors('face')
         # add colorbar
