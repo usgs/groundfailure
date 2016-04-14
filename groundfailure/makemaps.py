@@ -10,6 +10,7 @@ import copy
 import datetime
 import matplotlib as mpl
 from matplotlib.colors import LightSource
+from matplotlib.colorbar import ColorbarBase
 
 #third party imports
 import matplotlib.cm as cm
@@ -56,8 +57,7 @@ def parseMapConfig(config):
         if 'dem' in config1:
             topofile = config1['dem']['file']
             if os.path.exists(topofile) is False:
-                print('DEM not valid - will not be used to generate hillshade\n')
-                hillshade = None
+                print('DEM not valid - hillshade will not be possible\n')
         if 'ocean' in config1:
             oceanfile = config1['ocean']['file']
             try:
@@ -585,7 +585,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
         axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-        wid, ht = axsize.width, axsize.height
+        if k == 0:
+            wid, ht = axsize.width, axsize.height
         if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
             palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
@@ -688,7 +689,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
         dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=True)
-        if topodata is not None:
+        if topodata is not None:  # Drape over hillshade
             #turn data into an RGBA image
             cmap = palette
             #adjust data so scaled between vmin and vmax and between 0 and 1
@@ -701,7 +702,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             rgb = np.squeeze(rgba_img[:, :, 0:3])
             rgb[maskvals] = 1.
             draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
-            panelhandle = m.imshow(draped_hsv, zorder=3., interpolation='none')
+            m.imshow(draped_hsv, zorder=3., interpolation='none')
+            panelhandle = m.imshow(dat, zorder=0.)  # This is just a dummy layer that will be deleted to make the colorbar look right
         else:
             panelhandle = m.imshow(dat_im, zorder=3., vmin=vmin, vmax=vmax, interpolation='none')
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
@@ -714,16 +716,23 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             elif vmax > 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
 
+        #norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
         if scaletype.lower() == 'binned':
             cbar = fig.colorbar(panelhandle, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both')
+            #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both', extendfrac='auto')
+
         else:
             cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04, extend='both', format=cbfmt)
+            #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, fraction=0.036, pad=0.04, extend='both', extendfrac='auto', format=cbfmt)
+
+        if topodata is not None:
+            panelhandle.remove()
 
         cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
 
-        parallels = m.drawparallels(getMapLines(bymin, bymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=6, xoffset=-0.8, color='gray')
-        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=9, color='gray')
+        parallels = m.drawparallels(getMapLines(bymin, bymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=9, xoffset=-0.8, color='gray', zorder=100.)
+        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=9, color='gray', zorder=100.)
         for par in parallels:
             try:
                 parallels[par][1][0].set_rotation(90)
@@ -838,7 +847,9 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         if k == 1 and rowpan == 1:
             # adjust single level plot
-            fig.set_figheight(ht*1.6)
+            axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            ht2 = axsize.height
+            fig.set_figheight(ht2*1.6)
         else:
             plt.tight_layout()
 
