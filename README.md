@@ -56,9 +56,6 @@ and layers are shown here for the purpose of explaining how to configure models.
     # Optional, don't need if have hillshade, just for making hillshade
     file = /Users/kallstadt/SecondaryHazards/Codes/inputs/md30_gmted_gmt.grd
 
-  [[[hillshade]]]
-    file = /Users/kallstadt/SecondaryHazards/Codes/inputs/gmted_global_hillshade.grd
-
   [[roads]]
     folder = /Users/kallstadt/SecondaryHazards/Codes/inputs/roads
     longref = 'Center for International Earth Science Information Network - CIESIN, 2013, Global Roads Open Access Data Set, Version 1 (gROADSv1): Columbia University, and Information Technology Outreach Services - ITOS - University of Georgia, Palisades, NY, NASA Socioeconomic Data and Applications Center (SEDAC). http://dx.doi.org/10.7927/H4VD6WCT.'

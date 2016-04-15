@@ -8,20 +8,24 @@ import glob
 from mpl_toolkits.basemap import maskoceans
 import copy
 import datetime
+import matplotlib as mpl
+from matplotlib.colors import LightSource
+from matplotlib.colorbar import ColorbarBase
 
 #third party imports
 import matplotlib.cm as cm
 import numpy as np
 import matplotlib.pyplot as plt
 import fiona
-from shapely.geometry import shape
+from shapely.geometry import mapping, shape
 from shapely.geometry import Polygon as PolygonSH
 from mpl_toolkits.basemap import Basemap
+from mpl_toolkits.basemap import cm as cm2
 from matplotlib.patches import Polygon, Rectangle
 #from matplotlib.collections import PatchCollection
 from skimage.measure import block_reduce
 import collections
-
+from descartes import PolygonPatch
 
 #local imports
 from mapio.gmt import GMTGrid
@@ -29,14 +33,16 @@ from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
 from neicmap.city import PagerCity
 from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
-#from mapio.mapcity import MapCities
+#from mapio.basemapcity import BasemapCities
+
+# Make fonts readable by illustrator
+mpl.rcParams['pdf.fonttype'] = 42
 
 
 def parseMapConfig(config):
     # Parse config object
     # ADD PLOTORDER TO CONFIG? OTHER THINGS LIKE COLORMAPS?
     topofile = None
-    hillshade = None
     roadfolder = None
     cityfile = None
     roadcolor = '6E6E6E'
@@ -51,19 +57,13 @@ def parseMapConfig(config):
         if 'dem' in config1:
             topofile = config1['dem']['file']
             if os.path.exists(topofile) is False:
-                print('DEM not valid - will not be used to generate hillshade\n')
-                hillshade = None
+                print('DEM not valid - hillshade will not be possible\n')
         if 'ocean' in config1:
             oceanfile = config1['ocean']['file']
             try:
                 oceanref = config1['ocean']['shortref']
             except:
                 oceanref = 'unknown'
-        if 'hillshade' in config1:
-            hillshade = config1['hillshade']['file']
-            if os.path.exists(hillshade) is False:
-                print('hillshade not valid - will not be displayed\n')
-                hillshade = None
         if 'roads' in config1:
             roadfolder = config1['roads']['folder']
             if os.path.exists(roadfolder) is False:
@@ -82,7 +82,7 @@ def parseMapConfig(config):
             if os.path.exists(cityfile):
                 try:
                     PagerCity(cityfile)
-                    #MapCities.loadFromGeoNames(cityfile=cityfile)
+                    #BasemapCities.loadFromGeoNames(cityfile=cityfile)
                 except Exception as e:
                     print e
                     print('cities file not valid - cities will not be displayed\n')
@@ -109,7 +109,7 @@ def parseMapConfig(config):
     watercolor = '#'+watercolor
     roadcolor = '#'+roadcolor
 
-    mapin = {'topofile': topofile, 'hillshade': hillshade, 'roadfolder': roadfolder, 'cityfile': cityfile, 'roadcolor': roadcolor, 'countrycolor': countrycolor, 'watercolor': watercolor, 'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref, 'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
+    mapin = {'topofile': topofile, 'roadfolder': roadfolder, 'cityfile': cityfile, 'roadcolor': roadcolor, 'countrycolor': countrycolor, 'watercolor': watercolor, 'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref, 'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
 
     return mapin
 
@@ -225,7 +225,7 @@ def parseConfigLayers(maplayers, config):
     return plotorder, logscale, lims, colormaps, maskthreshes
 
 
-def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, hillshade=None, cityfile=None, oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', oceanref='unknown', printparam=False, ds=True, dstype='mean'):
+def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, cityfile=None, oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', oceanref='unknown', printparam=False, ds=True, dstype='mean'):
 
     """
     This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers)
@@ -261,8 +261,6 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     :type roadfolder: string
     :param topofile: Full file path to topography grid (GDAL compatible) - this is only needed to make a hillshade if a premade hillshade is not specified
     :type topofile: string
-    :param hillshade: Full file path to hillshade grid (GDAL compatible)
-    :type hillshade: string
     :param cityfile: Full file path to Pager file containing city & population information
     :type cityfile: string
     :param roadcolor: Color to use for roads, if plotted, default #6E6E6E
@@ -406,18 +404,18 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         colpan = 3
         fig.set_figwidth(15)
     if rowpan == 1:
-        fig.set_figheight(rowpan*5.5)
+        fig.set_figheight(rowpan*6.0)
     else:
-        fig.set_figheight(rowpan*5.2)
+        fig.set_figheight(rowpan*5.3)
 
     # Need to update naming to reflect the shakemap version once can get getHeaderData to work, add edict['version'] back into title, maybe shakemap id also?
     fontsizemain = 14.
     fontsizesub = 12.
     fontsizesmallest = 10.
-    if colpan == 1.:
-        fontsizemain = 10.
-        fontsizesub = 8.
-        fontsizesmallest = 6.
+    if rowpan == 1.:
+        fontsizemain = 12.
+        fontsizesub = 10.
+        fontsizesmallest = 8.
     if edict is not None:
         if isScenario:
             title = edict['event_description']
@@ -499,18 +497,18 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     llons1, llats1 = np.meshgrid(lons, lats)
 
     # See if there is an oceanfile for masking
-    bbox = PolygonSH(((cutxmin, cutymin), (cutxmin, cutymax), (cutxmax, cutymax, (cutxmax, cutymin))))
+    bbox = PolygonSH(((cutxmin, cutymin), (cutxmin, cutymax), (cutxmax, cutymax), (cutxmax, cutymin)))
     if oceanfile is not None:
-        #try:
+        try:
             f = fiona.open(oceanfile)
             oc = f.next()
             f.close
             shapes = shape(oc['geometry'])
             # make boundaries into a shape
             ocean = shapes.intersection(bbox)
-        #except:
-        #    print('Not able to read specified ocean file, will use default ocean masking')
-        #    oceanfile = None
+        except:
+            print('Not able to read specified ocean file, will use default ocean masking')
+            oceanfile = None
     if inventory_shapefile is not None:
         try:
             f = fiona.open(inventory_shapefile)
@@ -524,30 +522,26 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     # # Find cities that will be plotted
     # if mapcities is True and cityfile is not None:
     #     try:
-    #         mycity = MapCities.load
+    #         mycity = BasemapCities.loadFromGeoNames(cityfile=cityfile)
     #         bcities = mycity.limitByBounds((bxmin, bxmax, bymin, bymax))
-    #         bcities = boundcities.limitByPopulation(40000)
+    #         #bcities = bcities.limitByPopulation(40000)
+    #         bcities = bcities.limitByGrid(nx=4, ny=4, cities_per_grid=2)
     #     except:
     #         print('Could not read in cityfile, not plotting cities')
     #         mapcities = False
     #         cityfile = None
 
-    # Load in topofile and load in or compute hillshade, resample to same grid as first layer
-    if hillshade is not None:
-        hillsmap = GMTGrid.load(hillshade, resample=True, method='linear', samplegeodict=gdict)
-    elif topofile is not None and hillshade is None:
+    # Load in topofile
+    if topofile is not None:
         topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
-        hillsmap = make_hillshade(topomap, 315, 50)
+        topodata = topomap.getData().copy()
+        # mask oceans if don't have ocean shapefile
+        if oceanfile is None:
+            topodata = maskoceans(llons1, llats1, topodata, resolution='h', grid=1.25, inlands=True)
     else:
         print('no hillshade is possible\n')
-        hillsmap = None
-        ALPHA = 1.
-    # Mask oceans and transform hillshade
-    if hillsmap is not None:
-        hillshm = hillsmap.getData().copy()
-        if oceanfile is None:
-            hillshm = maskoceans(llons1, llats1, hillshm, resolution='h', grid=1.25, inlands=True)
-        hillshm = hillshm/np.abs(hillshm).max()
+        topomap = None
+        topodata = None
 
     # Load in roads, if needed
     if maproads is True and roadfolder is not None:
@@ -590,7 +584,9 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                     lat_1=clat, lon_0=clon, ax=ax)
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
-
+        axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+        if k == 0:
+            wid, ht = axsize.width, axsize.height
         if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
             palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
@@ -599,16 +595,24 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             elif 'slope' in layer.lower():
                 palette = cm.gnuplot2
             elif 'precip' in layer.lower():
-                palette = cm.s3pcpn
+                palette = cm2.s3pcpn
             else:
                 palette = defaultcolormap
 
-        if hillsmap is not None:
-            #if k == 0:
-            #    hillshm_im = m.transform_scalar(np.flipud(hillshm), lons+0.5*gdict.dx, lats[::-1]+0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
-            #m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1)  # vmax = 3 to soften colors to light gray
-            m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
-            plt.draw()
+        if topodata is not None:
+            if k == 0:
+                ptopo = m.transform_scalar(np.flipud(topodata), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=1, masked=False)
+                #use lightsource class to make our shaded topography
+                ls = LightSource(azdeg=135, altdeg=45)
+                ls1 = LightSource(azdeg=120, altdeg=45)
+                ls2 = LightSource(azdeg=225, altdeg=45)
+                intensity1 = ls1.hillshade(ptopo, fraction=0.25, vert_exag=1.)
+                intensity2 = ls2.hillshade(ptopo, fraction=0.25, vert_exag=1.)
+                intensity = intensity1*0.5 + intensity2*0.5
+                #hillshm_im = m.transform_scalar(np.flipud(hillshm), lons, lats[::-1], np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=False)
+            #m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1, interpolation='none')  # vmax = 3 to soften colors to light gray
+            #m.pcolormesh(x1, y1, hillshm, cmap='Greys', linewidth=0., rasterized=True, vmin=0., vmax=3., edgecolors='none', zorder=1);
+            # plt.draw()
 
         # Get the data
         dat = layergrid.getData().copy()
@@ -668,12 +672,13 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             if type(ocean) is PolygonSH:
                 ocean = [ocean]
             for oc in ocean:
-                x, y = m(oc.exterior.xy[0], oc.exterior.xy[1])
-                xy = zip(x, y)
-                patch = Polygon(xy, facecolor=watercolor, edgecolor="#006280", lw=0.5, zorder=3.)
-                #patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
+                patch = getProjectedPatch(oc, m, edgecolor="#006280", facecolor=watercolor, lw=0.5, zorder=4.)
+                #x, y = m(oc.exterior.xy[0], oc.exterior.xy[1])
+                #xy = zip(x, y)
+                #patch = Polygon(xy, facecolor=watercolor, edgecolor="#006280", lw=0.5, zorder=4.)
+                ##patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
                 ax.add_patch(patch)
-            #ax.add_collection(PatchCollection(patches))
+            ##ax.add_collection(PatchCollection(patches))
 
         if inventory_shapefile is not None:
             for in1 in inventory:
@@ -684,27 +689,51 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 ax.add_patch(patch)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        #dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]+0.5*gdict.dy, gdict.nx, gdict.ny, returnxy=False, checkbounds=False, order=1, masked=False)
-        #panelhandle = m.imshow(dat_im, cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, zorder=3.)
-        panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
-        panelhandle.set_edgecolors('face')
-        # add colorbar
-        if (np.max(clev) - np.min(clev)) < 1.:
-            cbfmt = '%1.2f'
-        elif (np.max(clev) - np.min(clev)) > len(clev):
-            cbfmt = '%1.0f'
+        dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=True)
+        if topodata is not None:  # Drape over hillshade
+            #turn data into an RGBA image
+            cmap = palette
+            #adjust data so scaled between vmin and vmax and between 0 and 1
+            dat1 = dat_im.copy()
+            dat1[dat1 < vmin] = vmin
+            dat1[dat1 > vmax] = vmax
+            dat1 = (dat1 - np.nanmin(dat1))/(np.nanmax(dat1)-np.nanmin(dat1))
+            rgba_img = cmap(dat1)
+            maskvals = np.dstack((dat1.mask, dat1.mask, dat1.mask))
+            rgb = np.squeeze(rgba_img[:, :, 0:3])
+            rgb[maskvals] = 1.
+            draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
+            m.imshow(draped_hsv, zorder=3., interpolation='none')
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=0., vmin=vmin, vmax=vmax)  # This is just a dummy layer that will be deleted to make the colorbar look right
         else:
-            cbfmt = '%1.1f'
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3., vmin=vmin, vmax=vmax, interpolation='none')
+        #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
+        #panelhandle.set_edgecolors('face')
+        # add colorbar
+        cbfmt = '%1.1f'
+        if vmax is not None and vmin is not None:
+            if (vmax - vmin) < 1.:
+                cbfmt = '%1.2f'
+            elif vmax > 5.:  # (vmax - vmin) > len(clev):
+                cbfmt = '%1.0f'
+
+        #norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
         if scaletype.lower() == 'binned':
             cbar = fig.colorbar(panelhandle, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both')
+            #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both', extendfrac='auto')
+
         else:
             cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04, extend='both', format=cbfmt)
+            #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, fraction=0.036, pad=0.04, extend='both', extendfrac='auto', format=cbfmt)
+
+        if topodata is not None:
+            panelhandle.remove()
 
         cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
 
-        parallels = m.drawparallels(getMapLines(bymin, bymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=6, xoffset=-0.8, color='gray')
-        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=6, color='gray')
+        parallels = m.drawparallels(getMapLines(bymin, bymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=9, xoffset=-0.8, color='gray', zorder=100.)
+        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=9, color='gray', zorder=100.)
         for par in parallels:
             try:
                 parallels[par][1][0].set_rotation(90)
@@ -728,7 +757,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         #         fontname = 'Arial'
         #         fontsize = 8
         #         if k == 0:  # Only need to choose cities first time and then apply to rest
-        #             fcities = bcities.limitByMapCollision(fontname, fontsize, ax)
+        #             fcities = bcities.limitByMapCollision(m, fontname=fontname, fontsize=fontsize)
         #             ctlats, ctlons, names = fcities.getCities()
         #             cxis, cyis = m(ctlons, ctlats)
         #         for ctlat, ctlon, cxi, cyi, name in zip(ctlats, ctlons, cxis, cyis, names):
@@ -765,11 +794,11 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                                 pass
                             else:
                                 m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
-                                ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8, zorder=100000)
+                                ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
                                 xyplotted.append((xi, yi))
                         elif len(dist) == 0:
                             m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
-                            ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=8, zorder=100000)
+                            ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
                             xyplotted.append((xi, yi))
             except Exception as e:
                 print('Failed to plot cities, %s' % e)
@@ -779,7 +808,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         if edict is not None:
             elat, elon = edict['lat'], edict['lon']
             ex, ey = m(elon, elat)
-            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.0, ms=12)
+            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.0, ms=15, zorder=10000.)
 
         m.drawmapboundary(fill_color=watercolor)
 
@@ -791,8 +820,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         m.drawcountries(color=countrycolor, linewidth=1.0)
 
         #add map scale
-        m.drawmapscale((bxmax+bxmin)/2., (bymin+(bymax-bymin)/9.), clon, clat, np.round((((bxmax-bxmin)*111)/5)/10.)*10, barstyle='simple', zorder=10)
-        #import pdb; pdb.set_trace()
+        m.drawmapscale((bxmax+bxmin)/2., (bymin+(bymax-bymin)/9.), clon, clat, np.round((((bxmax-bxmin)*111)/5)/10.)*10, barstyle='fancy', zorder=10)
 
         # Add border
         autoAxis = ax.axis()
@@ -817,8 +845,16 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         #if ds: # Could add this to print "downsampled" on map
         #    plt.text()
 
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.92)
+        if k == 1 and rowpan == 1:
+            # adjust single level plot
+            axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+            ht2 = axsize.height
+            fig.set_figheight(ht2*1.6)
+        else:
+            plt.tight_layout()
+
+        # Make room for suptitle - tight layout doesn't account for it
+        plt.subplots_adjust(top=0.92)
 
     if printparam is True:
         try:
@@ -853,6 +889,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         plt.savefig(pngfile)
     if showplots is True:
         plt.show()
+    else:
+        plt.close(fig)
 
     return newgrids
 
@@ -913,13 +951,18 @@ def getMapLines(dmin, dmax, nlines):
     return darray
 
 
-def comparisonMap():
-    "Compare several models and their statistics"
-    pass
-
-
-def saveGrid():
-    pass
+def getProjectedPatch(polygon, m, edgecolor, facecolor, lw=1., zorder=10):
+    polyjson = mapping(polygon)
+    tlist = []
+    for sequence in polyjson['coordinates']:
+        lon, lat = zip(*sequence)
+        x, y = m(lon, lat)
+        tlist.append(tuple(zip(x, y)))
+    polyjson['coordinates'] = tuple(tlist)
+    ppolygon = shape(polyjson)
+    patch = PolygonPatch(ppolygon, facecolor=facecolor, edgecolor=edgecolor,
+                         zorder=zorder, linewidth=lw, fill=True, visible=True)
+    return patch
 
 
 if __name__ == '__main__':
