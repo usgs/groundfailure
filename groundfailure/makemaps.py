@@ -17,7 +17,7 @@ import matplotlib.cm as cm
 import numpy as np
 import matplotlib.pyplot as plt
 import fiona
-from shapely.geometry import shape
+from shapely.geometry import mapping, shape
 from shapely.geometry import Polygon as PolygonSH
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.basemap import cm as cm2
@@ -25,7 +25,7 @@ from matplotlib.patches import Polygon, Rectangle
 #from matplotlib.collections import PatchCollection
 from skimage.measure import block_reduce
 import collections
-
+from descartes import PolygonPatch
 
 #local imports
 from mapio.gmt import GMTGrid
@@ -606,8 +606,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 ls = LightSource(azdeg=135, altdeg=45)
                 ls1 = LightSource(azdeg=120, altdeg=45)
                 ls2 = LightSource(azdeg=225, altdeg=45)
-                intensity1 = ls1.hillshade(ptopo, fraction=0.25, vert_exag=0.1)
-                intensity2 = ls2.hillshade(ptopo, fraction=0.25, vert_exag=0.1)
+                intensity1 = ls1.hillshade(ptopo, fraction=0.25, vert_exag=1.)
+                intensity2 = ls2.hillshade(ptopo, fraction=0.25, vert_exag=1.)
                 intensity = intensity1*0.5 + intensity2*0.5
                 #hillshm_im = m.transform_scalar(np.flipud(hillshm), lons, lats[::-1], np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=False)
             #m.imshow(hillshm_im, cmap='Greys', vmin=0., vmax=3., zorder=1, interpolation='none')  # vmax = 3 to soften colors to light gray
@@ -672,12 +672,13 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             if type(ocean) is PolygonSH:
                 ocean = [ocean]
             for oc in ocean:
-                x, y = m(oc.exterior.xy[0], oc.exterior.xy[1])
-                xy = zip(x, y)
-                patch = Polygon(xy, facecolor=watercolor, edgecolor="#006280", lw=0.5, zorder=4.)
-                #patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
+                patch = getProjectedPatch(oc, m, edgecolor="#006280", facecolor=watercolor, lw=0.5, zorder=4.)
+                #x, y = m(oc.exterior.xy[0], oc.exterior.xy[1])
+                #xy = zip(x, y)
+                #patch = Polygon(xy, facecolor=watercolor, edgecolor="#006280", lw=0.5, zorder=4.)
+                ##patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
                 ax.add_patch(patch)
-            #ax.add_collection(PatchCollection(patches))
+            ##ax.add_collection(PatchCollection(patches))
 
         if inventory_shapefile is not None:
             for in1 in inventory:
@@ -694,9 +695,9 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             cmap = palette
             #adjust data so scaled between vmin and vmax and between 0 and 1
             dat1 = dat_im.copy()
-            dat1[dat1 <= vmin] = vmin
-            dat1[dat1 >= vmax] = vmax
-            dat1 = dat1/dat1.max()
+            dat1[dat1 < vmin] = vmin
+            dat1[dat1 > vmax] = vmax
+            dat1 = (dat1 - np.nanmin(dat1))/(np.nanmax(dat1)-np.nanmin(dat1))
             rgba_img = cmap(dat1)
             maskvals = np.dstack((dat1.mask, dat1.mask, dat1.mask))
             rgb = np.squeeze(rgba_img[:, :, 0:3])
@@ -807,7 +808,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         if edict is not None:
             elat, elon = edict['lat'], edict['lon']
             ex, ey = m(elon, elat)
-            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.0, ms=15)
+            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.0, ms=15, zorder=10000.)
 
         m.drawmapboundary(fill_color=watercolor)
 
@@ -820,7 +821,6 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         #add map scale
         m.drawmapscale((bxmax+bxmin)/2., (bymin+(bymax-bymin)/9.), clon, clat, np.round((((bxmax-bxmin)*111)/5)/10.)*10, barstyle='fancy', zorder=10)
-        #import pdb; pdb.set_trace()
 
         # Add border
         autoAxis = ax.axis()
@@ -951,13 +951,18 @@ def getMapLines(dmin, dmax, nlines):
     return darray
 
 
-def comparisonMap():
-    "Compare several models and their statistics"
-    pass
-
-
-def saveGrid():
-    pass
+def getProjectedPatch(polygon, m, edgecolor, facecolor, lw=1., zorder=10):
+    polyjson = mapping(polygon)
+    tlist = []
+    for sequence in polyjson['coordinates']:
+        lon, lat = zip(*sequence)
+        x, y = m(lon, lat)
+        tlist.append(tuple(zip(x, y)))
+    polyjson['coordinates'] = tuple(tlist)
+    ppolygon = shape(polyjson)
+    patch = PolygonPatch(ppolygon, facecolor=facecolor, edgecolor=edgecolor,
+                         zorder=zorder, linewidth=lw, fill=True, visible=True)
+    return patch
 
 
 if __name__ == '__main__':

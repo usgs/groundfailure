@@ -88,7 +88,7 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
     :type regressionmodel: string
     :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
-    :param bounds: Boundaries to compute over if different from ShakeMap boundaries as tuple (xmin, ymin, xmax, ymax)
+    :param bounds: Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'
 
     :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
     :type maplayers: OrderedDict
@@ -110,11 +110,11 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
         susdict = GDALGrid.getFileGeoDict(susfile)
         if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-            if shkgdict.xmin > bounds[0] or shkgdict.xmax < bounds[2] or shkgdict.ymin > bounds[1] or shkgdict.ymax < bounds[3]:
+            if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
                 print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
                 bounds = None
         if bounds is not None:
-            tempgdict1 = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
+            tempgdict1 = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
             tempgdict = susdict.getBoundsWithin(tempgdict1)
         else:
             tempgdict = susdict.getBoundsWithin(shkgdict)
@@ -388,11 +388,11 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     slpdict = GDALGrid.getFileGeoDict(slopefile)
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-        if shkgdict.xmin > bounds[0] or shkgdict.xmax < bounds[2] or shkgdict.ymin > bounds[1] or shkgdict.ymax < bounds[3]:
+        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
+        tempgdict = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
         gdict = slpdict.getBoundsWithin(tempgdict)
     else:  # Get boundaries from shakemap if not specified
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
@@ -606,11 +606,11 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA', bound
 
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-        if shkgdict.xmin > bounds[0] or shkgdict.xmax < bounds[2] or shkgdict.ymin > bounds[1] or shkgdict.ymax < bounds[3]:
+        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict = GeoDict({'xmin': bounds[0], 'ymin': bounds[1], 'xmax': bounds[2], 'ymax': bounds[3], 'dx': shkgdict.dx, 'dy': shkgdict.dy, 'nx': shkgdict.nx, 'ny': shkgdict.ny}, adjust='res')
+        tempgdict = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': shkgdict.dx, 'dy': shkgdict.dy, 'nx': shkgdict.nx, 'ny': shkgdict.ny}, adjust='res')
         gdict = shkgdict.getBoundsWithin(tempgdict)
         shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, adjust='bounds')
     else:

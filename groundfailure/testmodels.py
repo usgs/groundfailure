@@ -42,6 +42,8 @@ def modelSummary(model, outputtype=None, plottype='hist', bounds=None, bins=10, 
     if bounds is not None and len(bounds) == 4:
         model1 = copy.deepcopy(model)  # to avoid changing original file
         model1 = model1.cut(bounds['xmin'], bounds['xmax'], bounds['ymin'], bounds['ymax'], align=True)
+    else:
+        model1 = model
 
     grid = model1.getData()
     allvals = grid[~np.isnan(grid)]
@@ -58,7 +60,9 @@ def modelSummary(model, outputtype=None, plottype='hist', bounds=None, bins=10, 
     if plottype == 'pie':
         hist, bin_edges = np.histogram(allvals, bins=bins)
         labels = ['%0.1f-%0.1f' % (bin_edges[i], bin_edges[i+1]) for i in range(len(bin_edges)-1)]
-        ax.pie(hist/float(totalf)*100, labels=labels, autopct='%1.1f%%', shadow=False, startangle=90)
+        output = ax.pie(hist/float(totalf)*100, labels=None, autopct='%1.1f%%', shadow=False, startangle=90)
+        plt.legend(output[0], labels, loc="best")
+        plt.tight_layout()
         #import pdb; pdb.set_trace()
         plt.axis('equal')
 
