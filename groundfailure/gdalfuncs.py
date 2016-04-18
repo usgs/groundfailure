@@ -27,7 +27,7 @@ def srtm2slope(filenames, finaloutfile, fmt='EHdr', cleanup=True):
     """
     Convert tiles of srtm to slope (with intermediate projection to transverse mercator projection)
     USAGE srtm2slope(filenames, finaloutfile, fmt='EHdr')
-    :param filenames: Wildcard to call filenames, full file path needed (e.g. '/Users/Bob/n*_w*3arc*.bil') or list of file names, should all be in same coordinate system (WGS84 is coordinate system for SRTM data from Earth Explorer). This cleans up intermediate files.
+    :param filenames: Single file name as string, Wildcard to call filenames [full file path needed (e.g. '/Users/Bob/n*_w*3arc*.bil')] or list of file names, should all be in same coordinate system (WGS84 is coordinate system for SRTM data from Earth Explorer). Creates intermediate files that can be cleaned up or not
     :type filenames: string or list
     :param finaloutfile: Full file path to output file with extension (if no path given, will be put in current directory)
     :type finaloutfile: string
@@ -42,8 +42,11 @@ def srtm2slope(filenames, finaloutfile, fmt='EHdr', cleanup=True):
         fileext = '.bil'
     elif fmt == 'GMT':
         fileext = '.grd'
-    merge(filenames, 'tempmerge58' + fileext)
-    s_srs, t_srs = warp('tempmerge58' + fileext, 'temputm58' + fileext, 'EPSG:4326', None, method='bilinear')
+    if type(filenames) is str:  # If just one file, don't need to merge
+        s_srs, t_srs = warp(filenames, 'temputm58' + fileext, 'EPSG:4326', None, method='bilinear')
+    else:
+        merge(filenames, 'tempmerge58' + fileext)
+        s_srs, t_srs = warp('tempmerge58' + fileext, 'temputm58' + fileext, 'EPSG:4326', None, method='bilinear')
     slope('temputm58' + fileext, 'tempslope58' + fileext)
     warp('tempslope58' + fileext, finaloutfile, t_srs, s_srs, method='bilinear')
     # clean up files

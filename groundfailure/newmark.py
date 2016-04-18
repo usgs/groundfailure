@@ -63,7 +63,7 @@ def isURL(gridurl):
     return isURL
 
 
-def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA', probtype='jibson2000', bounds=None):
+def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA', probtype='jibson2000', bounds=None):
     """
     Runs HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories from defined by HAZUS manual (I-X)
 
@@ -104,26 +104,29 @@ def HAZUS(shakefile, config, saveinputs=False, modeltype='coverage', regressionm
     sus = None
     susdat = None
 
+    if uncertfile is not None:
+        print('ground motion uncertainty option not implemented yet')
+
     # Read in susceptiblity file
-    try:
-        susfile = config['mechanistic_models']['hazus']['layers']['susceptibility']['file']
-        shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
-        susdict = GDALGrid.getFileGeoDict(susfile)
-        if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-            if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
-                print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
-                bounds = None
-        if bounds is not None:
-            tempgdict1 = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
-            tempgdict = susdict.getBoundsWithin(tempgdict1)
-        else:
-            tempgdict = susdict.getBoundsWithin(shkgdict)
-        sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=False)
-        gdict = sus.getGeoDict()
-        susdat = sus.getData()
-    except Exception as e:
-        raise IOError('Unable to read in susceptibility category file specified in config, %s,' % e)
-        return
+    #try:
+    susfile = config['mechanistic_models']['hazus']['layers']['susceptibility']['file']
+    shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
+    susdict = GDALGrid.getFileGeoDict(susfile)
+    if bounds is not None:  # Make sure bounds are within ShakeMap Grid
+        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
+            print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
+            bounds = None
+    if bounds is not None:
+        tempgdict1 = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
+        tempgdict = susdict.getBoundsWithin(tempgdict1)
+    else:
+        tempgdict = susdict.getBoundsWithin(shkgdict)
+    sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=False)
+    gdict = sus.getGeoDict()
+    susdat = sus.getData()
+    #except Exception as e:
+    #    raise IOError('Unable to read in susceptibility category file specified in config, %s,' % e)
+    #    return
 
     try:  # Try to fetch source information from config
         modelsref = config['mechanistic_models']['hazus']['shortref']
@@ -295,7 +298,7 @@ def numcycles(M):
     return n
 
 
-def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1., codiv=1., bounds=None):
+def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1., codiv=1., bounds=None):
     """This function uses the Newmark method to estimate probability of failure at each grid cell.
     Factor of Safety and critcal accelerations are calculated following Jibson et al. (2000) and the
     Newmark displacement is estimated using PGA, PGV, and/or Magnitude (depending on equation used)
@@ -306,6 +309,7 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     :type shakefile: string:
     :param config: Model configuration file object containing locations of input files and other input values config = ConfigObj(configfilepath)
     :type config: ConfigObj
+    :param uncertfile: complete file path to the location of the uncertainty.xml for the shakefile, if this is not None, it will compute the model for +-std in addition to the best estimate
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
     :param regressionmodel:
@@ -417,11 +421,18 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     # Load in shakemap, resample to slope file (this will be important when go to higher res)
     shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, resample=True, method='linear', adjust='res')
     M = shakemap.getEventDict()['magnitude']
+    # Read in uncertainty layer, if present
+    if uncertfile is not None:
+        try:
+            uncert = ShakeGrid.load(uncertfile, samplegeodict=gdict, resample=True, method='linear', adjust='res')
+        except:
+            print('Could not read uncertainty file, ignoring uncertainties')
+            uncertfile = None
 
     # Read in the cohesion and friction files, resampled to slope grid
-    cohesion = GDALGrid.load(cohesionfile, samplegeodict=gdict, resample=True, method='nearest').getData()/codiv
+    cohesion = GDALGrid.load(cohesionfile, samplegeodict=gdict, resample=True, method='nearest').getData().astype(float)/codiv
     cohesion[np.isnan(cohesion)] = nodata_cohesion
-    friction = GDALGrid.load(frictionfile, samplegeodict=gdict, resample=True, method='nearest').getData()
+    friction = GDALGrid.load(frictionfile, samplegeodict=gdict, resample=True, method='nearest').getData().astype(float)
     friction[np.isnan(friction)] = nodata_friction
 
     # See if there is a water table depth file and read it in if there is
@@ -459,36 +470,71 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     # Get PGA in g (PGA is %g in ShakeMap, convert to g)
     PGA = shakemap.getLayer('pga').getData().astype(float)/100.
     PGV = shakemap.getLayer('pgv').getData().astype(float)
+    if uncertfile is not None:
+        stdpga = uncert.getLayer('stdpga')
+        stdpgv = uncert.getLayer('stdpgv')
+        # Estimate PGA +- 1std
+        PGAmin = PGA - np.exp(stdpga.getData())/100.
+        PGAmax = PGA + np.exp(stdpga.getData())/100.
+        PGVmin = PGV - np.exp(stdpgv.getData())
+        PGVmax = PGV + np.exp(stdpgv.getData())
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
     if regressionmodel is 'J_PGA':
         Dn = J_PGA(Ac, PGA)
-
-    if regressionmodel is 'J_PGA_M':
+        if uncertfile is not None:
+            Dnmin = J_PGA(Ac, PGAmin)
+            Dnmax = J_PGA(Ac, PGAmax)
+    elif regressionmodel is 'J_PGA_M':
         Dn = J_PGA_M(Ac, PGA, M)
+        if uncertfile is not None:
+            Dnmin = J_PGA_M(Ac, PGAmin)
+            Dnmax = J_PGA_M(Ac, PGAmax)
 
-    if regressionmodel is 'RS_PGA_M':
+    elif regressionmodel is 'RS_PGA_M':
         Dn = RS_PGA_M(Ac, PGA, M)
+        if uncertfile is not None:
+            Dnmin = RS_PGA_M(Ac, PGAmin)
+            Dnmax = RS_PGA_M(Ac, PGAmax)
 
-    if regressionmodel is 'RS_PGA_PGV':
+    elif regressionmodel is 'RS_PGA_PGV':
         Dn = RS_PGA_PGV(Ac, PGA, PGV)
+        if uncertfile is not None:
+            Dnmin = RS_PGA_PGV(Ac, PGAmin)
+            Dnmax = RS_PGA_PGV(Ac, PGAmax)
+    else:
+        print('Unrecognized regression model, aborting')
+        return
 
     units = 'probability'
     label = 'Landslide Probability'
     if probtype.lower() in 'jibson2000':
         PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
         dnthresh = None
+        if uncertfile is not None:
+            PROBmin = 0.335*(1-np.exp(-0.048*Dnmin**1.565))
+            PROBmax = 0.335*(1-np.exp(-0.048*Dnmax**1.565))
     elif probtype.lower() in 'threshold':
         PROB = Dn.copy()
         PROB[PROB <= dnthresh] = 0
         PROB[PROB > dnthresh] = 1
         units = 'prediction'
         label = 'Predicted Landslides'
+        if uncertfile is not None:
+            PROBmin = Dnmin.copy()
+            PROBmin[PROBmin <= dnthresh] = 0
+            PROBmin[PROBmin > dnthresh] = 1
+            PROBmax = Dnmax.copy()
+            PROBmax[PROBmax <= dnthresh] = 0
+            PROBmax[PROBmax > dnthresh] = 1
     else:
         raise NameError('invalid probtype, assuming jibson2000')
         PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
         dnthresh = None
+        if uncertfile is not None:
+            PROBmin = 0.335*(1-np.exp(-0.048*Dnmin**1.565))
+            PROBmax = 0.335*(1-np.exp(-0.048*Dnmax**1.565))
 
     # Turn output and inputs into into grids and put in mapLayers dictionary
     maplayers = collections.OrderedDict()
@@ -503,6 +549,9 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
     description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh, 'slopethresh': slopethresh, 'sat_proportion': des}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': label, 'type': 'output', 'description': description}
+    if uncertfile is not None:
+        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output', 'description': description}
+        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output', 'description': description}
 
     if saveinputs is True:
         maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
@@ -512,15 +561,21 @@ def classic(shakefile, config, saveinputs=False, regressionmodel='J_PGA', probty
         maplayers['slope'] = {'grid': GDALGrid(slope, gdict), 'label': 'Max slope ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
         maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
         maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
+        if uncertfile is not None:
+            maplayers['pgamin'] = {'grid': GDALGrid(PGAmin, gdict), 'label': 'PGA - 1std (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
+            maplayers['pgamax'] = {'grid': GDALGrid(PGAmax, gdict), 'label': 'PGA + 1std (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'PGV' in regressionmodel:
             maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+            if uncertfile is not None:
+                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin, gdict), 'label': 'PGV - 1std (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax, gdict), 'label': 'PGV + 1std (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
         if watertable is not None:
             maplayers['sat thick prop'] = {'grid': GDALGrid(m, gdict), 'label': 'Saturated thickness proprtion [0,1]', 'type': 'input', 'description': {'units': 'meters', 'name': watersref, 'longref': waterlref}}
 
     return maplayers
 
 
-def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA', bounds=None, slopediv=100., codiv=10.):
+def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', bounds=None, slopediv=100., codiv=10.):
     """ This function runs the Godt et al. (2008) global method for a given ShakeMap. The Factor of Safety
     is calculated using infinite slope analysis assumuing dry conditions. The method uses threshold newmark
     displacement and estimates areal coverage by doing the calculations for each slope quantile
@@ -561,6 +616,9 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA', bound
     frictionlref = 'unknown'
     modellref = 'unknown'
     modelsref = 'unknown'
+
+    if uncertfile is not None:
+        print('ground motion uncertainty option not implemented yet')
 
     # Parse config
     try:  # May want to add error handling so if refs aren't given, just includes unknown
@@ -637,7 +695,7 @@ def godt2008(shakefile, config, saveinputs=False, regressionmodel='J_PGA', bound
     cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis]/codiv, 7, axis=2)
     cohesion[cohesion == -999.9] = nodata_cohesion
     cohesion[cohesion == 0] = nodata_cohesion
-    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis], 7, axis=2)
+    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData().astype(float)[:, :, np.newaxis], 7, axis=2)
     friction[friction == -9999] = nodata_friction
     friction[friction == 0] = nodata_friction
 
