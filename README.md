@@ -31,6 +31,8 @@ To upgrade this package:
 
 pip install -U git+git://github.com/usgs/groundfailure.git
 
+For gdalfuncs to work (find proj.4 libraries), you may need to add the following line to your .bash_profile:
+export PROJSO=/Library/Frameworks/PROJ.framework/PROJ
 
 Configuration
 -------------

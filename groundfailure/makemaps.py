@@ -29,6 +29,7 @@ from descartes import PolygonPatch
 
 #local imports
 from mapio.gmt import GMTGrid
+from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
 from neicmap.city import PagerCity
@@ -166,6 +167,11 @@ def parseConfigLayers(maplayers, config):
                 if l in key:
                     if type(limits[l]) is list:
                         getlim = np.array(limits[l]).astype(np.float)
+                    else:
+                        try:
+                            getlim = eval(limits[l])
+                        except:
+                            getlim = None
                     lims.append(getlim)
                     found = True
             if not found:
@@ -533,7 +539,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
     # Load in topofile
     if topofile is not None:
-        topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
+        try:
+            topomap = GDALGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
+        except:
+            topomap = GMTGrid.load(topofile, resample=True, method='linear', samplegeodict=gdict)
         topodata = topomap.getData().copy()
         # mask oceans if don't have ocean shapefile
         if oceanfile is None:
@@ -697,7 +706,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             dat1 = dat_im.copy()
             dat1[dat1 < vmin] = vmin
             dat1[dat1 > vmax] = vmax
-            dat1 = (dat1 - np.nanmin(dat1))/(np.nanmax(dat1)-np.nanmin(dat1))
+            dat1 = (dat1 - vmin)/(vmax-vmin)
             rgba_img = cmap(dat1)
             maskvals = np.dstack((dat1.mask, dat1.mask, dat1.mask))
             rgb = np.squeeze(rgba_img[:, :, 0:3])
