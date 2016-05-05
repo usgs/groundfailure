@@ -10,7 +10,7 @@ import copy
 import datetime
 import matplotlib as mpl
 from matplotlib.colors import LightSource
-from matplotlib.colorbar import ColorbarBase
+#from matplotlib.colorbar import ColorbarBase
 
 #third party imports
 import matplotlib.cm as cm
@@ -36,8 +36,9 @@ from neicmap.city import PagerCity
 from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
 #from mapio.basemapcity import BasemapCities
 
-# Make fonts readable by illustrator
+# Make fonts readable and recognizable by illustrator
 mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
 
 
 def parseMapConfig(config):
@@ -670,8 +671,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                     vmin = lims[k][0]
                     vmax = lims[k][-1]
             else:
-                vmin = None
-                vmax = None
+                vmin = np.nanmin(dat)
+                vmax = np.nanmax(dat)
 
         # Mask out cells overlying oceans or block with a shapefile if available
         if oceanfile is None:
