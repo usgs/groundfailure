@@ -489,14 +489,14 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     elif regressionmodel is 'J_PGA_M':
         Dn = J_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = J_PGA_M(Ac, PGAmin)
-            Dnmax = J_PGA_M(Ac, PGAmax)
+            Dnmin = J_PGA_M(Ac, PGAmin, M)
+            Dnmax = J_PGA_M(Ac, PGAmax, M)
 
     elif regressionmodel is 'RS_PGA_M':
         Dn = RS_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = RS_PGA_M(Ac, PGAmin)
-            Dnmax = RS_PGA_M(Ac, PGAmax)
+            Dnmin = RS_PGA_M(Ac, PGAmin, M)
+            Dnmax = RS_PGA_M(Ac, PGAmax, M)
 
     elif regressionmodel is 'RS_PGA_PGV':
         Dn = RS_PGA_PGV(Ac, PGA, PGV)
@@ -790,8 +790,9 @@ def J_PGA(Ac, PGA):
     C1 = 0.215  # additive constant in newmark displacement calculation
     C2 = 2.341  # first exponential constant
     C3 = -1.438  # second exponential constant
-    Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
-    #Dn = 10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
+    #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
+    logDnstd = 0.51
+    Dn = 10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
     #import pdb; pdb.set_trace()
     Dn[np.isnan(Dn)] = 0.
     return Dn
@@ -818,6 +819,7 @@ def J_PGA_M(Ac, PGA, M):
     #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
     Dn = 10**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
     Dn[np.isnan(Dn)] = 0.
+    logDnstd = 0.454
     return Dn
 
 
