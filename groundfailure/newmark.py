@@ -817,7 +817,7 @@ def J_PGA_M(Ac, PGA, M):
     C3 = -1.478  # second exponential constant
     C4 = 0.424
     #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
-    Dn = 10**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
+    Dn = 10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
     Dn[np.isnan(Dn)] = 0.
     logDnstd = 0.454
     return Dn
