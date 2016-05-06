@@ -461,7 +461,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
     # Upsample layers to same as topofile if desired for better looking hillshades
     if upsample is True and topofile is not None:
-        #try:
+        try:
             topodict = GDALGrid.getFileGeoDict(topofile)
             if topodict.dx >= tempgdict.dx or topodict.dy >= tempgdict.dy:
                 print('Upsampling not possible, resolution of results already smaller than DEM')
@@ -471,8 +471,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 tempgdict2 = tempgdict1.getBoundsWithin(tempgdict)
                 for k, layer in enumerate(plotorder):
                     newgrids[layer]['grid'] = newgrids[layer]['grid'].subdivide(tempgdict2)
-        #except:
-        #    print('Upsampling failed, continuing')
+        except:
+            print('Upsampling failed, continuing')
 
     # Downsample all of them for plotting, if needed, and replace them in grids (to save memory)
     tempgrid = newgrids[grids.keys()[0]]['grid']
