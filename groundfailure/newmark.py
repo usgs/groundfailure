@@ -474,10 +474,10 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         stdpga = uncert.getLayer('stdpga')
         stdpgv = uncert.getLayer('stdpgv')
         # Estimate PGA +- 1std
-        PGAmin = PGA - np.exp(stdpga.getData())/100.
-        PGAmax = PGA + np.exp(stdpga.getData())/100.
-        PGVmin = PGV - np.exp(stdpgv.getData())
-        PGVmax = PGV + np.exp(stdpgv.getData())
+        PGAmin = np.exp(np.log(PGA*100.) - stdpga.getData())/100.
+        PGAmax = np.exp(np.log(PGA*100.) + stdpga.getData())/100.
+        PGVmin = np.exp(np.log(PGV) - stdpgv.getData())
+        PGVmax = np.exp(np.log(PGV) + stdpgv.getData())
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
