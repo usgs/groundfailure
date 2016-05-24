@@ -18,6 +18,11 @@ import copy
 from lsprocess.sample import pointsFromShapes
 from mapio.gdal import GDALGrid
 
+# Make fonts readable and recognizable by illustrator
+import matplotlib as mpl
+mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
+
 
 def modelSummary(models, titles=None, outputtype=None, plottype='hist', bounds=None, bins=10, semilogy=False, thresh=0., excludenon=False, showplots=True, saveplots=False, filepath=None):
     """
@@ -91,6 +96,7 @@ def modelSummary(models, titles=None, outputtype=None, plottype='hist', bounds=N
                 #     height = rect.get_height()
                 #     plt.text(rect.get_x()+rect.get_width()/2., 1.05*height, '%0.1f%%' % (height/float(totalf),), ha='center', va='bottom')
                 ax.set_ylabel('Proportion of cells')
+        ax.set_xlabel(outputtype)
 
         # Put a legend below current axis
         ax.legend(loc=9, bbox_to_anchor=(0.5, -0.1), fancybox=True, ncol=2)
@@ -201,7 +207,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
     """
 
     f = fiona.collection(inventory, 'r')
-    shapes = list(f)
+    shapes = list(f.items(bbox=(gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax)))  # get only shapes that are intersect area of interest from gdict
     bxmin, bymin, bxmax, bymax = f.bounds
 
     lons = np.linspace(gdict.xmin, gdict.xmax, gdict.nx)
@@ -216,7 +222,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
     unproject = partial(pyproj.transform, destination, original)
     pshapes = []
     for tshape in shapes:
-        gshape = shape(tshape['geometry'])
+        gshape = shape(tshape[1]['geometry'])
         pshape = transform(project, gshape)
         pshapes.append(pshape)
 
@@ -264,10 +270,13 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
             print 'Searching polygon %i of %i' % (shapeidx, len(pshapes))
         shapeidx += 1
         pxmin, pymin, pxmax, pymax = pshape.bounds
-        leftcol = np.where((pxmin - xvec) >= 0)[0].argmax()
-        rightcol = np.where((xvec - pxmax) >= 0)[0][0]
-        bottomrow = np.where((pymin - yvec) >= 0)[0].argmax()
-        toprow = np.where((yvec - pymax) >= 0)[0][0]
+        try:
+            leftcol = np.where((pxmin - xvec) >= 0)[0].argmax()
+            rightcol = np.where((xvec - pxmax) >= 0)[0][0]
+            bottomrow = np.where((pymin - yvec) >= 0)[0].argmax()
+            toprow = np.where((yvec - pymax) >= 0)[0][0]
+        except:  # Shape out of bounds, skip
+            continue
         xp = xvec[leftcol:rightcol+1]
         yp = yvec[bottomrow:toprow+1]
         xmesh, ymesh = np.meshgrid(xp, yp)

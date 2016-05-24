@@ -10,7 +10,7 @@ import copy
 import datetime
 import matplotlib as mpl
 from matplotlib.colors import LightSource
-from matplotlib.colorbar import ColorbarBase
+#from matplotlib.colorbar import ColorbarBase
 
 #third party imports
 import matplotlib.cm as cm
@@ -36,8 +36,9 @@ from neicmap.city import PagerCity
 from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
 #from mapio.basemapcity import BasemapCities
 
-# Make fonts readable by illustrator
+# Make fonts readable and recognizable by illustrator
 mpl.rcParams['pdf.fonttype'] = 42
+mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
 
 
 def parseMapConfig(config):
@@ -231,7 +232,7 @@ def parseConfigLayers(maplayers, config):
     return plotorder, logscale, lims, colormaps, maskthreshes
 
 
-def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, cityfile=None, oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', oceanref='unknown', printparam=False, ds=True, dstype='mean'):
+def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, cityfile=None, oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', oceanref='unknown', printparam=False, ds=True, dstype='mean', upsample=False):
 
     """
     This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers)
@@ -280,7 +281,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     :param savepng: True to save png figure, False to not
     :param ds: True to allow downsampling for display (necessary when arrays are quite large, False to not allow)
     :param dstype: What function to use in downsampling, options are 'min', 'max', 'median', or 'mean'
-
+    :param upsample: True to upsample the layer to the DEM resolution for better looking hillshades
 
     :returns:  PDF and/or PNG of map
     :returns newgrids: Downsampled and trimmed version of input grids. If no modification was needed for plotting, this will be identical to grids but without the metadata
@@ -456,6 +457,22 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         gc.collect()
     else:
         newgrids = grids
+    tempgdict = newgrids[grids.keys()[0]]['grid'].getGeoDict()
+
+    # Upsample layers to same as topofile if desired for better looking hillshades
+    if upsample is True and topofile is not None:
+        try:
+            topodict = GDALGrid.getFileGeoDict(topofile)
+            if topodict.dx >= tempgdict.dx or topodict.dy >= tempgdict.dy:
+                print('Upsampling not possible, resolution of results already smaller than DEM')
+                pass
+            else:
+                tempgdict1 = GeoDict({'xmin': tempgdict.xmin-xbuff, 'ymin': tempgdict.ymin-ybuff, 'xmax': tempgdict.xmax+xbuff, 'ymax': tempgdict.ymax+ybuff, 'dx': topodict.dx, 'dy': topodict.dy, 'nx': topodict.nx, 'ny': topodict.ny}, adjust='res')
+                tempgdict2 = tempgdict1.getBoundsWithin(tempgdict)
+                for k, layer in enumerate(plotorder):
+                    newgrids[layer]['grid'] = newgrids[layer]['grid'].subdivide(tempgdict2)
+        except:
+            print('Upsampling failed, continuing')
 
     # Downsample all of them for plotting, if needed, and replace them in grids (to save memory)
     tempgrid = newgrids[grids.keys()[0]]['grid']
@@ -664,14 +681,14 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         else:
             if lims is not None and len(lims) == len(newgrids):
                 if lims[k] is None:
-                    vmin = None
-                    vmax = None
+                    vmin = np.nanmin(dat)
+                    vmax = np.nanmax(dat)
                 else:
                     vmin = lims[k][0]
                     vmax = lims[k][-1]
             else:
-                vmin = None
-                vmax = None
+                vmin = np.nanmin(dat)
+                vmax = np.nanmax(dat)
 
         # Mask out cells overlying oceans or block with a shapefile if available
         if oceanfile is None:

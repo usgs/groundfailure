@@ -406,7 +406,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     # Load in slope file
     slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=False)
     gdict = slopegrid.getGeoDict()  # Get this again just in case it changed
-    slope = slopegrid.getData()/slopediv  # Adjust slope to degrees, if needed
+    slope = slopegrid.getData().astype(float)/slopediv  # Adjust slope to degrees, if needed
     # Change any zero slopes to a very small number to avoid dividing by zero later
     slope[slope == 0] = 1e-8
 
@@ -463,7 +463,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     FS[FS < fsthresh] = fsthresh
 
     # Compute critical acceleration, in g
-    Ac = (FS-1)*np.sin(slope*(np.pi/180.)).astype(float)  # This gives ac in g, equations that multiply by g give ac in m/s2
+    Ac = (FS-1.)*np.sin(slope*(np.pi/180.))  # This gives ac in g, equations that multiply by g give ac in m/s2
     Ac[Ac < acthresh] = acthresh
     Ac[slope < slopethresh] = float('nan')
 
@@ -474,10 +474,10 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         stdpga = uncert.getLayer('stdpga')
         stdpgv = uncert.getLayer('stdpgv')
         # Estimate PGA +- 1std
-        PGAmin = PGA - np.exp(stdpga.getData())/100.
-        PGAmax = PGA + np.exp(stdpga.getData())/100.
-        PGVmin = PGV - np.exp(stdpgv.getData())
-        PGVmax = PGV + np.exp(stdpgv.getData())
+        PGAmin = np.exp(np.log(PGA*100.) - stdpga.getData())/100.
+        PGAmax = np.exp(np.log(PGA*100.) + stdpga.getData())/100.
+        PGVmin = np.exp(np.log(PGV) - stdpgv.getData())
+        PGVmax = np.exp(np.log(PGV) + stdpgv.getData())
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
@@ -489,20 +489,20 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     elif regressionmodel is 'J_PGA_M':
         Dn = J_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = J_PGA_M(Ac, PGAmin)
-            Dnmax = J_PGA_M(Ac, PGAmax)
+            Dnmin = J_PGA_M(Ac, PGAmin, M)
+            Dnmax = J_PGA_M(Ac, PGAmax, M)
 
     elif regressionmodel is 'RS_PGA_M':
         Dn = RS_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = RS_PGA_M(Ac, PGAmin)
-            Dnmax = RS_PGA_M(Ac, PGAmax)
+            Dnmin = RS_PGA_M(Ac, PGAmin, M)
+            Dnmax = RS_PGA_M(Ac, PGAmax, M)
 
     elif regressionmodel is 'RS_PGA_PGV':
         Dn = RS_PGA_PGV(Ac, PGA, PGV)
         if uncertfile is not None:
-            Dnmin = RS_PGA_PGV(Ac, PGAmin)
-            Dnmax = RS_PGA_PGV(Ac, PGAmax)
+            Dnmin = RS_PGA_PGV(Ac, PGAmin, PGVmin)
+            Dnmax = RS_PGA_PGV(Ac, PGAmax, PGVmax)
     else:
         print('Unrecognized regression model, aborting')
         return
@@ -691,7 +691,6 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     slopestack[slopestack == 0] = 1e-8
 
     # Read in the cohesion and friction files and duplicate layers so they are same shape as slope structure
-    #import pdb; pdb.set_trace()
     cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis]/codiv, 7, axis=2)
     cohesion[cohesion == -999.9] = nodata_cohesion
     cohesion[cohesion == 0] = nodata_cohesion
@@ -791,7 +790,10 @@ def J_PGA(Ac, PGA):
     C1 = 0.215  # additive constant in newmark displacement calculation
     C2 = 2.341  # first exponential constant
     C3 = -1.438  # second exponential constant
-    Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
+    #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
+    logDnstd = 0.51
+    Dn = 10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
+    #import pdb; pdb.set_trace()
     Dn[np.isnan(Dn)] = 0.
     return Dn
 
@@ -814,8 +816,10 @@ def J_PGA_M(Ac, PGA, M):
     C2 = 2.335  # first exponential constant
     C3 = -1.478  # second exponential constant
     C4 = 0.424
-    Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
+    #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
+    Dn = 10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
     Dn[np.isnan(Dn)] = 0.
+    logDnstd = 0.454
     return Dn
 
 
