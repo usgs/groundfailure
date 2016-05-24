@@ -681,8 +681,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         else:
             if lims is not None and len(lims) == len(newgrids):
                 if lims[k] is None:
-                    vmin = None
-                    vmax = None
+                    vmin = np.nanmin(dat)
+                    vmax = np.nanmax(dat)
                 else:
                     vmin = lims[k][0]
                     vmax = lims[k][-1]
