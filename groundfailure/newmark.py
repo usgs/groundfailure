@@ -7,7 +7,7 @@ Newmark based landslide mechanistic_models
 #stdlib imports
 import os.path
 import warnings
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 import tempfile
 import collections
 
@@ -33,8 +33,8 @@ def getGridURL(gridurl):
     """
     gridfile = None
     try:
-        fh = urllib2.urlopen(gridurl)
-        data = fh.read()
+        fh = urllib.request.urlopen(gridurl)
+        data = fh.read().decode('utf-8')
         fd, gridfile = tempfile.mkstemp()
         os.close(fd)
         f = open(gridfile, 'wt')
@@ -56,7 +56,7 @@ def isURL(gridurl):
     """
     isURL = False
     try:
-        urllib2.urlopen(gridurl)
+        urllib.request.urlopen(gridurl)
         isURL = True
     except:
         pass
@@ -447,7 +447,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
             print('Was not able to retrieve water table references from config file. Continuing')
 
     except:
-        print('Water table file not specified or readable, assuming constant saturated thickness proportion of %0.1f' % m)
+        print(('Water table file not specified or readable, assuming constant saturated thickness proportion of %0.1f' % m))
         watertable = None
         try:
             uwtw = float(config['mechanistic_models']['classic_newmark']['parameters']['uwtw'])

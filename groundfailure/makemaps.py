@@ -32,9 +32,8 @@ from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
-from neicmap.city import PagerCity
-from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
-#from mapio.basemapcity import BasemapCities
+#from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
+from mapio.basemapcity import BasemapCities
 
 # Make fonts readable and recognizable by illustrator
 mpl.rcParams['pdf.fonttype'] = 42
@@ -83,10 +82,10 @@ def parseMapConfig(config):
                 cityref = 'unknown'
             if os.path.exists(cityfile):
                 try:
-                    PagerCity(cityfile)
-                    #BasemapCities.loadFromGeoNames(cityfile=cityfile)
+                    #PagerCity(cityfile)
+                    BasemapCities.loadFromGeoNames(cityfile=cityfile)
                 except Exception as e:
-                    print e
+                    print(e)
                     print('cities file not valid - cities will not be displayed\n')
                     cityfile = None
             else:
@@ -105,7 +104,7 @@ def parseMapConfig(config):
         except:
             outputdir = None
     except Exception as e:
-        print('%s - mapdata missing from or misformatted in config' % e)
+        print(('%s - mapdata missing from or misformatted in config' % e))
 
     countrycolor = '#'+countrycolor
     watercolor = '#'+watercolor
@@ -122,7 +121,7 @@ def parseConfigLayers(maplayers, config):
     # TO DO, ADD ABILITY TO INTERPRET CUSTOM COLOR MAPS
     """
     # get all key names, create a plotorder list in case maplayers is not an ordered dict, making sure that anything called 'model' is first
-    keys = maplayers.keys()
+    keys = list(maplayers.keys())
     plotorder = []
 
     try:
@@ -306,21 +305,21 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
     # Get plotting order, if not specified
     if plotorder is None:
-        plotorder = grids.keys()
+        plotorder = list(grids.keys())
 
     # Get boundaries to use for all plots
     cut = True
     if boundaries is None:
         cut = False
-        keytemp = grids.keys()
+        keytemp = list(grids.keys())
         boundaries = grids[keytemp[0]]['grid'].getGeoDict()
     elif boundaries == 'zoom':
         # Find probability layer (will just take the maximum bounds if there is more than one)
-        keytemp = grids.keys()
+        keytemp = list(grids.keys())
         key1 = [key for key in keytemp if 'model' in key.lower()]
         if len(key1) == 0:
             print('Could not find model layer to use for zoom, using default boundaries')
-            keytemp = grids.keys()
+            keytemp = list(grids.keys())
             boundaries = grids[keytemp[0]]['grid'].getGeoDict()
         else:
             lonmax = -1.e10
@@ -369,7 +368,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             boundaries = GeoDict(boundaries1, adjust='res')
     else:
         # SEE IF BOUNDARIES ARE SAME AS BOUNDARIES OF LAYERS
-        keytemp = grids.keys()
+        keytemp = list(grids.keys())
         tempgdict = grids[keytemp[0]]['grid'].getGeoDict()
         if np.abs(tempgdict.xmin-boundaries['xmin']) < 0.05 and np.abs(tempgdict.ymin-boundaries['ymin']) < 0.05 and np.abs(tempgdict.xmax-boundaries['xmax'] < 0.05 and np.abs(tempgdict.ymax - boundaries['ymax']) < 0.05):
             print('Input boundaries are almost the same as specified boundaries, no cutting needed')
@@ -379,7 +378,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             try:
                 if boundaries['xmin'] > boundaries['xmax'] or boundaries['ymin'] > boundaries['ymax']:
                     print('Input boundaries are not usable, using default boundaries')
-                    keytemp = grids.keys()
+                    keytemp = list(grids.keys())
                     boundaries = grids[keytemp[0]]['grid'].getGeoDict()
                     cut = False
                 else:
@@ -387,7 +386,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                     boundaries = GeoDict({'xmin': boundaries['xmin'], 'xmax': boundaries['xmax'], 'ymin': boundaries['ymin'], 'ymax': boundaries['ymax'], 'dx': 100., 'dy': 100., 'ny': 100., 'nx': 100.}, adjust='res')
             except:
                 print('Input boundaries are not usable, using default boundaries')
-                keytemp = grids.keys()
+                keytemp = list(grids.keys())
                 boundaries = grids[keytemp[0]]['grid'].getGeoDict()
                 cut = False
 
@@ -450,14 +449,14 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             try:
                 newgrids[layer] = {'grid': templayer.cut(cutxmin, cutxmax, cutymin, cutymax, align=True)}
             except Exception as e:
-                print('Cutting failed, %s, continuing with full layers' % e)
+                print(('Cutting failed, %s, continuing with full layers' % e))
                 newgrids = grids
                 continue
         del templayer
         gc.collect()
     else:
         newgrids = grids
-    tempgdict = newgrids[grids.keys()[0]]['grid'].getGeoDict()
+    tempgdict = newgrids[list(grids.keys())[0]]['grid'].getGeoDict()
 
     # Upsample layers to same as topofile if desired for better looking hillshades
     if upsample is True and topofile is not None:
@@ -475,7 +474,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             print('Upsampling failed, continuing')
 
     # Downsample all of them for plotting, if needed, and replace them in grids (to save memory)
-    tempgrid = newgrids[grids.keys()[0]]['grid']
+    tempgrid = newgrids[list(grids.keys())[0]]['grid']
     xsize = tempgrid.getGeoDict().nx
     ysize = tempgrid.getGeoDict().ny
     inchesx, inchesy = fig.get_size_inches()
@@ -524,7 +523,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     if oceanfile is not None:
         try:
             f = fiona.open(oceanfile)
-            oc = f.next()
+            oc = next(f)
             f.close
             shapes = shape(oc['geometry'])
             # make boundaries into a shape
@@ -543,16 +542,16 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             inventory_shapefile = None
 
     # # Find cities that will be plotted
-    # if mapcities is True and cityfile is not None:
-    #     try:
-    #         mycity = BasemapCities.loadFromGeoNames(cityfile=cityfile)
-    #         bcities = mycity.limitByBounds((bxmin, bxmax, bymin, bymax))
-    #         #bcities = bcities.limitByPopulation(40000)
-    #         bcities = bcities.limitByGrid(nx=4, ny=4, cities_per_grid=2)
-    #     except:
-    #         print('Could not read in cityfile, not plotting cities')
-    #         mapcities = False
-    #         cityfile = None
+    if mapcities is True and cityfile is not None:
+        try:
+            mycity = BasemapCities.loadFromGeoNames(cityfile=cityfile)
+            bcities = mycity.limitByBounds((bxmin, bxmax, bymin, bymax))
+            #bcities = bcities.limitByPopulation(40000)
+            bcities = bcities.limitByGrid(nx=4, ny=4, cities_per_grid=2)
+        except:
+            print('Could not read in cityfile, not plotting cities')
+            mapcities = False
+            cityfile = None
 
     # Load in topofile
     if topofile is not None:
@@ -590,7 +589,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     val = 1
     for k, layer in enumerate(plotorder):
         layergrid = newgrids[layer]['grid']
-        if 'label' in grids[layer].keys():
+        if 'label' in list(grids[layer].keys()):
             label1 = grids[layer]['label']
         else:
             label1 = layer
@@ -709,7 +708,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         if inventory_shapefile is not None:
             for in1 in inventory:
                 x, y = m(in1.exterior.xy[0], in1.exterior.xy[1])
-                xy = zip(x, y)
+                xy = list(zip(x, y))
                 patch = Polygon(xy, facecolor='none', edgecolor='k', lw=0.5, zorder=10.)
                 #patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
                 ax.add_patch(patch)
@@ -771,63 +770,63 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             try:
                 for road in roadslist:
                     xy = list(road['geometry']['coordinates'])
-                    roadx, roady = zip(*xy)
+                    roadx, roady = list(zip(*xy))
                     mapx, mapy = m(roadx, roady)
                     m.plot(mapx, mapy, roadcolor, lw=0.5, zorder=9)
             except Exception as e:
-                print('Failed to plot roads, %s' % e)
+                print(('Failed to plot roads, %s' % e))
 
         #add city names to map
-        # if mapcities is True and cityfile is not None:
-        #     try:
-        #         fontname = 'Arial'
-        #         fontsize = 8
-        #         if k == 0:  # Only need to choose cities first time and then apply to rest
-        #             fcities = bcities.limitByMapCollision(m, fontname=fontname, fontsize=fontsize)
-        #             ctlats, ctlons, names = fcities.getCities()
-        #             cxis, cyis = m(ctlons, ctlats)
-        #         for ctlat, ctlon, cxi, cyi, name in zip(ctlats, ctlons, cxis, cyis, names):
-        #             m.scatter(ctlon, ctlat, c='k', latlon=True, marker='.', zorder=100000)
-        #             ax.text(cxi, cyi, name, fontname=fontname, fontsize=fontsize, zorder=100000)
-        #     except Exception as e:
-        #         print('Failed to plot cities, %s' % e)
-
         if mapcities is True and cityfile is not None:
             try:
-                dmin = 0.1*(m.ymax-m.ymin)
-                xyplotted = []
-                cities = PagerCity(cityfile)
-                #Find cities within bounding box
-                boundcity = cities.findCitiesByRectangle(bounds=(boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax))
-                #Just keep 5 biggest cities
-                if len(boundcity) < 5:
-                    value = len(boundcity)
-                else:
-                    value = 5
-                thresh = sorted([cit['pop'] for cit in boundcity])[-value]
-                plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
-                #For cities that are more than one xth of the xwidth apart, keep only the larger one
-                pass  # do later
-                #Plot cities
-                for cit in plotcity:  # should sort so it plots them in order of population so larger cities are preferentially plotted - do later
-                    xi, yi = m(cit['lon'], cit['lat'])
-                    dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
-                    xdist = [np.abs(xi-x0) for x0, y0 in xyplotted]
-                    ydist = [np.abs(yi-y0) for x0, y0 in xyplotted]
-                    if not dist or np.min(dist) > dmin:
-                        if len(dist) > 0:
-                            if np.min(xdist) < 0.2*(m.xmax-m.xmin) and np.min(ydist) < 0.1*(m.ymax-m.ymin):
-                                pass
-                            else:
-                                m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
-                                ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
-                                xyplotted.append((xi, yi))
-                        elif len(dist) == 0:
-                            m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
-                            ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
-                            xyplotted.append((xi, yi))
+                fontname = 'Arial'
+                fontsize = 8
+                if k == 0:  # Only need to choose cities first time and then apply to rest
+                    fcities = bcities.limitByMapCollision(m, fontname=fontname, fontsize=fontsize)
+                    ctlats, ctlons, names = fcities.getCities()
+                    cxis, cyis = m(ctlons, ctlats)
+                for ctlat, ctlon, cxi, cyi, name in zip(ctlats, ctlons, cxis, cyis, names):
+                    m.scatter(ctlon, ctlat, c='k', latlon=True, marker='.', zorder=100000)
+                    ax.text(cxi, cyi, name, fontname=fontname, fontsize=fontsize, zorder=100000)
             except Exception as e:
                 print('Failed to plot cities, %s' % e)
+
+        # if mapcities is True and cityfile is not None:
+        #     try:
+        #         dmin = 0.1*(m.ymax-m.ymin)
+        #         xyplotted = []
+        #         cities = PagerCity(cityfile)
+        #         #Find cities within bounding box
+        #         boundcity = cities.findCitiesByRectangle(bounds=(boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax))
+        #         #Just keep 5 biggest cities
+        #         if len(boundcity) < 5:
+        #             value = len(boundcity)
+        #         else:
+        #             value = 5
+        #         thresh = sorted([cit['pop'] for cit in boundcity])[-value]
+        #         plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
+        #         #For cities that are more than one xth of the xwidth apart, keep only the larger one
+        #         pass  # do later
+        #         #Plot cities
+        #         for cit in plotcity:  # should sort so it plots them in order of population so larger cities are preferentially plotted - do later
+        #             xi, yi = m(cit['lon'], cit['lat'])
+        #             dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
+        #             xdist = [np.abs(xi-x0) for x0, y0 in xyplotted]
+        #             ydist = [np.abs(yi-y0) for x0, y0 in xyplotted]
+        #             if not dist or np.min(dist) > dmin:
+        #                 if len(dist) > 0:
+        #                     if np.min(xdist) < 0.2*(m.xmax-m.xmin) and np.min(ydist) < 0.1*(m.ymax-m.ymin):
+        #                         pass
+        #                     else:
+        #                         m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
+        #                         ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
+        #                         xyplotted.append((xi, yi))
+        #                 elif len(dist) == 0:
+        #                     m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
+        #                     ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
+        #                     xyplotted.append((xi, yi))
+        #     except Exception as e:
+        #         print(('Failed to plot cities, %s' % e))
 
         #draw star at epicenter
         plt.sca(ax)
@@ -892,7 +891,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 if i == halfway and colpan == 1:
                     paramstring += '\n'
                 paramstring += ('%s = %s; ' % (key, dictionary[key]))
-            print paramstring
+            print(paramstring)
             fig.text(0.01, 0.015, paramstring, fontsize=fontsizesmallest)
             plt.draw()
         except:
@@ -908,10 +907,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     pngfile = os.path.join(outfolder, '%s_%s_%s.png' % (eventid, suptitle, time1))
 
     if savepdf is True:
-        print 'Saving map output to %s' % outfile
+        print('Saving map output to %s' % outfile)
         plt.savefig(outfile, dpi=300)
     if savepng is True:
-        print 'Saving map output to %s' % pngfile
+        print('Saving map output to %s' % pngfile)
         plt.savefig(pngfile)
     if showplots is True:
         plt.show()
@@ -981,7 +980,7 @@ def getProjectedPatch(polygon, m, edgecolor, facecolor, lw=1., zorder=10):
     polyjson = mapping(polygon)
     tlist = []
     for sequence in polyjson['coordinates']:
-        lon, lat = zip(*sequence)
+        lon, lat = list(zip(*sequence))
         x, y = m(lon, lat)
         tlist.append(tuple(zip(x, y)))
     polyjson['coordinates'] = tuple(tlist)
@@ -989,6 +988,60 @@ def getProjectedPatch(polygon, m, edgecolor, facecolor, lw=1., zorder=10):
     patch = PolygonPatch(ppolygon, facecolor=facecolor, edgecolor=edgecolor,
                          zorder=zorder, linewidth=lw, fill=True, visible=True)
     return patch
+
+
+def roundToNearest(value, roundValue=1000):
+    """
+    Return the value, rounded to nearest roundValue (defaults to 1000).
+    @param value: Value to be rounded.
+    @keyword roundValue: Number to which the value should be rounded.
+    """
+    if roundValue < 1:
+        ds = str(roundValue)
+        nd = len(ds) - (ds.find('.')+1)
+        value = value * 10**nd
+        roundValue = roundValue * 10**nd
+        value = int(round(float(value)/roundValue)*roundValue)
+        value = float(value) / 10**nd
+    else:
+        value = int(round(float(value)/roundValue)*roundValue)
+    return value
+
+
+def floorToNearest(value, floorValue=1000):
+    """
+    Return the value, floored to nearest floorValue (defaults to 1000).
+    @param value: Value to be floored.
+    @keyword floorValue: Number to which the value should be floored.
+    """
+    if floorValue < 1:
+        ds = str(floorValue)
+        nd = len(ds) - (ds.find('.')+1)
+        value = value * 10**nd
+        floorValue = floorValue * 10**nd
+        value = int(np.floor(float(value)/floorValue)*floorValue)
+        value = float(value) / 10**nd
+    else:
+        value = int(np.floor(float(value)/floorValue)*floorValue)
+    return value
+
+
+def ceilToNearest(value, ceilValue=1000):
+    """
+    Return the value, ceiled to nearest ceilValue (defaults to 1000).
+    @param value: Value to be ceiled.
+    @keyword ceilValue: Number to which the value should be ceiled.
+    """
+    if ceilValue < 1:
+        ds = str(ceilValue)
+        nd = len(ds) - (ds.find('.')+1)
+        value = value * 10**nd
+        ceilValue = ceilValue * 10**nd
+        value = int(np.ceil(float(value)/ceilValue)*ceilValue)
+        value = float(value) / 10**nd
+    else:
+        value = int(np.ceil(float(value)/ceilValue)*ceilValue)
+    return value
 
 
 if __name__ == '__main__':

@@ -16,7 +16,7 @@ def savelayers(grids, filename):
     """
     layers = collections.OrderedDict()
     metadata = collections.OrderedDict()
-    for key in grids.keys():
+    for key in list(grids.keys()):
         layers[key] = grids[key]['grid'].getData()
         metadata[key] = {'description': grids[key]['description'], 'type': grids[key]['type'], 'label': grids[key]['label']}
     origin = {}
