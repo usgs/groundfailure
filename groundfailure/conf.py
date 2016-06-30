@@ -6,7 +6,7 @@ import tempfile
 import textwrap
 import sys
 import re
-import StringIO
+import io
 import shutil
 
 #third party libraries
@@ -57,7 +57,7 @@ def __path_type(value):
 def filterResults(result):
     #TODO: this function has a problem where some error messages are duplicated...?
     errormsg = ''
-    for key,value in result.iteritems():
+    for key,value in result.items():
         if isinstance(value,dict):
             tmpmsg = filterResults(value)
             errormsg += tmpmsg
@@ -168,9 +168,9 @@ def _test_validate():
         f.close()
         
         config = validate(configfile)
-        print 'Passed validation of sample config file.'
+        print('Passed validation of sample config file.')
     except:
-        print 'Failed to validate sample config file.'
+        print('Failed to validate sample config file.')
     finally:
         if os.path.isfile(configfile):
             os.remove(configfile)
@@ -245,13 +245,13 @@ def _failValidate():
         f.close()
         try:
             config = validate(configfile)
-            print 'Validation failed to fail :)'
+            print('Validation failed to fail :)')
         except Exception as e:
-            print 'Validation failed as expected with sample config file:'
-            print str(e)
+            print('Validation failed as expected with sample config file:')
+            print(str(e))
         
     except:
-        print 'Expected fail failed to fail.'
+        print('Expected fail failed to fail.')
     finally:
         if os.path.isfile(configfile):
             os.remove(configfile)

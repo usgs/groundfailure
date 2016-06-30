@@ -49,7 +49,7 @@ def modelSummary(models, titles=None, outputtype=None, plottype='hist', bounds=N
     if type(models) != list:
         models = [models]
     if titles is None:
-        titles = [mod.keys() for mod in models]
+        titles = [list(mod.keys()) for mod in models]
     for k, mod in enumerate(models):
         grid = mod.getData()
         if type(bins) is int:
@@ -182,7 +182,7 @@ def computeCoverage_accurate(gdict, inventory, numdiv=10.):
         # Store area
         numyes[row, col] = yesin
     t2 = time.clock()
-    print('Time elapsed %0.2f seconds' % (t2-t1))
+    print(('Time elapsed %0.2f seconds' % (t2-t1)))
 
     # Correct for incompletely sampled squared (all unsampled points would be no points)
     numpts[numpts < (numpts[numpts != 0].mean() - numpts[numpts != 0].std())] = np.median(numpts[numpts != 0])  # Will change zeros to nonzeros, but yeses will be 0 in those cells so it doesn't matter
@@ -267,7 +267,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
     yespoints = []
     for pshape in pshapes:
         if not shapeidx % 2000:
-            print 'Searching polygon %i of %i' % (shapeidx, len(pshapes))
+            print('Searching polygon %i of %i' % (shapeidx, len(pshapes)))
         shapeidx += 1
         pxmin, pymin, pxmax, pymax = pshape.bounds
         try:
@@ -280,7 +280,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
         xp = xvec[leftcol:rightcol+1]
         yp = yvec[bottomrow:toprow+1]
         xmesh, ymesh = np.meshgrid(xp, yp)
-        xy = zip(xmesh.flatten(), ymesh.flatten())
+        xy = list(zip(xmesh.flatten(), ymesh.flatten()))
         for point in xy:
             ix = np.where(xvec == point[0])[0][0]
             iy = np.where(yvec == point[1])[0][0]
@@ -294,7 +294,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
     yvecnew = line_mean(yvec, numdiv)
 
     xm, ym = np.meshgrid(xvecnew, yvecnew)
-    nzpts = MultiPoint(zip(*[xm[areaval > 0], ym[areaval > 0]]))
+    nzpts = MultiPoint(list(zip(*[xm[areaval > 0], ym[areaval > 0]])))
     nzvals = areaval[areaval > 0]
 
     # Project nonzero points back
@@ -309,7 +309,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
         latidx = 0
         for pt, val in zip(nzpts_proj, nzvals):
             if not latidx % 1000:
-                print 'Searching coord %i of %i' % (latidx, len(nzpts_proj))
+                print('Searching coord %i of %i' % (latidx, len(nzpts_proj)))
             latidx += 1
             lon, lat = np.array(pt.coords.xy)
             row = (np.abs(lats - lat)).argmin()
@@ -323,10 +323,10 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
         numpts = np.shape(llons)[0]*np.shape(llons)[1]
         xdatpts = np.reshape(llons, numpts)
         ydatpts = np.reshape(llats, numpts)
-        area = interpolate.griddata(PTS, nzvals, zip(xdatpts, ydatpts), method=method.lower(), fill_value=0.)
+        area = interpolate.griddata(PTS, nzvals, list(zip(xdatpts, ydatpts)), method=method.lower(), fill_value=0.)
         area = np.reshape(area, np.shape(llons))
         t2 = time.clock()
-    print('Time elapsed %0.2f seconds' % (t2-t1))
+    print(('Time elapsed %0.2f seconds' % (t2-t1)))
 
     inventorygrid = GDALGrid(area, gdict)
 
@@ -418,9 +418,9 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots
     # RMS
     idx = np.union1d(model.nonzero()[0], inv.nonzero()[0])
     results['RMS'] = np.sqrt((model - inv)**2).mean()
-    print('RMS: %0.3f' % results['RMS'])
+    print(('RMS: %0.3f' % results['RMS']))
     results['RMS_nonzero'] = np.sqrt((model[idx] - inv[idx])**2).mean()
-    print('RMS_nonzero: %0.3f' % results['RMS_nonzero'])
+    print(('RMS_nonzero: %0.3f' % results['RMS_nonzero']))
 
     return invminusmod, results
 
@@ -511,7 +511,7 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
         results['Brier_yes'] = yessum/len(modelvalyes)
         results['Brier_no'] = nosum/len(modelvalno)
         results['Brier'] = (yessum + nosum)/N
-        print('Brier scores: overall %0.3f\nBrier_yes score: %0.3f\nBrier_no score %0.3f' % (results['Brier'], results['Brier_yes'], results['Brier_no']))
+        print(('Brier scores: overall %0.3f\nBrier_yes score: %0.3f\nBrier_no score %0.3f' % (results['Brier'], results['Brier_yes'], results['Brier_no'])))
 
         # Logarithmic score
         tempno = np.array(modelvalno).copy()
@@ -519,7 +519,7 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
         tempno[tempno == 0] = 1.e-15
         tempyes[tempyes == 0] = 1.e-15
         results['Log_loss'] = -(np.sum(np.log(tempyes)) + np.sum(np.log(1.-tempno)))/N
-        print('Log loss score: %0.3f' % (results['Log_loss'],))
+        print(('Log loss score: %0.3f' % (results['Log_loss'],)))
 
         if bins is None:
             bins = [0, 0.2, 0.4, 0.6, 0.8, 1.]
@@ -590,7 +590,7 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
         results['ROC'] = {'thresholds': bins, 'gfc': gfc}
 
         results['AUC_ROC'] = roc_auc_score(np.concatenate((np.ones(len(yespoints)), np.zeros(len(nopoints)))), np.concatenate((modelvalyes, modelvalno)))
-        print('AUC_ROC: %0.3f' % (results['AUC_ROC'],))
+        print(('AUC_ROC: %0.3f' % (results['AUC_ROC'],)))
         ax3.text(0.8, 0.2, 'AUC: %0.3f' % results['AUC_ROC'])
 
         # Success rate curves
@@ -610,7 +610,7 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
         ax4.set_ylabel('Proportion of actual occurrences')
         ax4.set_title('Proportion of Study Area')
         AUC = auc(sucbin, prop)
-        print('AUC_SRC: %0.3f' % AUC)
+        print(('AUC_SRC: %0.3f' % AUC))
         ax4.text(0.8, 0.2, 'AUC: %0.3f' % AUC)
         ax4.set_xlim([0, 1.])
         ax4.set_ylim([0, 1.])
