@@ -44,7 +44,7 @@ def getFileType(filename):
         return 'gmt'
     #skip over ESRI header files
     if filename.endswith('.hdr'):
-            return 'unknown'
+        return 'unknown'
     try:
         GDALGrid.getFileGeoDict(filename)
         return 'esri'

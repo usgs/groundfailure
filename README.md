@@ -37,7 +37,10 @@ export PROJSO=/Library/Frameworks/PROJ.framework/PROJ
 Configuration
 -------------
 
-There will be a configuration file found in ~/.groundfailure/config.ini, with the format described below.
+Configuration options, such as the output directory, paths to input data files, model coefficients, and map display options
+are all set in a configuration file found in ~/.groundfailure/config.ini.
+Since many of these options depend on local paths, you need to create and modify this file youself.
+The format is described below along with a template. 
 
 The config file format is a modified version of the "INI" format.  It is described in detail here:
 
@@ -51,7 +54,7 @@ and layers are shown here for the purpose of explaining how to configure models.
 
 <pre>
 [output]
-  folder = '/Users/user/failureoutput/
+  folder = '/Users/user/failureoutput/'
 
 [mapdata]
   [[dem]]
@@ -230,7 +233,7 @@ and layers are shown here for the purpose of explaining how to configure models.
 
   #default_landslide and default_liquefaction parameters below must refer to named models in this file
   default_landslide = nowicki_2014
-  default_liquefaction = zhu_2014
+  default_liquefaction = zhu_2015
 
   # this can be any string, but it must be a unique and descriptive name of a logistic regression model.
   [[nowicki_2014]]
@@ -277,10 +280,10 @@ and layers are shown here for the purpose of explaining how to configure models.
       #where eqn is a linear equation of the form:
       #b0 + b1*t1 + b2*t2 + ... + bN*tN
       #where t1, t2, ... tN are the right hand side of the parameters below.
-      b1 = PGA
+      b1 = pga
       b2 = slope
       b3 = cohesion/10.0
-      b4 = PGA*slope
+      b4 = pga*slope
 
     [[[coefficients]]]
       #These coefficients must be named as b1-bN, where N is the number of coefficients
@@ -295,11 +298,13 @@ and layers are shown here for the purpose of explaining how to configure models.
       b3 = 0.0201
       b4 = 1.45e-05
 
-  [[zhu_2014]]
+  [[zhu_2015]]
   
     #Detailed description of the model, its inputs, etc.
-    description = 'This is the Zhu model of 2014, where we use vs30 and CTI'
-
+    description = 'This is the Zhu model of 2015, which uses PGA, magnitude, vs30, and CTI'
+    longref = 'Zhu, J., Daley, D., Baise, L.G., Thompson, E.M., Wald, D.J., and Knudsen, K.L., 2015, A Geospatial Liquefaction Model for Rapid Response and Loss Estimation: Earthquake Spectra, v. 31, p. 1813-1837.'
+    shortref = 'Zhu and others (2015)'
+    
     gfetype = liquefaction
   
     baselayer = vs30
@@ -323,7 +328,7 @@ and layers are shown here for the purpose of explaining how to configure models.
       cti = linear
 
     [[[terms]]]
-      b1 = 'log((PGA/100.0)*(power(MW,2.56)/power(10,2.24)))'
+      b1 = 'log((pga/100.0)*(power(MW,2.56)/power(10,2.24)))'
       b2 = 'cti/100.0'
       b3 = 'log(vs30)'
 

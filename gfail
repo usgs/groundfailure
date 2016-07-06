@@ -19,6 +19,7 @@ from validate import Validator,VdtTypeError,VdtParamError
 #local imports
 from groundfailure.conf import validate
 from groundfailure.logisticmodel import validateLogisticModels,getLogisticModelNames,LogisticModel
+#from groundfailure.makemaps import modelMap, parseMapConfig, parseConfigLayers
 
 CODEVERSION = '1.0.0'
 
@@ -39,14 +40,14 @@ def listModels(config):
             gfetype = value['gfetype']
             if gfetype == 'liquefaction':
                 if key == defaultLiquefaction:
-                    print 'Liquefaction model %s (default):\n\t%s\n' % (key,desc)
+                    print('Liquefaction model %s (default):\n\t%s\n' % (key,desc))
                 else:
-                    print 'Liquefaction model %s:\n\t%s\n' % (key,desc)
+                    print('Liquefaction model %s:\n\t%s\n' % (key,desc))
             if gfetype == 'landslide':
                 if key == defaultLandslide:
-                    print 'Landslide model %s (default):\n\t%s\n' % (key,desc)
+                    print('Landslide model %s (default):\n\t%s\n' % (key,desc))
                 else:
-                    print 'Landslide model %s:\n\t%s\n' % (key,desc)
+                    print('Landslide model %s:\n\t%s\n' % (key,desc))
 
 def setHeaders(shakefile,probdict):
     griddict,eventdict,specdict,fields,uncertainties = getHeaderData(shakefile)
@@ -89,19 +90,19 @@ def main(args):
             sys.exit(0)
                 
         except TypeError as te:
-            print 'Could not validate config file %s.  Here are the results:' % args.config
-            print str(te)
+            print('Could not validate config file %s.  Here are the results:' % args.config)
+            print(str(te))
             sys.exit(1)
 
     if args.validate_config:
         try:
             config = validate(args.config)
             result = validateLogisticModels(config)
-            print 'Input config file %s has been validated.' % args.config
+            print('Input config file %s has been validated.' % args.config)
             sys.exit(0)
         except Exception as e:
-            print 'Could not validate config file %s.  Here are the results:' % args.config
-            print str(e)
+            print('Could not validate config file %s.  Here are the results:' % args.config)
+            print(str(e))
             sys.exit(1)
             
     if args.gridfile is not None: #user intends to actually run some models
@@ -110,7 +111,7 @@ def main(args):
             result = validateLogisticModels(config)
             if args.set_liquefaction is not None:
                 if args.set_liquefaction not in getLogisticModelNames(config):
-                    print 'Could not find model %s in config file.  Returning.' % args.set_liquefaction
+                    print('Could not find model %s in config file.  Returning.' % args.set_liquefaction)
                     sys.exit(1)
                 lqmodel = LogisticModel(config,args.gridfile,args.set_liquefaction)
             else:
@@ -118,16 +119,16 @@ def main(args):
                 lqmodel = LogisticModel(config,args.gridfile,lqmodelname)
             if args.set_landslide is not None:
                 if args.set_landslide not in getLogisticModelNames(config):
-                    print 'Could not find model %s in config file.  Returning.' % args.set_landslide
+                    print('Could not find model %s in config file.  Returning.' % args.set_landslide)
                     sys.exit(1)
                 lsmodel = LogisticModel(config,args.gridfile,args.set_landslide)
             else:
                 lsmodelname = config['logistic_models']['default_landslide']
                 lsmodel = LogisticModel(config,args.gridfile,lsmodelname)
 
-            print 'Liquefaction model:\t\n%s' % lqmodel.getEquation()
-            print
-            print 'Liquefaction model:\t\n%s' % lsmodel.getEquation()
+            print('Liquefaction model:\t\n%s' % lqmodel.getEquation())
+            print()
+            print('Liquefaction model:\t\n%s' % lsmodel.getEquation())
 
             lqdict = lqmodel.calculate()
             lsdict = lsmodel.calculate()
@@ -137,7 +138,7 @@ def main(args):
             if not os.path.isdir(cwd):
                 os.makedirs(cwd)
             lqfile = os.path.join(cwd,'liquefaction_%s.hdf' % lqmodelname)
-            print 'Saving liquefaction output to %s' % lqfile
+            print('Saving liquefaction output to %s' % lqfile)
             #create a MultiHazardGrid object from our liquefaction grid
             qlayers = OrderedDict()
             for (key,vdict) in lqdict.items():
@@ -152,7 +153,7 @@ def main(args):
             #save these out to our HDF format
             cwd = os.getcwd()
             lsfile = os.path.join(cwd,'landslide_%s.hdf' % lqmodelname)
-            print 'Saving landslide output to %s' % lsfile
+            print('Saving landslide output to %s' % lsfile)
             #create a MultiHazardGrid object from our landslide grid
             slayers = OrderedDict()
             for (key,vdict) in lsdict.items():
@@ -166,8 +167,8 @@ def main(args):
             
             sys.exit(0)
         except Exception as e:
-            print 'Could not validate config file %s.  Here are the results:' % args.config
-            print str(e)
+            print('Could not validate config file %s.  Here are the results:' % args.config)
+            print(str(e))
             sys.exit(1)
             
         

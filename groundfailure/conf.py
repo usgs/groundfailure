@@ -42,7 +42,8 @@ def __file_type(value):
 
 def __path_type(value):
     '''Describes a path_type from the groundfailure config spec.
-    A path_type object is simply a string that must be a valid file OR directory on the system.
+    A path_type object is simply a string that must be a valid file OR 
+    directory on the system.
     :param value:
       String representing valid path to a file or directory on the local system.
     :return:
@@ -70,11 +71,13 @@ def filterResults(result):
 def validate(configfile):
     '''Return a validated config object.
     :param configspec:
-      Path to config spec file, used to define the valid configuration parameters for the system.
+      Path to config spec file, used to define the valid configuration 
+      parameters for the system.
     :param configfile:
       Config file to validate.
     :returns:
-      A validated ConfigObj object or a dictionary of which section/parameters failed validation.
+      A validated ConfigObj object or a dictionary of which section/parameters 
+      failed validation.
     '''
     thispath = os.path.dirname(os.path.abspath(__file__))
     configspec = os.path.join(thispath,'configspec.ini')
@@ -90,11 +93,13 @@ def validate(configfile):
 def _test_validate():
     configtext = '''[logistic_models]
 
-  #default_landslide and default_liquefaction parameters below must refer to named models in this file
+  #default_landslide and default_liquefaction parameters below must refer to 
+  #named models in this file
   default_landslide = nowicki_2014
   default_liquefaction = zhu_2015
 
-  # this can be any string, but it must be a unique and descriptive name of a logistic regression model.
+  # this can be any string, but it must be a unique and descriptive name of a 
+  # logistic regression model.
   [[nowicki_2014]]
     #Detailed description of the model, its inputs, etc.
     description = 'This is the Nowicki Model of 2014, which uses vs30 and CTI as input.'

@@ -64,3 +64,5 @@ target/
 runmodels.py
 *DS_store*
 
+# Emacs backup files
+*~

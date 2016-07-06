@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """
-Functions for manipulating geospatial data by building and then calling command line GDAL functions. GDAL needs to be installed for these to work. Cleans up temporary files.
+Functions for manipulating geospatial data by building and then calling command
+line GDAL functions. GDAL needs to be installed for these to work. Cleans up 
+temporary files.
 """
 
 import glob
@@ -11,8 +13,10 @@ from mapio.gdal import GDALGrid
 
 def getfilesfromfolders(folderwildcard, filewildcard):
     """
-    SRTM datasets come in folders, this pulls out the .bil filenames from each folder with the full file path
-    :param folderwildcard: wild card indicating how the folders are named that contain the SRTM .bil files
+    SRTM datasets come in folders, this pulls out the .bil filenames from each 
+    folder with the full file path
+    :param folderwildcard: wild card indicating how the folders are named that 
+      contain the SRTM .bil files
     """
     foldernames = glob.glob(folderwildcard)
     filenames = []
@@ -25,13 +29,20 @@ def getfilesfromfolders(folderwildcard, filewildcard):
 
 def srtm2slope(filenames, finaloutfile, fmt='EHdr', cleanup=True):
     """
-    Convert tiles of srtm to slope (with intermediate projection to transverse mercator projection)
+    Convert tiles of srtm to slope (with intermediate projection to transverse 
+    mercator projection)
     USAGE srtm2slope(filenames, finaloutfile, fmt='EHdr')
-    :param filenames: Single file name as string, Wildcard to call filenames [full file path needed (e.g. '/Users/Bob/n*_w*3arc*.bil')] or list of file names, should all be in same coordinate system (WGS84 is coordinate system for SRTM data from Earth Explorer). Creates intermediate files that can be cleaned up or not
+    :param filenames: Single file name as string, Wildcard to call filenames 
+      [full file path needed (e.g. '/Users/Bob/n*_w*3arc*.bil')] or list of file
+      names, should all be in same coordinate system (WGS84 is coordinate system
+      for SRTM data from Earth Explorer). Creates intermediate files that can 
+      be cleaned up or not
     :type filenames: string or list
-    :param finaloutfile: Full file path to output file with extension (if no path given, will be put in current directory)
+    :param finaloutfile: Full file path to output file with extension (if no 
+      path given, will be put in current directory)
     :type finaloutfile: string
-    :param fmt: GDAL format to use for outputs, currently only EHdr (.bil) and GMT (.grd) are supported, but others might work
+    :param fmt: GDAL format to use for outputs, currently only EHdr (.bil) and 
+      GMT (.grd) are supported, but others might work
     :type fmt: string
     :param cleanup: Whether to delete intermediate files or not
     :type cleanup: Boolean
@@ -43,15 +54,18 @@ def srtm2slope(filenames, finaloutfile, fmt='EHdr', cleanup=True):
     elif fmt == 'GMT':
         fileext = '.grd'
     if type(filenames) is str:  # If just one file, don't need to merge
-        s_srs, t_srs = warp(filenames, 'temputm58' + fileext, 'EPSG:4326', None, method='bilinear')
+        s_srs, t_srs = warp(filenames, 'temputm58' + fileext, 'EPSG:4326', None,
+                            method='bilinear')
     else:
         merge(filenames, 'tempmerge58' + fileext)
-        s_srs, t_srs = warp('tempmerge58' + fileext, 'temputm58' + fileext, 'EPSG:4326', None, method='bilinear')
+        s_srs, t_srs = warp('tempmerge58' + fileext, 'temputm58' + fileext,
+                            'EPSG:4326', None, method='bilinear')
     slope('temputm58' + fileext, 'tempslope58' + fileext)
     warp('tempslope58' + fileext, finaloutfile, t_srs, s_srs, method='bilinear')
     # clean up files
     if cleanup:
-        delfiles = glob.glob('tempmerge58.*') + glob.glob('temputm58.*') + glob.glob('tempslope58.*')
+        delfiles = glob.glob('tempmerge58.*') + glob.glob('temputm58.*') + \
+          glob.glob('tempslope58.*')
         for delf in delfiles:
             os.remove(delf)
 
@@ -75,12 +89,17 @@ def merge(filenames, outfile, fmt='EHdr'):
 def warp(infile, outfile, s_srs, t_srs, method='bilinear', fmt='EHdr'):
     """
     Call gdalwarp to reproject a raster
-    USAGE s_srs, t_srs = warp(infile, outfile, s_srs, t_srs, method='bilinear', fmt='EHdr')
+    USAGE s_srs, t_srs = warp(infile, outfile, s_srs, t_srs, method='bilinear',
+    fmt='EHdr')
     :param infile: Single input file
     :param outfile: Single output file with extension
-    :param s_srs: Projection of input file (EPSG or PROJ.4 string), if None, uses transverse mercator
-    :param t_srs: Projection of output file (EPSG or PROJ.4 string), if None, uses transverse mercator
-    :param method: method to use in warping, from gdalwarp's options, 'bilinear', 'nearest' etc., bilinear should be used for slopes to avoid weird artifacts
+    :param s_srs: Projection of input file (EPSG or PROJ.4 string), if None, 
+      uses transverse mercator
+    :param t_srs: Projection of output file (EPSG or PROJ.4 string), if None, 
+      uses transverse mercator
+    :param method: method to use in warping, from gdalwarp's options, 
+      'bilinear', 'nearest' etc., bilinear should be used for slopes to avoid 
+      weird artifacts
     :param fmt: Format of output, 'EHdr' or 'GMT'
     :returns s_srs: s_srs that was used
     :returns t_srs: t_srs that was used

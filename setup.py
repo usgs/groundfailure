@@ -7,5 +7,6 @@ setup(name='groundfailure',
       author_email='kallstadt@usgs.gov,mhearne@usgs.gov,emthompson@usgs.gov',
       url='',
       packages=['groundfailure'],
+      package_data = {'groundfailure':['configspec.ini']},
       scripts = ['gfail'],
 )
