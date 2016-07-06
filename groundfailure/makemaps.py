@@ -110,17 +110,24 @@ def parseMapConfig(config):
     watercolor = '#'+watercolor
     roadcolor = '#'+roadcolor
 
-    mapin = {'topofile': topofile, 'roadfolder': roadfolder, 'cityfile': cityfile, 'roadcolor': roadcolor, 'countrycolor': countrycolor, 'watercolor': watercolor, 'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref, 'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
+    mapin = {'topofile': topofile, 'roadfolder': roadfolder,
+             'cityfile': cityfile, 'roadcolor': roadcolor,
+             'countrycolor': countrycolor, 'watercolor': watercolor,
+             'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref,
+             'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
 
     return mapin
 
 
 def parseConfigLayers(maplayers, config):
     """
-    Parse things that need to coodinate with each layer (like lims, logscale, colormaps etc.) from config file, in right order - takes orders from maplayers
+    Parse things that need to coodinate with each layer (like lims, logscale, 
+    colormaps etc.) from config file, in right order - takes orders from 
+    maplayers
     # TO DO, ADD ABILITY TO INTERPRET CUSTOM COLOR MAPS
     """
-    # get all key names, create a plotorder list in case maplayers is not an ordered dict, making sure that anything called 'model' is first
+    # get all key names, create a plotorder list in case maplayers is not an
+    # ordered dict, making sure that anything called 'model' is first
     keys = list(maplayers.keys())
     plotorder = []
 
@@ -231,59 +238,120 @@ def parseConfigLayers(maplayers, config):
     return plotorder, logscale, lims, colormaps, maskthreshes
 
 
-def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotorder=None, maskthreshes=None, colormaps=None, boundaries=None, zthresh=0, scaletype='continuous', lims=None, logscale=False, ALPHA=0.7, maproads=True, mapcities=True, isScenario=False, roadfolder=None, topofile=None, cityfile=None, oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10', outputdir=None, savepdf=True, savepng=True, showplots=False, roadref='unknown', cityref='unknown', oceanref='unknown', printparam=False, ds=True, dstype='mean', upsample=False):
+def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None,
+             plotorder=None, maskthreshes=None, colormaps=None, boundaries=None,
+             zthresh=0, scaletype='continuous', lims=None, logscale=False,
+             ALPHA=0.7, maproads=True, mapcities=True, isScenario=False,
+             roadfolder=None, topofile=None, cityfile=None, oceanfile=None,
+             roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10',
+             outputdir=None, savepdf=True, savepng=True, showplots=False,
+             roadref='unknown', cityref='unknown', oceanref='unknown',
+             printparam=False, ds=True, dstype='mean', upsample=False):
 
     """
-    This function creates maps of mapio grid layers (e.g. liquefaction or landslide models with their input layers)
+    This function creates maps of mapio grid layers (e.g. liquefaction or 
+    landslide models with their input layers)
     All grids must use the same bounds
-    TO DO change so that all input layers do not have to have the same bounds, test plotting multiple probability layers, and add option so that if PDF and PNG aren't output, opens plot on screen using plt.show()
+    TO DO change so that all input layers do not have to have the same bounds, 
+    test plotting multiple probability layers, and add option so that if PDF and
+    PNG aren't output, opens plot on screen using plt.show()
 
-    :param grids: Dictionary of N layers and metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle'}. Layer names must be unique.
-    :type name: Dictionary or Ordered dictionary - import collections; grids = collections.OrderedDict()
-    :param edict: Optional event dictionary for ShakeMap, used for title and naming output folder
+    :param grids: Dictionary of N layers and metadata formatted like 
+      maplayers['layer name']={
+        'grid': mapio grid2D object, 
+        'label': 'label for colorbar and top line of subtitle', 
+        'type': 'output or input to model', 
+        'description': 'detailed description of layer for subtitle'}. 
+      Layer names must be unique.
+    :type name: Dictionary or Ordered dictionary - import collections; 
+      grids = collections.OrderedDict()
+    :param edict: Optional event dictionary for ShakeMap, used for title and 
+      naming output folder
     :type edit: Shakemap Event Dictionary
-    :param suptitle: This will be displayed at the top of the plots and in the figure names
+    :param suptitle: This will be displayed at the top of the plots and in the 
+      figure names
     :type suptitle: string
-    :param plotorder: List of keys describing the order to plot the grids, if None and grids is an ordered dictionary, it will use the order of the dictionary, otherwise it will choose order which may be somewhat random but it will always put a probability grid first
+    :param plotorder: List of keys describing the order to plot the grids, if 
+      None and grids is an ordered dictionary, it will use the order of the 
+      dictionary, otherwise it will choose order which may be somewhat random 
+      but it will always put a probability grid first
     :type plotorder: list
-    :param maskthreshes: N x 1 array or list of lower thresholds for masking corresponding to order in plotorder or order of OrderedDict if plotorder is None. If grids is not an ordered dict and plotorder is not specified, this will not work right. If None (default), nothing will be masked
-    :param colormaps: List of strings of matplotlib colormaps (e.g. cm.autumn_r) corresponding to plotorder or order of dictionary if plotorder is None. The list can contain both strings and None e.g. colormaps = ['cm.autumn', None, None, 'cm.jet'] and None's will default to default colormap
-    :param boundaries: None to show entire study area, 'zoom' to zoom in on the area of action (only works if there is a probability layer) using zthresh as a threshold, or a dictionary defining lats and lons in the form of boundaries.xmin = minlon, boundaries.xmax = maxlon, boundaries.ymin = min lat, boundaries.ymax = max lat
-    :param zthresh: threshold for computing zooming bounds, only used if boundaries = 'zoom'
+    :param maskthreshes: N x 1 array or list of lower thresholds for masking 
+      corresponding to order in plotorder or order of OrderedDict if plotorder 
+      is None. If grids is not an ordered dict and plotorder is not specified, 
+      this will not work right. If None (default), nothing will be masked
+    :param colormaps: List of strings of matplotlib colormaps (e.g. cm.autumn_r)
+      corresponding to plotorder or order of dictionary if plotorder is None. 
+      The list can contain both strings and None e.g. colormaps = ['cm.autumn',
+      None, None, 'cm.jet'] and None's will default to default colormap
+    :param boundaries: None to show entire study area, 'zoom' to zoom in on the 
+      area of action (only works if there is a probability layer) using zthresh 
+      as a threshold, or a dictionary defining lats and lons in the form of 
+      boundaries.xmin = minlon, boundaries.xmax = maxlon, boundaries.ymin = 
+      min lat, boundaries.ymax = max lat
+    :param zthresh: threshold for computing zooming bounds, only used if 
+      boundaries = 'zoom'
     :type zthresh: float
-    :param scaletype: Type of scale for plotting, 'continuous' or 'binned' - will be reflected in colorbar
+    :param scaletype: Type of scale for plotting, 'continuous' or 'binned' - 
+      will be reflected in colorbar
     :type scaletype: string
-    :param lims: None or Nx1 list of tuples or numpy arrays corresponding to plotorder defining the limits for saturating the colorbar (vmin, vmax) if scaletype is continuous or the bins to use (clev) if scaletype if binned. The list can contain tuples, arrays, and Nones, e.g. lims = [(0., 10.), None, (0.1, 1.5), np.linspace(0., 1.5, 15)]. When None is specified, the program will estimate the limits, when an array is specified but the scaletype is continuous, vmin will be set to min(array) and vmax will be set to max(array)
-    :param lims: None or Nx1 list of Trues and Falses corresponding to plotorder defining whether to use a linear or log scale (log10) for plotting the layer. This will be reflected in the labels
-    :param ALPHA: Transparency for mapping, if there is a hillshade that will plot below each layer, it is recommended to set this to at least 0.7
+    :param lims: None or Nx1 list of tuples or numpy arrays corresponding to 
+      plotorder defining the limits for saturating the colorbar (vmin, vmax) if 
+      scaletype is continuous or the bins to use (clev) if scaletype if binned. 
+      The list can contain tuples, arrays, and Nones, e.g. lims = [(0., 10.), 
+      None, (0.1, 1.5), np.linspace(0., 1.5, 15)]. When None is specified, the 
+      program will estimate the limits, when an array is specified but the scale
+      type is continuous, vmin will be set to min(array) and vmax will be set 
+      to max(array)
+    :param lims: None or Nx1 list of Trues and Falses corresponding to 
+      plotorder defining whether to use a linear or log scale (log10) for 
+      plotting the layer. This will be reflected in the labels
+    :param ALPHA: Transparency for mapping, if there is a hillshade that will 
+      plot below each layer, it is recommended to set this to at least 0.7
     :type ALPHA: float
-    :param maproads: Whether to show roads or not, default True, but requires that roadfile is specified and valid to work
+    :param maproads: Whether to show roads or not, default True, but requires 
+      that roadfile is specified and valid to work
     :type maproads: boolean
-    :param mapcities: Whether to show cities or not, default True, but requires that cityfile is specified and valid to work
+    :param mapcities: Whether to show cities or not, default True, but requires 
+      that cityfile is specified and valid to work
     :type mapcities: boolean
-    :param isScenario: Whether this is a scenario (True) or a real event (False) (default False)
+    :param isScenario: Whether this is a scenario (True) or a real event (False)
+      (default False)
     :type isScenario: boolean
     :param roadfolder: Full file path to folder containing road shapefiles
     :type roadfolder: string
-    :param topofile: Full file path to topography grid (GDAL compatible) - this is only needed to make a hillshade if a premade hillshade is not specified
+    :param topofile: Full file path to topography grid (GDAL compatible) - this 
+      is only needed to make a hillshade if a premade hillshade is not specified
     :type topofile: string
-    :param cityfile: Full file path to Pager file containing city & population information
+    :param cityfile: Full file path to Pager file containing city & population 
+      information
     :type cityfile: string
     :param roadcolor: Color to use for roads, if plotted, default #6E6E6E
-    :type roadcolor: Hex color or other matplotlib compatible way of defining color
-    :param watercolor: Color to use for oceans, lakes, and rivers, default #B8EEFF
-    :type watercolor: Hex color or other matplotlib compatible way of defining color
+    :type roadcolor: Hex color or other matplotlib compatible way of defining 
+      color
+    :param watercolor: Color to use for oceans, lakes, and rivers, default 
+      #B8EEFF
+    :type watercolor: Hex color or other matplotlib compatible way of defining 
+      color
     :param countrycolor: Color for country borders, default #177F10
-    :type countrycolor: Hex color or other matplotlib compatible way of defining color
-    :param outputdir: File path for outputting figures, if edict is defined, a subfolder based on the event id will be created in this folder. If None, will use current directory
+    :type countrycolor: Hex color or other matplotlib compatible way of defining
+      color
+    :param outputdir: File path for outputting figures, if edict is defined, a 
+      subfolder based on the event id will be created in this folder. If None, 
+      will use current directory
     :param savepdf: True to save pdf figure, False to not
     :param savepng: True to save png figure, False to not
-    :param ds: True to allow downsampling for display (necessary when arrays are quite large, False to not allow)
-    :param dstype: What function to use in downsampling, options are 'min', 'max', 'median', or 'mean'
-    :param upsample: True to upsample the layer to the DEM resolution for better looking hillshades
+    :param ds: True to allow downsampling for display (necessary when arrays 
+      are quite large, False to not allow)
+    :param dstype: What function to use in downsampling, options are 'min', 
+      'max', 'median', or 'mean'
+    :param upsample: True to upsample the layer to the DEM resolution for better
+      looking hillshades
 
     :returns:  PDF and/or PNG of map
-    :returns newgrids: Downsampled and trimmed version of input grids. If no modification was needed for plotting, this will be identical to grids but without the metadata
+    :returns newgrids: Downsampled and trimmed version of input grids. If no 
+      modification was needed for plotting, this will be identical to grids but
+      without the metadata
     """
     if suptitle is None:
         suptitle = ' '
@@ -297,7 +365,7 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         print('No output location given, using current directory for outputs\n')
         outputdir = os.getcwd()
     if edict is not None:
-        outfolder = os.path.join(outputdir, edict['eventid'])
+        outfolder = os.path.join(outputdir, edict['event_id'])
     else:
         outfolder = outputdir
     if not os.path.isdir(outfolder):
@@ -314,7 +382,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         keytemp = list(grids.keys())
         boundaries = grids[keytemp[0]]['grid'].getGeoDict()
     elif boundaries == 'zoom':
-        # Find probability layer (will just take the maximum bounds if there is more than one)
+        # Find probability layer (will just take the maximum bounds if there is
+        # more than one)
         keytemp = list(grids.keys())
         key1 = [key for key in keytemp if 'model' in key.lower()]
         if len(key1) == 0:
@@ -327,7 +396,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             latmax = -1.e10
             latmin = 1.e10
             for key in key1:
-                # get lat lons of areas affected and add, if no areas affected, switch to shakemap boundaries
+                # get lat lons of areas affected and add, if no areas affected,
+                # switch to shakemap boundaries
                 temp = grids[key]['grid']
                 xmin, xmax, ymin, ymax = temp.getBounds()
                 lons = np.linspace(xmin, xmax, temp.getGeoDict().nx)
@@ -370,20 +440,32 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         # SEE IF BOUNDARIES ARE SAME AS BOUNDARIES OF LAYERS
         keytemp = list(grids.keys())
         tempgdict = grids[keytemp[0]]['grid'].getGeoDict()
-        if np.abs(tempgdict.xmin-boundaries['xmin']) < 0.05 and np.abs(tempgdict.ymin-boundaries['ymin']) < 0.05 and np.abs(tempgdict.xmax-boundaries['xmax'] < 0.05 and np.abs(tempgdict.ymax - boundaries['ymax']) < 0.05):
+        if np.abs(tempgdict.xmin-boundaries['xmin']) < 0.05 and \
+           np.abs(tempgdict.ymin-boundaries['ymin']) < 0.05 and \
+           np.abs(tempgdict.xmax-boundaries['xmax']) < 0.05 and \
+           np.abs(tempgdict.ymax - boundaries['ymax']) < 0.05:
             print('Input boundaries are almost the same as specified boundaries, no cutting needed')
             boundaries = tempgdict
             cut = False
         else:
             try:
-                if boundaries['xmin'] > boundaries['xmax'] or boundaries['ymin'] > boundaries['ymax']:
+                if boundaries['xmin'] > boundaries['xmax'] or \
+                   boundaries['ymin'] > boundaries['ymax']:
                     print('Input boundaries are not usable, using default boundaries')
                     keytemp = list(grids.keys())
                     boundaries = grids[keytemp[0]]['grid'].getGeoDict()
                     cut = False
                 else:
                     # Build dummy GeoDict
-                    boundaries = GeoDict({'xmin': boundaries['xmin'], 'xmax': boundaries['xmax'], 'ymin': boundaries['ymin'], 'ymax': boundaries['ymax'], 'dx': 100., 'dy': 100., 'ny': 100., 'nx': 100.}, adjust='res')
+                    boundaries = GeoDict({'xmin': boundaries['xmin'],
+                                          'xmax': boundaries['xmax'],
+                                          'ymin': boundaries['ymin'],
+                                          'ymax': boundaries['ymax'],
+                                          'dx': 100.,
+                                          'dy': 100.,
+                                          'ny': 100.,
+                                          'nx': 100.},
+                                         adjust='res')
             except:
                 print('Input boundaries are not usable, using default boundaries')
                 keytemp = list(grids.keys())
@@ -393,7 +475,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     # Pull out bounds for various uses
     bxmin, bxmax, bymin, bymax = boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax
 
-    # Determine if need a single panel or multi-panel plot and if multi-panel, how many and how it will be arranged
+    # Determine if need a single panel or multi-panel plot and if multi-panel,
+    # how many and how it will be arranged
     fig = plt.figure()
     numpanels = len(grids)
     if numpanels == 1:
@@ -414,7 +497,9 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
     else:
         fig.set_figheight(rowpan*5.3)
 
-    # Need to update naming to reflect the shakemap version once can get getHeaderData to work, add edict['version'] back into title, maybe shakemap id also?
+    # Need to update naming to reflect the shakemap version once can get
+    # getHeaderData to work, add edict['version'] back into title, maybe
+    # shakemap id also?
     fontsizemain = 14.
     fontsizesub = 12.
     fontsizesmallest = 10.
@@ -466,14 +551,23 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 print('Upsampling not possible, resolution of results already smaller than DEM')
                 pass
             else:
-                tempgdict1 = GeoDict({'xmin': tempgdict.xmin-xbuff, 'ymin': tempgdict.ymin-ybuff, 'xmax': tempgdict.xmax+xbuff, 'ymax': tempgdict.ymax+ybuff, 'dx': topodict.dx, 'dy': topodict.dy, 'nx': topodict.nx, 'ny': topodict.ny}, adjust='res')
+                tempgdict1 = GeoDict({'xmin': tempgdict.xmin-xbuff,
+                                      'ymin': tempgdict.ymin-ybuff,
+                                      'xmax': tempgdict.xmax+xbuff,
+                                      'ymax': tempgdict.ymax+ybuff,
+                                      'dx': topodict.dx,
+                                      'dy': topodict.dy,
+                                      'nx': topodict.nx,
+                                      'ny': topodict.ny},
+                                     adjust='res')
                 tempgdict2 = tempgdict1.getBoundsWithin(tempgdict)
                 for k, layer in enumerate(plotorder):
                     newgrids[layer]['grid'] = newgrids[layer]['grid'].subdivide(tempgdict2)
         except:
             print('Upsampling failed, continuing')
 
-    # Downsample all of them for plotting, if needed, and replace them in grids (to save memory)
+    # Downsample all of them for plotting, if needed, and replace them in
+    # grids (to save memory)
     tempgrid = newgrids[list(grids.keys())[0]]['grid']
     xsize = tempgrid.getGeoDict().nx
     ysize = tempgrid.getGeoDict().ny
@@ -500,15 +594,32 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             func = np.nanmean
         for k, layer in enumerate(plotorder):
             layergrid = newgrids[layer]['grid']
-            dat = block_reduce(layergrid.getData().copy(), block_size=(divy, divx), cval=float('nan'), func=func)
+            dat = block_reduce(layergrid.getData().copy(),
+                               block_size=(divy, divx),
+                               cval=float('nan'),
+                               func=func)
             if k == 0:
-                lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx), block_size=(divx,), func=np.mean, cval=float('nan'))
+                lons = block_reduce(np.linspace(xmin, xmax, layergrid.getGeoDict().nx),
+                                    block_size=(divx,),
+                                    func=np.mean,
+                                    cval=float('nan'))
                 if math.isnan(lons[-1]):
                     lons[-1] = lons[-2] + (lons[1]-lons[0])
-                lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny), block_size=(divy,), func=np.mean, cval=float('nan'))
+                lats = block_reduce(np.linspace(ymax, ymin, layergrid.getGeoDict().ny),
+                                    block_size=(divy,),
+                                    func=np.mean,
+                                    cval=float('nan'))
                 if math.isnan(lats[-1]):
                     lats[-1] = lats[-2] + (lats[1]-lats[0])
-                gdict = GeoDict({'xmin': lons.min(), 'xmax': lons.max(), 'ymin': lats.min(), 'ymax': lats.max(), 'dx': np.abs(lons[1]-lons[0]), 'dy': np.abs(lats[1]-lats[0]), 'nx': len(lons), 'ny': len(lats)}, adjust='res')
+                gdict = GeoDict({'xmin': lons.min(),
+                                 'xmax': lons.max(),
+                                 'ymin': lats.min(),
+                                 'ymax': lats.max(),
+                                 'dx': np.abs(lons[1]-lons[0]),
+                                 'dy': np.abs(lats[1]-lats[0]),
+                                 'nx': len(lons),
+                                 'ny': len(lats)},
+                                adjust='res')
             newgrids[layer]['grid'] = Grid2D(dat, gdict)
         del layergrid, dat
     else:
@@ -612,10 +723,14 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         if k == 0:
             wid, ht = axsize.width, axsize.height
-        if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
+        if colormaps is not None and \
+           len(colormaps) == len(newgrids) and \
+           colormaps[k] is not None:
             palette = eval(colormaps[k])
         else:  # Find preferred default color map for each type of layer
-            if 'prob' in layer.lower() or 'pga' in layer.lower() or 'pgv' in layer.lower() or 'cohesion' in layer.lower() or 'friction' in layer.lower() or 'fs' in layer.lower():
+            if 'prob' in layer.lower() or 'pga' in layer.lower() or \
+               'pgv' in layer.lower() or 'cohesion' in layer.lower() or \
+               'friction' in layer.lower() or 'fs' in layer.lower():
                 palette = cm.jet
             elif 'slope' in layer.lower():
                 palette = cm.gnuplot2
@@ -626,7 +741,11 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         if topodata is not None:
             if k == 0:
-                ptopo = m.transform_scalar(np.flipud(topodata), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=1, masked=False)
+                ptopo = m.transform_scalar(
+                    np.flipud(topodata), lons+0.5*gdict.dx,
+                    lats[::-1]-0.5*gdict.dy, np.round(300.*wid),
+                    np.round(300.*ht), returnxy=False, checkbounds=False,
+                    order=1, masked=False)
                 #use lightsource class to make our shaded topography
                 ls = LightSource(azdeg=135, altdeg=45)
                 ls1 = LightSource(azdeg=120, altdeg=45)
@@ -714,7 +833,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 ax.add_patch(patch)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy, np.round(300.*wid), np.round(300.*ht), returnxy=False, checkbounds=False, order=0, masked=True)
+        dat_im = m.transform_scalar(
+            np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy,
+            np.round(300.*wid), np.round(300.*ht), returnxy=False,
+            checkbounds=False, order=0, masked=True)
         if topodata is not None:  # Drape over hillshade
             #turn data into an RGBA image
             cmap = palette
@@ -729,9 +851,13 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
             rgb[maskvals] = 1.
             draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
             m.imshow(draped_hsv, zorder=3., interpolation='none')
-            panelhandle = m.imshow(dat_im, cmap=palette, zorder=0., vmin=vmin, vmax=vmax)  # This is just a dummy layer that will be deleted to make the colorbar look right
+            # This is just a dummy layer that will be deleted to make the
+            # colorbar look right
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=0.,
+                                   vmin=vmin, vmax=vmax)  
         else:
-            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3., vmin=vmin, vmax=vmax, interpolation='none')
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3.,
+                                   vmin=vmin, vmax=vmax, interpolation='none')
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
         #panelhandle.set_edgecolors('face')
         # add colorbar
@@ -744,11 +870,14 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
         #norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
         if scaletype.lower() == 'binned':
-            cbar = fig.colorbar(panelhandle, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both')
+            cbar = fig.colorbar(panelhandle, spacing='proportional',
+                                ticks=clev, boundaries=clev, fraction=0.036,
+                                pad=0.04, format=cbfmt, extend='both')
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both', extendfrac='auto')
 
         else:
-            cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04, extend='both', format=cbfmt)
+            cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04,
+                                extend='both', format=cbfmt)
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, fraction=0.036, pad=0.04, extend='both', extendfrac='auto', format=cbfmt)
 
         if topodata is not None:
@@ -757,8 +886,13 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
 
-        parallels = m.drawparallels(getMapLines(bymin, bymax, 3), labels=[1, 0, 0, 0], linewidth=0.5, labelstyle='+/-', fontsize=9, xoffset=-0.8, color='gray', zorder=100.)
-        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1], linewidth=0.5, labelstyle='+/-', fontsize=9, color='gray', zorder=100.)
+        parallels = m.drawparallels(getMapLines(bymin, bymax, 3),
+                                    labels=[1, 0, 0, 0], linewidth=0.5,
+                                    labelstyle='+/-', fontsize=9, xoffset=-0.8,
+                                    color='gray', zorder=100.)
+        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1],
+                        linewidth=0.5, labelstyle='+/-', fontsize=9,
+                        color='gray', zorder=100.)
         for par in parallels:
             try:
                 parallels[par][1][0].set_rotation(90)
@@ -782,12 +916,15 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
                 fontname = 'Arial'
                 fontsize = 8
                 if k == 0:  # Only need to choose cities first time and then apply to rest
-                    fcities = bcities.limitByMapCollision(m, fontname=fontname, fontsize=fontsize)
+                    fcities = bcities.limitByMapCollision(
+                        m, fontname=fontname, fontsize=fontsize)
                     ctlats, ctlons, names = fcities.getCities()
                     cxis, cyis = m(ctlons, ctlats)
                 for ctlat, ctlon, cxi, cyi, name in zip(ctlats, ctlons, cxis, cyis, names):
-                    m.scatter(ctlon, ctlat, c='k', latlon=True, marker='.', zorder=100000)
-                    ax.text(cxi, cyi, name, fontname=fontname, fontsize=fontsize, zorder=100000)
+                    m.scatter(ctlon, ctlat, c='k', latlon=True, marker='.',
+                              zorder=100000)
+                    ax.text(cxi, cyi, name, fontname=fontname,
+                            fontsize=fontsize, zorder=100000)
             except Exception as e:
                 print('Failed to plot cities, %s' % e)
 
@@ -833,7 +970,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
         if edict is not None:
             elat, elon = edict['lat'], edict['lon']
             ex, ey = m(elon, elat)
-            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.0, ms=15, zorder=10000.)
+            plt.plot(ex, ey, '*', markeredgecolor='k', mfc='None', mew=1.0,
+                     ms=15, zorder=10000.)
 
         m.drawmapboundary(fill_color=watercolor)
 
@@ -922,7 +1060,10 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None, plotord
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
     """
-    Computes a hillshade from a digital elevation model. Most of this script borrowed from http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html last accessed 9/2/2015
+    Computes a hillshade from a digital elevation model. Most of this script 
+    borrowed from 
+    http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html 
+    last accessed 9/2/2015
 
     :param topogrid: Digital elevation model
     :type topogrid: Grid2D object
