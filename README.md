@@ -51,25 +51,34 @@ http://configobj.readthedocs.org/en/latest/configobj.html#config-files
 and layers are shown here for the purpose of explaining how to configure models. 
 - References and other inputs with commas within them need to be enclosed in quotes or else they will not be read in properly (commas will be used to separate) - for example: 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
 - Arrays should be not be enclosed in brackets and should be comma separated, for example: model = 0, 0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99, 1.
+- Files, filepaths, and folders for different input and data layers should only include the object's location within the input folder indicated at the top of the file.
 
 <pre>
 [output]
-  folder = '/Users/user/failureoutput/'
+  folder = /Users/user/groundfailure/outputs/
+
+[input]
+  folder = /Users/user/groundfailure/inputs/
 
 [mapdata]
   [[dem]]
     # Optional, don't need if have hillshade, just for making hillshade
-    file = /Users/kallstadt/SecondaryHazards/Codes/inputs/md30_gmted_gmt.grd
+    file = md30_gmted_gmt.grd
 
   [[roads]]
-    folder = /Users/kallstadt/SecondaryHazards/Codes/inputs/roads
+    folder = roads
     longref = 'Center for International Earth Science Information Network - CIESIN, 2013, Global Roads Open Access Data Set, Version 1 (gROADSv1): Columbia University, and Information Technology Outreach Services - ITOS - University of Georgia, Palisades, NY, NASA Socioeconomic Data and Applications Center (SEDAC). http://dx.doi.org/10.7927/H4VD6WCT.'
     shortref = 'CIESIN (2013)'
 
   [[cities]]
-    file = /Users/kallstadt/SecondaryHazards/Codes/inputs/cities1000.txt
+    file = cities1000.txt
     longref = GeoNames, http://geonames.org/ Accessed: 2 Sept 2015
     shortref = GeoNames
+
+  [[oceans]]
+    file = Oceans_Natural_Earth/ne_10m_ocean/ne_10m_ocean.shp
+    longref = Natural Earth (2016) Ocean polygon http://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-ocean/
+    shortref = Natural Earth (acc. 2016)
 
   [[lims]]
     # Corresponding to different possible layer keys - don't need these, will just use defaults if missing, don't need full name of layer, just something that is part of it
@@ -78,8 +87,10 @@ and layers are shown here for the purpose of explaining how to configure models.
     pgv = None
     FS = 0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0
     slope = None
-    cohesion = None
-    friction = None
+    cohesion = 'np.linspace(0., 40., 11.)'
+    friction = 'np.linspace(0., 50., 11.)'
+    suscat = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
+    Dn = 'np.linspace(0., 10., 6.)'
 
   [[colors]]
     # Define basic colors and transparencies
@@ -115,7 +126,8 @@ and layers are shown here for the purpose of explaining how to configure models.
     FS = None 
     slope = None
     cohesion = None
-    friction = None
+    friction = 
+    Dn = 0.
 
 [mechanistic_models]
   [[godt_2008]]
@@ -128,19 +140,19 @@ and layers are shown here for the purpose of explaining how to configure models.
     
     [[[layers]]]
       [[[[cohesion]]]]
-        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/cohesion_10i.flt
+        file = Godt_inputs/cohesion_10i.flt
         units = kPa
         longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
         shortref = 'Godt and others (2008)'
 
       [[[[friction]]]]
-        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/friction.flt
+        file = Godt_inputs/friction.flt
         units = degrees
         longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
         shortref = 'Godt and others (2008)'
 
       [[[[slope]]]]
-        filepath = /Users/kallstadt/SecondaryHazards/Datasets/Verdin_slopes_resampled
+        filepath = Verdin_slopes_resampled
         units = degrees*100
         longref = 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
         shortref = 'Verdin et al. (2007)'
@@ -167,26 +179,26 @@ and layers are shown here for the purpose of explaining how to configure models.
 
     [[[layers]]]
       [[[[cohesion]]]]
-        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/cohesion_10i.flt
+        file = Godt_inputs/cohesion_10i.flt
         interpolation = nearest
         units = kPa
         longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
         shortref = 'Godt and others (2008)'
 
       [[[[friction]]]]
-        file = /Users/kallstadt/SecondaryHazards/Datasets/Godt_inputs/friction.flt
+        file = Godt_inputs/friction.flt
         units = degrees
         longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
         shortref = 'Godt and others (2008)'
 
       [[[[slope]]]]
-        file = /Users/kallstadt/SecondaryHazards/Datasets/Verdin_slopes_resampled/slope_max.bil
+        file = Verdin_slopes_resampled/slope_max.bil
         units = degrees
         longref = 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
         shortref = 'Verdin and others (2007)'
 
       [[[[watertable]]]]
-        file = /Users/kallstadt/SecondaryHazards/Datasets/Fan2013WaterTable/wtd_fan2013_zhu_fil_na.grd
+        file = Fan2013WaterTable/wtd_fan2013_zhu_fil_na.grd
         units = meters
         longref = 'Fan, Y., Li, H., and Miguez-Macho, G., 2013, Global Patterns of Groundwater Table Depth: Science, 339, 940-943.'
         shortref = 'Fan and others (2013)'
@@ -219,7 +231,7 @@ and layers are shown here for the purpose of explaining how to configure models.
 
     [[[layers]]]
       [[[[susceptibility]]]]
-        file = /Users/kallstadt/SecondaryHazards/Datasets/Wills_et_al_2011/Resampled/Susceptiblity_dry_WGS84.bil
+        file = Wills_et_al_2011/Resampled/Susceptiblity_dry_WGS84.bil
         units = N/A
         longref = 'Wills, C.J., Perez, F.G., and Gutierrez, C.I., 2011, Susceptibility to Deep-Seated Landslides in California: California Geological Survey Map Sheet 58, 1p.'
         shortref = 'Wills and others (2011)'
@@ -256,22 +268,31 @@ and layers are shown here for the purpose of explaining how to configure models.
     #The files MUST be named with the capitalized three-letter abbreviation of the month name, like "precip_Jan.grd", or "slope_May.grd".
     #If some files contain more than one of these three-letter abbreviations, you will get unexpected results. (i.e., "DecimatedSlope_Jan.grd")
     [[[layers]]]
-      cohesion = /Users/user/secondary/data/cohesion_10i.grd
-      slope = /Users/user/secondary/data/slope_max.grd
-      precip = /Users/user/secondary/data/precipdata
+      slope = slope_max.grd
+      rock = glim.grd
+      landcover = modis_30c.grd
+      precip = precipdata
+      cti = globalcti.grd
+      elev = gted_meanelev_30c.flt
 
     #indicate what kind of interpolation should be used for each of the above layers (nearest, linear, cubic)
     [[[interpolations]]]
-      cohesion = nearest
       slope = linear
+      rock = nearest
+      landcover = nearest
       precip = nearest
+      cti = linear
+      elev = linear
       
     #What are the physical units of the various predictive layers?  These will be displayed on output plots
     #and preserved in the output data files. 
     [[[units]]]
-      cohesion = kPa
-      slope = degrees
-      precip = cm/hr
+      slope = unitless
+      rock = unitless
+      landcover = unitless
+      precip = millimeters/month
+      cti = unitless
+      elev = meters
 
     [[[terms]]]
       #These terms must be named as b1-bN, where N is the number of coefficients
@@ -280,10 +301,15 @@ and layers are shown here for the purpose of explaining how to configure models.
       #where eqn is a linear equation of the form:
       #b0 + b1*t1 + b2*t2 + ... + bN*tN
       #where t1, t2, ... tN are the right hand side of the parameters below.
-      b1 = pga
+      b1 = pgv
       b2 = slope
-      b3 = cohesion/10.0
-      b4 = pga*slope
+      b3 = rock
+      b4 = cti
+      b5 = MW
+      b6 = precipMONTH
+      b7 = landcover
+      b8 = elev
+      b9 = pgv * slope
 
     [[[coefficients]]]
       #These coefficients must be named as b1-bN, where N is the number of coefficients
@@ -292,11 +318,16 @@ and layers are shown here for the purpose of explaining how to configure models.
       #where eqn is a linear equation of the form:
       #b0 + b1*t1 + b2*t2 + ... + bN*tN
       #where t1, t2, ... tN are the right hand side of the parameters below.
-      b0 = -7.15
-      b1 = 0.0604
-      b2 = 0.000825
-      b3 = 0.0201
-      b4 = 1.45e-05
+      b0 = -8.3453199 #intercept
+      b1 = 1.737721 # log(pgv)
+      b2 = 0.477635 #slope
+      b3 = 1.0 #lithology set to 1.0 - coefficients are in glim file
+      b4 = 0.0494136 #cti
+      b5 = 0.1634385 #Mw
+      b6 = 0.000949 #precip
+      b7 = 1.0 #land cover set to 1.0 - coefficients are in modis file
+      b8 = 0.0002273 # elevation
+      b9 = 0.477635 # log(pgv)*slope
 
   [[zhu_2015]]
   
@@ -314,14 +345,14 @@ and layers are shown here for the purpose of explaining how to configure models.
     #https://github.com/usgs/MapIO/blob/master/mapio/gdal.py
     #https://github.com/usgs/MapIO/blob/master/mapio/gmt.py
     [[[layers]]]
-      vs30 = /Users/user/secondary/data/global_vs30.grd
-      cti = /Users/user/secondary/data/globalcti.grd 
+      vs30 = global_vs30.grd
+      cti = globalcti.grd 
 
     #What are the physical units of the various predictive layers?  These will be displayed on output plots
     #and preserved in the output data files. 
     [[[units]]]
       vs30 = m/s
-      cti = cm/m
+      cti = m
 
     [[[interpolations]]]
       vs30 = nearest
