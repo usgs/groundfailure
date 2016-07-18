@@ -66,7 +66,7 @@ def parseMapConfig(config):
             except:
                 oceanref = 'unknown'
         if 'roads' in config1:
-            roadfolder = config1['roads']['folder']
+            roadfolder = config1['roads']['file']
             if os.path.exists(roadfolder) is False:
                 print('roadfolder not valid - roads will not be displayed\n')
                 roadfolder = None
@@ -121,8 +121,8 @@ def parseMapConfig(config):
 
 def parseConfigLayers(maplayers, config):
     """
-    Parse things that need to coodinate with each layer (like lims, logscale, 
-    colormaps etc.) from config file, in right order - takes orders from 
+    Parse things that need to coodinate with each layer (like lims, logscale,
+    colormaps etc.) from config file, in right order - takes orders from
     maplayers
     # TO DO, ADD ABILITY TO INTERPRET CUSTOM COLOR MAPS
     """
@@ -249,70 +249,70 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None,
              printparam=False, ds=True, dstype='mean', upsample=False):
 
     """
-    This function creates maps of mapio grid layers (e.g. liquefaction or 
+    This function creates maps of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers)
     All grids must use the same bounds
-    TO DO change so that all input layers do not have to have the same bounds, 
+    TO DO change so that all input layers do not have to have the same bounds,
     test plotting multiple probability layers, and add option so that if PDF and
     PNG aren't output, opens plot on screen using plt.show()
 
-    :param grids: Dictionary of N layers and metadata formatted like 
+    :param grids: Dictionary of N layers and metadata formatted like
       maplayers['layer name']={
-        'grid': mapio grid2D object, 
-        'label': 'label for colorbar and top line of subtitle', 
-        'type': 'output or input to model', 
-        'description': 'detailed description of layer for subtitle'}. 
+        'grid': mapio grid2D object,
+        'label': 'label for colorbar and top line of subtitle',
+        'type': 'output or input to model',
+        'description': 'detailed description of layer for subtitle'}.
       Layer names must be unique.
-    :type name: Dictionary or Ordered dictionary - import collections; 
+    :type name: Dictionary or Ordered dictionary - import collections;
       grids = collections.OrderedDict()
-    :param edict: Optional event dictionary for ShakeMap, used for title and 
+    :param edict: Optional event dictionary for ShakeMap, used for title and
       naming output folder
     :type edit: Shakemap Event Dictionary
-    :param suptitle: This will be displayed at the top of the plots and in the 
+    :param suptitle: This will be displayed at the top of the plots and in the
       figure names
     :type suptitle: string
-    :param plotorder: List of keys describing the order to plot the grids, if 
-      None and grids is an ordered dictionary, it will use the order of the 
-      dictionary, otherwise it will choose order which may be somewhat random 
+    :param plotorder: List of keys describing the order to plot the grids, if
+      None and grids is an ordered dictionary, it will use the order of the
+      dictionary, otherwise it will choose order which may be somewhat random
       but it will always put a probability grid first
     :type plotorder: list
-    :param maskthreshes: N x 1 array or list of lower thresholds for masking 
-      corresponding to order in plotorder or order of OrderedDict if plotorder 
-      is None. If grids is not an ordered dict and plotorder is not specified, 
+    :param maskthreshes: N x 1 array or list of lower thresholds for masking
+      corresponding to order in plotorder or order of OrderedDict if plotorder
+      is None. If grids is not an ordered dict and plotorder is not specified,
       this will not work right. If None (default), nothing will be masked
     :param colormaps: List of strings of matplotlib colormaps (e.g. cm.autumn_r)
-      corresponding to plotorder or order of dictionary if plotorder is None. 
+      corresponding to plotorder or order of dictionary if plotorder is None.
       The list can contain both strings and None e.g. colormaps = ['cm.autumn',
       None, None, 'cm.jet'] and None's will default to default colormap
-    :param boundaries: None to show entire study area, 'zoom' to zoom in on the 
-      area of action (only works if there is a probability layer) using zthresh 
-      as a threshold, or a dictionary defining lats and lons in the form of 
-      boundaries.xmin = minlon, boundaries.xmax = maxlon, boundaries.ymin = 
+    :param boundaries: None to show entire study area, 'zoom' to zoom in on the
+      area of action (only works if there is a probability layer) using zthresh
+      as a threshold, or a dictionary defining lats and lons in the form of
+      boundaries.xmin = minlon, boundaries.xmax = maxlon, boundaries.ymin =
       min lat, boundaries.ymax = max lat
-    :param zthresh: threshold for computing zooming bounds, only used if 
+    :param zthresh: threshold for computing zooming bounds, only used if
       boundaries = 'zoom'
     :type zthresh: float
-    :param scaletype: Type of scale for plotting, 'continuous' or 'binned' - 
+    :param scaletype: Type of scale for plotting, 'continuous' or 'binned' -
       will be reflected in colorbar
     :type scaletype: string
-    :param lims: None or Nx1 list of tuples or numpy arrays corresponding to 
-      plotorder defining the limits for saturating the colorbar (vmin, vmax) if 
-      scaletype is continuous or the bins to use (clev) if scaletype if binned. 
-      The list can contain tuples, arrays, and Nones, e.g. lims = [(0., 10.), 
-      None, (0.1, 1.5), np.linspace(0., 1.5, 15)]. When None is specified, the 
+    :param lims: None or Nx1 list of tuples or numpy arrays corresponding to
+      plotorder defining the limits for saturating the colorbar (vmin, vmax) if
+      scaletype is continuous or the bins to use (clev) if scaletype if binned.
+      The list can contain tuples, arrays, and Nones, e.g. lims = [(0., 10.),
+      None, (0.1, 1.5), np.linspace(0., 1.5, 15)]. When None is specified, the
       program will estimate the limits, when an array is specified but the scale
-      type is continuous, vmin will be set to min(array) and vmax will be set 
+      type is continuous, vmin will be set to min(array) and vmax will be set
       to max(array)
-    :param lims: None or Nx1 list of Trues and Falses corresponding to 
-      plotorder defining whether to use a linear or log scale (log10) for 
+    :param lims: None or Nx1 list of Trues and Falses corresponding to
+      plotorder defining whether to use a linear or log scale (log10) for
       plotting the layer. This will be reflected in the labels
-    :param ALPHA: Transparency for mapping, if there is a hillshade that will 
+    :param ALPHA: Transparency for mapping, if there is a hillshade that will
       plot below each layer, it is recommended to set this to at least 0.7
     :type ALPHA: float
-    :param maproads: Whether to show roads or not, default True, but requires 
+    :param maproads: Whether to show roads or not, default True, but requires
       that roadfile is specified and valid to work
     :type maproads: boolean
-    :param mapcities: Whether to show cities or not, default True, but requires 
+    :param mapcities: Whether to show cities or not, default True, but requires
       that cityfile is specified and valid to work
     :type mapcities: boolean
     :param isScenario: Whether this is a scenario (True) or a real event (False)
@@ -320,36 +320,36 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None,
     :type isScenario: boolean
     :param roadfolder: Full file path to folder containing road shapefiles
     :type roadfolder: string
-    :param topofile: Full file path to topography grid (GDAL compatible) - this 
+    :param topofile: Full file path to topography grid (GDAL compatible) - this
       is only needed to make a hillshade if a premade hillshade is not specified
     :type topofile: string
-    :param cityfile: Full file path to Pager file containing city & population 
+    :param cityfile: Full file path to Pager file containing city & population
       information
     :type cityfile: string
     :param roadcolor: Color to use for roads, if plotted, default #6E6E6E
-    :type roadcolor: Hex color or other matplotlib compatible way of defining 
+    :type roadcolor: Hex color or other matplotlib compatible way of defining
       color
-    :param watercolor: Color to use for oceans, lakes, and rivers, default 
+    :param watercolor: Color to use for oceans, lakes, and rivers, default
       #B8EEFF
-    :type watercolor: Hex color or other matplotlib compatible way of defining 
+    :type watercolor: Hex color or other matplotlib compatible way of defining
       color
     :param countrycolor: Color for country borders, default #177F10
     :type countrycolor: Hex color or other matplotlib compatible way of defining
       color
-    :param outputdir: File path for outputting figures, if edict is defined, a 
-      subfolder based on the event id will be created in this folder. If None, 
+    :param outputdir: File path for outputting figures, if edict is defined, a
+      subfolder based on the event id will be created in this folder. If None,
       will use current directory
     :param savepdf: True to save pdf figure, False to not
     :param savepng: True to save png figure, False to not
-    :param ds: True to allow downsampling for display (necessary when arrays 
+    :param ds: True to allow downsampling for display (necessary when arrays
       are quite large, False to not allow)
-    :param dstype: What function to use in downsampling, options are 'min', 
+    :param dstype: What function to use in downsampling, options are 'min',
       'max', 'median', or 'mean'
     :param upsample: True to upsample the layer to the DEM resolution for better
       looking hillshades
 
     :returns:  PDF and/or PNG of map
-    :returns newgrids: Downsampled and trimmed version of input grids. If no 
+    :returns newgrids: Downsampled and trimmed version of input grids. If no
       modification was needed for plotting, this will be identical to grids but
       without the metadata
     """
