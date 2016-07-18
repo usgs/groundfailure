@@ -51,7 +51,8 @@ http://configobj.readthedocs.org/en/latest/configobj.html#config-files
 and layers are shown here for the purpose of explaining how to configure models. 
 - References and other inputs with commas within them need to be enclosed in quotes or else they will not be read in properly (commas will be used to separate) - for example: 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
 - Arrays should be not be enclosed in brackets and should be comma separated, for example: model = 0, 0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99, 1.
-- Files, filepaths, and folders for different input and data layers should only include the object's location within the input folder indicated at the top of the file.
+- Files, filepaths, and folders being used for input layers should all be labeled as 'file' in the config file regardless of actual structure.
+- Files for different input and data layers should only include the object's location within the input folder indicated at the top of the file.
 
 <pre>
 [output]
@@ -66,7 +67,7 @@ and layers are shown here for the purpose of explaining how to configure models.
     file = md30_gmted_gmt.grd
 
   [[roads]]
-    folder = roads
+    file = roads
     longref = 'Center for International Earth Science Information Network - CIESIN, 2013, Global Roads Open Access Data Set, Version 1 (gROADSv1): Columbia University, and Information Technology Outreach Services - ITOS - University of Georgia, Palisades, NY, NASA Socioeconomic Data and Applications Center (SEDAC). http://dx.doi.org/10.7927/H4VD6WCT.'
     shortref = 'CIESIN (2013)'
 
@@ -152,7 +153,7 @@ and layers are shown here for the purpose of explaining how to configure models.
         shortref = 'Godt and others (2008)'
 
       [[[[slope]]]]
-        filepath = Verdin_slopes_resampled
+        file = Verdin_slopes_resampled
         units = degrees*100
         longref = 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
         shortref = 'Verdin et al. (2007)'
@@ -268,12 +269,18 @@ and layers are shown here for the purpose of explaining how to configure models.
     #The files MUST be named with the capitalized three-letter abbreviation of the month name, like "precip_Jan.grd", or "slope_May.grd".
     #If some files contain more than one of these three-letter abbreviations, you will get unexpected results. (i.e., "DecimatedSlope_Jan.grd")
     [[[layers]]]
-      slope = slope_max.grd
-      rock = glim.grd
-      landcover = modis_30c.grd
-      precip = precipdata
-      cti = globalcti.grd
-      elev = gted_meanelev_30c.flt
+      [[[[slope]]]]
+        file = slope_max.grd
+      [[[[rock]]]]
+        file = glim.grd
+      [[[[landcover]]]]
+        file = modis_30c.grd
+      [[[[precip]]]]
+        file = precipdata
+      [[[[cti]]]]
+        file = globalcti.grd
+      [[[[elev]]]]
+        file = gted_meanelev_30c.flt
 
     #indicate what kind of interpolation should be used for each of the above layers (nearest, linear, cubic)
     [[[interpolations]]]
@@ -345,8 +352,10 @@ and layers are shown here for the purpose of explaining how to configure models.
     #https://github.com/usgs/MapIO/blob/master/mapio/gdal.py
     #https://github.com/usgs/MapIO/blob/master/mapio/gmt.py
     [[[layers]]]
-      vs30 = global_vs30.grd
-      cti = globalcti.grd 
+      [[[[vs30]]]]
+        file = global_vs30.grd
+      [[[[cti]]]]
+        file = globalcti.grd 
 
     #What are the physical units of the various predictive layers?  These will be displayed on output plots
     #and preserved in the output data files. 

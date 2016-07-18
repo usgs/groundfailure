@@ -77,13 +77,14 @@ def validateCoefficients(cmodel):
 
 def validateLayers(cmodel):
     layers = {}
-    for key,value in cmodel['layers'].items():
-        ftype = getFileType(value)
-        if ftype == 'unknown':
-            raise Exception('layer file %s is not a valid GMT or ESRI file.' % value)
-        if ftype == 'dir':
-            value = getAllGridFiles(value)
-        layers[key] = value
+    for key in cmodel['layers'].keys():
+        for item,value in cmodel['layers'][key].items():
+            ftype = getFileType(value)
+            if ftype == 'unknown':
+                raise Exception('layer file %s is not a valid GMT or ESRI file.' % value)
+            if ftype == 'dir':
+                value = getAllGridFiles(value)
+            layers[key] = value
     return layers
 
 
@@ -125,7 +126,7 @@ def validateUnits(cmodel,layers):
     for key,value in cmodel['units'].items():
         if key not in list(layers.keys()):
             raise Exception('Interpolation key %s does not match any names of layers' % key)
-        
+
         units[key] = value
     for key in list(layers.keys()):
         if key not in list(units.keys()):
@@ -152,7 +153,7 @@ def validateLogisticModels(config):
                 raise Exception('Model %s missing baselayer parameter.' % cmodelname)
         except Exception as e:
             raise Exception('Validation failed with error: "%s" on model %s' % (str(e),cmodelname))
-        
+
     return True
 
 
@@ -221,7 +222,7 @@ class LogisticModel(object):
             raise Exception('You must specify a base layer file in config.')
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to one of the files in the layer section.')
-        
+
         #get the geodict for the shakemap
         geodict = ShakeGrid.getFileGeoDict(shakefile,adjust='res')
         griddict,eventdict,specdict,fields,uncertainties = getHeaderData(shakefile)
@@ -244,7 +245,7 @@ class LogisticModel(object):
 
         #now load the shakemap, resampling and padding if necessary
         self.shakemap = ShakeGrid.load(shakefile,samplegeodict=sampledict,resample=True,doPadding=True,adjust='res')
-        
+
         #load the predictor layers into a dictionary
         self.layerdict = {} #key = layer name, value = grid object
         for layername,layerfile in self.layers.items():
@@ -341,12 +342,10 @@ def _test(shakefile,cofile,slopefile,precipfolder):
     lm = LogisticModel(model,shakefile,'nowicki_2014')
     print(lm.getEquation())
     P = lm.calculate()
-    
-    
+
 if __name__ == '__main__':
     shakefile = sys.argv[1] #needs to be an event occurring in January
     cofile = sys.argv[2]
     slfile = sys.argv[3]
     precip = sys.argv[4]
     _test(shakefile,cofile,slfile,precip)
-

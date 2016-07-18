@@ -68,6 +68,42 @@ def filterResults(result):
                 
     return errormsg
 
+def correct_config_filepaths(config):
+    '''Takes an input filepath name and pre-pends it to all file locations within the config file.
+    Individual locations are put into the config.  Don't have to put entire filpath location for each layer.
+    Works by looping over config dictionary and subdictionary to fine locations named 'file'.'''
+    # Input filepath
+    input_path = config['input']['folder']
+    # Pull all other filepaths that need editing
+    for keys in config.keys():
+        outer_loop = keys
+        for keys in config[outer_loop].keys():
+            second_loop = keys
+            if hasattr(config[outer_loop][second_loop], 'keys') == False:
+                pass
+            else:
+                for keys in config[outer_loop][second_loop].keys():
+                    third_loop = keys
+                    if hasattr(config[outer_loop][second_loop][third_loop], 'keys') == False:
+                        if third_loop == 'file':
+                            path_to_correct = config[outer_loop][second_loop][third_loop]
+                            config[outer_loop][second_loop][third_loop] = os.path.join(input_path, path_to_correct)
+                    else:
+                        for keys in config[outer_loop][second_loop][third_loop].keys():
+                            fourth_loop = keys
+                            if hasattr(config[outer_loop][second_loop][third_loop][fourth_loop], 'keys') == False:
+                                if fourth_loop == 'file':
+                                    path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop]
+                                    config[outer_loop][second_loop][third_loop][fourth_loop] = os.path.join(input_path, path_to_correct)
+                            else:
+                                for keys in config[outer_loop][second_loop][third_loop][fourth_loop].keys():
+                                    fifth_loop = keys
+                                    if fifth_loop == 'file':
+                                        path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop]
+                                        config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop] = os.path.join(input_path,path_to_correct)
+
+    return config
+
 def validate(configfile):
     '''Return a validated config object.
     :param configspec:
@@ -81,7 +117,8 @@ def validate(configfile):
     '''
     thispath = os.path.dirname(os.path.abspath(__file__))
     configspec = os.path.join(thispath,'configspec.ini')
-    config = ConfigObj(configfile,configspec=configspec)
+    config_prelim = ConfigObj(configfile,configspec=configspec)
+    config = correct_config_filepaths(config_prelim)
     validator = __getCustomValidator()
     result = config.validate(validator,preserve_errors=True)
     if result == True:
@@ -89,6 +126,8 @@ def validate(configfile):
     else:
         errormsg = filterResults(result)
         raise TypeError(errormsg)
+
+    return config
 
 def _test_validate():
     configtext = '''[logistic_models]
