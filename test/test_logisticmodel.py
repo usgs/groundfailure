@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 
 #python 3 compatibility
@@ -31,58 +32,6 @@ from mapio.shake import ShakeGrid, getHeaderData
 from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
-from mapio.geodict import GeoDict
-
-
-def makeData():
-    # fake layers
-    X = ['x1', 'x2', 'x3']
-    fileLocations = {}
-    config = {}
-    config.setdefault('logistic_models', {}).setdefault('test_model_type', {})
-    config['logistic_models']['test_model_type'].setdefault('coefficients', {})['b0'] = 3.5
-    config['logistic_models']['test_model_type'].setdefault('terms', {})
-    config['logistic_models']['test_model_type'].setdefault('layers', {})
-    config['logistic_models']['test_model_type'].setdefault('interpolations', {})
-    config['logistic_models']['test_model_type'].setdefault('units', {})
-
-    for items in X:
-        # Make fake data (cannot be integers for GDALGrid)
-        data = np.arange(2,6.).reshape((2,2))
-        #Make up a geodictionary with required fields that matches the data size
-        geodict = GeoDict({'xmin':0.0,'xmax':1.0,
-                        'ymin':0.0,'ymax':1.0,
-                        'dx':1.0,'dy':1.0,
-                        'ny':2,'nx':2})
-        # Use these two pieces to make a GDALGrid object (which is based on the Grid2D class)
-        testgrid = GDALGrid(data,geodict)
-        print(testgrid)
-
-        # Save the file
-        filepath = 'layer_%s' % (items)
-        testgrid.save(filepath, format='EHdr')
-
-        # document file location
-        filelocations = {}
-        filelocations = {items: filepath}
-
-        # fake config file
-        config['logistic_models']['test_model_type']['layers'].update({items: {'file': filelocations[items]}})
-        config['logistic_models']['test_model_type']['interpolations'].update({items: 'nearest'})
-        config['logistic_models']['test_model_type']['units'].update({items: 'unitless'})
-        config['logistic_models']['test_model_type']['baselayer'] = X[0]
-        if items == X[0]:
-            config['logistic_models']['test_model_type']['terms'].update({'b1': 'log(%s)' % items})
-            config['logistic_models']['test_model_type']['coefficients'].update({'b1': 1.5})
-        if items == X[1]:
-            config['logistic_models']['test_model_type']['terms'].update({'b2': items})
-            config['logistic_models']['test_model_type']['coefficients'].update({'b2': 2.5})
-        if items == X[2]:
-            config['logistic_models']['test_model_type']['terms'].update({'b3': 'log(%s) * %s / 90.' % (X[0], items)})
-            config['logistic_models']['test_model_type']['coefficients'].update({'b3': 4.0})
-
-    print(config)
-    return config
 
 
 # test getLogisticModelNames(config):
@@ -95,6 +44,8 @@ def test_getLogisticModelNames():
     else:
         print('Test not passed')
         print('Data: ', data, '\nNames: ', names, '\n')
+
+    return names
 
 
 def test_validateCoefficients(cmodel):
@@ -133,6 +84,8 @@ def test_validateTerms(cmodel, coeffs, layers):
         print('Test not passed.')
         print('Data: ', data, '\nTerms: ', terms, '\n')
 
+    return terms, time
+
 
 def test_validateInterpolations(cmodel, layers):
     print('Test Interpolation validation from config file:')
@@ -143,6 +96,8 @@ def test_validateInterpolations(cmodel, layers):
     else:
         print('Test not passed.')
         print('Data: ',data,'\nInterp: ',terms,'\n')
+
+    return interp
 
 
 def test_validateUnits(cmodel, layers):
@@ -155,23 +110,55 @@ def test_validateUnits(cmodel, layers):
         print('Test not passed.')
         print('Data: ',data,'\nUnits: ',units,'\n')
 
+    return units
+
 
 def test_LogisticModel_SelfEquation():
-    # Would test equation created in the logistic model class.  Not sure how to test for this however?
-    pass
 
 
 def test_LogisticModel_calculate(self):
-    # would take the equation and then test the calculation of the actual grid values.  Not sure how to test this either.
-    pass
 
 
-if __name__ == '__main__':
-    config = makeData()
-    cmodel = config['logistic_models']['test_model_type']
-    test_getLogisticModelNames()
-    coeff = test_validateCoefficients(cmodel)
-    layers = test_validateLayers(cmodel)
-    test_validateTerms(cmodel, coeffs, layers)
-    test_validateInterpolations(cmodel, layers)
-    test_validateUnits(cmodel, layers)
+
+
+
+
+
+
+
+# Make temporary files for each layer
+slope = np.full((2, 2), 270., dtype=float)
+rock = np.array([[-1.7010214, -0.7960331], [-0.6563501, -1.6414169]], dtype=float)
+landcover = np.array([[1.0466108, 1.0706804], [0.9440571, 0.7256497]], dtype=float)
+precip = np.full((2, 2), 3., dtype=float)
+cti = np.full((2, 2), 4., dtype=float)
+elev = np.full((2, 2), 5., dtype=float)
+output = np.array([[1.34140885, 2.27046675], [2.28354445, 1.08005225]], dtype=float)
+
+# save temp layers to files
+test_temp_dir = os.mkdir('Users/kbiegel/Documents/GroundFailure/inputs/temp_test')
+slopefile.save()
+##########
+######### Finish this section ##################
+##########
+
+# declare config/shakefiles file variable
+configfile = 'Users/kbiegel/Documents/GroundFailure/config_test.ini'
+shakefile = 'Users/kbiegel/Documents/GroundFailure/inputs/text.xml'
+
+# validate config file
+config = ConfigObj(configfile)
+config = groundfailure.conf.correct_config_filepaths(config)
+
+# Load in shakemap data
+edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
+temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+edict['eventid'] = temp['shakemap_id']
+edict['version'] = temp['shakemap_version']
+
+
+
+
+
+
+
