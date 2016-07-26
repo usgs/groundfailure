@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 
 #python 3 compatibility
