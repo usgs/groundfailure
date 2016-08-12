@@ -368,6 +368,8 @@ def test_LogisticModel_calculate(config, shakefile, filelocations):
         print('Test not passed.')
         print('Data: ', data, '\nModel grid: ', model_grid['model']['grid'].getData(), '\n')
 
+    import pdb; pdb.set_trace()
+
 
 # runs all test functions
 if __name__ == '__main__':
