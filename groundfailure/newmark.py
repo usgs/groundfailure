@@ -104,9 +104,6 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     sus = None
     susdat = None
 
-    if uncertfile is not None:
-        print('ground motion uncertainty option not implemented yet')
-
     # Read in susceptiblity file
     #try:
     susfile = config['mechanistic_models']['hazus']['layers']['susceptibility']['file']
@@ -145,9 +142,23 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
 
     # Load in shakemap, resample to susceptibility file
     shakemap = ShakeGrid.load(shakefile, adjust='res')
+    if uncertfile is not None:
+        try:
+            uncert = ShakeGrid.load(uncertfile, samplegeodict=gdict, resample=True, method='linear', adjust='res')
+        except:
+            print('Could not read uncertainty file, ignoring uncertainties')
+            uncertfile = None
 
     PGA = shakemap.getLayer('pga').subdivide(gdict).getData().astype(float)/100.  # in units of g
     PGV = shakemap.getLayer('pgv').subdivide(gdict).getData().astype(float)  # cm/sec
+    if uncertfile is not None:
+        stdpga = uncert.getLayer('stdpga')
+        stdpgv = uncert.getLayer('stdpgv')
+        # estimate PGA +- 1std
+        PGAmin = np.exp(np.log(PGA*100.) - stdpga.getData())/100.
+        PGAmax = np.exp(np.log(PGA*100.) + stdpga.getData())/100.
+        PGVmin = np.exp(np.log(PGV) - stdpgv.getData())
+        PGVmax = np.exp(np.log(PGV) + stdpgv.getData())
     M = shakemap.getEventDict()['magnitude']
 
     # Get critical accelerations in g
@@ -212,15 +223,30 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
         ed_low, ed_high = est_disp(Ac, PGA)
         ed_mean = np.mean((np.dstack((ed_low, ed_high))), axis=2)  # Get mean estimated displacements
         dn = ed_mean * numcycles(M) * PGA
+        if uncertfile is not None:
+            Dnmin = ed_mean * numcycles(M) * PGAmin
+            Dnmax = ed_mean * numcycles(M) * PGAmax
     else:  # Calculate newmark displacement using a regression model
         if regressionmodel is 'J_PGA':
             dn = J_PGA(Ac, PGA)
+            if uncertfile is not None:
+                Dnmin = J_PGA(Ac, PGAmin)
+                Dnmax = J_PGA(Ac, PGAmax)
         elif regressionmodel is 'J_PGA_M':
             dn = J_PGA_M(Ac, PGA, M)
+            if uncertfile is not None:
+                Dnmin = J_PGA_M(Ac, PGAmin, M)
+                Dnmax = J_PGA_M(Ac, PGAmax, M)
         elif regressionmodel is 'RS_PGA_M':
             dn = RS_PGA_M(Ac, PGA, M)
+            if uncertfile is not None:
+                Dnmin = RS_PGA_M(Ac, PGAmin, M)
+                Dnmax = RS_PGA_M(Ac, PGAmax, M)
         elif regressionmodel is 'RS_PGA_PGV':
             dn = RS_PGA_PGV(Ac, PGA, PGV)
+            if uncertfile is not None:
+                Dnmin = RS_PGA_PGV(Ac, PGAmin, PGVmin)
+                Dnmax = RS_PGA_PGV(Ac, PGAmax, PGVmax)
         else:
             print('Unrecognized model, using J_PGA\n')
             dn = J_PGA(Ac, PGA)
@@ -230,14 +256,29 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
         if probtype.lower() in 'jibson2000':
             PROB = 0.335*(1-np.exp(-0.048*dn**1.565))
             dnthresh = None
+            if uncertfile is not None:
+                PROBmin = 0.335*(1-np.exp(-0.048*Dnmin**1.565))
+                PROBmax = 0.335*(1-np.exp(-0.048*Dnmax**1.565))
         elif probtype.lower() in 'threshold':
             PROB = dn.copy()
             PROB[PROB <= dnthresh] = 0
             PROB[PROB > dnthresh] = 1
+            units = 'prediction'
+            label = 'Predicted Landslides'
+            if uncertfile is not None:
+                PROBmin = Dnmin.copy()
+                PROBmin[PROBmin <= dnthresh] = 0
+                PROBmin[PROBmin > dnthresh] = 1
+                PROBmax = Dnmax.copy()
+                PROBmax[PROBmax <= dnthresh] = 0
+                PROBmax[PROBmax > dnthresh] = 1
         else:
             raise NameError('invalid probtype, assuming jibson2000')
             PROB = 0.335*(1-np.exp(-0.048*dn**1.565))
             dnthresh = None
+            if uncertfile is not None:
+                PROBmin = 0.335*(1-np.exp(-0.048*Dnmin**1.565))
+                PROBmax = 0.335*(1-np.exp(-0.048*Dnmax**1.565))
 
     # Turn output and inputs into into grids and put in maplayers dictionary
     maplayers = collections.OrderedDict()
@@ -255,6 +296,11 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
     elif modeltype == 'ac_classic_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
+
+    label = 'Probability'
+    if uncertfile is not None:
+        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output', 'description': {}}
+        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output', 'description': {}}
 
     if saveinputs is True:
         maplayers['suscat'] = {'grid': sus, 'label': 'Susceptibility Category', 'type': 'input', 'description': {'name': sussref, 'longref': suslref, 'units': 'Category'}}
@@ -491,13 +537,11 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         if uncertfile is not None:
             Dnmin = J_PGA_M(Ac, PGAmin, M)
             Dnmax = J_PGA_M(Ac, PGAmax, M)
-
     elif regressionmodel is 'RS_PGA_M':
         Dn = RS_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
             Dnmin = RS_PGA_M(Ac, PGAmin, M)
             Dnmax = RS_PGA_M(Ac, PGAmax, M)
-
     elif regressionmodel is 'RS_PGA_PGV':
         Dn = RS_PGA_PGV(Ac, PGA, PGV)
         if uncertfile is not None:
@@ -617,9 +661,6 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     modellref = 'unknown'
     modelsref = 'unknown'
 
-    if uncertfile is not None:
-        print('ground motion uncertainty option not implemented yet')
-
     # Parse config
     try:  # May want to add error handling so if refs aren't given, just includes unknown
         slopefilepath = config['mechanistic_models']['godt_2008']['layers']['slope']['filepath']
@@ -676,6 +717,14 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     shkgdict = shakemap.getGeoDict()  # Get updated geodict
     M = shakemap.getEventDict()['magnitude']
 
+    # read in uncertainty if present
+    if uncertfile is not None:
+        try:
+            uncert = ShakeGrid.load(uncertfile, samplegeodict=shkgdict, resample=True, method='linear', adjust='res')
+        except:
+            print('Could not read uncertainty file, ignoring uncertainties')
+            uncertfile = None
+
     # Read in all the slope files, divide all by 100 to get to slope in degrees (because input files are multiplied by 100.)
     slopes = []
     slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
@@ -708,28 +757,58 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     # Get PGA in g (PGA is %g in ShakeMap, convert to g)
     PGA = np.repeat(shakemap.getLayer('pga').getData()[:, :, np.newaxis]/100., 7, axis=2).astype(float)
-
     if 'PGV' in regressionmodel:  # Load in PGV also, in cm/sec
         PGV = np.repeat(shakemap.getLayer('pgv').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
+
+    if uncertfile is not None:
+        stdpga = np.repeat(uncert.getLayer('stdpga').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
+        stdpgv = np.repeat(uncert.getLayer('stdpgv').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
+        # estimate PGA +- 1std
+        PGAmin = np.exp(np.log(PGA*100.) - stdpga/100.)
+        PGAmax = np.exp(np.log(PGA*100.) + stdpga/100.)
+        PGVmin = np.exp(np.log(PGV) - stdpgv)
+        PGVmax = np.exp(np.log(PGV) + stdpgv)
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
     if regressionmodel is 'J_PGA':
         Dn = J_PGA(Ac, PGA)
-
-    if regressionmodel is 'J_PGA_M':
+        if uncertfile is not None:
+            Dnmin = J_PGA(Ac, PGAmin)
+            Dnmax = J_PGA(Ac, PGAmax)
+    elif regressionmodel is 'J_PGA_M':
         Dn = J_PGA_M(Ac, PGA, M)
-
-    if regressionmodel is 'RS_PGA_M':
+        if uncertfile is not None:
+            Dnmin = J_PGA_M(Ac, PGAmin, M)
+            Dnmax = J_PGA_M(Ac, PGAmax, M)
+    elif regressionmodel is 'RS_PGA_M':
         Dn = RS_PGA_M(Ac, PGA, M)
-
-    if regressionmodel is 'RS_PGA_PGV':
+        if uncertfile is not None:
+            Dnmin = RS_PGA_M(Ac, PGAmin, M)
+            Dnmax = RS_PGA_M(Ac, PGAmax, M)
+    elif regressionmodel is 'RS_PGA_PGV':
         Dn = RS_PGA_PGV(Ac, PGA, PGV)
+        if uncertfile is not None:
+            Dnmin = RS_PGA_PGV(Ac, PGAmin, PGVmin)
+            Dnmax = RS_PGA_PGV(Ac, PGAmax, PGVmax)
+    else:
+        print('Unrecognized regression model, aborting')
+        return
 
     PROB = Dn.copy()
     PROB[PROB < dnthresh] = 0.
     PROB[PROB >= dnthresh] = 1.
     PROB = np.sum(PROB, axis=2)
+    if uncertfile is not None:
+        PROBmin = Dnmin.copy()
+        PROBmin[PROBmin <= dnthresh] = 0.
+        PROBmin[PROBmin > dnthresh] = 1.
+        PROBmin = np.sum(PROBmin, axis=2)
+        PROBmax = Dnmax.copy()
+        PROBmax[PROBmax <= dnthresh] = 0.
+        PROBmax[PROBmax > dnthresh] = 1.
+        PROBmax = np.sum(PROBmax, axis=2)
+
     PROB[PROB == 1.] = 0.01
     PROB[PROB == 2.] = 0.10
     PROB[PROB == 3.] = 0.30
@@ -737,6 +816,21 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     PROB[PROB == 5.] = 0.70
     PROB[PROB == 6.] = 0.90
     PROB[PROB == 7.] = 0.99
+    if uncertfile is not None:
+        PROBmin[PROBmin == 1.] = 0.01
+        PROBmin[PROBmin == 2.] = 0.10
+        PROBmin[PROBmin == 3.] = 0.30
+        PROBmin[PROBmin == 4.] = 0.50
+        PROBmin[PROBmin == 5.] = 0.70
+        PROBmin[PROBmin == 6.] = 0.90
+        PROBmin[PROBmin == 7.] = 0.99
+        PROBmax[PROBmax == 1.] = 0.01
+        PROBmax[PROBmax == 2.] = 0.10
+        PROBmax[PROBmax == 3.] = 0.30
+        PROBmax[PROBmax == 4.] = 0.50
+        PROBmax[PROBmax == 5.] = 0.70
+        PROBmax[PROBmax == 6.] = 0.90
+        PROBmax[PROBmax == 7.] = 0.99
 
     # Turn output and inputs into into grids and put in mapLayers dictionary
     maplayers = collections.OrderedDict()
@@ -747,6 +841,9 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     description = {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, shakemap.getGeoDict()), 'label': 'Areal coverage', 'type': 'output', 'description': description}
+    if uncertfile is not None:
+        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, shkgdict), 'label': 'Probability-1std', 'type': 'output', 'description': {}}
+        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, shkgdict), 'label': 'Probability+1std', 'type': 'output', 'description': {}}
 
     if saveinputs is True:
         maplayers['pga'] = {'grid': GDALGrid(PGA[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
