@@ -218,7 +218,7 @@ class LogisticModel(object):
         self.terms, timeField = validateTerms(cmodel, self.coeffs, self.layers)
         self.interpolations = validateInterpolations(cmodel, self.layers)
         self.units = validateUnits(cmodel, self.layers)
-        self.gmused = [value for term, value in cmodel['terms'].items() if value in 'pgapgvmmi']
+        self.gmused = [value for term, value in cmodel['terms'].items() if 'pga' in value.lower() or 'pgv' in value.lower() or 'mmi' in value.lower()]
         if 'baselayer' not in cmodel:
             raise Exception('You must specify a base layer file in config.')
         if cmodel['baselayer'] not in list(self.layers.keys()):
@@ -350,11 +350,11 @@ class LogisticModel(object):
                                     'type': 'input',
                                     'description': {'units': units}}
             for gmused in self.gmused:
-                if gmused is 'pga':
-                    units = 'g'
-                if gmused is 'pgv':
+                if gmused in 'pga':
+                    units = '%g'
+                if gmused in 'pgv':
                     units = 'cm/s'
-                if gmused is 'mmi':
+                if gmused in 'mmi':
                     units = 'mmi'
                 layer = self.shakemap.getLayer(gmused)
                 rdict[gmused] = {'grid': layer,

@@ -495,7 +495,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     elif numpanels == 2 or numpanels == 4:
         rowpan = np.ceil(numpanels/2.)
         colpan = 2
-        fig.set_figwidth(11)
+        fig.set_figwidth(13)
     else:
         rowpan = np.ceil(numpanels/3.)
         colpan = 3
