@@ -495,7 +495,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     elif numpanels == 2 or numpanels == 4:
         rowpan = np.ceil(numpanels/2.)
         colpan = 2
-        fig.set_figwidth(10)
+        fig.set_figwidth(11)
     else:
         rowpan = np.ceil(numpanels/3.)
         colpan = 3
@@ -911,10 +911,13 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         if maproads is True and roadslist is not None:
             try:
                 for road in roadslist:
-                    xy = list(road['geometry']['coordinates'])
-                    roadx, roady = list(zip(*xy))
-                    mapx, mapy = m(roadx, roady)
-                    m.plot(mapx, mapy, roadcolor, lw=0.5, zorder=9)
+                    try:
+                        xy = list(road['geometry']['coordinates'])
+                        roadx, roady = list(zip(*xy))
+                        mapx, mapy = m(roadx, roady)
+                        m.plot(mapx, mapy, roadcolor, lw=0.5, zorder=9)
+                    except:
+                        continue
             except Exception as e:
                 print(('Failed to plot roads, %s' % e))
 

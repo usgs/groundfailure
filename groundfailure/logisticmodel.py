@@ -218,7 +218,7 @@ class LogisticModel(object):
         self.terms, timeField = validateTerms(cmodel, self.coeffs, self.layers)
         self.interpolations = validateInterpolations(cmodel, self.layers)
         self.units = validateUnits(cmodel, self.layers)
-
+        self.gmused = [value for term, value in cmodel['terms'].items() if value in 'pgapgvmmi']
         if 'baselayer' not in cmodel:
             raise Exception('You must specify a base layer file in config.')
         if cmodel['baselayer'] not in list(self.layers.keys()):
@@ -293,19 +293,49 @@ class LogisticModel(object):
         self.equation = ' + '.join(self.nuggets)
         self.geodict = self.shakemap.getGeoDict()
 
+        try:
+            self.slopemin = float(config['logistic_models'][model]['slopemin'])
+            self.slopemax = float(config['logistic_models'][model]['slopemax'])
+        except:
+            print('could not find slopemin and/or slopemax in config, no limits will be applied')
+            self.slopemin = 0.
+            self.slopemax = 90.
+
     def getEquation(self):
         return self.equation
 
     def getGeoDict(self):
         return self.geodict
 
-    def calculate(self, saveinputs=False):
+    def calculate(self, saveinputs=False, slopefile=None, slopediv=1.):
         """
         saveinputs - if True, saves all the input layers as Grid2D objects in addition to the model
           if false, will just output model
+        slopefile - optional slopefile that will be resampled to the other input files for applying thresholds
+        slopediv - number to divide slope by to get to degrees (usually will be default of 1.)
         """
         X = eval(self.equation)
         P = 1/(1 + np.exp(-X))
+        if slopefile is not None:
+            ftype = getFileType(slopefile)
+            sampledict = self.shakemap.getGeoDict()
+            if ftype == 'gmt':
+                slope = GMTGrid.load(slopefile, sampledict, resample=True, method='linear', doPadding=True).getData()/slopediv
+                # Apply slope min/max limits
+                print('applying slope thresholds')
+                P[slope > self.slopemax] = 0.
+                P[slope < self.slopemin] = 0.
+            elif ftype == 'esri':
+                slope = GDALGrid.load(slopefile, sampledict, resample=True, method='linear', doPadding=True).getData()/slopediv
+                # Apply slope min/max limits
+                print('applying slope thresholds')
+                P[slope > self.slopemax] = 0.
+                P[slope < self.slopemin] = 0.
+            else:
+                print('Slope file does not appear to be a valid GMT or ESRI file, not applying any slope thresholds.' % (slopefile))
+        else:
+            print('No slope file provided, slope thresholds not applied')
+        # Stuff into Grid2D object
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {'grid': Pgrid,
@@ -319,6 +349,18 @@ class LogisticModel(object):
                                     'label': '%s (%s)' % (layername, units),
                                     'type': 'input',
                                     'description': {'units': units}}
+            for gmused in self.gmused:
+                if gmused is 'pga':
+                    units = 'g'
+                if gmused is 'pgv':
+                    units = 'cm/s'
+                if gmused is 'mmi':
+                    units = 'mmi'
+                layer = self.shakemap.getLayer(gmused)
+                rdict[gmused] = {'grid': layer,
+                                 'label': '%s (%s)' % (gmused, units),
+                                 'type': 'input',
+                                 'description': {'units': units}}
         return rdict
 
 
