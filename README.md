@@ -242,7 +242,6 @@ and layers are shown here for the purpose of explaining how to configure models.
       dnthresh = 5
 
 [logistic_models]
-  # NEEDS TO BE UPDATED FOR NEW STRUCTURE
 
   #default_landslide and default_liquefaction parameters below must refer to named models in this file
   default_landslide = nowicki_2014
@@ -271,16 +270,34 @@ and layers are shown here for the purpose of explaining how to configure models.
     [[[layers]]]
       [[[[slope]]]]
         file = slope_max.grd
+        units = degrees
+        long_ref = ''
+        short_ref = ''
       [[[[rock]]]]
         file = glim.grd
+        units = index
+        long_ref = ''
+        short_ref = ''
       [[[[landcover]]]]
         file = modis_30c.grd
+        units = index
+        long_ref = ''
+        short_ref = ''
       [[[[precip]]]]
         file = precipdata
+        units = millimeters
+        long_ref = ''
+        short_ref = ''
       [[[[cti]]]]
         file = globalcti.grd
+        units = index
+        long_ref = ''
+        short_ref = ''
       [[[[elev]]]]
         file = gted_meanelev_30c.flt
+        units = meters
+        long_ref = ''
+        short_ref = ''
 
     #indicate what kind of interpolation should be used for each of the above layers (nearest, linear, cubic)
     [[[interpolations]]]
@@ -291,16 +308,6 @@ and layers are shown here for the purpose of explaining how to configure models.
       cti = linear
       elev = linear
       
-    #What are the physical units of the various predictive layers?  These will be displayed on output plots
-    #and preserved in the output data files. 
-    [[[units]]]
-      slope = unitless
-      rock = unitless
-      landcover = unitless
-      precip = millimeters/month
-      cti = unitless
-      elev = meters
-
     [[[terms]]]
       #These terms must be named as b1-bN, where N is the number of coefficients
       #in a logistic regression, which takes the form:
@@ -354,14 +361,10 @@ and layers are shown here for the purpose of explaining how to configure models.
     [[[layers]]]
       [[[[vs30]]]]
         file = global_vs30.grd
+        units = m/s
       [[[[cti]]]]
-        file = globalcti.grd 
-
-    #What are the physical units of the various predictive layers?  These will be displayed on output plots
-    #and preserved in the output data files. 
-    [[[units]]]
-      vs30 = m/s
-      cti = m
+        file = globalcti.grd
+        units = index 
 
     [[[interpolations]]]
       vs30 = nearest
