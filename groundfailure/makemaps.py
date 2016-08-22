@@ -34,6 +34,7 @@ from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
 #from neicutil.text import ceilToNearest, floorToNearest, roundToNearest
 from mapio.basemapcity import BasemapCities
+from mapio.shake import ShakeGrid
 
 # Make fonts readable and recognizable by illustrator
 mpl.rcParams['pdf.fonttype'] = 42
@@ -238,7 +239,7 @@ def parseConfigLayers(maplayers, config):
     return plotorder, logscale, lims, colormaps, maskthreshes
 
 
-def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None,
+def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
              plotorder=None, maskthreshes=None, colormaps=None, boundaries=None,
              zthresh=0, scaletype='continuous', lims=None, logscale=False,
              ALPHA=0.7, maproads=True, mapcities=True, isScenario=False,
@@ -265,9 +266,8 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None,
       Layer names must be unique.
     :type name: Dictionary or Ordered dictionary - import collections;
       grids = collections.OrderedDict()
-    :param edict: Optional event dictionary for ShakeMap, used for title and
-      naming output folder
-    :type edit: Shakemap Event Dictionary
+    :param shakefile: optional ShakeMap file (url or full file path) to extract information for labels and folder names
+    :type shakefile: Shakemap Event Dictionary
     :param suptitle: This will be displayed at the top of the plots and in the
       figure names
     :type suptitle: string
@@ -359,6 +359,14 @@ def modelMap(grids, edict=None, suptitle=None, inventory_shapefile=None,
     plt.ioff()
 
     defaultcolormap = cm.jet
+
+    if shakefile is not None:
+        edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
+        temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+        edict['eventid'] = temp['shakemap_id']
+        edict['version'] = temp['shakemap_version']
+    else:
+        edict = None
 
     # Get output file location
     if outputdir is None:
