@@ -497,17 +497,11 @@ and layers are shown here for the purpose of explaining how to configure models.
         longref = 'Computed from HydroSHEDS database, http://hydrosheds.cr.usgs.gov/dataavail.php; last accessed February 2014'
         shortref = 'HydroSHEDS'
 
-    [[[units]]]
-      vs30 = m/s
-      precip = mm/month
-      dc = km
-      dr = km
-
     [[[interpolations]]]
-      vs30 = nearest
-      precip = nearest
-      dc = nearest
-      dr = nearest
+      vs30 = linear
+      precip = linear
+      dc = linear
+      dr = linear
 
     [[[terms]]]
       b1 = log(pgv)
@@ -540,7 +534,7 @@ and layers are shown here for the purpose of explaining how to configure models.
 
     description = 'This is the general model from Zhu et al. 2015'
 
-    [[[layer]]]
+    [[[layers]]]
       [[[[vs30]]]]
         file = global_vs30.grd
         units = m/s
@@ -562,28 +556,23 @@ and layers are shown here for the purpose of explaining how to configure models.
         longref = 'Computed from HydroSHEDS database, http://hydrosheds.cr.usgs.gov/dataavail.php; last accessed February 2014'
         shortref = 'HydroSHEDS'
       [[[[wtd]]]]
-        file = /Users/kbiegel/Documents/GroundFailure/inputs/Fan2013WaterTable/wtd_fan2013_zhu_fill_na.grd
+        file = wtd_fan2013_zhu_fil_na.grd
         units = m
         longref = 'Fan, Y., Li, H., and Miguez-Macho, G., 2013, Global Patterns of Groundwater Table Depth: Science, 339, 940-943.'
         shortref = 'Fan and others (2013)'
 
-    [[[units]]]
-      vs30 = m/s
-      precip = mm
-      dw = km
-      wtd = m
-
     [[[interpolations]]]
-      vs30 = nearest
-      precip = nearest
-      dw = nearest
-      wtd = nearest
+      vs30 = linear
+      precip = linear
+      dc = linear
+      dr = linear
+      wtd = linear
 
     [[[terms]]]
       b1 = log(pgv)
       b2 = log(vs30)
       b3 = precip
-      b4 = "min(dc, dr)"
+      b4 = "minimum(dc, dr)"
       b5 = wtd
 
     [[[coefficients]]]

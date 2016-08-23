@@ -734,7 +734,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         if colormaps is not None and \
            len(colormaps) == len(newgrids) and \
            colormaps[k] is not None:
-            palette = eval(colormaps[k])
+            palette = colormaps[k]
         else:  # Find preferred default color map for each type of layer
             if 'prob' in layer.lower() or 'pga' in layer.lower() or \
                'pgv' in layer.lower() or 'cohesion' in layer.lower() or \

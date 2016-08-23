@@ -19,7 +19,7 @@ TERM_PATTERN = 'term'
 
 SM_TERMS = ['MW', 'YEAR', 'MONTH', 'DAY', 'HOUR', 'pga', 'pgv', 'mmi']
 SM_GRID_TERMS = ['pga', 'pgv', 'mmi']
-OPERATORS = ['log', 'log10', 'power', 'sqrt']  # these will get np. prepended
+OPERATORS = ['log', 'log10', 'power', 'sqrt', 'minimum']  # these will get np. prepended
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
 INTPAT = '[0-9]+'
 OPERATORPAT = '[\+\-\*\/]*'
