@@ -95,7 +95,7 @@ and layers are shown here for the purpose of explaining how to configure models.
 
   [[colors]]
     # Define basic colors and transparencies
-    roadcolor = 003300
+    roadcolor = 808080
     countrycolor = 474747
     watercolor = B8EEFF
     alpha = 0.7
@@ -471,6 +471,9 @@ and layers are shown here for the purpose of explaining how to configure models.
     gfetype = liquefaction
     baselayer = vs30
 
+    slopemin = 0. # in degrees
+    slopemax = 5. # in degrees
+
     # layer files
     [[[layers]]]
       [[[[vs30]]]]
@@ -507,7 +510,7 @@ and layers are shown here for the purpose of explaining how to configure models.
       dr = nearest
 
     [[[terms]]]
-      b1 = log(PGV)
+      b1 = log(pgv)
       b2 = log(vs30)
       b3 = precip
       b4 = "power(dc, 0.5)"
@@ -531,6 +534,9 @@ and layers are shown here for the purpose of explaining how to configure models.
     gfetype = liquefaction
 
     baselayer = vs30
+
+    slopemin = 0. # in degrees
+    slopemax = 5. # in degrees
 
     description = 'This is the general model from Zhu et al. 2015'
 
@@ -574,7 +580,7 @@ and layers are shown here for the purpose of explaining how to configure models.
       wtd = nearest
 
     [[[terms]]]
-      b1 = log(PGV)
+      b1 = log(pgv)
       b2 = log(vs30)
       b3 = precip
       b4 = "min(dc, dr)"
