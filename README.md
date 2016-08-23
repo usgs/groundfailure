@@ -95,7 +95,7 @@ and layers are shown here for the purpose of explaining how to configure models.
 
   [[colors]]
     # Define basic colors and transparencies
-    roadcolor = 808080
+    roadcolor = 003300
     countrycolor = 474747
     watercolor = B8EEFF
     alpha = 0.7
@@ -244,62 +244,130 @@ and layers are shown here for the purpose of explaining how to configure models.
 [logistic_models]
 
   #default_landslide and default_liquefaction parameters below must refer to named models in this file
-  default_landslide = nowicki_2014
+  default_landslide = nowicki_2014_global
   default_liquefaction = zhu_2015
 
   # this can be any string, but it must be a unique and descriptive name of a logistic regression model.
-  [[nowicki_2014]]
+  [[nowicki_2014_global]]
     #Detailed description of the model, its inputs, etc.
-    description = 'This is the Nowicki Model of 2014, which uses cohesion and slope max as input.'
+    description = 'This is the original landslide model of Nowicki et al 2014 using PGA, Slope, Cohesion, and CTI based on global datasets.'
+    longref = 'Nowicki, M.A., Wald, D.J., Hamburger, M.W., Hearne, Michael, and Thompson, E.M., 2014, Development of a globally applicable model for near real-time prediction of seismically induced landslides: Engineering Geology, v. 173, p. 54–65.'
+    shortref = 'Nowicki and others (2014)'
     
     #which type of ground failure model is this? Options are landslide or liquefaction.
     gfetype = landslide
 
     #what is the grid to which all other grids in this model will be resampled?
-    baselayer = cohesion 
+    baselayer = slope
+
+    slopemin = 5. # in degrees
+    slopemax = 90. # in degrees
 
     #these layer files can be any Grid2D-subclass supported format
     #These include, but may not be limited to:
     #https://github.com/usgs/MapIO/blob/master/mapio/gdal.py
     #https://github.com/usgs/MapIO/blob/master/mapio/gmt.py
-    #OR
-    #A layer can point to a directory containing 12 data files (from above format list), one for each month.
-    #The input event time will be used to choose the appropriate file from the list of 12.
-    #The files MUST be named with the capitalized three-letter abbreviation of the month name, like "precip_Jan.grd", or "slope_May.grd".
-    #If some files contain more than one of these three-letter abbreviations, you will get unexpected results. (i.e., "DecimatedSlope_Jan.grd")
     [[[layers]]]
       [[[[slope]]]]
-        file = slope_max.grd
+        file = slope_max.bil
+        units = degrees*100
+        longref = 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological Survey Open-File Report 2007–1188, 25p.'
+        shortref = 'Verdin et al. (2007)'
+      [[[[friction]]]]
+        file = friction.flt
         units = degrees
-        long_ref = ''
-        short_ref = ''
+        longref = 'Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, United Nations University, Tokyo, Japan, p. 392-395.'
+        shortref = 'Godt and others (2008)'
+      [[[[cti1]]]]  # Must use cti1 or else the cti in the word friction will get changed
+        file = global_cti_fil.grd
+        units = index
+        longref = 'USGS HYDRO1k geographic database, available at https://lta.cr.usgs.gov/HYDRO1K'
+        shortref = 'HYDRO1k'
+
+    [[[interpolations]]]
+      slope = linear
+      friction = nearest
+      cti1 = linear
+
+    [[[terms]]]
+      #These terms must be named as b1-bN, where N is the number of coefficients
+      #in a logistic regression, which takes the form:
+      #1/(1 + e^-eqn)
+      #where eqn is a linear equation of the form:
+      #b0 + b1*t1 + b2*t2 + ... + bN*tN
+      #where t1, t2, ... tN are the right hand side of the parameters below.
+      #The terms may include the names of layers and any of the following ShakeMap macros:
+      #pga,pgv,mmi,MW
+      b1 = pga
+      b2 = 'slope / 100.'  # Divide slopes by 100 because Verdin dataset multiplies by 100
+      b3 = friction
+      b4 = cti1 * 100. # Multiply by 100 because Anna used a layer representing CTI * 100 in her model
+      b5 = 'pga * slope / 100.' # Divide slopes by 100 because Verdin dataset multiplies by 100
+
+    [[[coefficients]]]
+      #These coefficients must be named as b1-bN, where N is the number of coefficients
+      #in a logistic regression, which takes the form:
+      #1/(1 + e^-eqn)
+      #where eqn is a linear equation of the form:
+      #b0 + b1*t1 + b2*t2 + ... + bN*tN
+      #where t1, t2, ... tN are the right hand side of the parameters below.
+      b0 = -3.6490 #intercept
+      b1 = 0.0133 #pga
+      b2 = 0.0364 #slope
+      b3 = -0.0635 #friction
+      b4 = -0.0004 # cti
+      b5 = 0.0019 # pga*slope
+
+  [[nowicki_2015]]
+    #Detailed description of the model, its inputs, etc.
+    description = 'This is the Nowicki Model of 2015, which uses precip, lithology, and land cover.'
+    
+    #which type of ground failure model is this? Options are landslide or liquefaction.
+    gfetype = landslide
+
+    #what is the grid to which all other grids in this model will be resampled?
+    baselayer = slope 
+
+    slopemin = 5. # in degrees
+    slopemax = 90. # in degrees
+
+    #these layer files can be any Grid2D-subclass supported format
+    #These include, but may not be limited to:
+    #https://github.com/usgs/MapIO/blob/master/mapio/gdal.py
+    #https://github.com/usgs/MapIO/blob/master/mapio/gmt.py
+    [[[layers]]]
+      [[[[slope]]]]
+        file = gted_maxslope_30c.flt
+        units = degrees
+        longref = 'Global Multi-resolution Terrain Elevation Data 2010 (GMTED2010) available at http://topotools.cr.usgs.gov/gmted_viewer/'
+        shortref = 'GMTED2010'
       [[[[rock]]]]
-        file = glim.grd
-        units = index
-        long_ref = ''
-        short_ref = ''
+        file = glim_copy.grd
+        units = lithology
+        longref = 'Hartmann, Jens and Moosdorf, Nils, 2012, The new global lithological map database GLiM: A representation of rock properties at the Earth surface, G3, vol 13, no. 12., 37 p.'
+        shortref = 'Hartmann and Moosdorf (2012)'
       [[[[landcover]]]]
-        file = modis_30c.grd
-        units = index
-        long_ref = ''
-        short_ref = ''
+        file = modis_30c_copy.grd
+        units = none
+        longref = 'Moderate resolution imaging spectroradiometer (MODIS) land cover dataset, http://modis.gsfc.nasa.gov/'
+        shortref = 'MODIS land cover'
       [[[[precip]]]]
-        file = precipdata
+        file = precip
         units = millimeters
-        long_ref = ''
-        short_ref = ''
+        longref = 
+        shortref = 
       [[[[cti]]]]
-        file = globalcti.grd
+        #file = globalcti.grd
+        file = global_cti_fil.grd
         units = index
-        long_ref = ''
-        short_ref = ''
+        longref = 'USGS HYDRO1k geographic database, available at https://lta.cr.usgs.gov/HYDRO1K'
+        shortref = 'HYDRO1k'
       [[[[elev]]]]
         file = gted_meanelev_30c.flt
-        units = meters
-        long_ref = ''
-        short_ref = ''
+        units = m
+        longref = 'Global Multi-resolution Terrain Elevation Data 2010 (GMTED2010) available at http://topotools.cr.usgs.gov/gmted_viewer/'
+        shortref = 'GMTED2010'
 
-    #indicate what kind of interpolation should be used for each of the above layers (nearest, linear, cubic)
     [[[interpolations]]]
       slope = linear
       rock = nearest
@@ -315,15 +383,17 @@ and layers are shown here for the purpose of explaining how to configure models.
       #where eqn is a linear equation of the form:
       #b0 + b1*t1 + b2*t2 + ... + bN*tN
       #where t1, t2, ... tN are the right hand side of the parameters below.
-      b1 = pgv
-      b2 = slope
+      #The terms may include the names of layers and any of the following ShakeMap macros:
+      #pga,pgv,mmi,MW
+      b1 = log(pgv)
+      b2 = slope / 90.
       b3 = rock
-      b4 = cti
+      b4 = cti * 100.
       b5 = MW
       b6 = precipMONTH
-      b7 = landcover
+      b7 = landcover  
       b8 = elev
-      b9 = pgv * slope
+      b9 = log(pgv) * slope / 90.     
 
     [[[coefficients]]]
       #These coefficients must be named as b1-bN, where N is the number of coefficients
@@ -332,39 +402,49 @@ and layers are shown here for the purpose of explaining how to configure models.
       #where eqn is a linear equation of the form:
       #b0 + b1*t1 + b2*t2 + ... + bN*tN
       #where t1, t2, ... tN are the right hand side of the parameters below.
-      b0 = -8.3453199 #intercept
+      b0 = -8.3453199   # intercept
       b1 = 1.737721 # log(pgv)
-      b2 = 0.477635 #slope
-      b3 = 1.0 #lithology set to 1.0 - coefficients are in glim file
-      b4 = 0.0494136 #cti
-      b5 = 0.1634385 #Mw
-      b6 = 0.000949 #precip
-      b7 = 1.0 #land cover set to 1.0 - coefficients are in modis file
-      b8 = 0.0002273 # elevation
+      b2 = 2.1773966 #slope
+      b3 = 1 #lithology set to 1.0 - coefficients are in glim file
+      b4 = 0.0484136 # cti
+      b5 = 0.1634385 # moment magnitude
+      b6 = 0.000949 # precip
+      b7 = 1.0 # landcover
+      b8 = 0.0002273 # elev
       b9 = 0.477635 # log(pgv)*slope
 
   [[zhu_2015]]
   
     #Detailed description of the model, its inputs, etc.
-    description = 'This is the Zhu model of 2015, which uses PGA, magnitude, vs30, and CTI'
-    longref = 'Zhu, J., Daley, D., Baise, L.G., Thompson, E.M., Wald, D.J., and Knudsen, K.L., 2015, A Geospatial Liquefaction Model for Rapid Response and Loss Estimation: Earthquake Spectra, v. 31, p. 1813-1837.'
+
+    longref = 'Zhu, Jing; Daley, Davene; Baise, L.G.; Thompson, E.M.; Wald, D.J.; and Knudsen, K.L., 2015b, A geospatial liquefaction model for rapid response and loss estimation: Earthquake Spectra, v. 31, no. 3, p. 1813–1837.'
     shortref = 'Zhu and others (2015)'
-    
+    description = 'Zhu coastal model'
+
     gfetype = liquefaction
   
     baselayer = vs30
+
+    slopemin = 0. # in degrees
+    slopemax = 5. # in degrees
 
     #these layer files can be any Grid2D-subclass supported format
     #These include, but may not be limited to:
     #https://github.com/usgs/MapIO/blob/master/mapio/gdal.py
     #https://github.com/usgs/MapIO/blob/master/mapio/gmt.py
+
     [[[layers]]]
       [[[[vs30]]]]
         file = global_vs30.grd
         units = m/s
+        longref = 'Computed from GMTED2010 using methods of Wald and Allen (2007) based on topographic slope'
+        shortref = 'Wald and Allen (2007)'
       [[[[cti]]]]
-        file = globalcti.grd
-        units = index 
+        #file = globalcti.grd
+        file = global_cti_fil.grd
+        units = index
+        longref = 'USGS HYDRO1k geographic database, available at https://lta.cr.usgs.gov/HYDRO1K'
+        shortref = 'HYDRO1k'
 
     [[[interpolations]]]
       vs30 = nearest
@@ -372,7 +452,7 @@ and layers are shown here for the purpose of explaining how to configure models.
 
     [[[terms]]]
       b1 = 'log((pga/100.0)*(power(MW,2.56)/power(10,2.24)))'
-      b2 = 'cti/100.0'
+      b2 = 'cti'
       b3 = 'log(vs30)'
 
     [[[coefficients]]]
@@ -381,8 +461,132 @@ and layers are shown here for the purpose of explaining how to configure models.
       b2 = 0.355
       b3 = -4.784
 
-    [[[colormaps]]]
-      vs30_colormap = jet_r
+  [[zhu_2016_coastal]]
+    # Model meant for proximity to coasts/oceans
+
+    longref = 'Zhu, Jing;  Baise, Laurie; Thompson, Eric, 2016, An Updated Geospatial Liquefaction Model for Global Use, in submission.'
+    shortref = 'Zhu and others (2016)'
+    description = 'Zhu coastal model'
+
+    gfetype = liquefaction
+    baselayer = vs30
+
+    # layer files
+    [[[layers]]]
+      [[[[vs30]]]]
+        file = global_vs30.grd
+        units = m/s
+        longref = 'Computed from GMTED2010 using methods of Wald and Allen (2007) based on topographic slope'
+        shortref = 'Wald and Allen (2007)'
+      [[[[precip]]]]
+        file = global_precip_fil.grd
+        units = millimeters
+        longref = 'WorldClim database, http://WorldClim.org; last accessed March 2014'
+        shortref = WorldClim
+      [[[[dc]]]]
+        file = global_dc.grd
+        units = km
+        longref = 'Computed from a global dataset computed by NASA's Ocean Color Group, http://oceancolor.gsfc.nasa.gov/cms/DOCS/DistFromCoast; last accessed January 2014'
+        shortref = 'NASA Ocean Color group'
+      [[[[dr]]]]
+        file = global_dr.grd
+        units = km
+        longref = 'Computed from HydroSHEDS database, http://hydrosheds.cr.usgs.gov/dataavail.php; last accessed February 2014'
+        shortref = 'HydroSHEDS'
+
+    [[[units]]]
+      vs30 = m/s
+      precip = mm/month
+      dc = km
+      dr = km
+
+    [[[interpolations]]]
+      vs30 = nearest
+      precip = nearest
+      dc = nearest
+      dr = nearest
+
+    [[[terms]]]
+      b1 = log(PGV)
+      b2 = log(vs30)
+      b3 = precip
+      b4 = "power(dc, 0.5)"
+      b5 = dr
+      b6 = "power(dc, 0.5) * dr"
+
+    [[[coefficients]]]
+      b0 = 12.435
+      b1 = 0.301
+      b2 = -2.615
+      b3 = 0.0005556
+      b4 = -0.0287
+      b5 = 0.0666
+      b6 = -0.0369
+
+  [[zhu_2016_general]]
+    # Meant as a generalized option to the above model
+    longref = 'Zhu, Jing;  Baise, Laurie; Thompson, Eric, 2016, An Updated Geospatial Liquefaction Model for Global Use, in submission.'
+    shortref = 'Zhu and others (2016)'
+    
+    gfetype = liquefaction
+
+    baselayer = vs30
+
+    description = 'This is the general model from Zhu et al. 2015'
+
+    [[[layer]]]
+      [[[[vs30]]]]
+        file = global_vs30.grd
+        units = m/s
+        longref = 'Computed from GMTED2010 using methods of Wald and Allen (2007) based on topographic slope'
+        shortref = 'Wald and Allen (2007)'
+      [[[[precip]]]]
+        file = global_precip_fil.grd
+        units = millimeters
+        longref = 'WorldClim database, http://WorldClim.org; last accessed March 2014'
+        shortref = WorldClim
+      [[[[dc]]]]
+        file = global_dc.grd
+        units = km
+        longref = 'Computed from a global dataset computed by NASA's Ocean Color Group, http://oceancolor.gsfc.nasa.gov/cms/DOCS/DistFromCoast; last accessed January 2014'
+        shortref = 'NASA Ocean Color group'
+      [[[[dr]]]]
+        file = global_dr.grd
+        units = km
+        longref = 'Computed from HydroSHEDS database, http://hydrosheds.cr.usgs.gov/dataavail.php; last accessed February 2014'
+        shortref = 'HydroSHEDS'
+      [[[[wtd]]]]
+        file = /Users/kbiegel/Documents/GroundFailure/inputs/Fan2013WaterTable/wtd_fan2013_zhu_fill_na.grd
+        units = m
+        longref = 'Fan, Y., Li, H., and Miguez-Macho, G., 2013, Global Patterns of Groundwater Table Depth: Science, 339, 940-943.'
+        shortref = 'Fan and others (2013)'
+
+    [[[units]]]
+      vs30 = m/s
+      precip = mm
+      dw = km
+      wtd = m
+
+    [[[interpolations]]]
+      vs30 = nearest
+      precip = nearest
+      dw = nearest
+      wtd = nearest
+
+    [[[terms]]]
+      b1 = log(PGV)
+      b2 = log(vs30)
+      b3 = precip
+      b4 = "min(dc, dr)"
+      b5 = wtd
+
+    [[[coefficients]]]
+      b0 = 8.801
+      b1 = 0.334
+      b2 = -1.918
+      b3 = 0.0005408
+      b4 = -0.2054
+      b5 = -0.0333
 </pre>
 
 API for Model Output

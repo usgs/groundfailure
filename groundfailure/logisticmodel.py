@@ -158,6 +158,34 @@ def validateLogisticModels(config):
     return True
 
 
+def validateRefs(cmodel):
+    longrefs = {}
+    shortrefs = {}
+    modelrefs = {}
+    for key in cmodel['layers'].keys():
+        if 'longref' in cmodel['layers'][key]:
+            longrefs[key] = cmodel['layers'][key]['longref']
+        else:
+            print('No longref provided for layer %s' % key)
+            longrefs[key] = 'unknown'
+        if 'shortref' in cmodel['layers'][key]:
+            shortrefs[key] = cmodel['layers'][key]['shortref']
+        else:
+            print('No shortref provided for layer %s' % key)
+            shortrefs[key] = 'unknown'
+    try:
+        modelrefs['longref'] = cmodel['longref']
+    except:
+        print('No model longref provided')
+        modelrefs['longref'] = 'unknown'
+    try:
+        modelrefs['shortref'] = cmodel['shortref']
+    except:
+        print('No model shortref provided')
+        modelrefs['shortref'] = 'unknown'
+    return modelrefs, longrefs, shortrefs
+
+
 def checkTerm(term, layers):
     #startterm = term
     #Strip out everything that isn't: 0-9.() operators, +-/* or layer names.  Anything left is an unknown symbol.
@@ -213,12 +241,14 @@ class LogisticModel(object):
         #do everything here short of calculations - parse config, assemble eqn strings, load data.
         self.model = model
         cmodel = config['logistic_models'][model]
+        self.modeltype = cmodel['gfetype']
         self.coeffs = validateCoefficients(cmodel)
         self.layers = validateLayers(cmodel)  # key = layer name, value = file name
         self.terms, timeField = validateTerms(cmodel, self.coeffs, self.layers)
         self.interpolations = validateInterpolations(cmodel, self.layers)
         self.units = validateUnits(cmodel, self.layers)
         self.gmused = [value for term, value in cmodel['terms'].items() if 'pga' in value.lower() or 'pgv' in value.lower() or 'mmi' in value.lower()]
+        self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
         if 'baselayer' not in cmodel:
             raise Exception('You must specify a base layer file in config.')
         if cmodel['baselayer'] not in list(self.layers.keys()):
@@ -336,31 +366,37 @@ class LogisticModel(object):
         else:
             print('No slope file provided, slope thresholds not applied')
         # Stuff into Grid2D object
+        temp = self.shakemap.getShakeDict()
+        shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
+        description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'slopemin': self.slopemin, 'slopemax': self.slopemax}}
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {'grid': Pgrid,
-                          'label': 'Probability',
+                          'label': ('%s Probability') % (self.modeltype.capitalize()),
                           'type': 'output',
-                          'description': {'units': 'probability'}}
+                          'description': description}
         if saveinputs is True:
             for layername, layergrid in list(self.layerdict.items()):
                 units = self.units[layername]
                 rdict[layername] = {'grid': layergrid,
                                     'label': '%s (%s)' % (layername, units),
                                     'type': 'input',
-                                    'description': {'units': units}}
+                                    'description': {'units': units, 'shakemap': shakedetail}}
             for gmused in self.gmused:
-                if gmused in 'pga':
+                if 'pga' in gmused:
                     units = '%g'
-                if gmused in 'pgv':
+                    getkey = 'pga'
+                if 'pgv' in gmused:
                     units = 'cm/s'
-                if gmused in 'mmi':
+                    getkey = 'pgv'
+                if 'mmi' in gmused:
                     units = 'mmi'
-                layer = self.shakemap.getLayer(gmused)
+                    getkey = 'mmi'
+                layer = self.shakemap.getLayer(getkey)
                 rdict[gmused] = {'grid': layer,
-                                 'label': '%s (%s)' % (gmused, units),
+                                 'label': '%s (%s)' % (getkey, units),
                                  'type': 'input',
-                                 'description': {'units': units}}
+                                 'description': {'units': units, 'shakemap': shakedetail}}
         return rdict
 
 
