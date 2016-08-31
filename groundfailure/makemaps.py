@@ -834,11 +834,18 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 
         if inventory_shapefile is not None:
             for in1 in inventory:
-                x, y = m(in1.exterior.xy[0], in1.exterior.xy[1])
-                xy = list(zip(x, y))
-                patch = Polygon(xy, facecolor='none', edgecolor='k', lw=0.5, zorder=10.)
-                #patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
-                ax.add_patch(patch)
+                if 'point' in str(type(in1)):
+                    x, y = in1.xy
+                    x = x[0]
+                    y = y[0]
+                    m.scatter(x, y, c='w', s=50, latlon=True, marker='^',
+                              zorder=100001)
+                else:
+                    x, y = m(in1.exterior.xy[0], in1.exterior.xy[1])
+                    xy = list(zip(x, y))
+                    patch = Polygon(xy, facecolor='none', edgecolor='k', lw=0.5, zorder=10.)
+                    #patches.append(Polygon(xy, facecolor=watercolor, edgecolor=watercolor, zorder=500.))
+                    ax.add_patch(patch)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
         dat_im = m.transform_scalar(
@@ -862,7 +869,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             # This is just a dummy layer that will be deleted to make the
             # colorbar look right
             panelhandle = m.imshow(dat_im, cmap=palette, zorder=0.,
-                                   vmin=vmin, vmax=vmax)  
+                                   vmin=vmin, vmax=vmax)
         else:
             panelhandle = m.imshow(dat_im, cmap=palette, zorder=3.,
                                    vmin=vmin, vmax=vmax, interpolation='none')
