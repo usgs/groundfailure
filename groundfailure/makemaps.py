@@ -838,7 +838,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                     x, y = in1.xy
                     x = x[0]
                     y = y[0]
-                    m.scatter(x, y, c='w', s=50, latlon=True, marker='^',
+                    m.scatter(x, y, c='m', s=50, latlon=True, marker='^',
                               zorder=100001)
                 else:
                     x, y = m(in1.exterior.xy[0], in1.exterior.xy[1])
