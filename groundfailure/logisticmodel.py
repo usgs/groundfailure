@@ -284,7 +284,7 @@ class LogisticModel(object):
         if uncertfile is not None:
             try:
                 self.uncert = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True,
-                                             method='linear', adjust='res')
+                                             adjust='res')
             except:
                 print('Could not read uncertainty file, ignoring uncertainties')
                 self.uncert = None
@@ -343,16 +343,16 @@ class LogisticModel(object):
             # Find the term with the shakemap input and replace for these nuggets
             for k, nug in enumerate(self.nuggets):
                 if "self.shakemap.getLayer('pga').getData()" in nug:
-                    self.nugmin[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log(self.shakemap.getLayer('pga').getData()) - self.uncert.getLayer('stdpga').getData()))")
-                    self.nugmax[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log('self.shakemap.getLayer('pga').getData()) + self.uncert.getLayer('stdpga').getData()))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log(self.shakemap.getLayer('pga').getData()) - self.uncert.getLayer('stdpga').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log(self.shakemap.getLayer('pga').getData()) + self.uncert.getLayer('stdpga').getData()))")
                 elif "self.layerdict['pgv'].getData()" in nug:
-                    self.nugmin[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log(self.shakemap.getLayer('pgv').getData()) - self.uncert.getLayer('stdpgv').getData()))")
-                    self.nugmax[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log('self.shakemap.getLayer('pgv').getData()) + self.uncert.getLayer('stdpgv').getData()))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log(self.shakemap.getLayer('pgv').getData()) - self.uncert.getLayer('stdpgv').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log(self.shakemap.getLayer('pgv').getData()) + self.uncert.getLayer('stdpgv').getData()))")
                 elif "self.layerdict['mmi'].getData()" in nug:
-                    self.nugmin[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log(self.shakemap.getLayer('mmi').getData()) - self.uncert.getLayer('stdmmi').getData()))")
-                    self.nugmax[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log('self.shakemap.getLayer('mmi').getData()) + self.uncert.getLayer('stdmmi').getData()))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log(self.shakemap.getLayer('mmi').getData()) - self.uncert.getLayer('stdmmi').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log(self.shakemap.getLayer('mmi').getData()) + self.uncert.getLayer('stdmmi').getData()))")
             self.equationmin = ' + '.join(self.nugmin)
-            self.equationmax = ' + '.join(self.nugmin)
+            self.equationmax = ' + '.join(self.nugmax)
         else:
             self.equationmin = None
             self.equationmax = None
@@ -435,7 +435,7 @@ class LogisticModel(object):
                              'type': 'output',
                              'description': description}
         rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
-                             'label': ('%s Probability (+1 std ground motion') % (self.modeltype.capitalize()),
+                             'label': ('%s Probability (+1 std ground motion)') % (self.modeltype.capitalize()),
                              'type': 'output',
                              'description': description}
 
