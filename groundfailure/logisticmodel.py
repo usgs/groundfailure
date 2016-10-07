@@ -6,6 +6,7 @@ import sys
 import os.path
 import re
 import collections
+import copy
 
 #third party imports
 from mapio.shake import ShakeGrid, getHeaderData
@@ -18,7 +19,6 @@ LAYER_PATTERN = '_layer'
 TERM_PATTERN = 'term'
 
 SM_TERMS = ['MW', 'YEAR', 'MONTH', 'DAY', 'HOUR', 'pga', 'pgv', 'mmi']
-UNCERT_TERMS = ['PGAmin', 'PGAmax', 'PGVmin', 'PGVmax']
 SM_GRID_TERMS = ['pga', 'pgv', 'mmi']
 OPERATORS = ['log', 'log10', 'power', 'sqrt', 'minimum']  # these will get np. prepended
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
@@ -216,16 +216,6 @@ def checkTerm(term, layers):
     for op in OPERATORS:
         if term.find(op) > -1:
             term = term.replace(op, 'np.'+op)
-    for uncert in UNCERT_TERMS:
-        if term.find(uncert) > -1:
-            if uncert is 'PGAmax':
-                term = term.replace(uncert, 'np.exp(np.log(PGA*100.) + self.stdpga.getData())/100.')
-            if uncert is PGAmin:
-                term = term.replace(uncert, 'np.exp(np.log(PGA*100.) - self.stdpga.getData())/100.')
-            if uncert is PGVmax:
-                term = term.replace(uncert, 'np.exp(np.log(PGV) + self.stdpgv.getData())')
-            if uncert is PGVmin:
-                term = term.replace(uncert, 'np.exp(np.log(PGV) - self.stdpgv.getData())')
 
     for sm_term in SM_GRID_TERMS:
         term = term.replace(sm_term, "self.shakemap.getLayer('%s').getData()" % sm_term)
@@ -251,21 +241,6 @@ class LogisticModel(object):
         if model not in getLogisticModelNames(config):
             raise Exception('Could not find a model called "%s" in config %s.' % (model, config))
         #do everything here short of calculations - parse config, assemble eqn strings, load data.
-
-        # take uncertainties into account
-        if uncertfile is not None:
-            try:
-                self.uncert = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True, method='linear', adjust='res')
-            except:
-                print('Could not read uncertainty file, ignoring uncertainties')
-                uncertfile = None
-
-            try:
-                self.stdpga = self.uncert.getLayer('pga')
-                self.stdpgv = self.uncert.getLayer('pgv')
-            except:
-                print('Unable to retrieve standard deviations.')
-                uncertfile = None
 
         self.model = model
         cmodel = config['logistic_models'][model]
@@ -305,6 +280,17 @@ class LogisticModel(object):
         #now load the shakemap, resampling and padding if necessary
         self.shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict, resample=True, doPadding=True, adjust='res')
 
+        # take uncertainties into account
+        if uncertfile is not None:
+            try:
+                self.uncert = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True,
+                                             adjust='res')
+            except:
+                print('Could not read uncertainty file, ignoring uncertainties')
+                self.uncert = None
+        else:
+            self.uncert = None
+
         #load the predictor layers into a dictionary
         self.layerdict = {}  # key = layer name, value = grid object
         for layername, layerfile in self.layers.items():
@@ -334,13 +320,14 @@ class LogisticModel(object):
                 else:
                     msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername, layerfile)
                     raise Exception(msg)
-                self.layerdict[layername] = layer
+                self.layerdict[layername] = lyr
 
         shapes = {}
         for layername, layer in self.layerdict.items():
             shapes[layername] = layer.getData().shape
 
         self.nuggets = [str(self.coeffs['b0'])]
+
         ckeys = list(self.terms.keys())
         ckeys.sort()
         for key in ckeys:
@@ -349,6 +336,27 @@ class LogisticModel(object):
             self.nuggets.append('(%g * %s)' % (coeff, term))
 
         self.equation = ' + '.join(self.nuggets)
+
+        if self.uncert is not None:
+            self.nugmin = copy.copy(self.nuggets)
+            self.nugmax = copy.copy(self.nuggets)
+            # Find the term with the shakemap input and replace for these nuggets
+            for k, nug in enumerate(self.nuggets):
+                if "self.shakemap.getLayer('pga').getData()" in nug:
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log(self.shakemap.getLayer('pga').getData()) - self.uncert.getLayer('stdpga').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log(self.shakemap.getLayer('pga').getData()) + self.uncert.getLayer('stdpga').getData()))")
+                elif "self.layerdict['pgv'].getData()" in nug:
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log(self.shakemap.getLayer('pgv').getData()) - self.uncert.getLayer('stdpgv').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log(self.shakemap.getLayer('pgv').getData()) + self.uncert.getLayer('stdpgv').getData()))")
+                elif "self.layerdict['mmi'].getData()" in nug:
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log(self.shakemap.getLayer('mmi').getData()) - self.uncert.getLayer('stdmmi').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log(self.shakemap.getLayer('mmi').getData()) + self.uncert.getLayer('stdmmi').getData()))")
+            self.equationmin = ' + '.join(self.nugmin)
+            self.equationmax = ' + '.join(self.nugmax)
+        else:
+            self.equationmin = None
+            self.equationmax = None
+
         self.geodict = self.shakemap.getGeoDict()
 
         try:
@@ -362,6 +370,9 @@ class LogisticModel(object):
     def getEquation(self):
         return self.equation
 
+    def getEquations(self):
+        return self.equation, self.equationmin, self.equationmax
+
     def getGeoDict(self):
         return self.geodict
 
@@ -374,6 +385,11 @@ class LogisticModel(object):
         """
         X = eval(self.equation)
         P = 1/(1 + np.exp(-X))
+        if self.uncert is not None:
+            Xmin = eval(self.equationmin)
+            Xmax = eval(self.equationmax)
+            Pmin = 1/(1 + np.exp(-Xmin))
+            Pmax = 1/(1 + np.exp(-Xmax))
         if slopefile is not None:
             ftype = getFileType(slopefile)
             sampledict = self.shakemap.getGeoDict()
@@ -383,12 +399,22 @@ class LogisticModel(object):
                 print('applying slope thresholds')
                 P[slope > self.slopemax] = 0.
                 P[slope < self.slopemin] = 0.
+                if self.uncert is not None:
+                    Pmin[slope > self.slopemax] = 0.
+                    Pmin[slope < self.slopemin] = 0.
+                    Pmax[slope > self.slopemax] = 0.
+                    Pmax[slope < self.slopemin] = 0.
             elif ftype == 'esri':
                 slope = GDALGrid.load(slopefile, sampledict, resample=True, method='linear', doPadding=True).getData()/slopediv
                 # Apply slope min/max limits
                 print('applying slope thresholds')
                 P[slope > self.slopemax] = 0.
                 P[slope < self.slopemin] = 0.
+                if self.uncert is not None:
+                    Pmin[slope > self.slopemax] = 0.
+                    Pmin[slope < self.slopemin] = 0.
+                    Pmax[slope > self.slopemax] = 0.
+                    Pmax[slope < self.slopemin] = 0.
             else:
                 print('Slope file does not appear to be a valid GMT or ESRI file, not applying any slope thresholds.' % (slopefile))
         else:
@@ -396,13 +422,23 @@ class LogisticModel(object):
         # Stuff into Grid2D object
         temp = self.shakemap.getShakeDict()
         shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
-        description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'slopemin': self.slopemin, 'slopemax': self.slopemax}}
+        description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': 'probability',
+                       'shakemap': shakedetail, 'parameters': {'slopemin': self.slopemin, 'slopemax': self.slopemax}}
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {'grid': Pgrid,
                           'label': ('%s Probability') % (self.modeltype.capitalize()),
                           'type': 'output',
                           'description': description}
+        rdict['modelmin'] = {'grid': Grid2D(Pmin, self.geodict),
+                             'label': ('%s Probability (-1 std ground motion)') % (self.modeltype.capitalize()),
+                             'type': 'output',
+                             'description': description}
+        rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
+                             'label': ('%s Probability (+1 std ground motion)') % (self.modeltype.capitalize()),
+                             'type': 'output',
+                             'description': description}
+
         if saveinputs is True:
             for layername, layergrid in list(self.layerdict.items()):
                 units = self.units[layername]
@@ -418,13 +454,25 @@ class LogisticModel(object):
                     units = 'cm/s'
                     getkey = 'pgv'
                 if 'mmi' in gmused:
-                    units = 'mmi'
+                    units = 'intensity'
                     getkey = 'mmi'
                 layer = self.shakemap.getLayer(getkey)
                 rdict[gmused] = {'grid': layer,
-                                 'label': '%s (%s)' % (getkey, units),
+                                 'label': '%s (%s)' % (getkey.upper(), units),
                                  'type': 'input',
                                  'description': {'units': units, 'shakemap': shakedetail}}
+                if self.uncert is not None:
+                    layer1 = np.exp(np.log(layer.getData()) - self.uncert.getLayer('std'+getkey).getData())
+                    rdict[gmused + '-1std'] = {'grid': Grid2D(layer1, self.geodict),
+                                               'label': '%s (%s)' % (getkey.upper()+' -1 std', units),
+                                               'type': 'input',
+                                               'description': {'units': units, 'shakemap': shakedetail}}
+                    layer2 = np.exp(np.log(layer.getData()) + self.uncert.getLayer('std'+getkey).getData())
+                    rdict[gmused + '+1std'] = {'grid': Grid2D(layer2, self.geodict),
+                                               'label': '%s (%s)' % (getkey.upper()+' +1 std', units),
+                                               'type': 'input',
+                                               'description': {'units': units, 'shakemap': shakedetail}}
+
         return rdict
 
 
