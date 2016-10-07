@@ -7,7 +7,9 @@ Newmark based landslide mechanistic_models
 #stdlib imports
 import os.path
 import warnings
-import urllib.request, urllib.error, urllib.parse
+import urllib.request
+import urllib.error
+import urllib.parse
 import tempfile
 import collections
 
@@ -63,21 +65,28 @@ def isURL(gridurl):
     return isURL
 
 
-def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA', probtype='jibson2000', bounds=None):
+def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA',
+          probtype='jibson2000', bounds=None):
     """
     Runs HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories from defined by HAZUS manual (I-X)
 
     :param shakefile: URL or complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
-    :param config: Model configuration file object containing locations of input files and other input values config = ConfigObj(configfilepath)
+    :param config: Model configuration file object containing locations of input files and other input values config =
+      ConfigObj(configfilepath)
     :type config: ConfigObj
-    :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
+    :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output
+                       (one layer)
     :type saveinputs: boolean
-    :param modeltype: 'coverage' if critical acceleration is exceeded by pga, this gives the estimated areal coverage of landsliding for that cell
+    :param modeltype: 'coverage' if critical acceleration is exceeded by pga, this gives the estimated areal coverage
+                      of landsliding for that cell
         'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure
-        'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype
-        'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement without relating to probability of failure
-        'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement and probability defined by probtype method
+        'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param
+                    probtype
+        'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined
+                          by regressionmodel param to get Newmark displacement without relating to probability of failure
+        'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined
+                            by regressionmodel param to get Newmark displacement and probability defined by probtype method
     :type modeltype: string
     :param regressionmodel:
         Newmark displacement regression model to use
@@ -86,11 +95,16 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
         'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009)
         'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
     :type regressionmodel: string
-    :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
+    :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000)
+                     to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark
+                     displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
     :param bounds: Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'
 
-    :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
+    :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted
+                         like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top
+                         line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of
+                         layer for subtitle, potentially including source information'}
     :type maplayers: OrderedDict
     """
 
@@ -114,7 +128,8 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict1 = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
+        tempgdict1 = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'],
+                             'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
         tempgdict = susdict.getBoundsWithin(tempgdict1)
     else:
         tempgdict = susdict.getBoundsWithin(shkgdict)
@@ -322,10 +337,14 @@ def est_disp(Ac, PGA):
     from scipy.interpolate import interp1d
 
     acais = Ac/PGA  # Get "Expected displacement factor"
-    xlow = np.array((0.0994941, 0.198426, 0.278246, 0.370433, 0.450253, 0.53457, 0.594154, 0.640247, 0.684092, 0.72344, 0.770658, 0.802136, 0.851602, 0.897695))
-    ylow = np.array((22.0186, 11.4578, 7.09682, 3.85734, 2.28738, 1.24326, 0.822041, 0.543531, 0.367292, 0.237622, 0.137873, 0.101646, 0.044438, 0.0211954))
-    xhigh = np.array((0.100618, 0.179314, 0.251265, 0.319843, 0.406408, 0.48398, 0.567173, 0.634626, 0.700956, 0.751546, 0.80326, 0.857223, 0.901068))
-    yhigh = np.array((39.6377, 21.5443, 13.638, 9.21593, 4.90126, 2.84381, 1.6145, 1.02201, 0.592993, 0.351641, 0.208521, 0.0931681, 0.0495491))
+    xlow = np.array((0.0994941, 0.198426, 0.278246, 0.370433, 0.450253, 0.53457, 0.594154, 0.640247, 0.684092, 0.72344,
+                    0.770658, 0.802136, 0.851602, 0.897695))
+    ylow = np.array((22.0186, 11.4578, 7.09682, 3.85734, 2.28738, 1.24326, 0.822041, 0.543531, 0.367292, 0.237622,
+                    0.137873, 0.101646, 0.044438, 0.0211954))
+    xhigh = np.array((0.100618, 0.179314, 0.251265, 0.319843, 0.406408, 0.48398, 0.567173, 0.634626, 0.700956,
+                     0.751546, 0.80326, 0.857223, 0.901068))
+    yhigh = np.array((39.6377, 21.5443, 13.638, 9.21593, 4.90126, 2.84381, 1.6145, 1.02201, 0.592993, 0.351641,
+                      0.208521, 0.0931681, 0.0495491))
     f_low = interp1d(xlow, ylow, bounds_error=False, fill_value=0.)
     f_high = interp1d(xhigh, yhigh, bounds_error=False, fill_value=0.)
     ed_low = f_low(acais)
@@ -344,7 +363,8 @@ def numcycles(M):
     return n
 
 
-def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000', slopediv=1., codiv=1., bounds=None):
+def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000',
+            slopediv=1., codiv=1., bounds=None):
     """This function uses the Newmark method to estimate probability of failure at each grid cell.
     Factor of Safety and critcal accelerations are calculated following Jibson et al. (2000) and the
     Newmark displacement is estimated using PGA, PGV, and/or Magnitude (depending on equation used)
@@ -442,7 +462,8 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
+        tempgdict = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'],
+                            'ymax': bounds['ymax'], 'dx': 100., 'dy': 100., 'nx': 100., 'ny': 100.}, adjust='res')
         gdict = slpdict.getBoundsWithin(tempgdict)
     else:  # Get boundaries from shakemap if not specified
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
@@ -619,11 +640,13 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     return maplayers
 
 
-def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', bounds=None, slopediv=100., codiv=10.):
+def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', bounds=None, slopediv=100.,
+             codiv=10.):
     """ This function runs the Godt et al. (2008) global method for a given ShakeMap. The Factor of Safety
     is calculated using infinite slope analysis assumuing dry conditions. The method uses threshold newmark
     displacement and estimates areal coverage by doing the calculations for each slope quantile
-    TO DO - add 'all' - averages Dn from all four equations, add term to convert PGA and PGV to Ia and use other equations, add Ambraseys and Menu (1988) option
+    TO DO - add 'all' - averages Dn from all four equations, add term to convert PGA and PGV to Ia and use other
+    equations, add Ambraseys and Menu (1988) option
 
     :param shakefile: url or filepath to shakemap xml file
     :type shakefile: string
@@ -638,17 +661,25 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
         'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009)
         'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
     :type regressionmodel: string
-    :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
+    :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000)
+                     to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of
+                     Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
     :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
     :type slopediv: float
-    :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10 because that is how it was calibrated, but values are reasonable without multiplying for regular analysis)
+    :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10
+                  because that is how it was calibrated, but values are reasonable without multiplying for regular
+                  analysis)
     :type codiv: float
 
-    :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
+    :returns maplayers: Dictionary containing output and input layers (if saveinputs=True) along with metadata
+                        formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for
+                        colorbar and top line of subtitle', 'type': 'output or input to model',
+                        'description': 'detailed description of layer for subtitle, potentially including source information'}
     :type maplayers: OrderedDict
 
-    :raises NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+    :raises NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or
+                       when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
     """
 
     # Empty refs
@@ -709,7 +740,9 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'], 'ymax': bounds['ymax'], 'dx': shkgdict.dx, 'dy': shkgdict.dy, 'nx': shkgdict.nx, 'ny': shkgdict.ny}, adjust='res')
+        tempgdict = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'],
+                            'ymax': bounds['ymax'], 'dx': shkgdict.dx, 'dy': shkgdict.dy, 'nx': shkgdict.nx,
+                            'ny': shkgdict.ny}, adjust='res')
         gdict = shkgdict.getBoundsWithin(tempgdict)
         shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, adjust='bounds')
     else:
@@ -727,23 +760,32 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     # Read in all the slope files, divide all by 100 to get to slope in degrees (because input files are multiplied by 100.)
     slopes = []
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope10.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope30.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope50.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope70.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope90.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
-    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_max.bil'), samplegeodict=shkgdict, resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_min.bil'), samplegeodict=shkgdict,
+                  resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope10.bil'), samplegeodict=shkgdict,
+                  resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope30.bil'), samplegeodict=shkgdict,
+                  resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope50.bil'), samplegeodict=shkgdict,
+                  resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope70.bil'), samplegeodict=shkgdict,
+                  resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope90.bil'), samplegeodict=shkgdict,
+                  resample=True, method='linear').getData()/slopediv)
+    slopes.append(GDALGrid.load(os.path.join(slopefilepath, 'slope_max.bil'), samplegeodict=shkgdict,
+                  resample=True, method='linear').getData()/slopediv)
     slopestack = np.dstack(slopes)
 
     # Change any zero slopes to a very small number to avoid dividing by zero later
     slopestack[slopestack == 0] = 1e-8
 
     # Read in the cohesion and friction files and duplicate layers so they are same shape as slope structure
-    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData()[:, :, np.newaxis]/codiv, 7, axis=2)
+    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True,
+                         method='nearest').getData()[:, :, np.newaxis]/codiv, 7, axis=2)
     cohesion[cohesion == -999.9] = nodata_cohesion
     cohesion[cohesion == 0] = nodata_cohesion
-    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True, method='nearest').getData().astype(float)[:, :, np.newaxis], 7, axis=2)
+    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True,
+                         method='nearest').getData().astype(float)[:, :, np.newaxis], 7, axis=2)
     friction[friction == -9999] = nodata_friction
     friction[friction == 0] = nodata_friction
 
