@@ -18,6 +18,7 @@ LAYER_PATTERN = '_layer'
 TERM_PATTERN = 'term'
 
 SM_TERMS = ['MW', 'YEAR', 'MONTH', 'DAY', 'HOUR', 'pga', 'pgv', 'mmi']
+UNCERT_TERMS = ['PGAmin', 'PGAmax', 'PGVmin', 'PGVmax']
 SM_GRID_TERMS = ['pga', 'pgv', 'mmi']
 OPERATORS = ['log', 'log10', 'power', 'sqrt', 'minimum']  # these will get np. prepended
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
@@ -215,6 +216,17 @@ def checkTerm(term, layers):
     for op in OPERATORS:
         if term.find(op) > -1:
             term = term.replace(op, 'np.'+op)
+    for uncert in UNCERT_TERMS:
+        if term.find(uncert) > -1:
+            if uncert is 'PGAmax':
+                term = term.replace(uncert, 'np.exp(np.log(PGA*100.) + self.stdpga.getData())/100.')
+            if uncert is PGAmin:
+                term = term.replace(uncert, 'np.exp(np.log(PGA*100.) - self.stdpga.getData())/100.')
+            if uncert is PGVmax:
+                term = term.replace(uncert, 'np.exp(np.log(PGV) + self.stdpgv.getData())')
+            if uncert is PGVmin:
+                term = term.replace(uncert, 'np.exp(np.log(PGV) - self.stdpgv.getData())')
+
     for sm_term in SM_GRID_TERMS:
         term = term.replace(sm_term, "self.shakemap.getLayer('%s').getData()" % sm_term)
 
@@ -235,10 +247,26 @@ def checkTerm(term, layers):
 
 
 class LogisticModel(object):
-    def __init__(self, config, shakefile, model):
+    def __init__(self, config, shakefile, model, uncertfile=None):
         if model not in getLogisticModelNames(config):
             raise Exception('Could not find a model called "%s" in config %s.' % (model, config))
         #do everything here short of calculations - parse config, assemble eqn strings, load data.
+
+        # take uncertainties into account
+        if uncertfile is not None:
+            try:
+                self.uncert = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True, method='linear', adjust='res')
+            except:
+                print('Could not read uncertainty file, ignoring uncertainties')
+                uncertfile = None
+
+            try:
+                self.stdpga = self.uncert.getLayer('pga')
+                self.stdpgv = self.uncert.getLayer('pgv')
+            except:
+                print('Unable to retrieve standard deviations.')
+                uncertfile = None
+
         self.model = model
         cmodel = config['logistic_models'][model]
         self.modeltype = cmodel['gfetype']
@@ -306,7 +334,7 @@ class LogisticModel(object):
                 else:
                     msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername, layerfile)
                     raise Exception(msg)
-                self.layerdict[layername] = lyr
+                self.layerdict[layername] = layer
 
         shapes = {}
         for layername, layer in self.layerdict.items():

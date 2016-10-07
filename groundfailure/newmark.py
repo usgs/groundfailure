@@ -663,7 +663,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     # Parse config
     try:  # May want to add error handling so if refs aren't given, just includes unknown
-        slopefilepath = config['mechanistic_models']['godt_2008']['layers']['slope']['filepath']
+        slopefilepath = config['mechanistic_models']['godt_2008']['layers']['slope']['file']
         slopeunits = config['mechanistic_models']['godt_2008']['layers']['slope']['units']
         cohesionfile = config['mechanistic_models']['godt_2008']['layers']['cohesion']['file']
         cohesionunits = config['mechanistic_models']['godt_2008']['layers']['cohesion']['units']
