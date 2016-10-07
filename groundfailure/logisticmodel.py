@@ -464,12 +464,12 @@ class LogisticModel(object):
                 if self.uncert is not None:
                     layer1 = np.exp(np.log(layer.getData()) - self.uncert.getLayer('std'+getkey).getData())
                     rdict[gmused + '-1std'] = {'grid': Grid2D(layer1, self.geodict),
-                                               'label': '%s (%s)' % (getkey.upper()+' - 1 std', units),
+                                               'label': '%s (%s)' % (getkey.upper()+' -1 std', units),
                                                'type': 'input',
                                                'description': {'units': units, 'shakemap': shakedetail}}
                     layer2 = np.exp(np.log(layer.getData()) + self.uncert.getLayer('std'+getkey).getData())
                     rdict[gmused + '+1std'] = {'grid': Grid2D(layer2, self.geodict),
-                                               'label': '%s (%s)' % (getkey.upper()+' + 1 std', units),
+                                               'label': '%s (%s)' % (getkey.upper()+' +1 std', units),
                                                'type': 'input',
                                                'description': {'units': units, 'shakemap': shakedetail}}
 
