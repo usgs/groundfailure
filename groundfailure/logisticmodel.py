@@ -14,6 +14,8 @@ from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 
+from logisticmodel_test import _test
+
 PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'
 TERM_PATTERN = 'term'
@@ -39,6 +41,12 @@ def getLogisticModelNames(config):
 
 
 def getFileType(filename):
+    """Determine whether input file is a shapefile or a grid (ESRI or GMT).
+    :param filename:
+      String path to candidate filename.
+    :returns:
+      String, one of 'shapefile','grid','unknown'.
+    """
     if os.path.isdir(filename):
         return 'dir'
     ftype = GMTGrid.getFileType(filename)
@@ -476,30 +484,6 @@ class LogisticModel(object):
 
         return rdict
 
-
-def _test(shakefile, cofile, slopefile, precipfolder):
-    model = {'logistic_models': {'nowicki_2014': {'description': 'This is the Nowicki Model of 2014, which uses cohesion and slope max as input.',
-                                                  'gfetype': 'landslide',
-                                                  'baselayer': 'cohesion',
-                                                  'layers': {'cohesion': '%s' % cofile,
-                                                             'slope': '%s' % slfile,
-                                                             'precip': '%s' % precipfolder},
-                                                  'interpolations': {'cohesion': 'linear',
-                                                                     'slope': 'linear',
-                                                                     'precip': 'nearest'},
-                                                  'terms': {'b1': 'pga',
-                                                            'b2': 'slope',
-                                                            'b3': 'precipMONTH',
-                                                            'b4': 'pga*slope*MW'},
-                                                  'coefficients': {'b0': -7.15,
-                                                                   'b1': 0.0604,
-                                                                   'b2': 0.000825,
-                                                                   'b3': 0.0201,
-                                                                   'b4': 1.45e-05}}}}
-
-    lm = LogisticModel(model, shakefile, 'nowicki_2014_global')
-    print(lm.getEquation())
-    P = lm.calculate()
 
 if __name__ == '__main__':
     shakefile = sys.argv[1]  # needs to be an event occurring in January
