@@ -901,11 +901,11 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         cbar.set_label(label1, fontsize=10)
         cbar.ax.tick_params(labelsize=8)
 
-        parallels = m.drawparallels(getMapLines(bymin, bymax, 4),
+        parallels = m.drawparallels(getMapLines(bymin, bymax, 3),
                                     labels=[1, 0, 0, 0], linewidth=0.5,
                                     labelstyle='+/-', fontsize=9, xoffset=-0.8,
                                     color='gray', zorder=100.)
-        m.drawmeridians(getMapLines(bxmin, bxmax, 4), labels=[0, 0, 0, 1],
+        m.drawmeridians(getMapLines(bxmin, bxmax, 3), labels=[0, 0, 0, 1],
                         linewidth=0.5, labelstyle='+/-', fontsize=9,
                         color='gray', zorder=100.)
         for par in parallels:

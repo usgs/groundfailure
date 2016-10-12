@@ -430,14 +430,15 @@ class LogisticModel(object):
                           'label': ('%s Probability') % (self.modeltype.capitalize()),
                           'type': 'output',
                           'description': description}
-        rdict['modelmin'] = {'grid': Grid2D(Pmin, self.geodict),
-                             'label': ('%s Probability (-1 std ground motion)') % (self.modeltype.capitalize()),
-                             'type': 'output',
-                             'description': description}
-        rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
-                             'label': ('%s Probability (+1 std ground motion)') % (self.modeltype.capitalize()),
-                             'type': 'output',
-                             'description': description}
+        if self.uncert is not None:
+            rdict['modelmin'] = {'grid': Grid2D(Pmin, self.geodict),
+                                 'label': ('%s Probability (-1 std ground motion)') % (self.modeltype.capitalize()),
+                                 'type': 'output',
+                                 'description': description}
+            rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
+                                 'label': ('%s Probability (+1 std ground motion)') % (self.modeltype.capitalize()),
+                                 'type': 'output',
+                                 'description': description}
 
         if saveinputs is True:
             for layername, layergrid in list(self.layerdict.items()):
