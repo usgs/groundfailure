@@ -6,69 +6,97 @@
 #python 3 compatibility
 from __future__ import print_function
 import os.path
-import sys
+#import sys
 #stdlib imports
 import os
-import tempfile
+#import tempfile
 from configobj import ConfigObj
-
-#hack the path so that I can debug these functions if I need to
-homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
-logisticmodeldir = os.path.abspath(os.path.join(homedir, 'groundfailure'))
-sys.path.insert(0, logisticmodeldir)  # put this at the front of the system path, ignoring any installed mapio stuff
-
-# further imports
-#stdlib imports
 import numpy as np
 import groundfailure.logisticmodel as LM
 from groundfailure.conf import correct_config_filepaths
 
-# Make temporary files for each layer
-slope = np.full((2, 2), 270., dtype=float)
-rock = np.array([[-1.7010214, -0.7960331], [-0.6563501, -1.6414169]], dtype=float)
-landcover = np.array([[1.0466108, 1.0706804], [0.9440571, 0.7256497]], dtype=float)
-precip = np.full((2, 2), 3., dtype=float)
-cti = np.full((2, 2), 4., dtype=float)
-elev = np.full((2, 2), 5., dtype=float)
-output = np.array([[1.34140885, 2.27046675], [2.28354445, 1.08005225]], dtype=float)
+#hack the path so that I can debug these functions if I need to
+homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
+datadir = os.path.abspath(os.path.join(homedir, 'data'))
+#logisticmodeldir = os.path.abspath(os.path.join(homedir, 'groundfailure'))
+#sys.path.insert(0, logisticmodeldir)  # put this at the front of the system path, ignoring any installed mapio stuff
 
-# declare config/shakefiles file variable
-configfile = os.path.join(logisticmodeldir, 'data', 'test_config.ini')
-shakefile = os.path.join(logisticmodeldir, 'data', 'test_shakegrid.xml')
-
-# validate config file
+configfile = os.path.join(datadir, 'data', 'test_config.ini')
 config = ConfigObj(configfile)
-config = correct_config_filepaths(config)
+# Test path correction (from conf.py)
+config = correct_config_filepaths(config)  # Need to make it correct filepaths for homedir
+cmodel = config['logistic_models']['TestModelLS']
+
+shakefile = os.path.join(datadir, 'data', 'test_shakegrid.xml')
+uncertfile = os.path.join(datadir, 'test_uncert.xml')
+cofile = os.path.join(datadir, 'test_cohesion.bil')
+slopefile = os.path.join(datadir, 'test_slope.bil')
+vs30file = os.path.join(datadir, 'test_vs30.bil')
+ctifile = os.path.join(datadir, 'test_cti.bil')
+precipfolder = os.path.join(datadir, 'test_precip')
 
 
-def _test(shakefile, cofile, slopefile, precipfolder):
-    model = {'logistic_models': {'nowicki_2014': {'description': 'This is the Nowicki Model of 2014, which uses cohesion and slope max as input.',
-                                                  'gfetype': 'landslide',
-                                                  'baselayer': 'cohesion',
-                                                  'layers': {'cohesion': '%s' % cofile,
-                                                             'slope': '%s' % slopefile,
-                                                             'precip': '%s' % precipfolder},
-                                                  'interpolations': {'cohesion': 'linear',
-                                                                     'slope': 'linear',
-                                                                     'precip': 'nearest'},
-                                                  'terms': {'b1': 'pga',
-                                                            'b2': 'slope',
-                                                            'b3': 'precipMONTH',
-                                                            'b4': 'pga*slope*MW'},
-                                                  'coefficients': {'b0': -7.15,
-                                                                   'b1': 0.0604,
-                                                                   'b2': 0.000825,
-                                                                   'b3': 0.0201,
-                                                                   'b4': 1.45e-05}}}}
+def test_logisticmodel():
+    print('Making sure the logistic model runs with and without uncertainty and precipitation - these files are 4x4 cells')
+    modelLQ = {'logistic_models': {'TestModelLQ': {'description': 'This is a test liquefaction model',
+                                                'gfetype': 'liquefaction',
+                                                'baselayer': 'cohesion',
+                                                'layers': {'vs30': '%s' % vs30file,
+                                                           'cti': '%s' % ctifile},
+                                                'interpolations': {'vs30': 'nearest',
+                                                                   'cti': 'linear'},
+                                                'terms': {'b1': 'log((pga/100.0)*(power(MW,2.56)/power(10,2.24)))',
+                                                          'b2': 'cti',
+                                                          'b3': 'log(vs30)'},
+                                                'coefficients': {'b0': 24.10,
+                                                                 'b1': 2.067,
+                                                                 'b2': 0.355,
+                                                                 'b3': -4.784}}}}
 
-    lm = LM(model, shakefile, 'nowicki_2014_global')
-    print(lm.getEquation())
-    P = lm.calculate()
+    modelLS = {'logistic_models': {'TestModelLS': {'description': 'This is a test landslide model',
+                                                    'gfetype': 'landslide',
+                                                    'baselayer': 'cohesion',
+                                                    'layers': {'cohesion': '%s' % cofile,
+                                                               'slope': '%s' % slopefile,
+                                                               'precip': '%s' % precipfolder},
+                                                    'interpolations': {'cohesion': 'linear',
+                                                                       'slope': 'linear',
+                                                                       'precip': 'nearest'},
+                                                    'terms': {'b1': 'pga',
+                                                              'b2': 'slope',
+                                                              'b3': 'precipMONTH',
+                                                              'b4': 'pga*slope*MW'},
+                                                    'coefficients': {'b0': -7.15,
+                                                                     'b1': 0.0604,
+                                                                     'b2': 0.000825,
+                                                                     'b3': 0.0201,
+                                                                     'b4': 1.45e-05}}}}
+
+    ls = LM(modelLS, shakefile, 'nowicki_2014_global', uncertfile=None)
+    print(ls.getEquation())
+    ls.calculate()
+
+    lsu = LM(modelLS, shakefile, 'nowicki_2014_global', uncertfile)
+    print(lsu.getEquation())
+    print(lsu.getEquations())
+    print(lsu.getGeoDict())
+    lsu.calculate()
+
+    lq = LM(modelLQ, shakefile, 'zhu_2015', uncertfile=None)
+    print(lq.getEquation())
+    lq.calculate()
+
+    # Check if results are as expected by manual calculation
+    np.testing.assert_allclose(ls['model'].getData(), targetLS)
+    np.testing.assert_allclose(lsu['model'].getData(), targetLSU)  # Need to check one of the uncertainties at least
+    np.testing.assert_allclose(lq['model'].getData(), targetLQ)
 
 
 # test getLogisticModelNames(config):
 def test_getLogisticModelNames():
     print('Testing Name retrieval from config file:')
+    # declare config/shakefiles file variable
+
     data = ['nowicki_2015']
     names = LM.getLogisticModelNames(config)
     if data == names:
@@ -135,7 +163,7 @@ def test_validateInterpolations(cmodel, layers):
 def test_validateUnits(cmodel, layers):
     print('Test Unit validation from config file:')
     data = {'slope': 'unitless', 'rock': 'unitless', 'landcover': 'unitless', 'precip': 'mm/month', 'cti': 'unitless', 'elev': 'meters'}
-    units = LM.validateUnites(cmodel, layers)
+    units = LM.validateUnits(cmodel, layers)
     if data == units:
         print('Test passed.\n')
     else:
@@ -145,9 +173,13 @@ def test_validateUnits(cmodel, layers):
     return units
 
 
-def test_LogisticModel_SelfEquation():
+def test_validateLogisticModels():
     pass
 
 
-def test_LogisticModel_calculate(self):
+def test_validateRefs():
+    pass
+
+
+def test_checkTerm():
     pass

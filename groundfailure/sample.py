@@ -22,6 +22,7 @@ from mapio.geodict import GeoDict
 from rasterio.transform import Affine
 import rasterio
 import matplotlib.path as mplPath
+from groundfailure.tests import _test_sample
 
 
 def getPointsInCircum(r, n=100, h=0, k=0):

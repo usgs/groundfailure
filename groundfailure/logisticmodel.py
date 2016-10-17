@@ -268,10 +268,10 @@ class LogisticModel(object):
         #get the geodict for the shakemap
         geodict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
         griddict, eventdict, specdict, fields, uncertainties = getHeaderData(shakefile)
-        YEAR = eventdict['event_timestamp'].year
+        #YEAR = eventdict['event_timestamp'].year
         MONTH = MONTHS[(eventdict['event_timestamp'].month)-1]
-        DAY = eventdict['event_timestamp'].day
-        HOUR = eventdict['event_timestamp'].hour
+        #DAY = eventdict['event_timestamp'].day
+        #HOUR = eventdict['event_timestamp'].hour
 
         #now find the layer that is our base layer and get the largest bounds we can guaranteed not to exceed shakemap bounds
         basefile = self.layers[cmodel['baselayer']]
@@ -483,11 +483,3 @@ class LogisticModel(object):
                                                'description': {'units': units, 'shakemap': shakedetail}}
 
         return rdict
-
-
-if __name__ == '__main__':
-    shakefile = sys.argv[1]  # needs to be an event occurring in January
-    cofile = sys.argv[2]
-    slfile = sys.argv[3]
-    precip = sys.argv[4]
-    _test(shakefile, cofile, slfile, precip)

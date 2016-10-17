@@ -1,0 +1,40 @@
+language: python
+cache:
+  directories:
+  - /home/travis/miniconda/envs/
+  - /home/travis/virtualenv/python3.5.2/lib/python3.5/site-packages
+python:
+    - "3.5"
+    
+install:
+    #------------------
+    # Base requirements
+    #------------------
+    - sudo apt-get update
+    - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+    - bash miniconda.sh -f -b -p $HOME/miniconda
+    - export PATH="$HOME/miniconda/bin:$PATH"
+    - conda config --set always_yes yes --set changeps1 no
+    - conda update -q conda
+    - conda info -a
+    - bash setup_env.sh
+    - source activate gf
+    #---------------------
+    # Install shakemap
+    #---------------------
+    - python setup.py install
+before_script:
+    # This is to take care of Invalid DISPLAY variable
+    - "export DISPLAY=:99.0"
+    - "sh -e /etc/init.d/xvfb start"
+    - sleep 3 # give xvfb some time to start
+script:
+    - export PYTHONPATH="."
+    - py.test --mpl --cov=shakemap
+    - echo `sphinx-build --version`
+after_success:
+    - pip install codecov codacy-coverage
+    - codecov
+    - coverage xml
+    - python-codacy-coverage -r coverage.xml
+    - bash <(curl -s https://codecov.io/bash)

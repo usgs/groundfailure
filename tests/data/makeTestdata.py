@@ -1,13 +1,32 @@
 from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 import numpy as np
-import tempfile
+import os
+
+# Make temporary files for each layer
+cohesion = np.array([[5., 8.], [2., 9.]], dtype=float)  # kPa
+slope = np.array([[10., 30.], [47., 15.]], dtype=float)  # degrees
+vs30 = np.array([[244., 400.], [500., 1000.]], dtype=float)  # m/s
+cti = np.array([[10., 5.], [3.5, 18.5]], dtype=float)
+precip = np.array([[300., 876.], [180., 900.]], dtype=float)  # mm
+units = ['kPa', 'degrees', 'm/s', 'unitless', 'mm']
+terms = 
+coefficients = 
+
+pga = np.array([[24., 72.], [54., 110.]], dtype=float)  # %g
+pgv = np.array([[50., 73.], [32., 84.]], dtype=float)  # cm/s
+stdpga = np.array([[0.43, 0.49], [0.32, 0.16]], dtype=float)  # ln(%g)
+stdpgv = np.array([[0.46, 0.58], [0.53, 0.33]], dtype=float)  # ln(cm/s)
+
+geodict = GeoDict({'xmin': 0.0, 'xmax': 1.0,
+                  'ymin': 0.0, 'ymax': 1.0,
+                  'dx': 1.0, 'dy': 1.0,
+                  'ny': 2, 'nx': 2})
 
 
-def makeData():
-    # fake layers
-    X = ['x1', 'x2', 'x3']
-    fileLocations = {}
+def makeTestData():
+    # make test layers
+    X = ['cohesion', 'slope', 'vs30', 'cti', 'precip']
     config = {}
     config.setdefault('logistic_models', {}).setdefault('test_model_type', {})
     config['logistic_models']['test_model_type'].setdefault('coefficients', {})['b0'] = 3.5
@@ -16,46 +35,40 @@ def makeData():
     config['logistic_models']['test_model_type'].setdefault('interpolations', {})
     config['logistic_models']['test_model_type'].setdefault('units', {})
 
-    for items in X:
-        # Make fake data (cannot be integers for GDALGrid)
-        data = np.arange(2,6.).reshape((2,2))
-        #Make up a geodictionary with required fields that matches the data size
-        geodict = GeoDict({'xmin':0.0,'xmax':1.0,
-                        'ymin':0.0,'ymax':1.0,
-                        'dx':1.0,'dy':1.0,
-                        'ny':2,'nx':2})
-        # Use these two pieces to make a GDALGrid object (which is based on the Grid2D class)
-        testgrid = GDALGrid(data,geodict)
-        print(testgrid)
-
+    for k, items in enumerate(X):
+        coef = 'b%1d' % (k)
+        # make a GDALGrid object (which is based on the Grid2D class)
+        testgrid = GDALGrid(eval(items), geodict)
         # Save the file
-        filepath = 'layer_%s' % (items)
-        testgrid.save(filepath, format='EHdr')
+        if items == 'precip':
+            try:
+                os.mkdir('test_precip')
+            except:
+                pass
+            filename = 'test_precip/prec_Apr.bil' % (items)  # Only make April for testing
+        else:
+            filename = 'test_%s.bil' % (items)
+            testgrid.save(filename, format='EHdr')
 
-        # document file location
-        filelocations = {}
-        filelocations = {items: filepath}
-
-        # fake config file
-        config['logistic_models']['test_model_type']['layers'].update({items: {'file': filelocations[items]}})
+        # add to test config file
+        config['logistic_models']['test_model_type']['layers'].update({items: {'file': filename}})
         config['logistic_models']['test_model_type']['interpolations'].update({items: 'nearest'})
-        config['logistic_models']['test_model_type']['units'].update({items: 'unitless'})
-        config['logistic_models']['test_model_type']['baselayer'] = X[0]
-        if items == X[0]:
-            config['logistic_models']['test_model_type']['terms'].update({'b1': 'log(%s)' % items})
-            config['logistic_models']['test_model_type']['coefficients'].update({'b1': 1.5})
-        if items == X[1]:
-            config['logistic_models']['test_model_type']['terms'].update({'b2': items})
-            config['logistic_models']['test_model_type']['coefficients'].update({'b2': 2.5})
-        if items == X[2]:
-            config['logistic_models']['test_model_type']['terms'].update({'b3': 'log(%s) * %s / 90.' % (X[0], items)})
-            config['logistic_models']['test_model_type']['coefficients'].update({'b3': 4.0})
+        config['logistic_models']['test_model_type']['units'].update({items: units[k]})
+        config['logistic_models']['test_model_type']['terms'].update({coef: terms[k]})
+        config['logistic_models']['test_model_type']['coefficients'].update({coef: coefficients[k]})
+
+    # Add full file extension to config for testing correct_config_filepaths
+
+    # test_shakegrid.xml
+    # test_uncert.xml
+
+    #config['logistic_models']['test_model_type']['baselayer'] = X[0]
+
 
     print(config)
     return config
 
-
-makeData()
+makeTestData()
 
 # fake shakemap file
 #f = open('shakemap.xml','w')
