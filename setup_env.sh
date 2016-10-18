@@ -2,10 +2,10 @@
 echo $PATH
 
 VENV=gf
-PYVER=3.5
+PYVER=3.4
 
 
-DEPARRAY=(numpy scipy matplotlib jupyter rasterio fiona xlrd xlwt pandas basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl)
+DEPARRAY=(numpy scipy matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj)
 
 # turn off whatever other virtual environment user might be in
 source deactivate
