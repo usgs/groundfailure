@@ -2,7 +2,6 @@
 
 #stdlib imports
 import numpy as np
-import sys
 import os.path
 import re
 import collections
@@ -13,8 +12,6 @@ from mapio.shake import ShakeGrid, getHeaderData
 from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
-
-from logisticmodel_test import _test
 
 PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'

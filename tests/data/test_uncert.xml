@@ -2,11 +2,10 @@
 <event event_id="test" magnitude="6.0" depth="5.0" lat="0.5000" lon="0.5000" event_timestamp="2000-01-05T00:30:55" event_network="na" event_description="Test event"/>
 <grid_specification lon_min="0.0000" lat_min="0.0000" lon_max="1.0000" lat_max="1.0000" nominal_lon_spacing="1.0000" nominal_lat_spacing="1.0000" nlon="2" nlat="2"/><grid_field index="1" name="LON" units="dd" />
 <grid_field index="2" name="LAT" units="dd" />
-<grid_field index="3" name="PGA" units="pctg" />
-<grid_field index="4" name="PGV" units="cms" />
+<grid_field index="3" name="STDPGA" units="ln(pctg)" />
 <grid_data>
-0.0000 0.0000 24.00 50.00
-0.0000 1.0000 72.00 73.00
-1.0000 0.0000 54.00 32.00
-1.0000 1.0000 11.00 84.00
+0.0000 0.0000 0.43
+0.0000 1.0000 0.49
+1.0000 0.0000 0.32
+1.0000 1.0000 0.16
 </grid_data>
