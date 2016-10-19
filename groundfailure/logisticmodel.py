@@ -137,8 +137,9 @@ def validateLayers(cmodel):
 
 
 def validateTerms(cmodel, coeffs, layers):
-    """Reformats model inputs from config file, replacing functions with numpy functions, inserting code for extracting data from each layer (required to run eval in the calculate step), addressing any time variables, and checks that term names match coefficient names
-        TODO - return a time field for every term, not just one global one.
+    """Reformats model inputs from config file, replacing functions with numpy functions, inserting code for extracting data from each layer (required to run eval in the calculate step), addressing any time variables, and checks that term names match coefficient names.
+
+    TODO - return a time field for every term, not just one global one.
 
     :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
     :type cmodel: dictionary

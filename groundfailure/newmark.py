@@ -79,17 +79,22 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     :type config: ConfigObj
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param modeltype: 'coverage' if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell. 'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure. 'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype. 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement without relating to probability of failure. 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement and probability defined by probtype method
+    :param modeltype:
+        * 'coverage' if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell.
+        * 'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure.
+        * 'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype.
+        * 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement without relating to probability of failure.
+        * 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement and probability defined by probtype method.
     :type modeltype: string
     :param regressionmodel: Newmark displacement regression model to use
-        'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
-        'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
-        'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
-        'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
+        * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
+        * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
+        * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
+        * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type regressionmodel: string
-    :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000)
-        to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark
-        displacement (defined in config file) and assumes anything greather than this threshold fails
+    :param probtype: Method used to estimate probability.
+        * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
     :param bounds: Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'
     :type bounds: dictionary
@@ -328,8 +333,8 @@ def est_disp(Ac, PGA):
     :param PGA: Peak ground acceleration in the same units as Ac
     :type PGA: numpy array
     :returns:
-        ed_low: low estimate of expected displacement factor
-        ed_high: high estimate of expected displacement factor
+        * ed_low: low estimate of expected displacement factor
+        * ed_high: high estimate of expected displacement factor
 
     """
     from scipy.interpolate import interp1d
@@ -379,14 +384,15 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     :param uncertfile: complete file path to the location of the uncertainty.xml for the shakefile, if this is not None, it will compute the model for +-std in addition to the best estimate
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param regressionmodel:
-        Newmark displacement regression model to use
-        'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6
-        'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7
-        'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009)
-        'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
+    :param regressionmodel: Newmark displacement regression model to use
+        * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
+        * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
+        * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
+        * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type regressionmodel: string
-    :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
+    :param probtype: Method used to estimate probability.
+        * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
     :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
     :type slopediv: float
@@ -398,6 +404,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
 
     :raises:
         NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+
         NameError: when probtype does not match a predifined probability type, will cause to default to 'jibson2000'
 
     """
@@ -656,16 +663,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     :type config: ConfigObj
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param regressionmodel:
-        Newmark displacement regression model to use
-        'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6
-        'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7
-        'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009)
-        'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
+    :param regressionmodel: Newmark displacement regression model to use
+        * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
+        * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
+        * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
+        * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type regressionmodel: string
-    :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000)
-                     to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of
-                     Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
+    :param probtype: Method used to estimate probability.
+        * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
     :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
     :type slopediv: float
@@ -673,9 +679,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
                   because that is how it was calibrated, but values are reasonable without multiplying for regular
                   analysis)
     :type codiv: float
-
-    :returns:
-        maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata
+    :returns: maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata
                         formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for
                         colorbar and top line of subtitle', 'type': 'output or input to model',
                         'description': 'detailed description of layer for subtitle, potentially including source information'}
@@ -1001,13 +1005,13 @@ def RS_PGA_M(Ac, PGA, M):
 def RS_PGA_PGV(Ac, PGA, PGV):
     """
     PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
+
     :param Ac: NxM Array of critical accelerations in units of g
     :type Ac: numpy array
     :param PGA: NxM Array of PGA values in units of g
     :type PGA: numpy array
     :param PGV: NxM Array of PGV values in units of cm/sec
     :type PGV: numpy array
-
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
 

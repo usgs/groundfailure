@@ -22,16 +22,13 @@ def main(args):
     #-------------------------------------------------------------
     # where should the temporary clone of the ground failure gh-pages repo live?
     #-------------------------------------------------------------
-    TOP_DIR = os.path.join(os.path.expanduser('~'), '__gf-doc')
-    CLONE_DIR = os.path.join(TOP_DIR, 'html')
-    shutil.rmtree(TOP_DIR, ignore_errors=True)
+    CLONE_DIR = os.path.join(os.path.expanduser('~'), '__gf-doc')
+    shutil.rmtree(CLONE_DIR, ignore_errors=True)
 
     #-------------------------------------------------------------
     # Some additional useful directories
     #-------------------------------------------------------------
     REPO_DIR = os.path.dirname(os.path.abspath(__file__))
-    DOC_DIR = os.path.join(REPO_DIR, 'doc')
-    REST_DIR = os.path.join(REPO_DIR, 'rest')
     PACKAGE_DIR = os.path.join(REPO_DIR, 'groundfailure')
 
     #-------------------------------------------------------------
@@ -61,7 +58,7 @@ def main(args):
             raise Exception('Could not clone gh-pages branch.')
 
         # Delete everything in the repository (except hidden git files)
-        cmd = 'rm -fr %s' % CLONE_DIR
+        cmd = 'rm -fr %s/*' % CLONE_DIR
         res, stdout, stderr = get_command_output(cmd)
 
     #-------------------------------------------------------------
@@ -78,17 +75,16 @@ def main(args):
                         ' - error "%s".' % stderr)
 
     #-------------------------------------------------------------
-    # change index.rst to api_index.rst
-    #-------------------------------------------------------------
-    move_cmd = 'mv %s/index.rst %s/api_index.rst' % (API_DIR, API_DIR)
-    res, stdout, stderr = get_command_output(move_cmd)
-
-    #-------------------------------------------------------------
     # Edit the conf.py file to include the theme.
     #-------------------------------------------------------------
     fname = os.path.join(API_DIR, 'conf.py')
     f = open(fname, 'at')
+    f.write("import os\nimport sys\n")
     f.write("sys.path.insert(0, os.path.abspath('%s'))\n" % (REPO_DIR))
+    f.write("sys.path.insert(0, os.path.abspath('.'))\n")
+    f.write("temp = sys.executable\n")
+    f.write("EXECPATH='/'.join(temp.split('/')[:-2])\n")
+    f.write("sys.path.append(os.path.join(os.path.expanduser('~'), EXECPATH, 'lib'))\n")
 
     #-------------------------------------
     # RTD theme
@@ -118,43 +114,13 @@ def main(args):
     f.close()
 
     #-------------------------------------------------------------
-    # Copy the manual REST files to the API directory
-    #-------------------------------------------------------------
-
-    # Get rid of the automatic conf.py so our preferred one is used
-    os.remove('%s/conf.py' % (API_DIR))
-
-    # put aside Makefile so it doesn't get overwritten
-    oldmake = '%s/Makefile' % API_DIR
-    tmpmake = '%s/Makefile_save' % API_DIR
-    os.rename(oldmake, tmpmake)
-
-    # move files into API directory; this should raise exceptions if any
-    # files will get overwritten.
-    copy_tree(DOC_DIR, API_DIR, update=1)
-
-    # put Makefile back
-    os.rename(tmpmake, oldmake)
-
-    # Move index.rst to manual_index.rst
-    ind1 = '%s/index.rst' % API_DIR
-    ind2 = '%s/manual_index.rst' % API_DIR
-    os.rename(ind1, ind2)
-
-    # Copy index.rst from rest/ directory into build directory
-    restind = '%s/index.rst' % REST_DIR
-    apiind = '%s/index.rst' % API_DIR
-    shutil.copy2(restind, apiind)
-
-    #-------------------------------------------------------------
     # Go to the api directory and build the html
     #-------------------------------------------------------------
-    sys.stderr.write('Building shakemap manual (HTML)...\n')
+    sys.stderr.write('Building groundfailure manual (HTML)...\n')
     os.chdir(API_DIR)
     res, stdout, stderr = get_command_output('%s html' % make_cmd)
     if not res:
-        raise Exception('Could not build HTML for API documentation. - '
-                        'error "%s"' % stderr)
+        raise Exception('Could not build HTML for API documentation. - error "%s"' % stderr)
     if args.verbose:
         print(stdout.decode('utf-8'))
         print(stderr.decode('utf-8'))

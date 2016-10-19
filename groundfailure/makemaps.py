@@ -248,15 +248,16 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
              outputdir=None, savepdf=True, savepng=True, showplots=False,
              roadref='unknown', cityref='unknown', oceanref='unknown',
              printparam=False, ds=True, dstype='mean', upsample=False):
-    """This function creates maps of mapio grid layers (e.g. liquefaction or
-     landslide models with their input layers)
-     All grids must use the same bounds
-     TO DO change so that all input layers do not have to have the same bounds,
-     test plotting multiple probability layers, and add option so that if PDF and
-     PNG aren't output, opens plot on screen using plt.show()
+    """
+    This function creates maps of mapio grid layers (e.g. liquefaction or
+    landslide models with their input layers)
+    All grids must use the same bounds
+    TO DO change so that all input layers do not have to have the same bounds,
+    test plotting multiple probability layers, and add option so that if PDF and
+    PNG aren't output, opens plot on screen using plt.show()
 
-    :param grids: Dictionary of N layers and metadata formatted like
-      maplayers['layer name']={
+    :param grids: Dictionary of N layers and metadata formatted like:
+        maplayers['layer name']={
         'grid': mapio grid2D object,
         'label': 'label for colorbar and top line of subtitle',
         'type': 'output or input to model',
@@ -346,10 +347,11 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     :param upsample: True to upsample the layer to the DEM resolution for better
       looking hillshades
 
-    :returns:  PDF and/or PNG of map
-    :returns newgrids: Downsampled and trimmed version of input grids. If no
-      modification was needed for plotting, this will be identical to grids but
-      without the metadata
+    :returns:
+        * PDF and/or PNG of map
+        * Downsampled and trimmed version of input grids. If no
+        modification was needed for plotting, this will be identical to grids but
+        without the metadata
 
     """
 
@@ -1041,9 +1043,9 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
     """
-    Computes a hillshade from a digital elevation model. Most of this script 
-    borrowed from 
-    http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html 
+    Computes a hillshade from a digital elevation model. Most of this script
+    borrowed from
+    <http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html>
     last accessed 9/2/2015
 
     :param topogrid: Digital elevation model
@@ -1053,8 +1055,7 @@ def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
     :param angle_altitude: altitude angle of illumination
     :type angle_altitude: float
 
-    :returns hillshade: Hillshade map layer
-    :rtype hillshade: Grid2D object
+    :returns: Hillshade map layer (Grid2D object)
 
     """
     topotmp = topogrid.getData().copy()
@@ -1113,10 +1114,12 @@ def getProjectedPatch(polygon, m, edgecolor, facecolor, lw=1., zorder=10):
 
 
 def roundToNearest(value, roundValue=1000):
-    """
-    Return the value, rounded to nearest roundValue (defaults to 1000).
-    @param value: Value to be rounded.
-    @keyword roundValue: Number to which the value should be rounded.
+    """Return the value, rounded to nearest roundValue (defaults to 1000).
+
+    :param value: Value to be rounded.
+    :param roundValue: Number to which the value should be rounded.
+
+    :returns: rounded value
     """
     if roundValue < 1:
         ds = str(roundValue)
@@ -1131,10 +1134,12 @@ def roundToNearest(value, roundValue=1000):
 
 
 def floorToNearest(value, floorValue=1000):
-    """
-    Return the value, floored to nearest floorValue (defaults to 1000).
-    @param value: Value to be floored.
-    @keyword floorValue: Number to which the value should be floored.
+    """Return the value, floored to nearest floorValue (defaults to 1000).
+
+    :param value: Value to be floored.
+    :param floorValue: Number to which the value should be floored.
+
+    :returns: floored value
     """
     if floorValue < 1:
         ds = str(floorValue)
@@ -1149,10 +1154,12 @@ def floorToNearest(value, floorValue=1000):
 
 
 def ceilToNearest(value, ceilValue=1000):
-    """
-    Return the value, ceiled to nearest ceilValue (defaults to 1000).
-    @param value: Value to be ceiled.
-    @keyword ceilValue: Number to which the value should be ceiled.
+    """Return the value, ceiled to nearest ceilValue (defaults to 1000).
+
+    :param value: Value to be ceiled.
+    :param ceilValue: Number to which the value should be ceiled.
+
+    :returns: ceiling-ed value
     """
     if ceilValue < 1:
         ds = str(ceilValue)

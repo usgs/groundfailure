@@ -325,12 +325,9 @@ def sampleFromFile(shapefile, dx=10.0, nmax=None, testPercent=0.0, classBalance=
       Number of total (yes+no) sample points.
     :param touch_center:
       Boolean (0 or 1) indicating whether polygons must touch the center of the cell in order for that cell to count as a "yes" sample point.
+
     :returns:
-      - sequence of XY coordinates for:
-         - YesTestPoints
-         - YesTrainPoints
-         - NoTestPoints
-         - NoTrainPoints
+      - sequence of XY coordinates for: YesTestPoints, YesTrainPoints, NoTestPoints, NoTrainPoints
       - numpy array of mesh column centers
       - numpy array of mesh row centers
       - PyProj object defining orthographic projection of xy points
@@ -416,17 +413,13 @@ def sampleFromShapes(shapes,bounds,dx=10.0,nmax=None,testPercent=1.0,classBalanc
     :param classBalance:
       If None, uses class balance of data (raises exception for points).  If specified, is the fraction of "yes" pixels, where "yes"+"no" = 1
     :param extent:
-      If none, use the bounding box of the data in the shapefile. 
+      If none, use the bounding box of the data in the shapefile.
     :param Nsamp:
       Number of total (yes+no) sample points.
     :param touch_center:
       Boolean (0 or 1) indicating whether polygons must touch the center of the cell in order for that cell to count as a "yes" sample point.
     :returns:
-      - sequence of XY coordinates for:
-         - YesTestPoints
-         - YesTrainPoints
-         - NoTestPoints
-         - NoTrainPoints
+      - sequence of XY coordinates for: YesTestPoints, YesTrainPoints, NoTestPoints, NoTrainPoints
       - numpy array of mesh column centers
       - numpy array of mesh row centers
       - PyProj object defining orthographic projection of xy points
@@ -518,9 +511,7 @@ def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None, touch_cente
       into a yes pixel.  Setting this to false presumes that the dx is relatively large, such
       that creating a grid at that resolution will not tax the resources of the system.
     :returns:
-      - sequence of coordinates in lat/lon for:
-         - YesPoints
-         - NoPoints
+      - sequence of coordinates in lat/lon for: YesPoints, NoPoints
       - numpy array of mesh column centers
       - numpy array of mesh row centers
       - PyProj object defining orthographic projection of xy points
@@ -889,30 +880,30 @@ def getDataFrames(sampleparams, shakeparams, predictors, outparams):
     """Return Pandas training and testing data frames containing sampled data from hazard coverage, ShakeMap, and predictor data sets.
 
     :param sampleparams:
-      Dictionary with at least these values:
-        - coverage: Name of hazard coverage shapefile (decimal degrees). Required.
-        - dx: Float desired sample resolution, and can be overridden by nmax, below (meters).  Required.
-        - cb: Desired class balance, i.e., fraction of sampled points that should be from hazard polygons. Optional for polygons, Required for points.
-        - nmax: Maximum number of possible yes/no sample points (usually set to avoid memory issues). Optional.
-        - nsamp: Number of total hazard and no-hazard sample points to collect.  Required.
-        - touch_center: Boolean (0 or 1) indicating whether polygons must touch the center of the cell in order for that cell to count as a "yes" sample point.
-        - testpercent: Fraction of sampled points to be used for testing (1-testpercent) will be used for training. Optional, defaults to 0
-        - extent: xmin,xmax,ymin,ymax OR convex #geographic extent within which to sample data.  Four numbers are interpreted as bounding box, the word convex will be interpreted to mean a convex hull.  Default (not specified) will mean the bounding box of the hazard coverage. Optional.
-        - h1: Minimum buffer size for sampling non-hazard points when input coverage takes the form of points. Optional for polygons, required for points.
-        - h2: Maximum buffer size for sampling non-hazard points when input coverage takes the form of points. Optional for polygons, required for points.
+        Dictionary with at least these values:
+            * coverage: Name of hazard coverage shapefile (decimal degrees). Required.
+            * dx: Float desired sample resolution, and can be overridden by nmax, below (meters).  Required.
+            * cb: Desired class balance, i.e., fraction of sampled points that should be from hazard polygons. Optional for polygons, Required for points.
+            * nmax: Maximum number of possible yes/no sample points (usually set to avoid memory issues). Optional.
+            * nsamp: Number of total hazard and no-hazard sample points to collect.  Required.
+            * touch_center: Boolean (0 or 1) indicating whether polygons must touch the center of the cell in order for that cell to count as a "yes" sample point.
+            * testpercent: Fraction of sampled points to be used for testing (1-testpercent) will be used for training. Optional, defaults to 0
+            * extent: xmin,xmax,ymin,ymax OR convex #geographic extent within which to sample data.  Four numbers are interpreted as bounding box, the word convex will be interpreted to mean a convex hull.  Default (not specified) will mean the bounding box of the hazard coverage. Optional.
+            * h1: Minimum buffer size for sampling non-hazard points when input coverage takes the form of points. Optional for polygons, required for points.
+            * h2: Maximum buffer size for sampling non-hazard points when input coverage takes the form of points. Optional for polygons, required for points.
     :param shakeparams:
-      Dictionary with at least these values:
-        - shakemap: Name of shakemap file to use for sampling hazard values. Required.
-        - shakemap_uncertainty: Name of shakemap uncertainty file to use for sampling hazard uncertainty values. Optional.
+        Dictionary with at least these values:
+            * shakemap: Name of shakemap file to use for sampling hazard values. Required.
+            * shakemap_uncertainty: Name of shakemap uncertainty file to use for sampling hazard uncertainty values. Optional.
     :param predictors:
-      Dictionary with at least these values:
-        - layername: Path to ESRI shapefile, or grid in GMT or ESRI format which represents predictor data. Required.
-        - layername_sampling: 'nearest' or 'linear', optional for grids, not used for shapefiles.
-        - layername_attribute: Name of attribute in shapefile which should be sampled at hazard/non-hazard points.  Required for points.
+        Dictionary with at least these values:
+            * layername: Path to ESRI shapefile, or grid in GMT or ESRI format which represents predictor data. Required.
+            * layername_sampling: 'nearest' or 'linear', optional for grids, not used for shapefiles.
+            * layername_attribute: Name of attribute in shapefile which should be sampled at hazard/non-hazard points.  Required for points.
     :param outparams:
-      Dictionary with at least these values:
-        - folder: Name of folder where all output (data frames, plots) will be written.  Will be created if does not exist. Required.
-        - basename: The name that will be included in all output file names (i.e., northridge_train.csv). Required.
+        Dictionary with at least these values:
+            * folder: Name of folder where all output (data frames, plots) will be written.  Will be created if does not exist. Required.
+            * basename: The name that will be included in all output file names (i.e., northridge_train.csv). Required.
     :returns:
       Tuple of (training,testing) Pandas data frames.
     """
