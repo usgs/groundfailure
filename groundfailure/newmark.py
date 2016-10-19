@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-
 """
-Newmark based landslide mechanistic_models
+This module contains functions that can be used to run Newmark-based mechanistic landslide models
 """
 
 #stdlib imports
@@ -26,13 +25,15 @@ import numpy as np
 
 
 def getGridURL(gridurl):
-    """This function downloads the url and returns the corresponding file object
+    """getGridURL downloads the url of a shakemap xml file and returns the corresponding file object
 
     :param gridurl: string defining a url
     :type gridurl: string
 
-    :returns gridfile: file object corresponding to the url
+    :returns:
+        gridfile: file object corresponding to the url
     """
+
     gridfile = None
     try:
         fh = urllib.request.urlopen(gridurl)
@@ -49,13 +50,15 @@ def getGridURL(gridurl):
 
 
 def isURL(gridurl):
-    """This function determines if a string is a valid url
+    """This function determines if the provided string is a valid url
 
     :param gridurl: string defining the potential url
     :type gridurl: string
 
-    :returns isURL: True if griurl is a valid url, False otherwise
+    :returns:
+        isURL(boolean): True if griurl is a valid url, False otherwise
     """
+
     isURL = False
     try:
         urllib.request.urlopen(gridurl)
@@ -65,47 +68,35 @@ def isURL(gridurl):
     return isURL
 
 
-def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA',
-          probtype='jibson2000', bounds=None):
-    """
-    Runs HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories from defined by HAZUS manual (I-X)
+def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA', probtype='jibson2000', bounds=None):
+
+    """This function runs the HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories (I-X) defined by the HAZUS manual.
 
     :param shakefile: URL or complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
     :param config: Model configuration file object containing locations of input files and other input values config =
       ConfigObj(configfilepath)
     :type config: ConfigObj
-    :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output
-                       (one layer)
+    :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param modeltype: 'coverage' if critical acceleration is exceeded by pga, this gives the estimated areal coverage
-                      of landsliding for that cell
-        'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure
-        'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param
-                    probtype
-        'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined
-                          by regressionmodel param to get Newmark displacement without relating to probability of failure
-        'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined
-                            by regressionmodel param to get Newmark displacement and probability defined by probtype method
+    :param modeltype: 'coverage' if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell. 'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure. 'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype. 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement without relating to probability of failure. 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement and probability defined by probtype method
     :type modeltype: string
-    :param regressionmodel:
-        Newmark displacement regression model to use
-        'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6
-        'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7
-        'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009)
-        'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
+    :param regressionmodel: Newmark displacement regression model to use
+        'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
+        'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
+        'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
+        'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type regressionmodel: string
     :param probtype: Method used to estimate probability. Entering 'jibson2000' uses equation 5 from Jibson et al. (2000)
-                     to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark
-                     displacement (defined in config file) and assumes anything greather than this threshold fails
+        to estimate probability from Newmark displacement. 'threshold' uses a specified threshold of Newmark
+        displacement (defined in config file) and assumes anything greather than this threshold fails
     :type probtype: string
     :param bounds: Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'
+    :type bounds: dictionary
+    :returns:
+        maplayers(OrderedDict):
+        Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
 
-    :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted
-                         like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top
-                         line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of
-                         layer for subtitle, potentially including source information'}
-    :type maplayers: OrderedDict
     """
 
     # Empty refs
@@ -330,9 +321,16 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
 
 
 def est_disp(Ac, PGA):
-    """
-    Get estimated displacement factor, digitized from figure in HAZUS manual pg. 4-37, which is based on Makdisi and Seed (1978) according to HAZUS, but the equations don't appear in that document
-    Assumes PGA is equal to ais (induced acceleration)
+    """est_disp retrieved the estimated displacement factor from HAZUS. This was digitized from figure in HAZUS manual pg. 4-37, which is based on Makdisi and Seed (1978) according to HAZUS, but the equations don't appear in that document. It also assumes that PGA is equal to the ais (induced acceleration).
+
+    :param Ac: Critical acceleration in the same units as PGA (this is ratio based)
+    :type Ac: numpy array
+    :param PGA: Peak ground acceleration in the same units as Ac
+    :type PGA: numpy array
+    :returns:
+        ed_low: low estimate of expected displacement factor
+        ed_high: high estimate of expected displacement factor
+
     """
     from scipy.interpolate import interp1d
 
@@ -357,7 +355,10 @@ def numcycles(M):
     Estimate the number of earthquake cycles using Seed and Idriss (1982) relationship as presented in HAZUS manual, pg. 4-35 and Fig. 4.13
 
     :param M: earthquake magnitude
-    :returns n: number of cycles
+    :type M: float
+    :returns:
+        n(float): number of cycles
+
     """
     n = 0.3419*M**3 - 5.5214*M**2 + 33.6154*M - 70.7692
     return n
@@ -392,11 +393,12 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10 because that is how it was calibrated, but values are reasonable without multiplying for regular analysis)
     :type codiv: float
 
-    :returns maplayers:  Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
-    :type maplayers: OrderedDict
+    :returns:
+        maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
 
-    :raises NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
-    :raises NameError: when probtype does not match a predifined probability type, will cause to default to 'jibson2000'
+    :raises:
+        NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+        NameError: when probtype does not match a predifined probability type, will cause to default to 'jibson2000'
 
     """
     # Empty refs
@@ -672,14 +674,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
                   analysis)
     :type codiv: float
 
-    :returns maplayers: Dictionary containing output and input layers (if saveinputs=True) along with metadata
+    :returns:
+        maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata
                         formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for
                         colorbar and top line of subtitle', 'type': 'output or input to model',
                         'description': 'detailed description of layer for subtitle, potentially including source information'}
-    :type maplayers: OrderedDict
 
-    :raises NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or
-                       when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+    :raises:
+         NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+
     """
 
     # Empty refs
@@ -901,6 +904,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
 def Saade2016():
     """
+    NOT IMPLEMENTED YET
     Limit equilibrium approach combining mohr-coulomb for shallower slopes and GSI for steeper. No assumption of failure depth required (this could be moved to a different module since it doesn't exactly use Newmark)
     """
     print('Saade2016 not implemented yet')
@@ -908,6 +912,7 @@ def Saade2016():
 
 def multiNewmark():
     """
+    NOT IMPLEMENTED YET
     Run Classic or Godt model for set of different thicknesses, cell sizes, and unit weights to simulate different landslide sizes
     (borrow from )
     """
@@ -923,7 +928,8 @@ def J_PGA(Ac, PGA):
     :param PGA: NxM Array of PGA values in units of g
     :type PGA: numpy Array
 
-    :returns Dn: NxM array of Newmark displacements in cm
+    :returns:
+        Dn(array): NxM array of Newmark displacements in cm
     """
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
     C1 = 0.215  # additive constant in newmark displacement calculation
@@ -948,7 +954,9 @@ def J_PGA_M(Ac, PGA, M):
     :param M: Magnitude
     :type M: float
 
-    :returns Dn: NxM array of Newmark displacements in cm
+    :returns:
+        Dn(array): NxM array of Newmark displacements in cm
+
     """
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
     C1 = -2.71  # additive constant in newmark displacement calculation
@@ -973,7 +981,9 @@ def RS_PGA_M(Ac, PGA, M):
     :param M: Magnitude
     :type M: float
 
-    :returns Dn: NxM array of Newmark displacements in cm
+    :returns:
+        Dn(array): NxM array of Newmark displacements in cm
+
     """
     np.seterr(invalid='ignore')
     C1 = 4.89
@@ -992,13 +1002,15 @@ def RS_PGA_PGV(Ac, PGA, PGV):
     """
     PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
     :param Ac: NxM Array of critical accelerations in units of g
-    :type Ac: numpy Array
+    :type Ac: numpy array
     :param PGA: NxM Array of PGA values in units of g
-    :type PGA: numpy Array
+    :type PGA: numpy array
     :param PGV: NxM Array of PGV values in units of cm/sec
     :type PGV: numpy array
 
-    :returns Dn: NxM array of Newmark displacements in cm
+    :returns:
+        Dn(array): NxM array of Newmark displacements in cm
+
     """
     np.seterr(invalid='ignore')
     C1 = -1.56

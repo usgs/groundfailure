@@ -2,10 +2,10 @@
 echo $PATH
 
 VENV=gf
-PYVER=3.4
+PYVER=3.5
 
 
-DEPARRAY=(numpy scipy matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj)
+DEPARRAY=(numpy scipy matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj pandas sphinx scikit-learn)
 
 # turn off whatever other virtual environment user might be in
 source deactivate
@@ -22,10 +22,10 @@ conda create --name $VENV --yes --channel conda-forge python=$PYVER ${DEPARRAY[*
 source activate $VENV
 
 # do pip installs of those things that are not available via conda.
-#grab the bleeding edge for GEM hazardlib.  They have actual releases
-#we can resort to if this becomes a problem.
-pip -v install https://github.com/usgs/MapIO/archive/master.zip
-pip -v install https://github.com/usgs/earthquake-impact-utils/archive/master.zip
+#pip -v install https://github.com/usgs/MapIO/archive/master.zip
+#pip -v install https://github.com/usgs/earthquake-impact-utils/archive/master.zip
+pip -v install https://github.com/usgs/MapIO.git
+pip -v install https://github.com/usgs/earthquake-impact-utils.git
 pip install sphinx_rtd_theme
 
 # tell the user they have to activate this environment

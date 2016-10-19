@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+"""
+This module contains functions and class definitions for running forward models of models based on logistic regression.
+"""
 
 #stdlib imports
 import numpy as np
@@ -8,7 +11,8 @@ import collections
 import copy
 
 #third party imports
-from mapio.shake import ShakeGrid, getHeaderData
+from mapio.shake import ShakeGrid
+from mapio.shake import getHeaderData
 from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
@@ -27,6 +31,14 @@ MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 
 
 
 def getLogisticModelNames(config):
+    """Get the names of the models present in the configobj
+
+    :param config: configobj (config .ini file read in using configobj) defining the model and its inputs
+    :type config: dictionary
+    :returns:
+        names: list of model names
+
+    """
     names = []
     lmodel_space = config['logistic_models']
     for key, value in lmodel_space.items():
@@ -39,10 +51,13 @@ def getLogisticModelNames(config):
 
 def getFileType(filename):
     """Determine whether input file is a shapefile or a grid (ESRI or GMT).
+    EVENTUALLY WILL BE MOVED TO MAPIO
+
     :param filename:
       String path to candidate filename.
     :returns:
       String, one of 'shapefile','grid','unknown'.
+
     """
     if os.path.isdir(filename):
         return 'dir'
@@ -61,6 +76,15 @@ def getFileType(filename):
 
 
 def getAllGridFiles(indir):
+    """Get list of all gmt or esri (.grd, .bil) files in a directory
+    EVENTUALLY WILL BE MOVED TO MAPIO
+
+    :param indir: directory to search
+    :type indir: string
+    :returns:
+        flist: list of file names
+
+    """
     tflist = os.listdir(indir)
     flist = []
     for tf in tflist:
@@ -72,6 +96,14 @@ def getAllGridFiles(indir):
 
 
 def validateCoefficients(cmodel):
+    """Ensures coefficients provided in model description are valid and outputs a dictionary of the coefficients.
+
+    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
+    :type cmodel: dictionary
+    :returns:
+        coeffs(dictionary): a dictionary of model coefficients named b0, b1, b2...
+
+    """
     coeffs = {}
     for key, value in cmodel['coefficients'].items():
         if re.search('b[0-9]*', key) is None:
@@ -83,6 +115,14 @@ def validateCoefficients(cmodel):
 
 
 def validateLayers(cmodel):
+    """Ensures all input files required to run the model exist and are valid file types
+
+    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
+    :type cmodel: dictionary
+    :returns:
+        layers(dictionary): a dictionary of file names (e.g. {'slope': 'slopefile.bil', 'vs30': 'vs30.grd'})
+
+    """
     layers = {}
     for key in cmodel['layers'].keys():
         for item, value in cmodel['layers'][key].items():
@@ -97,7 +137,21 @@ def validateLayers(cmodel):
 
 
 def validateTerms(cmodel, coeffs, layers):
-    #TODO - return a time field for every term, not just one global one.
+    """Reformats model inputs from config file, replacing functions with numpy functions, inserting code for extracting data from each layer (required to run eval in the calculate step), addressing any time variables, and checks that term names match coefficient names
+        TODO - return a time field for every term, not just one global one.
+
+    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
+    :type cmodel: dictionary
+    :param coeffs: a dictionary of model coefficients (e.g. {'b0': 3.5, 'b1': -0.01})
+    :type coeffs: dictionary
+    :param layers: a dictionary of file names for all input layers (e.g. {'slope': 'slopefile.bil', 'vs30': 'vs30.grd'})
+    :type layers: dictionary
+    :returns:
+        tuple (terms, timeField)
+        terms: dictionary of terms that form the model equation (e.g. 'b1': "self.layerdict['friction'].getData()", 'b2': "self.layerdict['slope'].getData()/100.")
+        timeField: Field that indicates time that is used to know which input file to read in (e.g. for monthly average precipitation, 'MONTH')
+
+    """
     terms = {}
     timeField = None
     for key, value in cmodel['terms'].items():
@@ -243,6 +297,18 @@ def checkTerm(term, layers):
 
 class LogisticModel(object):
     def __init__(self, config, shakefile, model, uncertfile=None):
+        """Set up the logistic model
+
+        :param config: configobj (config .ini file read in using configobj) defining the model and its inputs
+        :type config: dictionary
+        :param shakefile: Full file path to shakemap.xml file for the event of interest
+        :type shakefile: string
+        :param model: Name of model defined in config that should be run for the event of interest
+        :type model: string
+        :param uncertfile:
+        :type uncertfile:
+
+        """
         if model not in getLogisticModelNames(config):
             raise Exception('Could not find a model called "%s" in config %s.' % (model, config))
         #do everything here short of calculations - parse config, assemble eqn strings, load data.
@@ -373,20 +439,49 @@ class LogisticModel(object):
             self.slopemax = 90.
 
     def getEquation(self):
+        """Method for LogisticModel class to extract a string defining the equation for the model which can be run using eval()
+
+        :returns:
+            equation for model using median ground motions
+
+        """
         return self.equation
 
     def getEquations(self):
+        """Method for LogisticModel class to extract strings defining the equations for the model for median ground motions and +/- one standard deviation (3 total)
+
+        :returns:
+            tuple of three equations (equation, equationmin, equationmax) where equation is the equation for median ground motions, equationmin is the equation for the same model but with median ground motions minus 1 standard deviation and equationmax is the same but for plus 1 standard deviation.
+
+        """
         return self.equation, self.equationmin, self.equationmax
 
     def getGeoDict(self):
+        """Returns the geodictionary of the LogisticModel class defining bounds and resolution of model inputs and outputs
+
+        :returns:
+            geodict: mapio geodict object
+
+        """
         return self.geodict
 
     def calculate(self, saveinputs=False, slopefile=None, slopediv=1.):
-        """
-        saveinputs - if True, saves all the input layers as Grid2D objects in addition to the model
-          if false, will just output model
-        slopefile - optional slopefile that will be resampled to the other input files for applying thresholds
-        slopediv - number to divide slope by to get to degrees (usually will be default of 1.)
+        """Calculate the model
+
+        :param saveinputs: if True, saves all the input layers as Grid2D objects in addition to the model
+          if false, it will just output the model
+        :type saveinputs: boolean
+        :param slopefile: optional file path to slopefile that will be resampled to the other input files for applying thresholds
+        :type slopefile: string
+        :param slopediv: number to divide slope by to get to degrees (usually will be default
+          of 1.)
+        :type slopediv: float
+
+        :returns:
+            a dictionary containing the model results and model inputs if saveinputs was set to
+            True, see <https://github.com/usgs/groundfailure#api-for-model-output> for a
+            description of the structure of this output
+
         """
         X = eval(self.equation)
         P = 1/(1 + np.exp(-X))

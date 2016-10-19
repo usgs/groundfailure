@@ -37,7 +37,7 @@ def main(args):
     #-------------------------------------------------------------
     # what is the package called and who are the authors
     #-------------------------------------------------------------
-    PACKAGE = "groundfailure"
+    PACKAGE = "GroundFailure"
     AUTHORS = 'Kate Allstadt, Eric Thompson, Mike Hearne, Katie Biegel'
 
     # find the make command on this system

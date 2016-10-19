@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# Set of functions for sampling from inventory shapefiles for model development or testing
-# Borrowed heavily from github.com/mhearne-usgs/lsprocess
+"""This module contains a set of functions for sampling from inventory shapefiles for model development or testing. The codes are borrowed heavily from <http://github.com/mhearne-usgs/lsprocess>
+"""
 
 #stdlib imports
 import os.path
@@ -22,13 +22,13 @@ from mapio.geodict import GeoDict
 from rasterio.transform import Affine
 import rasterio
 import matplotlib.path as mplPath
-from groundfailure.tests import _test_sample
 
 
 def getPointsInCircum(r, n=100, h=0, k=0):
     """Get coordinates of equally spaced points around circle
     http://stackoverflow.com/questions/8487893/generate-all-the-points-on-the-circumference-of-a-circle
     usage: x, y = getPointsInCircum(r, n=100, h=0, k=0)
+
     :param r:
       radius of circle
     :param n:
@@ -40,6 +40,7 @@ def getPointsInCircum(r, n=100, h=0, k=0):
     :returns:
       Tuple (x, y) of numpy arrays of x and y coordinates of points
     """
+
     points = [(np.cos(2*np.pi/n*x)*r, np.sin(2*np.pi/n*x)*r) for x in range(0, n+1)]
     x, y = list(zip(*points))
     x = np.array(x)
@@ -52,6 +53,7 @@ def getPointsInCircum(r, n=100, h=0, k=0):
 def createCirclePolygon(h, k, r, dx):
     """Create shapely polygon of a circle
     usage: p = createCirclePolygon(h, k, r, dx)
+
     :param h:
       x coordinate of center
     :param k:
@@ -76,7 +78,8 @@ def affine_from_corner(ulx, uly, dx, dy):
 
 
 def getNoSampleGrid(yespoints, xvar, yvar, dx, h1, h2):
-    '''Return the grid from which "no" pixels can successfully be sampled.
+    """Return the grid from which "no" pixels can successfully be sampled.
+
     :param yespoints:
       Sequence of (x,y) points (meters) where landslide/liquefaction was observed.
     :param xvar:
@@ -92,7 +95,8 @@ def getNoSampleGrid(yespoints, xvar, yvar, dx, h1, h2):
     :returns:
       Grid of shape (len(yvar),len(xvar)) where 1's represent pixels from which
       "no" values can be sampled.
-    '''
+    """
+
     shp = (len(xvar), len(yvar))
     west = xvar.min() - dx/2.0  # ??
     north = yvar.max() + dx/2.0  # ??
@@ -125,11 +129,13 @@ def getNoSampleGrid(yespoints, xvar, yvar, dx, h1, h2):
 def getFileType(filename):
     """
     Determine whether input file is a shapefile or a grid (ESRI or GMT).
+
     :param filename:
       String path to candidate filename.
     :returns:
       String, one of 'shapefile','grid','unknown'.
     """
+
     fname, fext = os.path.splitext(filename)
     dbf = fname + '.dbf'
     ftype = 'unknown'
@@ -151,6 +157,7 @@ def getFileType(filename):
 def getProjectedShapes(shapes, xmin, xmax, ymin, ymax):
     """
     Take a sequence of geographic shapes and project them to a bounds-centered orthographic projection.
+
     :param shapes:
       Sequence of shapes, as read in by fiona.collection()
     :param xmin:
@@ -197,8 +204,8 @@ def rasterizeShapes(pshapes, geodict):
 
 
 def getYesPoints(pshapes, proj, dx, nmax, touch_center=True):
-    """
-    Collect x/y coordinates of all points within hazard coverage polygons at desired resolution.
+    """Collect x/y coordinates of all points within hazard coverage polygons at desired resolution.
+
     :param pshapes:
       Sequence of orthographically projected shapes.
     :param proj:
@@ -207,8 +214,7 @@ def getYesPoints(pshapes, proj, dx, nmax, touch_center=True):
       Float resolution of grid at which to sample points, must be round number
     :param nmax:
       Threshold maximum number of points in total data mesh.
-    :param touch_center:
-      Boolean indicating whether presence of polygon in each grid cell is enough to turn that
+    :param touch_center: Boolean indicating whether presence of polygon in each grid cell is enough to turn that
       into a yes pixel.  Setting this to false presumes that the dx is relatively large, such
       that creating a grid at that resolution will not tax the resources of the system.
     :returns:
@@ -218,7 +224,9 @@ def getYesPoints(pshapes, proj, dx, nmax, touch_center=True):
       - numpy array of x coordinate centers of columns
       - numpy array of y coordinate centers of rows
       - 1D array of indices where yes pixels are located (use np.unravel_index to unpack to 2D array)
+
     """
+
     mxmin = 9e10
     mxmax = -9e10
     mymin = 9e10
@@ -299,8 +307,8 @@ def getYesPoints(pshapes, proj, dx, nmax, touch_center=True):
 
 def sampleFromFile(shapefile, dx=10.0, nmax=None, testPercent=0.0, classBalance=None, extent=None, Nsamp=100,
                    h1=100.0, h2=300.0, touch_center=True):
-    """
-    Sample yes/no test and training pixels from shapefile input.
+    """Sample yes/no test and training pixels from shapefile input.
+
     :param shapefile:
        path to shapefile, presumed to be decimal degrees.
     :param dx:
@@ -340,15 +348,17 @@ def sampleFromFile(shapefile, dx=10.0, nmax=None, testPercent=0.0, classBalance=
 
 
 def sampleYes(array, N):
-    """
-    Sample without replacement N points from an array of XY coordinates.
+    """Sample without replacement N points from an array of XY coordinates.
+
     :param array:
       2D numpy array of XY points
     :param N:
       int number of points to sample without replacement from input array.
     :returns:
       Tuple of (sampled points, unsampled points)
+
     """
+
     #array is a Mx2 array of X,Y points
     m, n = array.shape
     allidx = np.arange(0, m)
@@ -360,8 +370,8 @@ def sampleYes(array, N):
 
 
 def sampleNo(xvar, yvar, N, avoididx):
-    """
-    Sample from pixels in mesh, excluding yes pixels and already sampled no pixels.
+    """Sample from pixels in mesh, excluding yes pixels and already sampled no pixels.
+
     :param xvar:
       Numpy array of centers of all columns in mesh.
     :param yvar:
@@ -373,7 +383,9 @@ def sampleNo(xvar, yvar, N, avoididx):
       of indices where the yes pixels are.
     :returns:
       Randomly chosen list of tuples of (x,y) coordinate points that are outside polygons.
+
     """
+
     allidx = np.arange(0, len(xvar)*len(yvar))  # flattened array of all indices in mesh
     noidx = np.setxor1d(allidx, avoididx) #allidx - avoididx
     #noidx = np.array(list(set(allidx) - set(avoididx)))
@@ -391,8 +403,8 @@ def sampleNo(xvar, yvar, N, avoididx):
 
 def sampleFromShapes(shapes,bounds,dx=10.0,nmax=None,testPercent=1.0,classBalance=None,extent=None,Nsamp=100,
                      h1=100.0,h2=300.0,touch_center=True):
-    """
-    Sample yes/no test and training pixels from shapefile input.
+    """Sample yes/no test and training pixels from shapefile input.
+
     :param shapes:
        Sequence of projected shapes.
     :param dx:
@@ -418,7 +430,9 @@ def sampleFromShapes(shapes,bounds,dx=10.0,nmax=None,testPercent=1.0,classBalanc
       - numpy array of mesh column centers
       - numpy array of mesh row centers
       - PyProj object defining orthographic projection of xy points
+
     """
+
     xmin,ymin,xmax,ymax = bounds
     shptype = shapes[0]['geometry']['type']
     if shptype not in ['Point','Polygon']:
@@ -487,8 +501,8 @@ def sampleFromShapes(shapes,bounds,dx=10.0,nmax=None,testPercent=1.0,classBalanc
 
 
 def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None, touch_center=True):
-    """
-    Get yes/no points from shapefile input - same as sampleFromShapes but without class balance or separation of test and train, only samples in box enclosing the polygons
+    """Get yes/no points from shapefile input - same as sampleFromShapes but without class balance or separation of test and train, only samples in box enclosing the polygons
+
     :param shapes:
        Sequence of projected shapes.
     :param bounds:
@@ -510,6 +524,7 @@ def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None, touch_cente
       - numpy array of mesh column centers
       - numpy array of mesh row centers
       - PyProj object defining orthographic projection of xy points
+
     """
     xmin, ymin, xmax, ymax = bounds
     shptype = shapes[0]['geometry']['type']
@@ -572,6 +587,7 @@ def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None, touch_cente
 
 def sampleNoPoints(sampleimg, N, xvar, yvar):
     '''Sample from our "no" sample grid, where that grid contains 1s where no pixels should be sampled from, and 0s where they should not.
+
     :param sampleimg:
       Grid of shape (len(yvar),len(xvar)) where 1's represent pixels from which
       "no" values can be sampled.
@@ -584,7 +600,9 @@ def sampleNoPoints(sampleimg, N, xvar, yvar):
     :returns:
       - nopoints sequence of x,y tuples representing "no" samples.
       - Modified version of input sampleimg, with nopoints pixels set to 0.
+
     '''
+
     #get N points from sampleimg without replacement
     #avoid nosampleidx indices
     #return an sequence of X,Y tuples from those indices
@@ -603,15 +621,17 @@ def sampleNoPoints(sampleimg, N, xvar, yvar):
 
 
 def projectBack(points, proj):
-    """
-    Project a 2D array of XY points from orthographic projection to decimal degrees.
+    """Project a 2D array of XY points from orthographic projection to decimal degrees.
+
     :param points:
       2D numpy array of XY points in orthographic projection.
     :param proj:
       PyProj object defining projection.
     :returns:
       2D numpy array of Lon/Lat coordinates.
+
     """
+
     mpoints = MultiPoint(points)
     project = partial(
         pyproj.transform,
@@ -627,8 +647,8 @@ def projectBack(points, proj):
 
 
 def plotPoints(shapes, YesTestPoints, YesTrainPoints, NoTestPoints, NoTrainPoints, filename):
-    """
-    Plot yes/no sample points and polygons.
+    """Plot yes/no sample points and polygons.
+
     :param shapes:
       shapes (decimal degrees) as read in by fiona.collection()
     :param YesTestPoints:
@@ -640,11 +660,12 @@ def plotPoints(shapes, YesTestPoints, YesTrainPoints, NoTestPoints, NoTrainPoint
     :param NoTrainPoints:
       numpy 2D array of training non-hazard sample points, decimal degrees.
     """
+
     #plot the "yes" sample points and the projected polygons
     figure = plt.figure(figsize=(8, 8))
     plt.hold(True)
-    for shape in shapes:
-        px, py = list(zip(*shape['geometry']['coordinates']))
+    for shape1 in shapes:
+        px, py = list(zip(*shape1['geometry']['coordinates']))
         px = list(px)
         py = list(py)
         px.append(px[0])
@@ -664,8 +685,8 @@ def plotPoints(shapes, YesTestPoints, YesTrainPoints, NoTestPoints, NoTrainPoint
 
 
 def getClassBalance(pshapes, bounds, proj):
-    """
-    Get native class balance of projected shapes, assuming a rectangular bounding box.
+    """Get native class balance of projected shapes, assuming a rectangular bounding box.
+
     :param pshapes:
       Sequence of projected shapely shapes
     :param bounds:
@@ -675,6 +696,7 @@ def getClassBalance(pshapes, bounds, proj):
     :returns:
       Float fraction of hazard polygons (area of hazard polygons/total area of bbox)
     """
+
     xmin, ymin, xmax, ymax = bounds
     bpoly = Polygon([(xmin, ymax),
                     (xmax, ymax),
@@ -696,6 +718,7 @@ def getClassBalance(pshapes, bounds, proj):
 def sampleShapeFile(shapefile, xypoints, attribute):
     """
     Open a shapefile (decimal degrees) and get the attribute value at each of the input XY points. Slower than sampling grids.
+
     :param shapefile:
       ESRI shapefile (decimal degrees) of predictor variable.
     :param xypoints:
@@ -705,6 +728,7 @@ def sampleShapeFile(shapefile, xypoints, attribute):
     :returns:
       1D array of attribute values at each of XY points.
     """
+
     xmin = np.min(xypoints[:, 0])
     xmax = np.max(xypoints[:, 0])
     ymin = np.min(xypoints[:, 1])
@@ -720,13 +744,14 @@ def sampleShapeFile(shapefile, xypoints, attribute):
 
 
 def subsetShapes(shapefile, bounds):
-    """
-    Return the subset of shapes from a shapefile within a given bounding box. (Can be slow).
+    """Return the subset of shapes from a shapefile within a given bounding box. (Can be slow).
+
     :param shapefile:
       ESRI shapefile (decimal degrees) of predictor variable.
     :param bounds:
       Bounding box (decimal degrees) to use for subset (xmin,ymin,xmax,ymax)
     """
+
     xmin, ymin, xmax, ymax = bounds
     #xypoints should be projected back to lat/lon
     f = fiona.collection(shapefile, 'r')
@@ -739,8 +764,8 @@ def subsetShapes(shapefile, bounds):
 
 
 def sampleShapes(shapes, xypoints, attribute):
-    """
-    Get the attribute value at each of the input XY points for sequence of input shapes (decimal degrees). Slower than sampling grids.
+    """Get the attribute value at each of the input XY points for sequence of input shapes (decimal degrees). Slower than sampling grids.
+
     :param shapes:
       sequence of shapes (decimal degrees) of predictor variable.
     :param xypoints:
@@ -762,8 +787,8 @@ def sampleShapes(shapes, xypoints, attribute):
 
 
 def sampleGridFile(gridfile, xypoints, method='nearest'):
-    """
-    Sample grid file (ESRI or GMT format) at each of a set of XY (decimal degrees) points.
+    """Sample grid file (ESRI or GMT format) at each of a set of XY (decimal degrees) points.
+
     :param gridfile:
       Name of ESRI or GMT grid format file from which to sample values.
     :param xypoints:
@@ -809,8 +834,8 @@ def sampleGridFile(gridfile, xypoints, method='nearest'):
 
 
 def sampleFromGrid(grid, xypoints, method='nearest'):
-    """
-    Sample 2D grid object at each of a set of XY (decimal degrees) points.
+    """Sample 2D grid object at each of a set of XY (decimal degrees) points.
+
     :param grid:
       Grid2D object at which to sample data.
     :param xypoints:
@@ -829,8 +854,8 @@ def sampleFromGrid(grid, xypoints, method='nearest'):
 
 
 def sampleFromShakeMap(shakefile, layer, xypoints):
-    """
-    Sample ShakeMap grid file at each of a set of XY (decimal degrees) points.
+    """Sample ShakeMap grid file at each of a set of XY (decimal degrees) points.
+
     :param shakefile:
       Grid2D object at which to sample data.
     :param xypoints:
@@ -838,13 +863,14 @@ def sampleFromShakeMap(shakefile, layer, xypoints):
     :returns:
       1D numpy array of grid values at each of input XY points.
     """
+
     shakegrid = ShakeGrid.load(shakefile, fixFileGeoDict='corner')
     return sampleFromMultiGrid(shakegrid, layer, xypoints)
 
 
 def sampleFromMultiGrid(multigrid, layer, xypoints):
-    """
-    Sample MultiGrid object (like a ShakeGrid) at each of a set of XY (decimal degrees) points.
+    """Sample MultiGrid object (like a ShakeGrid) at each of a set of XY (decimal degrees) points.
+
     :param multigrid:
       MultiGrid object at which to sample data.
     :param xypoints:
@@ -852,6 +878,7 @@ def sampleFromMultiGrid(multigrid, layer, xypoints):
     :returns:
       1D numpy array of grid values at each of input XY points.
     """
+
     if layer not in multigrid.getLayerNames():
         raise Exception('Layer %s not found in grid' % layer)
     hazgrid = multigrid.getLayer(layer)
@@ -859,8 +886,8 @@ def sampleFromMultiGrid(multigrid, layer, xypoints):
 
 
 def getDataFrames(sampleparams, shakeparams, predictors, outparams):
-    """
-    Return Pandas training and testing data frames containing sampled data from hazard coverage, ShakeMap, and predictor data sets.
+    """Return Pandas training and testing data frames containing sampled data from hazard coverage, ShakeMap, and predictor data sets.
+
     :param sampleparams:
       Dictionary with at least these values:
         - coverage: Name of hazard coverage shapefile (decimal degrees). Required.

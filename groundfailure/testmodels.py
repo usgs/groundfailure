@@ -15,7 +15,7 @@ from sklearn.metrics import roc_curve, roc_auc_score, auc
 import copy
 
 #local imports
-from lsprocess.sample import pointsFromShapes
+from groundfailure.sample import pointsFromShapes
 from mapio.gdal import GDALGrid
 
 # Make fonts readable and recognizable by illustrator
@@ -27,6 +27,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif'
 def modelSummary(models, titles=None, outputtype=None, plottype='hist', bounds=None, bins=10, semilogy=False, thresh=0., excludenon=False, showplots=True, saveplots=False, filepath=None):
     """
     Function for creating a summary histogram of a model output
+
     :param model: Grid2D object of model results or list of Grid2D objects of multiple models
     :param titles: List of titles to use for each model, in same order as model. If none, will use key of each model (may be non-unique)
     :param outputtype: Type of model output, just used for label (e.g.'probability', 'coverage', 'index')
@@ -131,6 +132,7 @@ def computeCoverage_accurate(gdict, inventory, numdiv=10.):
     """
     VERY SLOW!!
     Slow but more accurate method to produce grid of area actually affected by landsliding in each cell defined by geodict
+
     :param gdict: geodict, likely taken from model to compare inventory against
     :param inventory: full file path to shapefile of inventory, must be in geographic coordinates, WGS84
     :type inventory: string
@@ -194,8 +196,8 @@ def computeCoverage_accurate(gdict, inventory, numdiv=10.):
 
 
 def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
-    """
-    Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
+    """Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
+
     :param gdict: geodict, likely taken from model to compare inventory against
     :param inventory: full file path to shapefile of inventory, must be in geographic coordinates, WGS84
     :type inventory: string
@@ -334,8 +336,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
 
 
 def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots=False, filepath=None):
-    """
-    TO DO - FIND MORE TESTS THAT ARE EASY TO COMPARE WITH EACH OTHER
+    """TO DO - FIND MORE TESTS THAT ARE EASY TO COMPARE WITH EACH OTHER
     Compute stats and make comparison plots specific to models that output areal coverage like Godt et al 2008
 
     :param modelgrid: Grid2D object of model results
@@ -344,14 +345,15 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots
     :param showplots: if True, will display the plots
     :param saveplots: if True, will save the plots
     :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name and time stamp
-    :returns invminusmod: Grid2D object of difference between inventory and model (inventory - model)
-    :returns results: dictionary of results of tests.
+    :returns:
+        results: dictionary of results of tests.
                       {'Compare coverage': dictionary,
                         'RMS': float,
                         'RMS_nonzero': float,
                         'Percent in bin': dictionary,
                         'Direct Comparison': dictionary]}
-    :rtype results: dictionary
+        invminusmod: Grid2D object of difference between inventory and model (inventory - model)
+
     """
 
     inv = inventorygrid.getData()
@@ -426,8 +428,8 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots
 
 
 def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='inventory', bins=None, runtests=True, showplots=True, saveplots=False, filepath=None):
-    """
-    Run through suite of tests for models that output probability or index that varies between 0 and 1
+    """Run through suite of tests for models that output probability or index that varies between 0 and 1
+
     :param modelgrid: Grid2D object of model results
     :param inventory: full file path to shapefile of inventory, must be in geographic coordinates, WGS84
     :type inventory: string
@@ -443,11 +445,12 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
     :param showplots: if True, will disply the plots
     :param saveplots: if True, will save the plots
     :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name and time stamp
-    :returns yespoints: Nx2 array of geographic coordinates of positive sample locations
-    :returns nopoints: Nx2 array of geographic coordinates of negative sample locations
-    :returns modelvalyes: N model output values corresponding to yespoints
-    :returns modelvalno: N model output values corresponding to nopoints
-    :returns results: dictionary of results of statistical tests. Will be empty if runtests=False
+    :returns:
+       yespoints: Nx2 array of geographic coordinates of positive sample locations
+       nopoints: Nx2 array of geographic coordinates of negative sample locations
+       modelvalyes: N model output values corresponding to yespoints
+       modelvalno: N model output values corresponding to nopoints
+       results: dictionary of results of statistical tests. Will be empty if runtests=False
                       {'Occ_nonocc': dict,
                          'SRC': dict,
                          'ROC': dict,
@@ -458,7 +461,6 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
                          'Brier': float,
                          'Brier_no': float,
                          'Brier_yes': float}
-    :rtype results: dictionary
     """
     plt.close('all')
     f = fiona.collection(inventory, 'r')

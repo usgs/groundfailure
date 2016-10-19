@@ -248,14 +248,12 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
              outputdir=None, savepdf=True, savepng=True, showplots=False,
              roadref='unknown', cityref='unknown', oceanref='unknown',
              printparam=False, ds=True, dstype='mean', upsample=False):
-
-    """
-    This function creates maps of mapio grid layers (e.g. liquefaction or
-    landslide models with their input layers)
-    All grids must use the same bounds
-    TO DO change so that all input layers do not have to have the same bounds,
-    test plotting multiple probability layers, and add option so that if PDF and
-    PNG aren't output, opens plot on screen using plt.show()
+    """This function creates maps of mapio grid layers (e.g. liquefaction or
+     landslide models with their input layers)
+     All grids must use the same bounds
+     TO DO change so that all input layers do not have to have the same bounds,
+     test plotting multiple probability layers, and add option so that if PDF and
+     PNG aren't output, opens plot on screen using plt.show()
 
     :param grids: Dictionary of N layers and metadata formatted like
       maplayers['layer name']={
@@ -352,7 +350,9 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     :returns newgrids: Downsampled and trimmed version of input grids. If no
       modification was needed for plotting, this will be identical to grids but
       without the metadata
+
     """
+
     if suptitle is None:
         suptitle = ' '
 

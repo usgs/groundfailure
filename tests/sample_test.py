@@ -6,7 +6,7 @@
 import numpy as np
 from groundfailure import sample
 from collections import OrderedDict
-from mapio import Grid2D
+from mapio.grid2d import Grid2D
 
 
 # def _test_sample():
