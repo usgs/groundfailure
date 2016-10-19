@@ -5,16 +5,16 @@ import os.path
 import tempfile
 import textwrap
 import sys
-import re
-import io
 import shutil
 
 #third party libraries
 from configobj import ConfigObj
-from validate import Validator,VdtTypeError,VdtParamError
+from validate import Validator, VdtTypeError, VdtParamError
+
 
 def __getCustomValidator():
     '''Return a Validator object with the custom types we have defined here.
+
     :returns:
       Validator object with custom types embedded.
     '''
@@ -26,9 +26,11 @@ def __getCustomValidator():
     validator = Validator(fdict)
     return validator
 
+
 def __file_type(value):
     '''Describes a file_type from the ShakeMap config spec.
     A file_type object is simply a string that must be a valid file on the system.
+
     :param value:
       String representing valid path to a file on the local system.
     :return:
@@ -40,10 +42,12 @@ def __file_type(value):
         raise VdtTypeError(value)
     return value
 
+
 def __path_type(value):
     '''Describes a path_type from the groundfailure config spec.
     A path_type object is simply a string that must be a valid file OR
     directory on the system.
+
     :param value:
       String representing valid path to a file or directory on the local system.
     :return:
@@ -55,26 +59,29 @@ def __path_type(value):
         raise VdtTypeError(value)
     return value
 
+
 def filterResults(result):
     #TODO: this function has a problem where some error messages are duplicated...?
     errormsg = ''
-    for key,value in result.items():
-        if isinstance(value,dict):
+    for key, value in result.items():
+        if isinstance(value, dict):
             tmpmsg = filterResults(value)
             errormsg += tmpmsg
         else:
-            if not isinstance(value,bool):
-                errormsg += "Parameter %s failed with error '%s'\n" % (key,value.args)
+            if not isinstance(value, bool):
+                errormsg += "Parameter %s failed with error '%s'\n" % (key, value.args)
             else:
-              if not value:
-                errormsg += "Parameter %s was not specified correctly.\n" % (key)
+                if not value:
+                    errormsg += "Parameter %s was not specified correctly.\n" % (key)
 
     return errormsg
+
 
 def correct_config_filepaths(config):
     '''Takes an input filepath name and pre-pends it to all file locations within the config file.
     Individual locations are put into the config.  Don't have to put entire filpath location for each layer.
-    Works by looping over config dictionary and subdictionary to fine locations named 'file'.'''
+    Works by looping over config dictionary and subdictionary to fine locations named 'file'.
+    '''
     # Input filepath
     input_path = config['input']['folder']
     # Pull all other filepaths that need editing
@@ -82,19 +89,19 @@ def correct_config_filepaths(config):
         outer_loop = keys
         for keys in config[outer_loop].keys():
             second_loop = keys
-            if hasattr(config[outer_loop][second_loop], 'keys') == False:
+            if hasattr(config[outer_loop][second_loop], 'keys') is False:
                 pass
             else:
                 for keys in config[outer_loop][second_loop].keys():
                     third_loop = keys
-                    if hasattr(config[outer_loop][second_loop][third_loop], 'keys') == False:
+                    if hasattr(config[outer_loop][second_loop][third_loop], 'keys') is False:
                         if third_loop == 'file':
                             path_to_correct = config[outer_loop][second_loop][third_loop]
                             config[outer_loop][second_loop][third_loop] = os.path.join(input_path, path_to_correct)
                     else:
                         for keys in config[outer_loop][second_loop][third_loop].keys():
                             fourth_loop = keys
-                            if hasattr(config[outer_loop][second_loop][third_loop][fourth_loop], 'keys') == False:
+                            if hasattr(config[outer_loop][second_loop][third_loop][fourth_loop], 'keys') is False:
                                 if fourth_loop == 'file':
                                     path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop]
                                     config[outer_loop][second_loop][third_loop][fourth_loop] = os.path.join(input_path, path_to_correct)
@@ -103,12 +110,14 @@ def correct_config_filepaths(config):
                                     fifth_loop = keys
                                     if fifth_loop == 'file':
                                         path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop]
-                                        config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop] = os.path.join(input_path,path_to_correct)
+                                        config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop] = os.path.join(input_path, path_to_correct)
 
     return config
 
+
 def validate(configfile):
     '''Return a validated config object.
+
     :param configspec:`
       Path to config spec file, used to define the valid configuration
       parameters for the system.
@@ -119,18 +128,19 @@ def validate(configfile):
       failed validation.
     '''
     thispath = os.path.dirname(os.path.abspath(__file__))
-    configspec = os.path.join(thispath,'configspec.ini')
-    config = ConfigObj(configfile,configspec=configspec)
+    configspec = os.path.join(thispath, 'configspec.ini')
+    config = ConfigObj(configfile, configspec=configspec)
     config = correct_config_filepaths(config)
     validator = __getCustomValidator()
-    result = config.validate(validator,preserve_errors=True)
-    if result == True:
+    result = config.validate(validator, preserve_errors=True)
+    if result is True:
         return config
     else:
         errormsg = filterResults(result)
         raise VdtTypeError(errormsg)
 
     return config
+
 
 def _test_validate():
     configtext = '''[logistic_models]
@@ -196,21 +206,21 @@ def _test_validate():
     try:
         #create a temporary data directory and put two files - cohesion.grd and slope.grd in it
         datadir = tempfile.mkdtemp()
-        cofile = os.path.join(datadir,'cohesion.grd')
-        f = open(cofile,'wt')
+        cofile = os.path.join(datadir, 'cohesion.grd')
+        f = open(cofile, 'wt')
         f.write('This is a test\n')
         f.close()
-        slfile = os.path.join(datadir,'slope.grd')
-        f = open(slfile,'wt')
+        slfile = os.path.join(datadir, 'slope.grd')
+        f = open(slfile, 'wt')
         f.write('This is a test\n')
         f.close()
 
-        configtext = configtext % (cofile,slfile)
+        configtext = configtext % (cofile, slfile)
 
         #write the sample config file
-        tmp,configfile = tempfile.mkstemp()
+        tmp, configfile = tempfile.mkstemp()
         os.close(tmp)
-        f = open(configfile,'wt')
+        f = open(configfile, 'wt')
         f.write(textwrap.dedent(configtext))
         f.close()
 
@@ -223,6 +233,7 @@ def _test_validate():
             os.remove(configfile)
         if os.path.isdir(datadir):
             shutil.rmtree(datadir)
+
 
 def _failValidate():
     configtext = '''[logistic_models]
@@ -280,14 +291,14 @@ def _failValidate():
     #default Matplotlib color map unless otherwise specified here.
     [[[colormaps]]]
       slope = jet_r
-    ''' % ('foo','bar')
+    ''' % ('foo', 'bar')
     #the above config text should fail validate in three places: b1, cohesion, and slope.
     configfile = None
     try:
         #write the sample config file
-        tmp,configfile = tempfile.mkstemp()
+        tmp, configfile = tempfile.mkstemp()
         os.close(tmp)
-        f = open(configfile,'wt')
+        f = open(configfile, 'wt')
         f.write(textwrap.dedent(configtext))
         f.close()
         try:

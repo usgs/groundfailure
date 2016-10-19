@@ -248,14 +248,12 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
              outputdir=None, savepdf=True, savepng=True, showplots=False,
              roadref='unknown', cityref='unknown', oceanref='unknown',
              printparam=False, ds=True, dstype='mean', upsample=False):
-
-    """
-    This function creates maps of mapio grid layers (e.g. liquefaction or
-    landslide models with their input layers)
-    All grids must use the same bounds
-    TO DO change so that all input layers do not have to have the same bounds,
-    test plotting multiple probability layers, and add option so that if PDF and
-    PNG aren't output, opens plot on screen using plt.show()
+    """This function creates maps of mapio grid layers (e.g. liquefaction or
+     landslide models with their input layers)
+     All grids must use the same bounds
+     TO DO change so that all input layers do not have to have the same bounds,
+     test plotting multiple probability layers, and add option so that if PDF and
+     PNG aren't output, opens plot on screen using plt.show()
 
     :param grids: Dictionary of N layers and metadata formatted like
       maplayers['layer name']={
@@ -352,7 +350,9 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     :returns newgrids: Downsampled and trimmed version of input grids. If no
       modification was needed for plotting, this will be identical to grids but
       without the metadata
+
     """
+
     if suptitle is None:
         suptitle = ' '
 
@@ -724,7 +724,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         # use major and minor sphere radii from WGS84 ellipsoid.
         m = Basemap(llcrnrlon=bxmin, llcrnrlat=bymin, urcrnrlon=bxmax, urcrnrlat=bymax,
                     rsphere=(6378137.00, 6356752.3142),
-                    resolution='i', area_thresh=1000., projection='lcc',
+                    resolution='l', area_thresh=1000., projection='lcc',
                     lat_1=clat, lon_0=clon, ax=ax)
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
@@ -946,43 +946,6 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             except Exception as e:
                 print('Failed to plot cities, %s' % e)
 
-        # if mapcities is True and cityfile is not None:
-        #     try:
-        #         dmin = 0.1*(m.ymax-m.ymin)
-        #         xyplotted = []
-        #         cities = PagerCity(cityfile)
-        #         #Find cities within bounding box
-        #         boundcity = cities.findCitiesByRectangle(bounds=(boundaries.xmin, boundaries.xmax, boundaries.ymin, boundaries.ymax))
-        #         #Just keep 5 biggest cities
-        #         if len(boundcity) < 5:
-        #             value = len(boundcity)
-        #         else:
-        #             value = 5
-        #         thresh = sorted([cit['pop'] for cit in boundcity])[-value]
-        #         plotcity = [cit for cit in boundcity if cit['pop'] >= thresh]
-        #         #For cities that are more than one xth of the xwidth apart, keep only the larger one
-        #         pass  # do later
-        #         #Plot cities
-        #         for cit in plotcity:  # should sort so it plots them in order of population so larger cities are preferentially plotted - do later
-        #             xi, yi = m(cit['lon'], cit['lat'])
-        #             dist = [np.sqrt((xi-x0)**2+(yi-y0)**2) for x0, y0 in xyplotted]
-        #             xdist = [np.abs(xi-x0) for x0, y0 in xyplotted]
-        #             ydist = [np.abs(yi-y0) for x0, y0 in xyplotted]
-        #             if not dist or np.min(dist) > dmin:
-        #                 if len(dist) > 0:
-        #                     if np.min(xdist) < 0.2*(m.xmax-m.xmin) and np.min(ydist) < 0.1*(m.ymax-m.ymin):
-        #                         pass
-        #                     else:
-        #                         m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
-        #                         ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
-        #                         xyplotted.append((xi, yi))
-        #                 elif len(dist) == 0:
-        #                     m.scatter(cit['lon'], cit['lat'], c='k', latlon=True, marker='.', zorder=100000)
-        #                     ax.text(xi, yi, cit['name'], ha='right', va='top', fontsize=10, zorder=100000)
-        #                     xyplotted.append((xi, yi))
-        #     except Exception as e:
-        #         print(('Failed to plot cities, %s' % e))
-
         #draw star at epicenter
         plt.sca(ax)
         if edict is not None:
@@ -995,7 +958,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 
         m.fillcontinents(color=clear_color, lake_color=watercolor)
         m.drawrivers(color=watercolor)
-        #m.drawcoastlines()
+        ##m.drawcoastlines()
 
         #draw country boundaries
         m.drawcountries(color=countrycolor, linewidth=1.0)
