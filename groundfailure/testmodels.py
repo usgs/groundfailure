@@ -40,7 +40,7 @@ def modelSummary(models, titles=None, outputtype=None, plottype='hist', bounds=N
     :param showplots: if True, will display the plots
     :param saveplots: if True, will save the plots
     :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name and time stamp
-    :returns invminusmod: Grid2D object of difference between inventory and model (inventory - model)
+    :returns: Grid2D object of difference between inventory and model (inventory - model)
     """
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -138,7 +138,7 @@ def computeCoverage_accurate(gdict, inventory, numdiv=10.):
     :type inventory: string
     :param numdiv: Approximate amount to subdivide each cell of geodict by to compute areas (higher number slower but more accurate)
 
-    :return inventorygrid: Grid2D object reporting areal coverage of landsliding inside each cell defined by geodict
+    :returns: Grid2D object reporting areal coverage of landsliding inside each cell defined by geodict
     """
 
     f = fiona.collection(inventory, 'r')
@@ -205,7 +205,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
     :return inventorygrid: Grid2D object reporting proportional area of landsliding inside each cell defined by geodict
     :param method: method for resampling when projecting back to geographic coordinates, nearest recommended but not perfect. Cubic not recommended.
 
-    :returns inventorygrid: Grid2D object reporting approximate areal coverage of input inventory corresponding to geodict
+    :returns: Grid2D object reporting approximate areal coverage of input inventory corresponding to geodict
     """
 
     f = fiona.collection(inventory, 'r')
@@ -346,13 +346,13 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots
     :param saveplots: if True, will save the plots
     :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name and time stamp
     :returns:
-        results: dictionary of results of tests.
+        * results: dictionary of results of tests.
                       {'Compare coverage': dictionary,
                         'RMS': float,
                         'RMS_nonzero': float,
                         'Percent in bin': dictionary,
                         'Direct Comparison': dictionary]}
-        invminusmod: Grid2D object of difference between inventory and model (inventory - model)
+        * invminusmod: Grid2D object of difference between inventory and model (inventory - model)
 
     """
 
@@ -446,21 +446,21 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
     :param saveplots: if True, will save the plots
     :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name and time stamp
     :returns:
-       yespoints: Nx2 array of geographic coordinates of positive sample locations
-       nopoints: Nx2 array of geographic coordinates of negative sample locations
-       modelvalyes: N model output values corresponding to yespoints
-       modelvalno: N model output values corresponding to nopoints
-       results: dictionary of results of statistical tests. Will be empty if runtests=False
-                      {'Occ_nonocc': dict,
-                         'SRC': dict,
-                         'ROC': dict,
-                         'AUC_ROC': float,
-                         'Log_loss': float,
-                         'GFC': dict,
-                         'Pred_vs_Obs': dict,
-                         'Brier': float,
-                         'Brier_no': float,
-                         'Brier_yes': float}
+        * yespoints: Nx2 array of geographic coordinates of positive sample locations
+        * nopoints: Nx2 array of geographic coordinates of negative sample locations
+        * modelvalyes: N model output values corresponding to yespoints
+        * modelvalno: N model output values corresponding to nopoints
+        * results: dictionary of results of statistical tests. Will be empty if runtests=False
+        {'Occ_nonocc': dict,
+        'SRC': dict,
+        'ROC': dict,
+        'AUC_ROC': float,
+        'Log_loss': float,
+        'GFC': dict,
+        'Pred_vs_Obs': dict,
+        'Brier': float,
+        'Brier_no': float,
+        'Brier_yes': float}
     """
     plt.close('all')
     f = fiona.collection(inventory, 'r')

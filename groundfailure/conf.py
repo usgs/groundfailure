@@ -78,10 +78,17 @@ def filterResults(result):
 
 
 def correct_config_filepaths(config):
-    '''Takes an input filepath name and pre-pends it to all file locations within the config file.
-    Individual locations are put into the config.  Don't have to put entire filpath location for each layer.
+    """Takes an input filepath name and pre-pends it to all file locations within the config file.
+    Individual locations are put into the config.  Don't have to put entire filepath location for each layer.
     Works by looping over config dictionary and subdictionary to fine locations named 'file'.
-    '''
+
+    :param config: configobj (config .ini file read in using configobj) defining the model and its inputs
+    :type config: dictionary
+    :returns:
+        config dictionary with updated file paths
+
+    """
+
     # Input filepath
     input_path = config['input']['folder']
     # Pull all other filepaths that need editing
@@ -118,11 +125,9 @@ def correct_config_filepaths(config):
 def validate(configfile):
     '''Return a validated config object.
 
-    :param configspec:`
-      Path to config spec file, used to define the valid configuration
+    :param configspec: Path to config spec file, used to define the valid configuration
       parameters for the system.
-    :param configfile:
-      Config file to validate.
+    :param configfile: Config file to validate.
     :returns:
       A validated ConfigObj object or a dictionary of which section/parameters
       failed validation.

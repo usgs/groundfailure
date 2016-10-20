@@ -5,6 +5,8 @@ Introduction
 groundfailure is a project designed to implement as many methods for calculating landslide and liquefaction probability 
 given an input ShakeMap.  
 
+Code documentation: http://usgs.github.io/groundfailure/
+
 Installation and Dependencies
 -----------------------------
 This package depends on a number of other libraries, most of which are installed with Anaconda.  We strongly suggest that

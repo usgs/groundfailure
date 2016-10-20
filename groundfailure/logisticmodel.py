@@ -137,8 +137,11 @@ def validateLayers(cmodel):
 
 
 def validateTerms(cmodel, coeffs, layers):
-    """Reformats model inputs from config file, replacing functions with numpy functions, inserting code for extracting data from each layer (required to run eval in the calculate step), addressing any time variables, and checks that term names match coefficient names
-        TODO - return a time field for every term, not just one global one.
+    """Reformats model inputs from config file, replacing functions with numpy functions, inserting code for extracting
+    data from each layer (required to run eval in the calculate step), addressing any time variables, and checks that
+    term names match coefficient names.
+
+    TODO - return a time field for every term, not just one global one.
 
     :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
     :type cmodel: dictionary
@@ -148,8 +151,10 @@ def validateTerms(cmodel, coeffs, layers):
     :type layers: dictionary
     :returns:
         tuple (terms, timeField)
-        terms: dictionary of terms that form the model equation (e.g. 'b1': "self.layerdict['friction'].getData()", 'b2': "self.layerdict['slope'].getData()/100.")
-        timeField: Field that indicates time that is used to know which input file to read in (e.g. for monthly average precipitation, 'MONTH')
+        terms: dictionary of terms that form the model equation (e.g. 'b1': "self.layerdict['friction'].getData()",
+            'b2': "self.layerdict['slope'].getData()/100.")
+        timeField: Field that indicates time that is used to know which input file to read in (e.g. for monthly average
+            precipitation, 'MONTH')
 
     """
     terms = {}
@@ -159,7 +164,7 @@ def validateTerms(cmodel, coeffs, layers):
             raise Exception('Term names must match names of coefficients')
         # replace log with np.log, make sure variables are all in layers list, etc.
         term, rem, tTimeField = checkTerm(value, layers)
-        print(term)
+        #print(term)
         if tTimeField is not None:
             timeField = tTimeField
         if len(rem):
@@ -321,7 +326,8 @@ class LogisticModel(object):
         self.terms, timeField = validateTerms(cmodel, self.coeffs, self.layers)
         self.interpolations = validateInterpolations(cmodel, self.layers)
         self.units = validateUnits(cmodel, self.layers)
-        self.gmused = [value for term, value in cmodel['terms'].items() if 'pga' in value.lower() or 'pgv' in value.lower() or 'mmi' in value.lower()]
+        self.gmused = [value for term, value in cmodel['terms'].items() if 'pga' in value.lower() or 'pgv' in
+                       value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
         if 'baselayer' not in cmodel:
             raise Exception('You must specify a base layer file in config.')
@@ -336,14 +342,14 @@ class LogisticModel(object):
         #DAY = eventdict['event_timestamp'].day
         #HOUR = eventdict['event_timestamp'].hour
 
-        #now find the layer that is our base layer and get the largest bounds we can guaranteed not to exceed shakemap bounds
+        #now find the layer that is our base layer and get the largest bounds we can guarantee not to exceed shakemap bounds
         basefile = self.layers[cmodel['baselayer']]
         ftype = getFileType(basefile)
         if ftype == 'esri':
-            basegeodict = GDALGrid.getFileGeoDict(basefile)
+            basegeodict, firstcol = GDALGrid.getFileGeoDict(basefile)
             sampledict = basegeodict.getBoundsWithin(geodict)
         elif ftype == 'gmt':
-            basegeodict = GMTGrid.getFileGeoDict(basefile)
+            basegeodict, firstcol = GMTGrid.getFileGeoDict(basefile)
             sampledict = basegeodict.getBoundsWithin(geodict)
         else:
             raise Exception('All predictor variable grids must be a valid GMT or ESRI file type')
