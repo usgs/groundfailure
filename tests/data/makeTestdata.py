@@ -9,7 +9,7 @@ from configobj import ConfigObj
 
 # Make temporary files for each layer
 friction = np.array([[5., 8.], [2., 9.]], dtype=float)  # kPa
-slope = np.array([[1000., 3000.], [4700., 1500.]], dtype=float)  # degrees*100
+slope = np.array([[10., 30.], [47., 15.]], dtype=float)  # degrees
 vs30 = np.array([[244., 400.], [500., 1000.]], dtype=float)  # m/s
 cti1 = np.array([[10., 5.], [3.5, 18.5]], dtype=float)
 precip = np.array([[300., 876.], [180., 90.]], dtype=float)  # mm
@@ -55,7 +55,9 @@ def makeTestData():
         testgrid.save(filename, format='EHdr')
 
         # add to test config file
-        config['logistic_models']['test_model']['layers'].update({items: {'file': filename.split('/')[0], 'units': units[k], 'longref': 'longref', 'shortref': 'shortref'}})
+        config['logistic_models']['test_model']['layers'].update({items: {'file': filename.split('/')[0],
+                                                                          'units': units[k], 'longref': 'longref',
+                                                                          'shortref': 'shortref'}})
         config['logistic_models']['test_model']['interpolations'].update({items: 'nearest'})
         config['logistic_models']['test_model']['terms'].update({coef: terms[k]})
         config['logistic_models']['test_model']['coefficients'].update({coef: coefficients[k]})

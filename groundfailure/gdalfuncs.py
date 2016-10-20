@@ -118,7 +118,7 @@ def warp(infile, outfile, s_srs, t_srs, method='bilinear', fmt='EHdr'):
        t_srs: t_srs that was used
     """
     if s_srs is None or t_srs is None:
-        temp = GDALGrid.getFileGeoDict(infile)
+        temp, first_column_duplicated = GDALGrid.getFileGeoDict(infile)
         clat = temp.ymin + (temp.ymax-temp.ymin)/2.0
         clon = temp.xmin + (temp.xmax-temp.xmin)/2.0
     if s_srs is None:

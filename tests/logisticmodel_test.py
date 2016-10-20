@@ -39,20 +39,22 @@ fakegeodict = GeoDict({'xmin': 0.0, 'xmax': 1.0,
 
 
 def test_logisticmodel():
-    print('Making sure the logistic model runs with and without uncertainty and precipitation - these files are 4x4 cells')
+    #print('Making sure the logistic model runs with and without uncertainty and precipitation - these files are 4x4 cells')
     modelLQ = {'logistic_models': {'TestModelLQ': {'description': 'This is a test liquefaction model',
                                                    'gfetype': 'liquefaction',
                                                    'baselayer': 'vs30',
                                                    'slopemin': 0.,
                                                    'slopemax': 5.,
-                                                   'layers': {'vs30': {'file': vs30file, 'units': 'm/s', 'longref': 'more words',       'shortref': 'words'},
-                                                              'cti1': {'file': ctifile, 'units': 'unitless', 'longref': 'more words', 'shortref': 'words'}},
+                                                   'layers': {'vs30': {'file': vs30file, 'units': 'm/s', 'longref': 'more words',
+                                                                       'shortref': 'words'},
+                                                              'cti1': {'file': ctifile, 'units': 'unitless',
+                                                                       'longref': 'more words', 'shortref': 'words'}},
                                                    'interpolations': {'vs30': 'nearest',
                                                                       'cti1': 'linear'},
-                                                   'terms': {'b1': 'log((pga/100.0)*(power(MW,2.56)/power(10,2.24)))',
+                                                   'terms': {'b1': 'log((pga/100.0)*(power(MW,2.)))',
                                                              'b2': 'cti1',
                                                              'b3': 'log(vs30)'},
-                                                   'coefficients': {'b0': 24.,
+                                                   'coefficients': {'b0': 15.,
                                                                     'b1': 2.,
                                                                     'b2': 0.3,
                                                                     'b3': -4.}}}}
@@ -72,7 +74,7 @@ def test_logisticmodel():
                                                    'interpolations': {'friction': 'linear', 'slope': 'linear',
                                                                       'precip': 'nearest'},
                                                    'terms': {'b1': 'pga',
-                                                             'b2': 'slope/100.',
+                                                             'b2': 'slope',
                                                              'b3': 'precipMONTH',
                                                              'b4': 'pga*slope*MW'},
                                                    'coefficients': {'b0': -7.,
@@ -82,7 +84,7 @@ def test_logisticmodel():
                                                                     'b4': 1.e-05}}}}
 
     ls = LM.LogisticModel(modelLS, shakefile, 'TestModelLS', uncertfile=None)
-    LS = ls.calculate(slopefile=slopefile, slopediv=100.)
+    LS = ls.calculate(slopefile=slopefile)
 
     lsu = LM.LogisticModel(modelLS, shakefile, 'TestModelLS', uncertfile)
     try:
@@ -91,37 +93,37 @@ def test_logisticmodel():
     except Exception as e:
         print(e)
         print('LogisticModel.getEquation and/or LogisticModel.getEquations did not work')
-    LSU = lsu.calculate(slopefile=slopefile, slopediv=100.)
+    LSU = lsu.calculate(slopefile=slopefile)
 
     lq = LM.LogisticModel(modelLQ, shakefile, 'TestModelLQ', uncertfile=None)
-    LQ = lq.calculate(slopefile=slopefile, slopediv=100.)
+    LQ = lq.calculate(saveinputs=True)
 
     # See if getGeoDict works
     assert(ls.getGeoDict() == fakegeodict), 'getGeoDict did not return the geodict expected'
 
     targetLS = np.array([[0.61358336819225268, 0.99999969213372109], [0.50746944427265206, 0.010791994705496567]])
-    targetLSU = np.array([[0.5912758531208484, 0.99999965945657909], [0.48584599102277609, 0.010055124929758087]])
-    targetLQ = np.array([[0.73406031306118591, 0.43422366923177774], [0.10132599045407703, 0.025647084433631683]])
+    targetLSU = np.array([[0.48852712099785173, 0.99999827441447309], [0.28923565862849882, 0.0097842502221282737]])
+    targetLQ = np.array([[0.5803309852347005, 0.27771418649141888], [0.053465704369553384, 0.013015247124965424]])
 
     # Check if results are as expected by manual calculation
-    np.testing.assert_allclose(LS['model']['grid'].getData(), targetLS)
-    np.testing.assert_allclose(LSU['modelmin']['grid'].getData(), targetLSU)  # Need to check one of the uncertainties at least
-    np.testing.assert_allclose(LQ['model']['grid'].getData(), targetLQ)
+    np.testing.assert_allclose(LS['model']['grid'].getData(), targetLS, rtol=1e-05)
+    np.testing.assert_allclose(LSU['modelmin']['grid'].getData(), targetLSU, rtol=1e-05)  # Need to check one of the uncertainties at least
+    np.testing.assert_allclose(LQ['model']['grid'].getData(), targetLQ, rtol=1e-05)
 
 
 def test_getLogisticModelNames():
     names = LM.getLogisticModelNames(config)
-    assert('test_model' not in names), 'getLogisticModelNames did not return expected result'
+    assert('test_model' in names), 'getLogisticModelNames did not return expected result'
 
 
 def test_validateCoefficients():
-    data = {'b0': 0.3, 'b1': 2.1, 'b2': -0.5, 'b3': 0.01, 'b4': 1.0}
+    data = {'b0': 3.5, 'b1': 0.3, 'b2': 2.1, 'b3': -0.5, 'b4': 0.01, 'b5': 1.0}
     coeff = LM.validateCoefficients(cmodel)
     assert(data == coeff), 'logisticmodel.validateCoefficients did not return expected result'
 
 
 def test_validateLayers():
-    data = {'cti1': os.path.join(datadir, 'test_cti.bil'),
+    data = {'cti1': os.path.join(datadir, 'test_cti1.bil'),
             'friction': os.path.join(datadir, 'test_friction.bil'),
             'precip': [os.path.join(datadir, 'test_precip/prec_Jan.bil')],
             'slope': os.path.join(datadir, 'test_slope.bil'),
@@ -194,3 +196,16 @@ def test_checkTerm():
     term2 = 'MWextrajunk'
     term, tterm, timeField = LM.checkTerm(term2, layers)
     assert(term == "self.shakemap.getEventDict()['magnitude']extrajunk" and tterm == 'extrajunk'), 'checkTerm did not identify extrajunk in MWextrajunk term'
+
+if __name__ == "__main__":
+    test_logisticmodel()
+    test_getLogisticModelNames()
+    test_validateCoefficients()
+    test_validateLayers()
+    test_validateTerms()
+    test_validateInterpolations()
+    test_validateUnits()
+    test_validateLogisticModels()
+    test_validateRefs()
+    test_checkTerm()
+    print('logisticmodel tests passed')

@@ -118,7 +118,7 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     #try:
     susfile = config['mechanistic_models']['hazus']['layers']['susceptibility']['file']
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
-    susdict = GDALGrid.getFileGeoDict(susfile)
+    susdict, first_column_duplicated = GDALGrid.getFileGeoDict(susfile)
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
         if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
@@ -465,7 +465,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
 
     # Cut and resample all files
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
-    slpdict = GDALGrid.getFileGeoDict(slopefile)
+    slpdict, first_column_duplicated = GDALGrid.getFileGeoDict(slopefile)
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
         if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
@@ -476,7 +476,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         gdict = slpdict.getBoundsWithin(tempgdict)
     else:  # Get boundaries from shakemap if not specified
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
-        slpdict = GDALGrid.getFileGeoDict(slopefile)
+        slpdict, first_column_duplicated = GDALGrid.getFileGeoDict(slopefile)
         gdict = slpdict.getBoundsWithin(shkgdict)
 
     # Load in slope file
