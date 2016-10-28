@@ -28,16 +28,24 @@ geodict = GeoDict({'xmin': 0.0, 'xmax': 1.0,
 
 
 def makeTestData():
-    # make test layers
+    # make test layers and config files (model, and mapping)
     X = ['friction', 'slope', 'vs30', 'cti1', 'precip']
-    config = OrderedDict()
-    config.setdefault('logistic_models', {}).setdefault('test_model', {})
-    config['logistic_models']['test_model'].setdefault('shortref', 'Name et al. year')
-    config['logistic_models']['test_model'].setdefault('longref', 'full reference')
-    config['logistic_models']['test_model'].setdefault('layers', {})
-    config['logistic_models']['test_model'].setdefault('interpolations', {})
-    config['logistic_models']['test_model'].setdefault('terms', {})
-    config['logistic_models']['test_model'].setdefault('coefficients', {})['b0'] = 3.5
+
+    configModel = OrderedDict()
+
+    # Work on model configs
+    configModel.setdefault('test_model', {})
+    configModel['test_model'].setdefault('shortref', 'Name et al. year')
+    configModel['test_model'].setdefault('longref', 'full reference')
+    configModel['test_model'].setdefault('layers', {})
+    configModel['test_model'].setdefault('interpolations', {})
+    configModel['test_model'].setdefault('terms', {})
+    configModel['test_model'].setdefault('coefficients', {})['b0'] = '3.5'
+    configModel['test_model'].setdefault('display_options', {'lims': {'model': 'np.linspace(0., 0.4, 10)'},
+                                                             'colors': {'default': 'cm.inferno', 'alpha': '0.7',
+                                                                        'model': 'cm.jet'},
+                                                             'logscale': {'model': 'False'},
+                                                             'maskthresholds': {'model': '0.001'}})
 
     for k, items in enumerate(X):
         coef = 'b%1d' % (k+1)
@@ -55,17 +63,25 @@ def makeTestData():
         testgrid.save(filename, format='EHdr')
 
         # add to test config file
-        config['logistic_models']['test_model']['layers'].update({items: {'file': filename.split('/')[0],
-                                                                          'units': units[k], 'longref': 'longref',
-                                                                          'shortref': 'shortref'}})
-        config['logistic_models']['test_model']['interpolations'].update({items: 'nearest'})
-        config['logistic_models']['test_model']['terms'].update({coef: terms[k]})
-        config['logistic_models']['test_model']['coefficients'].update({coef: coefficients[k]})
+        configModel['test_model']['layers'].update({items: {'file': filename.split('/')[0],
+                                                            'units': units[k], 'longref': 'longref',
+                                                            'shortref': 'shortref'}})
+        configModel['test_model']['interpolations'].update({items: 'nearest'})
+        configModel['test_model']['terms'].update({coef: terms[k]})
+        configModel['test_model']['coefficients'].update({coef: coefficients[k]})
+        configModel['test_model']['display_options']['lims'].update({items: 'None'})
+        configModel['test_model']['display_options']['colors'].update({items: 'None'})
+        configModel['test_model']['display_options']['logscale'].update({items: 'False'})
+        configModel['test_model']['display_options']['maskthresholds'].update({items: 'None'})
 
-    config['logistic_models']['test_model']['gfeype'] = 'landslide'
-    config['logistic_models']['test_model']['baselayer'] = 'slope'
-    config['logistic_models']['test_model']['slopemin'] = 5.
-    config['logistic_models']['test_model']['slopemax'] = 90.
+    configModel['test_model']['gfeype'] = 'landslide'
+    configModel['test_model']['baselayer'] = 'slope'
+    configModel['test_model']['slopemin'] = 5.
+    configModel['test_model']['slopemax'] = 90.
+    configModel['test_model']['display_options'].setdefault('pga', {'lims': 'None', 'colors': 'cm.jet',
+                                                                    'logscale': 'True'})
+    configModel['test_model']['display_options'].setdefault('pgv', {'lims': 'None', 'colors': 'cm.jet',
+                                                                    'logscale': 'False'})
 
     # Make test_shakegrid and test_uncert
     eventDict = OrderedDict([('event_id', 'test'),
@@ -95,10 +111,20 @@ def makeTestData():
     uncertgrid = ShakeGrid(layers2, geodict, eventDict, shakeDict, uncertaintyDict)
     uncertgrid.save('test_uncert.xml')
 
-    C = ConfigObj(config)
-    C.filename = 'test.ini'
+    C = ConfigObj(configModel)
+    C.filename = 'testconfig_logimodel.ini'
     C.write()
 
-    return config
+    configMap = OrderedDict({'dem': {'file': 'None'},
+                             'roads': {'file': 'None'},
+                             'cities': {'file': 'None'},
+                             'ocean': {'file': 'None'},
+                             'colors': {'roadcolor': '808080',
+                                        'countrycolor': '474747',
+                                        'watercolor': 'B8EEFF'}})
+    C = ConfigObj(configMap)
+    C.filename = 'testconfig_map.ini'
+    C.write()
+
 
 makeTestData()

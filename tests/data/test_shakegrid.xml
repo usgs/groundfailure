@@ -1,12 +1,12 @@
-<?xml version="1.0" encoding="US-ASCII" standalone="yes"?><shakemap_grid xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://earthquake.usgs.gov/eqcenter/shakemap" xsi:schemaLocation="http://earthquake.usgs.gov http://earthquake.usgs.gov/eqcenter/shakemap/xml/schemas/shakemap.xsd" event_id="test" shakemap_id="test" shakemap_version="2" code_version="1 billion" process_timestamp="2016-10-20T18:46:40" shakemap_originator="na" map_status="TEST" shakemap_event_type="TEST">
+<?xml version="1.0" encoding="US-ASCII" standalone="yes"?><shakemap_grid xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://earthquake.usgs.gov/eqcenter/shakemap" xsi:schemaLocation="http://earthquake.usgs.gov http://earthquake.usgs.gov/eqcenter/shakemap/xml/schemas/shakemap.xsd" event_id="test" shakemap_id="test" shakemap_version="2" code_version="1 billion" process_timestamp="2016-10-28T16:04:27" shakemap_originator="na" map_status="TEST" shakemap_event_type="TEST">
 <event event_id="test" magnitude="6.0" depth="5.0" lat="0.5000" lon="0.5000" event_timestamp="2000-01-05T00:30:55" event_network="na" event_description="Test event"/>
 <grid_specification lon_min="0.0000" lat_min="0.0000" lon_max="1.0000" lat_max="1.0000" nominal_lon_spacing="1.0000" nominal_lat_spacing="1.0000" nlon="2" nlat="2"/><grid_field index="1" name="LON" units="dd" />
 <grid_field index="2" name="LAT" units="dd" />
-<grid_field index="3" name="PGV" units="cms" />
-<grid_field index="4" name="PGA" units="pctg" />
+<grid_field index="3" name="PGA" units="pctg" />
+<grid_field index="4" name="PGV" units="cms" />
 <grid_data>
-0.0000 0.0000 50.00 24.00
-0.0000 1.0000 73.00 72.00
-1.0000 0.0000 32.00 54.00
-1.0000 1.0000 84.00 11.00
+0.0000 0.0000 24.00 50.00
+0.0000 1.0000 72.00 73.00
+1.0000 0.0000 54.00 32.00
+1.0000 1.0000 11.00 84.00
 </grid_data>

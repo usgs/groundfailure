@@ -68,16 +68,19 @@ def isURL(gridurl):
     return isURL
 
 
-def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA', probtype='jibson2000', bounds=None):
+def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA',
+          probtype='jibson2000', bounds=None):
 
-    """This function runs the HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories (I-X) defined by the HAZUS manual.
+    """This function runs the HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories (I-X)
+    defined by the HAZUS manual.
 
     :param shakefile: URL or complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
     :param config: Model configuration file object containing locations of input files and other input values config =
       ConfigObj(configfilepath)
     :type config: ConfigObj
-    :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
+    :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output
+      (one layer)
     :type saveinputs: boolean
     :param modeltype:
         * 'coverage' if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell.
@@ -94,13 +97,18 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     :type regressionmodel: string
     :param probtype: Method used to estimate probability.
         * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
-        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
+          greater than this threshold fails
     :type probtype: string
-    :param bounds: Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'
+    :param bounds: Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin',
+      'xmax', 'ymin', 'ymax'
     :type bounds: dictionary
     :returns:
         maplayers(OrderedDict):
-        Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
+        Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like
+        maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle',
+        'type': 'output or input to model', 'description': 'detailed description of layer for subtitle,
+        potentially including source information'}
 
     """
 
@@ -116,7 +124,7 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
 
     # Read in susceptiblity file
     #try:
-    susfile = config['mechanistic_models']['hazus']['layers']['susceptibility']['file']
+    susfile = config['hazus']['layers']['susceptibility']['file']
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     susdict, first_column_duplicated = GDALGrid.getFileGeoDict(susfile)
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
@@ -137,15 +145,15 @@ def HAZUS(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     #    return
 
     try:  # Try to fetch source information from config
-        modelsref = config['mechanistic_models']['hazus']['shortref']
-        modellref = config['mechanistic_models']['hazus']['longref']
-        sussref = config['mechanistic_models']['hazus']['layers']['susceptibility']['shortref']
-        suslref = config['mechanistic_models']['hazus']['layers']['susceptibility']['longref']
+        modelsref = config['hazus']['shortref']
+        modellref = config['hazus']['longref']
+        sussref = config['hazus']['layers']['susceptibility']['shortref']
+        suslref = config['hazus']['layers']['susceptibility']['longref']
     except:
         print('Was not able to retrieve all references from config file. Continuing')
 
     try:
-        dnthresh = float(config['mechanistic_models']['hazus']['values']['dnthresh'])
+        dnthresh = float(config['hazus']['values']['dnthresh'])
     except:
         if probtype == 'threshold':
             dnthresh = 5.
@@ -420,30 +428,30 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
 
     # Parse config - should make it so it uses defaults if any are missing...
     try:
-        slopefile = config['mechanistic_models']['classic_newmark']['layers']['slope']['file']
-        slopeunits = config['mechanistic_models']['classic_newmark']['layers']['slope']['units']
-        cohesionfile = config['mechanistic_models']['classic_newmark']['layers']['cohesion']['file']
-        cohesionunits = config['mechanistic_models']['classic_newmark']['layers']['cohesion']['units']
-        frictionfile = config['mechanistic_models']['classic_newmark']['layers']['friction']['file']
-        frictionunits = config['mechanistic_models']['classic_newmark']['layers']['friction']['units']
+        slopefile = config['classic_newmark']['layers']['slope']['file']
+        slopeunits = config['classic_newmark']['layers']['slope']['units']
+        cohesionfile = config['classic_newmark']['layers']['cohesion']['file']
+        cohesionunits = config['classic_newmark']['layers']['cohesion']['units']
+        frictionfile = config['classic_newmark']['layers']['friction']['file']
+        frictionunits = config['classic_newmark']['layers']['friction']['units']
 
-        thick = float(config['mechanistic_models']['classic_newmark']['parameters']['thick'])
-        uwt = float(config['mechanistic_models']['classic_newmark']['parameters']['uwt'])
-        nodata_cohesion = float(config['mechanistic_models']['classic_newmark']['parameters']['nodata_cohesion'])
-        nodata_friction = float(config['mechanistic_models']['classic_newmark']['parameters']['nodata_friction'])
+        thick = float(config['classic_newmark']['parameters']['thick'])
+        uwt = float(config['classic_newmark']['parameters']['uwt'])
+        nodata_cohesion = float(config['classic_newmark']['parameters']['nodata_cohesion'])
+        nodata_friction = float(config['classic_newmark']['parameters']['nodata_friction'])
         try:
-            dnthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['dnthresh'])
+            dnthresh = float(config['classic_newmark']['parameters']['dnthresh'])
         except:
             if probtype == 'threshold':
                 dnthresh = 5.
                 print('Unable to find dnthresh in config, using 5cm')
             else:
                 dnthresh = None
-        fsthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['fsthresh'])
-        acthresh = float(config['mechanistic_models']['classic_newmark']['parameters']['acthresh'])
-        slopethresh = float(config['mechanistic_models']['classic_newmark']['parameters']['slopethresh'])
+        fsthresh = float(config['classic_newmark']['parameters']['fsthresh'])
+        acthresh = float(config['classic_newmark']['parameters']['acthresh'])
+        slopethresh = float(config['classic_newmark']['parameters']['slopethresh'])
         try:
-            m = float(config['mechanistic_models']['classic_newmark']['parameters']['m'])
+            m = float(config['classic_newmark']['parameters']['m'])
         except:
             print('no constant saturated thickness specified, m=0 if no watertable file is found')
             m = 0.
@@ -452,14 +460,14 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         return
 
     try:  # Try to fetch source information from config
-        modelsref = config['mechanistic_models']['classic_newmark']['shortref']
-        modellref = config['mechanistic_models']['classic_newmark']['longref']
-        slopesref = config['mechanistic_models']['classic_newmark']['layers']['slope']['shortref']
-        slopelref = config['mechanistic_models']['classic_newmark']['layers']['slope']['longref']
-        cohesionsref = config['mechanistic_models']['classic_newmark']['layers']['cohesion']['shortref']
-        cohesionlref = config['mechanistic_models']['classic_newmark']['layers']['cohesion']['longref']
-        frictionsref = config['mechanistic_models']['classic_newmark']['layers']['friction']['shortref']
-        frictionlref = config['mechanistic_models']['classic_newmark']['layers']['friction']['longref']
+        modelsref = config['classic_newmark']['shortref']
+        modellref = config['classic_newmark']['longref']
+        slopesref = config['classic_newmark']['layers']['slope']['shortref']
+        slopelref = config['classic_newmark']['layers']['slope']['longref']
+        cohesionsref = config['classic_newmark']['layers']['cohesion']['shortref']
+        cohesionlref = config['classic_newmark']['layers']['cohesion']['longref']
+        frictionsref = config['classic_newmark']['layers']['friction']['shortref']
+        frictionlref = config['classic_newmark']['layers']['friction']['longref']
     except:
         print('Was not able to retrieve all references from config file. Continuing')
 
@@ -513,12 +521,12 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
 
     # See if there is a water table depth file and read it in if there is
     try:
-        waterfile = config['mechanistic_models']['classic_newmark']['layers']['watertable']['file']
+        waterfile = config['classic_newmark']['layers']['watertable']['file']
         watertable = GDALGrid.load(waterfile, samplegeodict=gdict, resample=True, method='linear').getData()  # Needs to be in meters!
-        uwtw = float(config['mechanistic_models']['classic_newmark']['parameters']['uwtw'])
+        uwtw = float(config['classic_newmark']['parameters']['uwtw'])
         try:
-            watersref = config['mechanistic_models']['classic_newmark']['layers']['watertable']['shortref']
-            waterlref = config['mechanistic_models']['classic_newmark']['layers']['watertable']['longref']
+            watersref = config['classic_newmark']['layers']['watertable']['shortref']
+            waterlref = config['classic_newmark']['layers']['watertable']['longref']
         except:
             print('Was not able to retrieve water table references from config file. Continuing')
 
@@ -526,7 +534,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         print(('Water table file not specified or readable, assuming constant saturated thickness proportion of %0.1f' % m))
         watertable = None
         try:
-            uwtw = float(config['mechanistic_models']['classic_newmark']['parameters']['uwtw'])
+            uwtw = float(config['classic_newmark']['parameters']['uwtw'])
         except:
             print('Could not read soil wet unit weight, using 18.8 kN/m3')
             uwtw = 18.8
@@ -701,20 +709,20 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     # Parse config
     try:  # May want to add error handling so if refs aren't given, just includes unknown
-        slopefilepath = config['mechanistic_models']['godt_2008']['layers']['slope']['filepath']
-        slopeunits = config['mechanistic_models']['godt_2008']['layers']['slope']['units']
-        cohesionfile = config['mechanistic_models']['godt_2008']['layers']['cohesion']['file']
-        cohesionunits = config['mechanistic_models']['godt_2008']['layers']['cohesion']['units']
-        frictionfile = config['mechanistic_models']['godt_2008']['layers']['friction']['file']
-        frictionunits = config['mechanistic_models']['godt_2008']['layers']['friction']['units']
+        slopefilepath = config['godt_2008']['layers']['slope']['filepath']
+        slopeunits = config['godt_2008']['layers']['slope']['units']
+        cohesionfile = config['godt_2008']['layers']['cohesion']['file']
+        cohesionunits = config['godt_2008']['layers']['cohesion']['units']
+        frictionfile = config['godt_2008']['layers']['friction']['file']
+        frictionunits = config['godt_2008']['layers']['friction']['units']
 
-        thick = float(config['mechanistic_models']['godt_2008']['parameters']['thick'])
-        uwt = float(config['mechanistic_models']['godt_2008']['parameters']['uwt'])
-        nodata_cohesion = float(config['mechanistic_models']['godt_2008']['parameters']['nodata_cohesion'])
-        nodata_friction = float(config['mechanistic_models']['godt_2008']['parameters']['nodata_friction'])
-        dnthresh = float(config['mechanistic_models']['godt_2008']['parameters']['dnthresh'])
-        fsthresh = float(config['mechanistic_models']['godt_2008']['parameters']['fsthresh'])
-        acthresh = float(config['mechanistic_models']['godt_2008']['parameters']['acthresh'])
+        thick = float(config['godt_2008']['parameters']['thick'])
+        uwt = float(config['godt_2008']['parameters']['uwt'])
+        nodata_cohesion = float(config['godt_2008']['parameters']['nodata_cohesion'])
+        nodata_friction = float(config['godt_2008']['parameters']['nodata_friction'])
+        dnthresh = float(config['godt_2008']['parameters']['dnthresh'])
+        fsthresh = float(config['godt_2008']['parameters']['fsthresh'])
+        acthresh = float(config['godt_2008']['parameters']['acthresh'])
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
         return
@@ -722,14 +730,14 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     # TO DO, ADD ERROR CATCHING ON UNITS, MAKE SURE THEY ARE WHAT THEY SHOULD BE FOR THIS MODEL
 
     try:  # Try to fetch source information from config
-        modelsref = config['mechanistic_models']['godt_2008']['shortref']
-        modellref = config['mechanistic_models']['godt_2008']['longref']
-        slopesref = config['mechanistic_models']['godt_2008']['layers']['slope']['shortref']
-        slopelref = config['mechanistic_models']['godt_2008']['layers']['slope']['longref']
-        cohesionsref = config['mechanistic_models']['godt_2008']['layers']['cohesion']['shortref']
-        cohesionlref = config['mechanistic_models']['godt_2008']['layers']['cohesion']['longref']
-        frictionsref = config['mechanistic_models']['godt_2008']['layers']['friction']['shortref']
-        frictionlref = config['mechanistic_models']['godt_2008']['layers']['friction']['longref']
+        modelsref = config['godt_2008']['shortref']
+        modellref = config['godt_2008']['longref']
+        slopesref = config['godt_2008']['layers']['slope']['shortref']
+        slopelref = config['godt_2008']['layers']['slope']['longref']
+        cohesionsref = config['godt_2008']['layers']['cohesion']['shortref']
+        cohesionlref = config['godt_2008']['layers']['cohesion']['longref']
+        frictionsref = config['godt_2008']['layers']['friction']['shortref']
+        frictionlref = config['godt_2008']['layers']['friction']['longref']
     except:
         print('Was not able to retrieve all references from config file. Continuing')
 

@@ -77,20 +77,20 @@ def filterResults(result):
     return errormsg
 
 
-def correct_config_filepaths(config):
+def correct_config_filepaths(input_path, config):
     """Takes an input filepath name and pre-pends it to all file locations within the config file.
     Individual locations are put into the config.  Don't have to put entire filepath location for each layer.
     Works by looping over config dictionary and subdictionary to fine locations named 'file'.
 
+    :param input_path: full file path that needs to be appended to the front of all the file names/paths in config
+    :type input_path: string
     :param config: configobj (config .ini file read in using configobj) defining the model and its inputs
     :type config: dictionary
     :returns:
-        config dictionary with updated file paths
+        config dictionary with complete file paths
 
     """
 
-    # Input filepath
-    input_path = config['input']['folder']
     # Pull all other filepaths that need editing
     for keys in config.keys():
         outer_loop = keys

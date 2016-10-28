@@ -40,7 +40,7 @@ def getLogisticModelNames(config):
 
     """
     names = []
-    lmodel_space = config['logistic_models']
+    lmodel_space = config
     for key, value in lmodel_space.items():
         if isinstance(value, str):
             continue
@@ -98,7 +98,7 @@ def getAllGridFiles(indir):
 def validateCoefficients(cmodel):
     """Ensures coefficients provided in model description are valid and outputs a dictionary of the coefficients.
 
-    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
+    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['test_model']
     :type cmodel: dictionary
     :returns:
         coeffs(dictionary): a dictionary of model coefficients named b0, b1, b2...
@@ -117,7 +117,7 @@ def validateCoefficients(cmodel):
 def validateLayers(cmodel):
     """Ensures all input files required to run the model exist and are valid file types
 
-    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
+    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['test_model']
     :type cmodel: dictionary
     :returns:
         layers(dictionary): a dictionary of file names (e.g. {'slope': 'slopefile.bil', 'vs30': 'vs30.grd'})
@@ -143,7 +143,7 @@ def validateTerms(cmodel, coeffs, layers):
 
     TODO - return a time field for every term, not just one global one.
 
-    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['logistic_models']['test_model']
+    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['test_model']
     :type cmodel: dictionary
     :param coeffs: a dictionary of model coefficients (e.g. {'b0': 3.5, 'b1': -0.01})
     :type coeffs: dictionary
@@ -202,9 +202,12 @@ def validateUnits(cmodel, layers):
 
 def validateLogisticModels(config):
     mnames = getLogisticModelNames(config)
+    if len(mnames) > 1:
+        raise Exception('Config file contains more than one model which is no longer allowed,\
+                        update your config file to the newer format')
     for cmodelname in mnames:
         try:
-            cmodel = config['logistic_models'][cmodelname]
+            cmodel = config[cmodelname]
             coeffs = validateCoefficients(cmodel)
             layers = validateLayers(cmodel)  # key = layer name, value = file name
             terms, timeField = validateTerms(cmodel, coeffs, layers)
@@ -301,25 +304,33 @@ def checkTerm(term, layers):
 
 
 class LogisticModel(object):
-    def __init__(self, config, shakefile, model, uncertfile=None):
+    def __init__(self, config, shakefile, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.):
         """Set up the logistic model
 
-        :param config: configobj (config .ini file read in using configobj) defining the model and its inputs
+        :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
+          model should be described in each config file.
         :type config: dictionary
         :param shakefile: Full file path to shakemap.xml file for the event of interest
         :type shakefile: string
-        :param model: Name of model defined in config that should be run for the event of interest
-        :type model: string
-        :param uncertfile:
-        :type uncertfile:
+        :param uncertfile: Full file path to xml file of shakemap uncertainties
+        :type uncertfile: string
+        :param saveinputs: if True, saves all the input layers as Grid2D objects in addition to the model
+          if false, it will just output the model
+        :type saveinputs: boolean
+        :param slopefile: optional file path to slopefile that will be resampled to the other input files for applying
+          thresholds
+        :type slopefile: string
+        :param slopediv: number to divide slope by to get to degrees (usually will be default
+          of 1.)
+        :type slopediv: float
 
         """
-        if model not in getLogisticModelNames(config):
-            raise Exception('Could not find a model called "%s" in config %s.' % (model, config))
-        #do everything here short of calculations - parse config, assemble eqn strings, load data.
-
-        self.model = model
-        cmodel = config['logistic_models'][model]
+        mnames = getLogisticModelNames(config)
+        if len(mnames) > 1:
+            raise Exception('Config file contains more than one model which is no longer allowed,\
+                            update your config file to the newer format')
+        self.model = mnames[0]
+        cmodel = config[self.model]
         self.modeltype = cmodel['gfetype']
         self.coeffs = validateCoefficients(cmodel)
         self.layers = validateLayers(cmodel)  # key = layer name, value = file name
@@ -329,10 +340,11 @@ class LogisticModel(object):
         self.gmused = [value for term, value in cmodel['terms'].items() if 'pga' in value.lower() or 'pgv' in
                        value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
-        if 'baselayer' not in cmodel:
-            raise Exception('You must specify a base layer file in config.')
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to one of the files in the layer section.')
+        self.saveinputs = saveinputs
+        self.slopefile = slopefile
+        self.slopediv = slopediv
 
         #get the geodict for the shakemap
         geodict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
@@ -383,7 +395,8 @@ class LogisticModel(object):
                             elif ftype == 'esri':
                                 lyr = GDALGrid.load(layerfile, sampledict, resample=True, method=interp, doPadding=True)
                             else:
-                                msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername, layerfile)
+                                msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
+                                                                                                              layerfile)
                                 raise Exception(msg)
                             self.layerdict[layername] = lyr
             else:
@@ -420,14 +433,26 @@ class LogisticModel(object):
             # Find the term with the shakemap input and replace for these nuggets
             for k, nug in enumerate(self.nuggets):
                 if "self.shakemap.getLayer('pga').getData()" in nug:
-                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log(self.shakemap.getLayer('pga').getData()) - self.uncert.getLayer('stdpga').getData()))")
-                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pga').getData()", "(np.exp(np.log(self.shakemap.getLayer('pga').getData()) + self.uncert.getLayer('stdpga').getData()))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pga').getData()",
+                                                            "(np.exp(np.log(self.shakemap.getLayer('pga').getData())\
+                                                             - self.uncert.getLayer('stdpga').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pga').getData()",
+                                                            "(np.exp(np.log(self.shakemap.getLayer('pga').getData())\
+                                                             + self.uncert.getLayer('stdpga').getData()))")
                 elif "self.layerdict['pgv'].getData()" in nug:
-                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log(self.shakemap.getLayer('pgv').getData()) - self.uncert.getLayer('stdpgv').getData()))")
-                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pgv').getData()", "(np.exp(np.log(self.shakemap.getLayer('pgv').getData()) + self.uncert.getLayer('stdpgv').getData()))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pgv').getData()",
+                                                            "(np.exp(np.log(self.shakemap.getLayer('pgv').getData())\
+                                                             - self.uncert.getLayer('stdpgv').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pgv').getData()",
+                                                            "(np.exp(np.log(self.shakemap.getLayer('pgv').getData())\
+                                                             + self.uncert.getLayer('stdpgv').getData()))")
                 elif "self.layerdict['mmi'].getData()" in nug:
-                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log(self.shakemap.getLayer('mmi').getData()) - self.uncert.getLayer('stdmmi').getData()))")
-                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('mmi').getData()", "(np.exp(np.log(self.shakemap.getLayer('mmi').getData()) + self.uncert.getLayer('stdmmi').getData()))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('mmi').getData()",
+                                                            "(np.exp(np.log(self.shakemap.getLayer('mmi').getData())\
+                                                             - self.uncert.getLayer('stdmmi').getData()))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('mmi').getData()",
+                                                            "(np.exp(np.log(self.shakemap.getLayer('mmi').getData())\
+                                                             + self.uncert.getLayer('stdmmi').getData()))")
             self.equationmin = ' + '.join(self.nugmin)
             self.equationmax = ' + '.join(self.nugmax)
         else:
@@ -437,15 +462,16 @@ class LogisticModel(object):
         self.geodict = self.shakemap.getGeoDict()
 
         try:
-            self.slopemin = float(config['logistic_models'][model]['slopemin'])
-            self.slopemax = float(config['logistic_models'][model]['slopemax'])
+            self.slopemin = float(config[self.model]['slopemin'])
+            self.slopemax = float(config[self.model]['slopemax'])
         except:
             print('could not find slopemin and/or slopemax in config, no limits will be applied')
             self.slopemin = 0.
             self.slopemax = 90.
 
     def getEquation(self):
-        """Method for LogisticModel class to extract a string defining the equation for the model which can be run using eval()
+        """Method for LogisticModel class to extract a string defining the equation for the model which can be run
+        using eval()
 
         :returns:
             equation for model using median ground motions
@@ -454,10 +480,13 @@ class LogisticModel(object):
         return self.equation
 
     def getEquations(self):
-        """Method for LogisticModel class to extract strings defining the equations for the model for median ground motions and +/- one standard deviation (3 total)
+        """Method for LogisticModel class to extract strings defining the equations for the model for median
+        ground motions and +/- one standard deviation (3 total)
 
         :returns:
-            tuple of three equations (equation, equationmin, equationmax) where equation is the equation for median ground motions, equationmin is the equation for the same model but with median ground motions minus 1 standard deviation and equationmax is the same but for plus 1 standard deviation.
+            tuple of three equations (equation, equationmin, equationmax) where equation is the equation for
+            median ground motions, equationmin is the equation for the same model but with median ground motions
+            minus 1 standard deviation and equationmax is the same but for plus 1 standard deviation.
 
         """
         return self.equation, self.equationmin, self.equationmax
@@ -471,21 +500,12 @@ class LogisticModel(object):
         """
         return self.geodict
 
-    def calculate(self, saveinputs=False, slopefile=None, slopediv=1.):
+    def calculate(self):
         """Calculate the model
-
-        :param saveinputs: if True, saves all the input layers as Grid2D objects in addition to the model
-          if false, it will just output the model
-        :type saveinputs: boolean
-        :param slopefile: optional file path to slopefile that will be resampled to the other input files for applying thresholds
-        :type slopefile: string
-        :param slopediv: number to divide slope by to get to degrees (usually will be default
-          of 1.)
-        :type slopediv: float
 
         :returns:
             a dictionary containing the model results and model inputs if saveinputs was set to
-            True, see <https://github.com/usgs/groundfailure#api-for-model-output> for a
+            True when class was set up, see <https://github.com/usgs/groundfailure#api-for-model-output> for a
             description of the structure of this output
 
         """
@@ -496,11 +516,12 @@ class LogisticModel(object):
             Xmax = eval(self.equationmax)
             Pmin = 1/(1 + np.exp(-Xmin))
             Pmax = 1/(1 + np.exp(-Xmax))
-        if slopefile is not None:
-            ftype = getFileType(slopefile)
+        if self.slopefile is not None:
+            ftype = getFileType(self.slopefile)
             sampledict = self.shakemap.getGeoDict()
             if ftype == 'gmt':
-                slope = GMTGrid.load(slopefile, sampledict, resample=True, method='linear', doPadding=True).getData()/slopediv
+                slope = GMTGrid.load(self.slopefile, sampledict, resample=True, method='linear',
+                                     doPadding=True).getData()/self.slopediv
                 # Apply slope min/max limits
                 print('applying slope thresholds')
                 P[slope > self.slopemax] = 0.
@@ -511,7 +532,8 @@ class LogisticModel(object):
                     Pmax[slope > self.slopemax] = 0.
                     Pmax[slope < self.slopemin] = 0.
             elif ftype == 'esri':
-                slope = GDALGrid.load(slopefile, sampledict, resample=True, method='linear', doPadding=True).getData()/slopediv
+                slope = GDALGrid.load(self.slopefile, sampledict, resample=True, method='linear',
+                                      doPadding=True).getData()/self.slopediv
                 # Apply slope min/max limits
                 print('applying slope thresholds')
                 P[slope > self.slopemax] = 0.
@@ -522,7 +544,8 @@ class LogisticModel(object):
                     Pmax[slope > self.slopemax] = 0.
                     Pmax[slope < self.slopemin] = 0.
             else:
-                print('Slope file does not appear to be a valid GMT or ESRI file, not applying any slope thresholds.' % (slopefile))
+                print('Slope file does not appear to be a valid GMT or ESRI file, not applying any slope thresholds.'
+                      % (self.slopefile))
         else:
             print('No slope file provided, slope thresholds not applied')
         # Stuff into Grid2D object
@@ -546,7 +569,7 @@ class LogisticModel(object):
                                  'type': 'output',
                                  'description': description}
 
-        if saveinputs is True:
+        if self.saveinputs is True:
             for layername, layergrid in list(self.layerdict.items()):
                 units = self.units[layername]
                 rdict[layername] = {'grid': layergrid,
