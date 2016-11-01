@@ -153,7 +153,7 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
         print('Was not able to retrieve all references from config file. Continuing')
 
     try:
-        dnthresh = float(config['hazus']['values']['dnthresh'])
+        dnthresh = float(config['hazus']['parameters']['dnthresh'])
     except:
         if probtype == 'threshold':
             dnthresh = 5.
@@ -163,16 +163,15 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     shakemap = ShakeGrid.load(shakefile, adjust='res')
     if uncertfile is not None:
         try:
-            uncert = ShakeGrid.load(uncertfile, samplegeodict=gdict, resample=True, method='linear', adjust='res')
+            uncert = ShakeGrid.load(uncertfile, adjust='res')
         except:
             print('Could not read uncertainty file, ignoring uncertainties')
             uncertfile = None
-
     PGA = shakemap.getLayer('pga').subdivide(gdict).getData().astype(float)/100.  # in units of g
     PGV = shakemap.getLayer('pgv').subdivide(gdict).getData().astype(float)  # cm/sec
     if uncertfile is not None:
-        stdpga = uncert.getLayer('stdpga')
-        stdpgv = uncert.getLayer('stdpgv')
+        stdpga = uncert.getLayer('stdpga').subdivide(gdict).getData().astype(float)
+        stdpgv = uncert.getLayer('stdpgv').subdivide(gdict).getData().astype(float)
         # estimate PGA +- 1std
         PGAmin = np.exp(np.log(PGA*100.) - stdpga.getData())/100.
         PGAmax = np.exp(np.log(PGA*100.) + stdpga.getData())/100.
@@ -334,7 +333,11 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
 
 
 def est_disp(Ac, PGA):
-    """est_disp retrieved the estimated displacement factor from HAZUS. This was digitized from figure in HAZUS manual pg. 4-37, which is based on Makdisi and Seed (1978) according to HAZUS, but the equations don't appear in that document. It also assumes that PGA is equal to the ais (induced acceleration).
+    """est_disp retrieved the estimated displacement factor from HAZUS. This was digitized from figure in HAZUS manual
+    pg. 4-37, which is based on Makdisi and Seed (1978) according to HAZUS, but the equations don't appear in that
+    document. It also assumes that PGA is equal to the ais (induced acceleration) and any ac/ais ratios lower than 0.1,
+    which is the minimum shown on the graph, have estimated displacements of 20 and 40 cm for low and high, respectively.
+    This is based solely on a horizontal projection out from the end of the lines shown on Fig 4.14.
 
     :param Ac: Critical acceleration in the same units as PGA (this is ratio based)
     :type Ac: numpy array
@@ -360,6 +363,10 @@ def est_disp(Ac, PGA):
     f_high = interp1d(xhigh, yhigh, bounds_error=False, fill_value=0.)
     ed_low = f_low(acais)
     ed_high = f_high(acais)
+
+    # Fix sections with ac/ais ratios < 0.1
+    ed_low[acais < 0.1] = 20.
+    ed_high[acais < 0.1] = 40.
     return ed_low, ed_high
 
 
@@ -943,26 +950,34 @@ def J_PGA(Ac, PGA):
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
     """
+    # Deal with non-array inputs
+    if isinstance(Ac, float) or isinstance(Ac, int):
+        flag = 1
+    else:
+        flag = 0
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
     C1 = 0.215  # additive constant in newmark displacement calculation
     C2 = 2.341  # first exponential constant
     C3 = -1.438  # second exponential constant
     #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
     logDnstd = 0.51
-    Dn = 10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
+    Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3)))
     #import pdb; pdb.set_trace()
     Dn[np.isnan(Dn)] = 0.
+    if flag == 1:
+        Dn = float(Dn)
     return Dn
 
 
 def J_PGA_M(Ac, PGA, M):
     """
     PGA-and M- based Newmark Displacement model from Jibson (2007), equation 7
+    Applicable for Magnitude range of dataset (5.3-7.6)
 
     :param Ac: NxM Array of critical accelerations in units of g
-    :type Ac: numpy Array
+    :type Ac: numpy Array or float
     :param PGA: NxM Array of PGA values in units of g
-    :type PGA: numpy Array
+    :type PGA: numpy Array or float
     :param M: Magnitude
     :type M: float
 
@@ -970,15 +985,23 @@ def J_PGA_M(Ac, PGA, M):
         Dn(array): NxM array of Newmark displacements in cm
 
     """
+    # Deal with non-array inputs
+    if isinstance(Ac, float) or isinstance(Ac, int):
+        flag = 1
+    else:
+        flag = 0
+
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
     C1 = -2.71  # additive constant in newmark displacement calculation
     C2 = 2.335  # first exponential constant
     C3 = -1.478  # second exponential constant
     C4 = 0.424
     #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
-    Dn = 10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
+    Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M))
     Dn[np.isnan(Dn)] = 0.
     logDnstd = 0.454
+    if flag == 1:
+        Dn = float(Dn)
     return Dn
 
 
@@ -997,6 +1020,12 @@ def RS_PGA_M(Ac, PGA, M):
         Dn(array): NxM array of Newmark displacements in cm
 
     """
+    # Deal with non-array inputs
+    if isinstance(Ac, float) or isinstance(Ac, int):
+        flag = 1
+    else:
+        flag = 0
+
     np.seterr(invalid='ignore')
     C1 = 4.89
     C2 = -4.85
@@ -1005,8 +1034,10 @@ def RS_PGA_M(Ac, PGA, M):
     C5 = -29.06
     C6 = 0.72
     C7 = 0.89
-    Dn = np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+    Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
     Dn[np.isnan(Dn)] = 0.
+    if flag == 1:
+        Dn = float(Dn)
     return Dn
 
 
@@ -1015,15 +1046,21 @@ def RS_PGA_PGV(Ac, PGA, PGV):
     PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
 
     :param Ac: NxM Array of critical accelerations in units of g
-    :type Ac: numpy array
+    :type Ac: numpy array or float
     :param PGA: NxM Array of PGA values in units of g
-    :type PGA: numpy array
+    :type PGA: numpy array or float
     :param PGV: NxM Array of PGV values in units of cm/sec
-    :type PGV: numpy array
+    :type PGV: numpy array or float
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
 
     """
+
+    # Deal with non-array inputs
+    if isinstance(Ac, float) or isinstance(Ac, int):
+        flag = 1
+    else:
+        flag = 0
     np.seterr(invalid='ignore')
     C1 = -1.56
     C2 = -4.58
@@ -1032,6 +1069,8 @@ def RS_PGA_PGV(Ac, PGA, PGV):
     C5 = -30.50
     C6 = -0.64
     C7 = 1.55
-    Dn = np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+    Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
     Dn[np.isnan(Dn)] = 0.
+    if flag == 1:
+        Dn = float(Dn)
     return Dn

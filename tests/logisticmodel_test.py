@@ -25,7 +25,7 @@ layers = []
 
 shakefile = os.path.join(datadir, 'test_shakegrid.xml')
 uncertfile = os.path.join(datadir, 'test_uncert.xml')
-cofile = os.path.join(datadir, 'test_friction.bil')
+cofile = os.path.join(datadir, 'test_cohesion.bil')
 slopefile = os.path.join(datadir, 'test_slope.bil')
 vs30file = os.path.join(datadir, 'test_vs30.bil')
 ctifile = os.path.join(datadir, 'test_cti.bil')
@@ -207,4 +207,4 @@ if __name__ == "__main__":
     test_validateLogisticModels()
     test_validateRefs()
     test_checkTerm()
-    print('logisticmodel tests passed')
+    print('logisticmodel.py tests passed')
