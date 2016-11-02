@@ -9,8 +9,8 @@ from mapio.geodict import GeoDict
 from groundfailure.conf import correct_config_filepaths
 
 #hack the path so that I can debug these functions if I need to
-homedir = '/Users/kallstadt/SecondaryHazards/Codes/groundfailure/tests'
-#homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
+#homedir = '/Users/kallstadt/SecondaryHazards/Codes/groundfailure/tests'
+homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
 shakefile = os.path.join(datadir, 'test_shakegrid.xml')
