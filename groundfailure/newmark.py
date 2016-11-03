@@ -1084,3 +1084,35 @@ def RS_PGA_PGV(Ac, PGA, PGV):
         Dn = float(Dn)
         lnDnstd = float(lnDnstd)
     return Dn, lnDnstd
+
+
+def BT_PGA_M(Ac, PGA, M, Ts=0.):
+    """PGA and M-based model from Bray and Travasarou, 2007 assuming natural fundamental
+    period of sliding mass Ts = 0 (equation 6)
+
+    :param Ac: NxM Array of critical accelerations in units of g
+    :type Ac: numpy array or float
+    :param PGA: NxM Array of PGA values in units of g
+    :type PGA: numpy array or float
+    :param M: Magnitude
+    :type M: float
+
+    :returns:
+        Dn(array): NxM array of Newmark displacements in cm
+        lnDnstd(array): NxM array of sigma Dn in natural log units
+    """
+    #from scipy.stats import norm
+    if isinstance(Ac, float) or isinstance(Ac, int):
+        flag = 1
+    else:
+        flag = 0
+    #PD0 = 1 - norm.cdf(-1.76 - 3.22*np.log(Ac) - 3.52*np.log(PGA))  # probability of zero displacement
+    Dn = np.array(np.exp(-0.22 - 2.83*np.log(Ac) - 0.333*(np.log(Ac))**2 + 0.566*np.log(Ac)*np.log(PGA) + 3.04*np.log(PGA)
+                  - 0.244*(np.log(PGA))**2 + 0.278*(M-7.)))
+    Dn[np.isnan(Dn)] = 0.
+    lnDnstd = np.ones(np.shape(Dn))*0.66
+    # HOW DOES PD0 come into play?
+    if flag == 1:
+        Dn = float(Dn)
+        lnDnstd = float(lnDnstd)
+    return Dn, lnDnstd
