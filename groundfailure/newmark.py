@@ -246,28 +246,28 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
             Dnmax = ed_mean * numcycles(M) * PGAmax
     else:  # Calculate newmark displacement using a regression model
         if regressionmodel is 'J_PGA':
-            dn = J_PGA(Ac, PGA)
+            dn, logDnstd = J_PGA(Ac, PGA)
             if uncertfile is not None:
-                Dnmin = J_PGA(Ac, PGAmin)
-                Dnmax = J_PGA(Ac, PGAmax)
+                Dnmin, logDnminstd = J_PGA(Ac, PGAmin)
+                Dnmax, logDnmaxstd = J_PGA(Ac, PGAmax)
         elif regressionmodel is 'J_PGA_M':
-            dn = J_PGA_M(Ac, PGA, M)
+            dn, logDnstd = J_PGA_M(Ac, PGA, M)
             if uncertfile is not None:
-                Dnmin = J_PGA_M(Ac, PGAmin, M)
-                Dnmax = J_PGA_M(Ac, PGAmax, M)
+                Dnmin, logDnminstd = J_PGA_M(Ac, PGAmin, M)
+                Dnmax, logDnmaxstd = J_PGA_M(Ac, PGAmax, M)
         elif regressionmodel is 'RS_PGA_M':
-            dn = RS_PGA_M(Ac, PGA, M)
+            dn, lnDnstd = RS_PGA_M(Ac, PGA, M)
             if uncertfile is not None:
-                Dnmin = RS_PGA_M(Ac, PGAmin, M)
-                Dnmax = RS_PGA_M(Ac, PGAmax, M)
+                Dnmin, lnDnminstd = RS_PGA_M(Ac, PGAmin, M)
+                Dnmax, lnDnmaxstd = RS_PGA_M(Ac, PGAmax, M)
         elif regressionmodel is 'RS_PGA_PGV':
-            dn = RS_PGA_PGV(Ac, PGA, PGV)
+            dn, lnDnstd = RS_PGA_PGV(Ac, PGA, PGV)
             if uncertfile is not None:
-                Dnmin = RS_PGA_PGV(Ac, PGAmin, PGVmin)
-                Dnmax = RS_PGA_PGV(Ac, PGAmax, PGVmax)
+                Dnmin, lnDnminstd = RS_PGA_PGV(Ac, PGAmin, PGVmin)
+                Dnmax, lnDnmaxstd = RS_PGA_PGV(Ac, PGAmax, PGVmax)
         else:
             print('Unrecognized model, using J_PGA\n')
-            dn = J_PGA(Ac, PGA)
+            dn, logDnstd = J_PGA(Ac, PGA)
 
     # Calculate probability from dn, if necessary for selected model
     if modeltype == 'ac_classic_prob' or modeltype == 'dn_prob':
@@ -550,7 +550,8 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     if watertable is not None:
         watertable[watertable > thick] = thick
         m = (thick - watertable)/thick
-    FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.)) - (m*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
+    FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.))\
+        - (m*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
     FS[FS < fsthresh] = fsthresh
 
     # Compute critical acceleration, in g
@@ -573,28 +574,28 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
     if regressionmodel is 'J_PGA':
-        Dn = J_PGA(Ac, PGA)
+        Dn, logDnstd = J_PGA(Ac, PGA)
         if uncertfile is not None:
-            Dnmin = J_PGA(Ac, PGAmin)
-            Dnmax = J_PGA(Ac, PGAmax)
+            Dnmin, logDnminstd = J_PGA(Ac, PGAmin)
+            Dnmax, logDnmaxstd = J_PGA(Ac, PGAmax)
     elif regressionmodel is 'J_PGA_M':
-        Dn = J_PGA_M(Ac, PGA, M)
+        Dn, logDnstd = J_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = J_PGA_M(Ac, PGAmin, M)
-            Dnmax = J_PGA_M(Ac, PGAmax, M)
+            Dnmin, logDnminstd = J_PGA_M(Ac, PGAmin, M)
+            Dnmax, logDnmaxstd = J_PGA_M(Ac, PGAmax, M)
     elif regressionmodel is 'RS_PGA_M':
-        Dn = RS_PGA_M(Ac, PGA, M)
+        Dn, lnDnstd = RS_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = RS_PGA_M(Ac, PGAmin, M)
-            Dnmax = RS_PGA_M(Ac, PGAmax, M)
+            Dnmin, lnDnminstd = RS_PGA_M(Ac, PGAmin, M)
+            Dnmax, lnDnmaxstd = RS_PGA_M(Ac, PGAmax, M)
     elif regressionmodel is 'RS_PGA_PGV':
-        Dn = RS_PGA_PGV(Ac, PGA, PGV)
+        Dn, lnDnstd = RS_PGA_PGV(Ac, PGA, PGV)
         if uncertfile is not None:
-            Dnmin = RS_PGA_PGV(Ac, PGAmin, PGVmin)
-            Dnmax = RS_PGA_PGV(Ac, PGAmax, PGVmax)
+            Dnmin, lnDnminstd = RS_PGA_PGV(Ac, PGAmin, PGVmin)
+            Dnmax, lnDnmaxstd = RS_PGA_PGV(Ac, PGAmax, PGVmax)
     else:
-        print('Unrecognized regression model, aborting')
-        return
+        print('Unrecognized model, using J_PGA\n')
+        Dn, logDnstd = J_PGA(Ac, PGA)
 
     units = 'probability'
     label = 'Landslide Probability'
@@ -836,28 +837,28 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
     if regressionmodel is 'J_PGA':
-        Dn = J_PGA(Ac, PGA)
+        Dn, logDnstd = J_PGA(Ac, PGA)
         if uncertfile is not None:
-            Dnmin = J_PGA(Ac, PGAmin)
-            Dnmax = J_PGA(Ac, PGAmax)
+            Dnmin, logDnminstd = J_PGA(Ac, PGAmin)
+            Dnmax, logDnmaxstd = J_PGA(Ac, PGAmax)
     elif regressionmodel is 'J_PGA_M':
-        Dn = J_PGA_M(Ac, PGA, M)
+        Dn, logDnstd = J_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = J_PGA_M(Ac, PGAmin, M)
-            Dnmax = J_PGA_M(Ac, PGAmax, M)
+            Dnmin, logDnminstd = J_PGA_M(Ac, PGAmin, M)
+            Dnmax, logDnmaxstd = J_PGA_M(Ac, PGAmax, M)
     elif regressionmodel is 'RS_PGA_M':
-        Dn = RS_PGA_M(Ac, PGA, M)
+        Dn, lnDnstd = RS_PGA_M(Ac, PGA, M)
         if uncertfile is not None:
-            Dnmin = RS_PGA_M(Ac, PGAmin, M)
-            Dnmax = RS_PGA_M(Ac, PGAmax, M)
+            Dnmin, lnDnminstd = RS_PGA_M(Ac, PGAmin, M)
+            Dnmax, lnDnmaxstd = RS_PGA_M(Ac, PGAmax, M)
     elif regressionmodel is 'RS_PGA_PGV':
-        Dn = RS_PGA_PGV(Ac, PGA, PGV)
+        Dn, lnDnstd = RS_PGA_PGV(Ac, PGA, PGV)
         if uncertfile is not None:
-            Dnmin = RS_PGA_PGV(Ac, PGAmin, PGVmin)
-            Dnmax = RS_PGA_PGV(Ac, PGAmax, PGVmax)
+            Dnmin, lnDnminstd = RS_PGA_PGV(Ac, PGAmin, PGVmin)
+            Dnmax, lnDnmaxstd = RS_PGA_PGV(Ac, PGAmax, PGVmax)
     else:
-        print('Unrecognized regression model, aborting')
-        return
+        print('Unrecognized model, using J_PGA\n')
+        Dn, logDnstd = J_PGA(Ac, PGA)
 
     PROB = Dn.copy()
     PROB[PROB < dnthresh] = 0.
@@ -949,6 +950,7 @@ def J_PGA(Ac, PGA):
 
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
+        logDnstd(array): NxM array of sigma Dn in log units
     """
     # Deal with non-array inputs
     if isinstance(Ac, float) or isinstance(Ac, int):
@@ -960,13 +962,13 @@ def J_PGA(Ac, PGA):
     C2 = 2.341  # first exponential constant
     C3 = -1.438  # second exponential constant
     #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
-    logDnstd = 0.51
     Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3)))
     #import pdb; pdb.set_trace()
     Dn[np.isnan(Dn)] = 0.
+    logDnstd = np.ones(np.shape(Dn))*0.51
     if flag == 1:
         Dn = float(Dn)
-    return Dn
+    return Dn, logDnstd
 
 
 def J_PGA_M(Ac, PGA, M):
@@ -983,6 +985,7 @@ def J_PGA_M(Ac, PGA, M):
 
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
+        logDnstd(array): NxM array of sigma Dn in log units
 
     """
     # Deal with non-array inputs
@@ -999,10 +1002,11 @@ def J_PGA_M(Ac, PGA, M):
     #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
     Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M))
     Dn[np.isnan(Dn)] = 0.
-    logDnstd = 0.454
+    logDnstd = np.ones(np.shape(Dn))*0.454
     if flag == 1:
         Dn = float(Dn)
-    return Dn
+        logDnstd = float(logDnstd)
+    return Dn, logDnstd
 
 
 def RS_PGA_M(Ac, PGA, M):
@@ -1018,6 +1022,7 @@ def RS_PGA_M(Ac, PGA, M):
 
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
+        lnDnstd(array): NxM array of sigma Dn in natural log units
 
     """
     # Deal with non-array inputs
@@ -1036,9 +1041,11 @@ def RS_PGA_M(Ac, PGA, M):
     C7 = 0.89
     Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
     Dn[np.isnan(Dn)] = 0.
+    lnDnstd = 0.732 + 0.789*(Ac/PGA) - 0.539*(Ac/PGA)**2
     if flag == 1:
         Dn = float(Dn)
-    return Dn
+        lnDnstd = float(lnDnstd)
+    return Dn, lnDnstd
 
 
 def RS_PGA_PGV(Ac, PGA, PGV):
@@ -1053,6 +1060,7 @@ def RS_PGA_PGV(Ac, PGA, PGV):
     :type PGV: numpy array or float
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
+        lnDnstd(array): NxM array of sigma Dn in natural log units
 
     """
 
@@ -1071,6 +1079,8 @@ def RS_PGA_PGV(Ac, PGA, PGV):
     C7 = 1.55
     Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
     Dn[np.isnan(Dn)] = 0.
+    lnDnstd = 0.405 + 0.524*(Ac/PGA)
     if flag == 1:
         Dn = float(Dn)
-    return Dn
+        lnDnstd = float(lnDnstd)
+    return Dn, lnDnstd
