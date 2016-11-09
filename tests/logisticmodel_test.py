@@ -28,11 +28,11 @@ uncertfile = os.path.join(datadir, 'test_uncert.xml')
 cofile = os.path.join(datadir, 'test_cohesion.bil')
 slopefile = os.path.join(datadir, 'test_slope.bil')
 vs30file = os.path.join(datadir, 'test_vs30.bil')
-ctifile = os.path.join(datadir, 'test_cti.bil')
+ctifile = os.path.join(datadir, 'test_cti1.bil')
 precipfolder = os.path.join(datadir, 'test_precip')
 
-fakegeodict = GeoDict({'xmin': 0.0, 'xmax': 1.0,
-                      'ymin': 0.0, 'ymax': 1.0,
+fakegeodict = GeoDict({'xmin': 0.5, 'xmax': 1.5,
+                      'ymin': 0.5, 'ymax': 1.5,
                       'dx': 1.0, 'dy': 1.0,
                       'ny': 2, 'nx': 2})
 

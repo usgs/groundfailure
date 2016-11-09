@@ -367,13 +367,22 @@ class LogisticModel(object):
             raise Exception('All predictor variable grids must be a valid GMT or ESRI file type')
 
         #now load the shakemap, resampling and padding if necessary
-        self.shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict, resample=True, doPadding=True, adjust='res')
+        if ShakeGrid.getFileGeoDict(shakefile) == sampledict:
+            self.shakemap = ShakeGrid.load(shakefile, adjust='res')
+            flag = 1
+        else:
+            self.shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict, resample=True, doPadding=True,
+                                           adjust='res')
+            flag = 0
 
         # take uncertainties into account
         if uncertfile is not None:
             try:
-                self.uncert = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True,
-                                             adjust='res')
+                if flag == 1:
+                    self.uncert = ShakeGrid.load(uncertfile, adjust='res')
+                else:
+                    self.uncert = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True,
+                                                 adjust='res')
             except:
                 print('Could not read uncertainty file, ignoring uncertainties')
                 self.uncert = None
@@ -391,9 +400,17 @@ class LogisticModel(object):
                             ftype = getFileType(layerfile)
                             interp = self.interpolations[layername]
                             if ftype == 'gmt':
-                                lyr = GMTGrid.load(layerfile, sampledict, resample=True, method=interp, doPadding=True)
+                                if GMTGrid.getFileGeoDict(layerfile)[0] == sampledict:
+                                    lyr = GMTGrid.load(layerfile)
+                                else:
+                                    lyr = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                                       doPadding=True)
                             elif ftype == 'esri':
-                                lyr = GDALGrid.load(layerfile, sampledict, resample=True, method=interp, doPadding=True)
+                                if GDALGrid.getFileGeoDict(layerfile)[0] == sampledict:
+                                    lyr = GDALGrid.load(layerfile)
+                                else:
+                                    lyr = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                                        doPadding=True)
                             else:
                                 msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
                                                                                                               layerfile)
@@ -404,9 +421,17 @@ class LogisticModel(object):
                 ftype = getFileType(layerfile)
                 interp = self.interpolations[layername]
                 if ftype == 'gmt':
-                    lyr = GMTGrid.load(layerfile, sampledict, resample=True, method=interp, doPadding=True)
+                    if GMTGrid.getFileGeoDict(layerfile)[0] == sampledict:
+                        lyr = GMTGrid.load(layerfile)
+                    else:
+                        lyr = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                           doPadding=True)
                 elif ftype == 'esri':
-                    lyr = GDALGrid.load(layerfile, sampledict, resample=True, method=interp, doPadding=True)
+                    if GDALGrid.getFileGeoDict(layerfile)[0] == sampledict:
+                        lyr = GDALGrid.load(layerfile)
+                    else:
+                        lyr = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                            doPadding=True)
                 else:
                     msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername, layerfile)
                     raise Exception(msg)
@@ -520,8 +545,11 @@ class LogisticModel(object):
             ftype = getFileType(self.slopefile)
             sampledict = self.shakemap.getGeoDict()
             if ftype == 'gmt':
-                slope = GMTGrid.load(self.slopefile, sampledict, resample=True, method='linear',
-                                     doPadding=True).getData()/self.slopediv
+                if GMTGrid.getFileGeoDict(self.slopefile)[0] == sampledict:
+                        slope = GMTGrid.load(self.slopefile).getData()/self.slopediv
+                else:
+                        slope = GMTGrid.load(self.slopefile, sampledict, resample=True, method='linear',
+                                             doPadding=True).getData()/self.slopediv
                 # Apply slope min/max limits
                 print('applying slope thresholds')
                 P[slope > self.slopemax] = 0.
@@ -532,8 +560,11 @@ class LogisticModel(object):
                     Pmax[slope > self.slopemax] = 0.
                     Pmax[slope < self.slopemin] = 0.
             elif ftype == 'esri':
-                slope = GDALGrid.load(self.slopefile, sampledict, resample=True, method='linear',
-                                      doPadding=True).getData()/self.slopediv
+                if GDALGrid.getFileGeoDict(self.slopefile)[0] == sampledict:
+                        slope = GDALGrid.load(self.slopefile).getData()/self.slopediv
+                else:
+                        slope = GDALGrid.load(self.slopefile, sampledict, resample=True, method='linear',
+                                              doPadding=True).getData()/self.slopediv
                 # Apply slope min/max limits
                 print('applying slope thresholds')
                 P[slope > self.slopemax] = 0.
