@@ -550,6 +550,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     if watertable is not None:
         watertable[watertable > thick] = thick
         m = (thick - watertable)/thick
+        m[np.isnan(m)] = 0.
     FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.))\
         - (m*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
     FS[FS < fsthresh] = fsthresh

@@ -102,20 +102,20 @@ def correct_config_filepaths(input_path, config):
                 for keys in config[outer_loop][second_loop].keys():
                     third_loop = keys
                     if hasattr(config[outer_loop][second_loop][third_loop], 'keys') is False:
-                        if third_loop == 'file':
+                        if third_loop == 'file' or third_loop == 'filepath':
                             path_to_correct = config[outer_loop][second_loop][third_loop]
                             config[outer_loop][second_loop][third_loop] = os.path.join(input_path, path_to_correct)
                     else:
                         for keys in config[outer_loop][second_loop][third_loop].keys():
                             fourth_loop = keys
                             if hasattr(config[outer_loop][second_loop][third_loop][fourth_loop], 'keys') is False:
-                                if fourth_loop == 'file':
+                                if fourth_loop == 'file' or fourth_loop == 'filepath':
                                     path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop]
                                     config[outer_loop][second_loop][third_loop][fourth_loop] = os.path.join(input_path, path_to_correct)
                             else:
                                 for keys in config[outer_loop][second_loop][third_loop][fourth_loop].keys():
                                     fifth_loop = keys
-                                    if fifth_loop == 'file':
+                                    if fifth_loop == 'file' or fifth_loop == 'filepath':
                                         path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop]
                                         config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop] = os.path.join(input_path, path_to_correct)
 
