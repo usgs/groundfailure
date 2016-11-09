@@ -367,7 +367,7 @@ class LogisticModel(object):
             raise Exception('All predictor variable grids must be a valid GMT or ESRI file type')
 
         #now load the shakemap, resampling and padding if necessary
-        if ShakeGrid.getFileGeoDict(shakefile) == sampledict:
+        if ShakeGrid.getFileGeoDict(shakefile, adjust='res') == sampledict:
             self.shakemap = ShakeGrid.load(shakefile, adjust='res')
             flag = 1
         else:

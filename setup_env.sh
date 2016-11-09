@@ -5,7 +5,7 @@ VENV=gf
 PYVER=3.5
 
 
-DEPARRAY=(numpy scipy pip matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj pandas sphinx scikit-learn psutil ipython)
+DEPARRAY=(numpy scipy pip matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj pandas sphinx scikit-learn psutil ipython jupyter)
 
 # turn off whatever other virtual environment user might be in
 source deactivate
@@ -27,6 +27,7 @@ pip -v install https://github.com/usgs/earthquake-impact-utils/archive/master.zi
 pip -v install https://github.com/gem/oq-hazardlib/archive/master.zip
 pip install scikit-image
 pip install sphinx_rtd_theme
+pip install folium
 
 # tell the user they have to activate this environment
 echo "Type 'source activate gf' to use this new virtual environment."
