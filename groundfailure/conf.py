@@ -122,7 +122,7 @@ def correct_config_filepaths(input_path, config):
     return config
 
 
-def validate(configfile):
+def validate(configfile, inputfilepath=None):
     '''Return a validated config object.
 
     :param configspec: Path to config spec file, used to define the valid configuration
@@ -135,7 +135,8 @@ def validate(configfile):
     thispath = os.path.dirname(os.path.abspath(__file__))
     configspec = os.path.join(thispath, 'configspec.ini')
     config = ConfigObj(configfile, configspec=configspec)
-    config = correct_config_filepaths(config)
+    if inputfilepath is not None:
+        config = correct_config_filepaths(config)
     validator = __getCustomValidator()
     result = config.validate(validator, preserve_errors=True)
     if result is True:

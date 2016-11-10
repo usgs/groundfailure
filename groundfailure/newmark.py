@@ -82,20 +82,23 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output
       (one layer)
     :type saveinputs: boolean
-    :param modeltype: OVERWRITES MODELTYPE SPECIFIED IN CONFIG FILE
-        * 'coverage' (default) if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell.
+    :param modeltype: OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
+        * 'coverage' (default) if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of
+          landsliding for that cell.
         * 'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure.
         * 'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype.
-        * 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement without relating to probability of failure.
-        * 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement and probability defined by probtype method.
+        * 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined
+           by regressionmodel param to get Newmark displacement without relating to probability of failure.
+        * 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model
+          defined by regressionmodel param to get Newmark displacement and probability defined by probtype method.
     :type modeltype: string
-    :param regressionmodel: Newmark displacement regression model to use
+    :param regressionmodel: Newmark displacement regression model to use OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type regressionmodel: string
-    :param probtype: Method used to estimate probability.
+    :param probtype: Method used to estimate probability. OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
         * 'jibson2000' (default) uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
         * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
           greater than this threshold fails
@@ -128,7 +131,8 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     susdict, first_column_duplicated = GDALGrid.getFileGeoDict(susfile)
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
+        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or\
+           shkgdict.ymax < bounds['ymax']:
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
@@ -512,7 +516,8 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     slpdict, first_column_duplicated = GDALGrid.getFileGeoDict(slopefile)
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
+        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or\
+           shkgdict.ymax < bounds['ymax']:
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
@@ -643,31 +648,49 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         des = 'variable'
     else:
         des = m
-    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh, 'slopethresh': slopethresh, 'sat_proportion': des}}
+    description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail,
+                   'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
+                                  'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh,
+                                  'slopethresh': slopethresh, 'sat_proportion': des}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': label, 'type': 'output', 'description': description}
     if uncertfile is not None:
-        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output', 'description': description}
-        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output', 'description': description}
+        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output',
+                                 'description': description}
+        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output',
+                                 'description': description}
 
     if saveinputs is True:
-        maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
-        maplayers['FS'] = {'grid': GDALGrid(FS, gdict), 'label': 'Factor of Safety', 'type': 'input', 'description': {'units': 'unitless'}}
+        maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input',
+                            'description': {'units': 'g', 'shakemap': shakedetail}}
+        maplayers['FS'] = {'grid': GDALGrid(FS, gdict), 'label': 'Factor of Safety', 'type': 'input',
+                           'description': {'units': 'unitless'}}
         maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Critical acceleration (g)', 'type': 'input'}
         maplayers['Dn'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Newmark Displacement (cm)', 'type': 'input'}
-        maplayers['slope'] = {'grid': GDALGrid(slope, gdict), 'label': 'Max slope ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
-        maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
-        maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
+        maplayers['slope'] = {'grid': GDALGrid(slope, gdict), 'label': 'Max slope ($^\circ$)', 'type': 'input',
+                              'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
+        maplayers['cohesion'] = {'grid': GDALGrid(cohesion, gdict), 'label': 'Cohesion (kPa)', 'type': 'input',
+                                 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
+        maplayers['friction angle'] = {'grid': GDALGrid(friction, gdict), 'label': 'Friction angle ($^\circ$)',
+                                       'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref,
+                                                                        'longref': frictionlref}}
         if uncertfile is not None:
-            maplayers['pgamin'] = {'grid': GDALGrid(PGAmin, gdict), 'label': 'PGA - 1std (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
-            maplayers['pgamax'] = {'grid': GDALGrid(PGAmax, gdict), 'label': 'PGA + 1std (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
+            maplayers['pgamin'] = {'grid': GDALGrid(PGAmin, gdict), 'label': 'PGA - 1std (g)', 'type': 'input',
+                                   'description': {'units': 'g', 'shakemap': shakedetail}}
+            maplayers['pgamax'] = {'grid': GDALGrid(PGAmax, gdict), 'label': 'PGA + 1std (g)', 'type': 'input',
+                                   'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'PGV' in regressionmodel:
-            maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+            maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input',
+                                'description': {'units': 'cm/s', 'shakemap': shakedetail}}
             if uncertfile is not None:
-                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin, gdict), 'label': 'PGV - 1std (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
-                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax, gdict), 'label': 'PGV + 1std (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin, gdict), 'label': 'PGV - 1std (cm/s)', 'type': 'input',
+                                       'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax, gdict), 'label': 'PGV + 1std (cm/s)', 'type': 'input',
+                                       'description': {'units': 'cm/s', 'shakemap': shakedetail}}
         if watertable is not None:
-            maplayers['sat thick prop'] = {'grid': GDALGrid(m, gdict), 'label': 'Saturated thickness proprtion [0,1]', 'type': 'input', 'description': {'units': 'meters', 'name': watersref, 'longref': waterlref}}
+            maplayers['sat thick prop'] = {'grid': GDALGrid(m, gdict), 'label': 'Saturated thickness proprtion [0,1]',
+                                           'type': 'input', 'description': {'units': 'meters', 'name': watersref,
+                                                                            'longref': waterlref}}
 
     return maplayers
 
@@ -694,7 +717,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     :type regressionmodel: string
     :param probtype: Method used to estimate probability.
         * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
-        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
+            greather than this threshold fails
     :type probtype: string
     :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
     :type slopediv: float
@@ -708,7 +732,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
                         'description': 'detailed description of layer for subtitle, potentially including source information'}
 
     :raises:
-         NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+         NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when
+         unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
 
     """
 
@@ -773,7 +798,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or shkgdict.ymax < bounds['ymax']:
+        if shkgdict.xmin > bounds['xmin'] or shkgdict.xmax < bounds['xmax'] or shkgdict.ymin > bounds['ymin'] or\
+           shkgdict.ymax < bounds['ymax']:
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
@@ -898,21 +924,35 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     temp = shakemap.getShakeDict()
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
-    description = {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt, 'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh}}
+    description = {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail,
+                   'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
+                                  'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh}}
 
-    maplayers['model'] = {'grid': GDALGrid(PROB, shakemap.getGeoDict()), 'label': 'Areal coverage', 'type': 'output', 'description': description}
+    maplayers['model'] = {'grid': GDALGrid(PROB, shakemap.getGeoDict()), 'label': 'Areal coverage', 'type': 'output',
+                          'description': description}
     if uncertfile is not None:
-        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, shkgdict), 'label': 'Probability-1std', 'type': 'output', 'description': {}}
-        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, shkgdict), 'label': 'Probability+1std', 'type': 'output', 'description': {}}
+        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, shkgdict), 'label': 'Probability-1std', 'type': 'output',
+                                 'description': {}}
+        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, shkgdict), 'label': 'Probability+1std', 'type': 'output',
+                                 'description': {}}
 
     if saveinputs is True:
-        maplayers['pga'] = {'grid': GDALGrid(PGA[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
+        maplayers['pga'] = {'grid': GDALGrid(PGA[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA (g)', 'type': 'input',
+                            'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'PGV' in regressionmodel:
-            maplayers['pgv'] = {'grid': GDALGrid(PGV[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
-        maplayers['minFS'] = {'grid': GDALGrid(np.min(FS, axis=2), shakemap.getGeoDict()), 'label': 'Min Factor of Safety', 'type': 'input', 'description': {'units': 'unitless'}}
-        maplayers['max slope'] = {'grid': GDALGrid(slopestack[:, :, -1], shakemap.getGeoDict()), 'label': 'Maximum slope ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
-        maplayers['cohesion'] = {'grid': GDALGrid(cohesion[:, :, 0], shakemap.getGeoDict()), 'label': 'Cohesion (kPa)', 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref, 'longref': cohesionlref}}
-        maplayers['friction angle'] = {'grid': GDALGrid(friction[:, :, 0], shakemap.getGeoDict()), 'label': 'Friction angle ($^\circ$)', 'type': 'input', 'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
+            maplayers['pgv'] = {'grid': GDALGrid(PGV[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV (cm/s)',
+                                'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+        maplayers['minFS'] = {'grid': GDALGrid(np.min(FS, axis=2), shakemap.getGeoDict()),
+                              'label': 'Min Factor of Safety', 'type': 'input', 'description': {'units': 'unitless'}}
+        maplayers['max slope'] = {'grid': GDALGrid(slopestack[:, :, -1], shakemap.getGeoDict()),
+                                  'label': 'Maximum slope ($^\circ$)', 'type': 'input',
+                                  'description': {'units': 'degrees', 'name': slopesref, 'longref': slopelref}}
+        maplayers['cohesion'] = {'grid': GDALGrid(cohesion[:, :, 0], shakemap.getGeoDict()), 'label': 'Cohesion (kPa)',
+                                 'type': 'input', 'description': {'units': 'kPa (adjusted)', 'name': cohesionsref,
+                                                                  'longref': cohesionlref}}
+        maplayers['friction angle'] = {'grid': GDALGrid(friction[:, :, 0], shakemap.getGeoDict()),
+                                       'label': 'Friction angle ($^\circ$)', 'type': 'input',
+                                       'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
 
     return maplayers
 
@@ -984,7 +1024,8 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
         C5 = -29.06
         C6 = 0.72
         C7 = 0.89
-        Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+        Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 +
+                      C6*np.log(PGA)+C7*(M-6)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
         Dn[np.isnan(Dn)] = 0.
         logDnstd = 0.732 + 0.789*(Ac/PGA) - 0.539*(Ac/PGA)**2
         logtype = 'ln'
@@ -999,7 +1040,8 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
         C5 = -30.50
         C6 = -0.64
         C7 = 1.55
-        Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+        Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4
+                      + C6*np.log(PGA)+C7*np.log(PGV)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
         Dn[np.isnan(Dn)] = 0.
         logDnstd = 0.405 + 0.524*(Ac/PGA)
         logtype = 'ln'
@@ -1007,8 +1049,8 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
     elif model is 'BT_PGA_M':
         if M is None:
             raise Exception('You must enter a value for M to use the BT_PGA_M model')
-        Dn = np.array(np.exp(-0.22 - 2.83*np.log(Ac) - 0.333*(np.log(Ac))**2 + 0.566*np.log(Ac)*np.log(PGA) + 3.04*np.log(PGA)
-                      - 0.244*(np.log(PGA))**2 + 0.278*(M-7.)))
+        Dn = np.array(np.exp(-0.22 - 2.83*np.log(Ac) - 0.333*(np.log(Ac))**2 + 0.566*np.log(Ac)*np.log(PGA)
+                      + 3.04*np.log(PGA) - 0.244*(np.log(PGA))**2 + 0.278*(M-7.)))
         Dn[np.isnan(Dn)] = 0.
         logDnstd = np.ones(np.shape(Dn))*0.66
         logtype = 'log10'

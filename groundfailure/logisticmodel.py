@@ -304,9 +304,10 @@ def checkTerm(term, layers):
 
 
 class LogisticModel(object):
-    def __init__(self, config, shakefile, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.):
+    def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.,
+                 bounds=None):
         """Set up the logistic model
-
+        # ADD BOUNDS TO THIS MODEL
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
           model should be described in each config file.
         :type config: dictionary
@@ -318,7 +319,7 @@ class LogisticModel(object):
           if false, it will just output the model
         :type saveinputs: boolean
         :param slopefile: optional file path to slopefile that will be resampled to the other input files for applying
-          thresholds
+          thresholds OVERWRITES VALUE IN CONFIG
         :type slopefile: string
         :param slopediv: number to divide slope by to get to degrees (usually will be default
           of 1.)
@@ -343,7 +344,14 @@ class LogisticModel(object):
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to one of the files in the layer section.')
         self.saveinputs = saveinputs
-        self.slopefile = slopefile
+        if slopefile is None:
+            try:
+                self.slopefile = cmodel['slopefile']
+            except:
+                print('Could not find slopefile term in config, no slope thresholds will be applied\n')
+                self.slopefile = None
+        else:
+            self.slopefile = slopefile
         self.slopediv = slopediv
 
         #get the geodict for the shakemap

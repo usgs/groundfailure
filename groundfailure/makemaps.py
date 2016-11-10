@@ -55,7 +55,7 @@ def parseMapConfig(config):
     oceanfile = None
 
     try:
-        config1 = config['mapdata']
+        config1 = config['display_options']
         if 'dem' in config1:
             topofile = config1['dem']['file']
             if os.path.exists(topofile) is False:
@@ -105,7 +105,7 @@ def parseMapConfig(config):
         except:
             outputdir = None
     except Exception as e:
-        print(('%s - mapdata missing from or misformatted in config' % e))
+        print(('%s - display_options missing from or misformatted in config' % e))
 
     countrycolor = '#'+countrycolor
     watercolor = '#'+watercolor
@@ -133,35 +133,35 @@ def parseConfigLayers(maplayers, config):
     plotorder = []
 
     try:
-        limits = config['mapdata']['lims']
+        limits = config['display_options']['lims']
         lims = []
     except:
         lims = None
         limits = None
 
     try:
-        colors = config['mapdata']['colors']
+        colors = config['display_options']['colors']
         colormaps = []
     except:
         colormaps = None
         colors = None
 
     try:
-        logs = config['mapdata']['logscale']
+        logs = config['display_options']['logscale']
         logscale = []
     except:
         logscale = False
         logs = None
 
     try:
-        masks = config['mapdata']['maskthresholds']
+        masks = config['display_options']['maskthresholds']
         maskthreshes = []
     except:
         maskthreshes = None
         masks = None
 
     try:
-        default = config['mapdata']['colors']['default']
+        default = config['display_options']['colors']['default']
         default = eval(default)
     except:
         default = None
@@ -245,7 +245,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
              ALPHA=0.7, maproads=True, mapcities=True, isScenario=False,
              roadfolder=None, topofile=None, cityfile=None, oceanfile=None,
              roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10',
-             outputdir=None, savepdf=True, savepng=True, showplots=False,
+             outputdir=None, outfilename=None, savepdf=True, savepng=True, showplots=False,
              roadref='unknown', cityref='unknown', oceanref='unknown',
              printparam=False, ds=True, dstype='mean', upsample=False):
     """
@@ -1023,9 +1023,13 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     else:
         eventid = ''
 
-    time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-    outfile = os.path.join(outfolder, '%s_%s_%s.pdf' % (eventid, suptitle, time1))
-    pngfile = os.path.join(outfolder, '%s_%s_%s.png' % (eventid, suptitle, time1))
+    if outfilename is None:
+        time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+        outfile = os.path.join(outfolder, '%s_%s_%s.pdf' % (eventid, suptitle, time1))
+        pngfile = os.path.join(outfolder, '%s_%s_%s.png' % (eventid, suptitle, time1))
+    else:
+        outfile = os.path.join(outfolder, outfilename)
+        pngfile = os.path.join(outfolder, outfilename)
 
     if savepdf is True:
         print('Saving map output to %s' % outfile)

@@ -3,203 +3,144 @@
 #stdlib imports
 import argparse
 import os.path
-import sys
-import pprint
-from collections import OrderedDict
 import datetime
+from configobj import ConfigObj
 
 #third party imports
-from mapio.shake import ShakeGrid,getHeaderData
-from mapio.multihaz import MultiHazardGrid
-from mapio.dataset import DataSetException
-from mapio.grid2d import Grid2D
-from mapio.gmt import GMTGrid
-from validate import Validator,VdtTypeError,VdtParamError
+from mapio.shake import ShakeGrid
 
 #local imports
-from groundfailure.conf import validate
-from groundfailure.logisticmodel import validateLogisticModels,getLogisticModelNames,LogisticModel
-#from groundfailure.makemaps import modelMap, parseMapConfig, parseConfigLayers
+from groundfailure.conf import correct_file_paths
+import groundfailure.logisticmodel as LM
+from groundfailure.newmark import godt2008, classic, hazus
+from groundfailure.savelayers import savelayers
+from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap
 
-CODEVERSION = '1.0.0'
-
-def listModels(config):
-    defaultLandslide = None
-    defaultLiquefaction = None
-    lmodel_space = config['logistic_models']
-    for key,value in lmodel_space.iteritems():
-        if isinstance(value,str) or isinstance(value,unicode):
-            if key == 'default_landslide':
-                defaultLandslide = value
-            elif key == 'default_liquefaction':
-                defaultLiquefaction = value
-            else:
-                continue
-        else: #this is a model
-            desc = value['description']
-            gfetype = value['gfetype']
-            if gfetype == 'liquefaction':
-                if key == defaultLiquefaction:
-                    print('Liquefaction model %s (default):\n\t%s\n' % (key,desc))
-                else:
-                    print('Liquefaction model %s:\n\t%s\n' % (key,desc))
-            if gfetype == 'landslide':
-                if key == defaultLandslide:
-                    print('Landslide model %s (default):\n\t%s\n' % (key,desc))
-                else:
-                    print('Landslide model %s:\n\t%s\n' % (key,desc))
-
-def setHeaders(shakefile,probdict):
-    griddict,eventdict,specdict,fields,uncertainties = getHeaderData(shakefile)
-
-    origin = {}
-    origin['id'] = eventdict['event_id']
-    origin['source'] = eventdict['event_network']
-    origin['time'] = eventdict['event_timestamp']
-    origin['lat'] = eventdict['lat']
-    origin['lon'] = eventdict['lon']
-    origin['depth'] = eventdict['depth']
-    origin['magnitude'] = eventdict['magnitude']
-
-    header = {}
-    header['type'] = 'groundfailure'
-    header['version'] = 1 #TODO - figure out product versioning
-    header['process_time'] = datetime.datetime.utcnow()
-    header['code_version'] = CODEVERSION #TODO figure out code versioning
-    header['originator'] = 'us'
-    header['product_id'] = origin['id']
-    header['map_status'] = griddict['map_status']
-    header['event_type'] = griddict['shakemap_event_type']
-
-    metadata = {}
-    for (layer,vdict) in probdict.items():
-        layerdict = {}
-        for (key,value) in vdict.items():
-            if key == 'grid':
-                continue
-            layerdict[key] = value
-        metadata[layer] = layerdict    
-
-    return (origin,header,metadata)
 
 def main(args):
-    if args.list_models:
-        try:
-            config = validate(args.config)
-            listModels(config)            
-            sys.exit(0)
-                
-        except TypeError as te:
-            print('Could not validate config file %s.  Here are the results:' % args.config)
-            print(str(te))
-            sys.exit(1)
+    # NEED TO ADD CONFIG VALIDATION STEP
 
-    if args.validate_config:
+    # Figure out what models will be run
+    if args.gridfile is not None:  # user intends to actually run some models
+        # Make folder in outfolder for all results, if it doesn't already exist
+        eventid = ShakeGrid.getEventDict(args.gridfile)['event_id']
+        if args.save_models or args.make_static_plots or args.make_interactive_plots:
+            if args.outfile is None:
+                args.outfile = os.getcwd()
+            outdir = os.path.join(args.outfile, eventid)
+            if not os.path.exists(outdir):
+                os.makedirs(outdir)
+
+        if args.config_filepath is not None:
+            args.config = os.path.join(args.config_filepath, args.config)
         try:
-            config = validate(args.config)
-            result = validateLogisticModels(config)
-            print('Input config file %s has been validated.' % args.config)
-            sys.exit(0)
-        except Exception as e:
-            print('Could not validate config file %s.  Here are the results:' % args.config)
-            print(str(e))
-            sys.exit(1)
-            
-    if args.gridfile is not None: #user intends to actually run some models
-        try:
-            config = validate(args.config)
-            result = validateLogisticModels(config)
-            if args.set_liquefaction is not None:
-                if args.set_liquefaction not in getLogisticModelNames(config):
-                    print('Could not find model %s in config file.  Returning.' % args.set_liquefaction)
-                    sys.exit(1)
-                lqmodel = LogisticModel(config,args.gridfile,args.set_liquefaction)
+            # see if input is a single config file, put in a list for iteration
+            configs = [ConfigObj(args.config)]
+        except:
+            #input is probably a list of config files, check
+            f = open(args.config, 'r')
+            configlist = f.readlines()
+            configs = []
+            conffail = []
+            for conf in configlist:
+                conf.replace('\n', '')
+                conf = os.path.join(args.config_filepath, conf)
+                try:
+                    temp = ConfigObj(conf)
+                    if args.data_path is not None:
+                        temp = correct_file_paths(args.data_path, temp)
+                    configs.append(temp)
+                except:
+                    conffail.append(conf)
+        print('Running the following models:\n')
+        for conf in configs:
+            print('\t%s\n' % conf.keys()[0])
+        print('Could not find or read in the following config files:\n')
+        for conf in conffail:
+            print('\t%s\n' % conf)
+        print('\nContinuing...\n')
+
+        if args.set_bounds is not None:
+            bounds = {'xmin': args.set_bounds[0], 'xmax': args.set_bounds[1], 'ymin': args.set_bounds[2],
+                      'ymax': args.set_bounds[3]}
+        else:
+            bounds = None
+
+        # Loop over config files
+        for conf in configs:
+            modelname = conf.keys()[0]
+            modelfunc = conf[modelname]['funcname']
+            if modelfunc is 'LogisticModel':
+                lm = LM.LogisticModel(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                                      bounds=bounds)
+                maplayers = lm.calculate()
+            elif modelfunc is 'hazus':
+                maplayers = hazus(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                                  bounds=bounds)
+            elif modelfunc is 'classic':
+                maplayers = classic(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                                    bounds=bounds)
+            elif modelfunc is 'godt2008':
+                maplayers = godt2008(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                                     bounds=bounds)
             else:
-                lqmodelname = config['logistic_models']['default_liquefaction']
-                lqmodel = LogisticModel(config,args.gridfile,lqmodelname)
-            if args.set_landslide is not None:
-                if args.set_landslide not in getLogisticModelNames(config):
-                    print('Could not find model %s in config file.  Returning.' % args.set_landslide)
-                    sys.exit(1)
-                lsmodel = LogisticModel(config,args.gridfile,args.set_landslide)
-            else:
-                lsmodelname = config['logistic_models']['default_landslide']
-                lsmodel = LogisticModel(config,args.gridfile,lsmodelname)
+                print('Unknown model function specified in config for %s model, skipping to next config' % modelfunc)
+                continue
+            time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+            filename = ('%s_%s_%s' % (eventid, modelname, time1))
+            if args.save_models:
+                filenameh = filename + 'hdf5'
+                savelayers(maplayers, os.path.join(outdir, filenameh))
 
-            print('Liquefaction model:\t\n%s' % lqmodel.getEquation())
-            print()
-            print('Liquefaction model:\t\n%s' % lsmodel.getEquation())
+            if args.make_static_pdfs or args.make_static_pngs:
+                plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
+                kwargs = parseMapConfig(os.path.join(args.mapdata_filepath, args.mapconfig))
+                modelMap(maplayers, args.shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                         zthresh=0., lims=lims, maskthreshes=maskthreshes, maproads=True, mapcities=True,
+                         savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, **kwargs)
 
-            lqdict = lqmodel.calculate()
-            lsdict = lsmodel.calculate()
-            
-            #save these out to our HDF format
-            cwd = config['output']['folder']
-            if not os.path.isdir(cwd):
-                os.makedirs(cwd)
-            lqfile = os.path.join(cwd,'liquefaction_%s.hdf' % lqmodelname)
-            print('Saving liquefaction output to %s' % lqfile)
-            #create a MultiHazardGrid object from our liquefaction grid
-            qlayers = OrderedDict()
-            for (key,vdict) in lqdict.items():
-                qlayers[key] = vdict['grid'].getData()
-            
-            qgeodict = vdict['grid'].getGeoDict()
-            
-            qorigin,qheader,qmetadata = setHeaders(args.gridfile,lqdict)
-            mqgrid = MultiHazardGrid(qlayers,qgeodict,qorigin,qheader,metadata=qmetadata)
-            mqgrid.save(lqfile)
-
-            #save these out to our HDF format
-            cwd = os.getcwd()
-            lsfile = os.path.join(cwd,'landslide_%s.hdf' % lqmodelname)
-            print('Saving landslide output to %s' % lsfile)
-            #create a MultiHazardGrid object from our landslide grid
-            slayers = OrderedDict()
-            for (key,vdict) in lsdict.items():
-                slayers[key] = vdict['grid'].getData()
-                
-            sgeodict = vdict['grid'].getGeoDict()
-            
-            sorigin,sheader,smetadata = setHeaders(args.gridfile,lsdict)
-            msgrid = MultiHazardGrid(slayers,sgeodict,sorigin,sheader,metadata=smetadata)
-            msgrid.save(lsfile)
-            
-            sys.exit(0)
-        except Exception as e:
-            print('Could not validate config file %s.  Here are the results:' % args.config)
-            print(str(e))
-            sys.exit(1)
+            if args.make_interactive_plots:
+                print('Interactive Plots not implemented yet\n')
 
 
 if __name__ == '__main__':
-    defaultconfig = os.path.join(os.path.expanduser('~'), '.groundfailure', 'config.ini')
-    hasDefault = os.path.isfile(defaultconfig)
+    defaultConfigpath = os.path.join('/'.join(LM.__file__.split('/')[:-2]), 'defaultconfigfiles')
     parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
-    parser.add_argument('gridfile', nargs='?', help='Specify the ShakeMap grid.xml file')
-    parser.add_argument('-u', '--uncertfile', nargs='?', help='Specify the ShakeMap uncertainty.xml file (optional)')
-    parser.add_argument('-c', '--config', metavar='configfile', nargs='?',
-                        help='config file of model to run')
-    parser.add_argument('-l', '--list-models', metavar='configfilepath', nargs='?', default=defaultconfig,
-                        help='List models available in given config file path.')
-    parser.add_argument('-d', '--data-path', action='store_true', default=False,
-                        help='Set file path to model input data')
-    parser.add_argument('-f', '--slopefile-path', action='store_true', default=False,
-                        help='Set file path to higher resolution slopefile (for classic newmark)')
+    parser.add_argument('config', metavar='config', nargs='?',
+                        help='single config file of model to run, or text file listing config files')
+    parser.add_argument('shakefile', nargs='?', help='single ShakeMap grid.xml file')
+    parser.add_argument('-u', '--uncertfile', metavar='uncertfile', nargs='?', help='single ShakeMap uncertainty.xml file')
+    parser.add_argument('-d', '--data-path', metavar='datafilepath', nargs='?',
+                        help='Set file path to model input data (only needed if file paths in config are relative)')
+    parser.add_argument('-o', '--output-filepath', metavar='outfilepath', nargs='?',
+                        help='Filepath for output files, uses current directory if not specified')
+    parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?', default=defaultConfigpath,
+                        help='Filepath where config files are located, default is defaultconfigfiles folder of groundfailure repository')
+    parser.add_argument('-b', '--set-bounds', type=float, metavar=('xmin', 'xmax', 'ymin', 'ymax'), nargs=4,
+                        help='Set bounds of model run using four floats in this order: xmin xmax ymin ymax,\
+                              default uses shakemap bounds')
+    parser.add_argument('-m', '--mapconfig', metavar='mapconfig', nargs='?', help='full file path to config file\
+                        containing mapping options')
+    parser.add_argument('-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?', help='Set file path to mapping\
+                        input data (only needed if file paths in mapconfig are relative)')
+
+    # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,
-                        help='Save input layers in output structure')
-    parser.add_argument('-o', '--output-filepath', action='store_true', default=False,
-                        help='Filepath for output files')
-    parser.add_argument('-s', '--save-model', action='store_true', default=False,
-                        help='Save model result')
-    parser.add_argument('-m', '--make-static-plots', action='store_true', default=False,
-                        help='Make static plots')
-    parser.add_argument('-b', '--set-bounds', action='store_true', default=False,
-                        help='Set bounds of model run (default uses shakemap bounds)')
-    parser.add_argument('-v', '--validate-config', action='store_true', default=False,
-                        help='Validate config file parameters.')
-    parser.add_argument('-e', '--exercise', action='store_true', default=False,
-                        help='Exercise tests (for developers)')
+                        help='Save input layer grids with model output')
+    parser.add_argument('-s', '--save-models', action='store_true', default=False,
+                        help='Save model results as MultiHazard HDF file (MapIO)')
+    parser.add_argument('-pd', '--make-static-pdfs', action='store_true', default=False,
+                        help='Make static plots for each model')
+    parser.add_argument('-pn', '--make-static-pngs', action='store_true', default=False,
+                        help='Make static plots for each model')
+    parser.add_argument('-pi', '--make-interactive-plots', action='store_true', default=False,
+                        help='Make interactive html plots for each model')
+
+    #parser.add_argument('-v', '--validate-config', action='store_true', default=False,
+    #                    help='Validate config file parameters.')
+    #parser.add_argument('-e', '--exercise', action='store_true', default=False,
+    #                    help='Exercise tests (for developers)')
 
     pargs = parser.parse_args()
     main(pargs)
