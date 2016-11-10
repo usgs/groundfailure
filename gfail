@@ -170,27 +170,35 @@ def main(args):
             print('Could not validate config file %s.  Here are the results:' % args.config)
             print(str(e))
             sys.exit(1)
-            
-        
-        
-        
+
 
 if __name__ == '__main__':
-    defaultconfig = os.path.join(os.path.expanduser('~'),'.groundfailure','config.ini')
+    defaultconfig = os.path.join(os.path.expanduser('~'), '.groundfailure', 'config.ini')
     hasDefault = os.path.isfile(defaultconfig)
     parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
-    parser.add_argument('gridfile', nargs='?',help='Specify the ShakeMap grid.xml file') 
-    parser.add_argument('-q','--set-liquefaction', nargs=1,type=str,
-                        help='Specify specific logistic regression liquefaction model to use')
-    parser.add_argument('-a','--set-landslide', nargs=1,type=str,
-                        help='Specify specific logistic regression landslide model to use')
-    parser.add_argument('-l','--list-models', action='store_true',default=False,
-                        help='List models available in config file.')
-    parser.add_argument('-c','--config', metavar='configfile', nargs='?',default=defaultconfig,
-                        help='Override default config file')
-    parser.add_argument('-v','--validate-config', action='store_true',default=False,
+    parser.add_argument('gridfile', nargs='?', help='Specify the ShakeMap grid.xml file')
+    parser.add_argument('-u', '--uncertfile', nargs='?', help='Specify the ShakeMap uncertainty.xml file (optional)')
+    parser.add_argument('-c', '--config', metavar='configfile', nargs='?',
+                        help='config file of model to run')
+    parser.add_argument('-l', '--list-models', metavar='configfilepath', nargs='?', default=defaultconfig,
+                        help='List models available in given config file path.')
+    parser.add_argument('-d', '--data-path', action='store_true', default=False,
+                        help='Set file path to model input data')
+    parser.add_argument('-f', '--slopefile-path', action='store_true', default=False,
+                        help='Set file path to higher resolution slopefile (for classic newmark)')
+    parser.add_argument('-i', '--save-inputs', action='store_true', default=False,
+                        help='Save input layers in output structure')
+    parser.add_argument('-o', '--output-filepath', action='store_true', default=False,
+                        help='Filepath for output files')
+    parser.add_argument('-s', '--save-model', action='store_true', default=False,
+                        help='Save model result')
+    parser.add_argument('-m', '--make-static-plots', action='store_true', default=False,
+                        help='Make static plots')
+    parser.add_argument('-b', '--set-bounds', action='store_true', default=False,
+                        help='Set bounds of model run (default uses shakemap bounds)')
+    parser.add_argument('-v', '--validate-config', action='store_true', default=False,
                         help='Validate config file parameters.')
-    parser.add_argument('-e','--exercise', action='store_true',default=False,
+    parser.add_argument('-e', '--exercise', action='store_true', default=False,
                         help='Exercise tests (for developers)')
 
     pargs = parser.parse_args()

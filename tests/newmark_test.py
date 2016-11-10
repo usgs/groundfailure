@@ -89,62 +89,57 @@ def test_godt2008():
     pass
 
 
-def test_J_PGA():
-    """This test compares against values pulled from Figure 2 in Jibson (2007)
-    # NEED TO ADD CHECK OF UNCERTAINTIES
+def test_NMdisp():
+    """Tests the implementation of various models to estimate Newmark displacement
+    NEED TO ADD CHECK OF UNCERTAINTIES
     """
+
+    #test J_PGA
+    #This test compares against values pulled from Figure 2 in Jibson (2007)
     ac = 0.75
     amax = 1.
     logDn = -1.
-    val, std = NM.J_PGA(ac, amax)
+    val, std, logtype = NM.NMdisp(ac, amax, model='J_PGA')
     np.testing.assert_allclose(val, 10**logDn, rtol=0.05)
     # Try another on different part of curve
     ac = 0.2
     logDn = 1.
-    val, std = NM.J_PGA(ac, amax)
+    val, std, logtype = NM.NMdisp(ac, amax, model='J_PGA')
     np.testing.assert_allclose(np.log10(val), logDn, rtol=0.01)
 
-
-def test_J_PGA_M():
-    """No data published to compare against so this model is based on solving the equation analytically
+    #test J_PGA_M
+    #No data published to compare against so this model is based on solving the equation analytically
     # NEED TO ADD CHECK OF UNCERTAINTIES
-    """
     ac = 0.75
     amax = 1.
     M = 7.
-    val, std = NM.J_PGA_M(ac, amax, M)
+    val, std, logtype = NM.NMdisp(ac, amax, model='J_PGA_M', M=M)
+    assert(logtype == 'log10'), 'NMdisp did not return logtype expected for J_PGA_M'
     np.testing.assert_allclose(val, 0.1088552, rtol=0.001)
 
-
-def test_RS_PGA_M():
-    """This test compares against values plotted in Figure 7 of Rathje and Saygili 2009
+    # test_RS_PGA_M():
+    # This test compares against values plotted in Figure 7 of Rathje and Saygili 2009
     # NEED TO ADD CHECK OF UNCERTAINTIES
-    """
     ac = 0.2
     amax = 0.33
     M = 7.5
     Dn = 2.25
-    val, std = NM.RS_PGA_M(ac, amax, M)
+    val, std, logtype = NM.NMdisp(ac, amax, M=M, model='RS_PGA_M')
     np.testing.assert_allclose(val, Dn, rtol=0.01)
 
-
-def test_RS_PGA_PGV():
-    """This test compares against values plotted in Figure 7 of Rathje and Saygili 2009
-    # NEED TO ADD CHECK OF UNCERTAINTIES
-    """
+    #test_RS_PGA_PGV():
+    #This test compares against values plotted in Figure 7 of Rathje and Saygili 2009
     ac = 0.15
     amax = 0.33
     pgv = 30.
     Dn = 2.5
-    val, std = NM.RS_PGA_PGV(ac, amax, pgv)
+    val, std, logtype = NM.NMdisp(ac, amax, PGV=pgv, model='RS_PGA_PGV')
     np.testing.assert_allclose(val, Dn, rtol=0.05)
+    assert(logtype == 'ln'), 'NMdisp did not return logtype expected for J_PGA_M'
 
 test_hazus()
 test_est_disp()
 test_classic()
 test_godt2008()
-test_J_PGA()
-test_J_PGA_M()
-test_RS_PGA_M()
-test_RS_PGA_PGV()
+test_NMdisp()
 print('newmark.py tests passed')

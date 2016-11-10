@@ -68,8 +68,8 @@ def isURL(gridurl):
     return isURL
 
 
-def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='coverage', regressionmodel='J_PGA',
-          probtype='jibson2000', bounds=None):
+def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, regressionmodel=None,
+          probtype=None, bounds=None):
 
     """This function runs the HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories (I-X)
     defined by the HAZUS manual.
@@ -82,8 +82,8 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output
       (one layer)
     :type saveinputs: boolean
-    :param modeltype:
-        * 'coverage' if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell.
+    :param modeltype: OVERWRITES MODELTYPE SPECIFIED IN CONFIG FILE
+        * 'coverage' (default) if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell.
         * 'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure.
         * 'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype.
         * 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by regressionmodel param to get Newmark displacement without relating to probability of failure.
@@ -96,7 +96,7 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type regressionmodel: string
     :param probtype: Method used to estimate probability.
-        * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
+        * 'jibson2000' (default) uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
         * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
           greater than this threshold fails
     :type probtype: string
@@ -159,6 +159,25 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
             dnthresh = 5.
             print('Unable to find dnthresh in config, using 5cm')
 
+    if modeltype is None:
+        try:
+            modeltype = config['classic_newmark']['parameters']['modeltype']
+        except:
+            print('No modeltype specified, using default of coverage')
+            modeltype = 'coverage'
+    if regressionmodel is None:
+        try:
+            regressionmodel = config['classic_newmark']['parameters']['regressionmodel']
+        except:
+            print('No regression model specified, using default of J_PGA')
+            regressionmodel = 'J_PGA'
+    if probtype is None:
+        try:
+            probtype = config['classic_newmark']['parameters']['probtype']
+        except:
+            print('No probability type (probtype) specified, using default of jibson2000')
+            probtype = 'jibson2000'
+
     # Load in shakemap, resample to susceptibility file
     shakemap = ShakeGrid.load(shakefile, adjust='res')
     if uncertfile is not None:
@@ -210,75 +229,30 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
         areal[(PGA >= Ac) & (Ac == 0.15)] = 0.2
         areal[(PGA >= Ac) & (Ac == 0.1)] = 0.25
         areal[(PGA >= Ac) & (Ac == 0.05)] = 0.3
-        # # But this way is even slower, takes 2x as long
-        # numrows, numcols = np.shape(areal)
-        # for j in np.arange(numrows):
-        #     for k in np.arange(numcols):
-        #         acval = Ac[j, k]
-        #         if PGA[j, k] >= acval:
-        #             if acval == 0.6:
-        #                 areal[j, k] = 0.01
-        #             elif acval == 0.5:
-        #                 areal[j, k] = 0.02
-        #             elif acval == 0.4:
-        #                 areal[j, k] = 0.03
-        #             elif acval == 0.35:
-        #                 areal[j, k] = 0.05
-        #             elif acval == 0.3:
-        #                 areal[j, k] = 0.08
-        #             elif acval == 0.25:
-        #                 areal[j, k] = 0.1
-        #             elif acval == 0.2:
-        #                 areal[j, k] = 0.15
-        #             elif acval == 0.15:
-        #                 areal[j, k] = 0.2
-        #             elif acval == 0.1:
-        #                 areal[j, k] = 0.25
-        #             elif acval == 0.05:
-        #                 areal[j, k] = 0.3
 
     elif modeltype == 'dn_hazus' or modeltype == 'dn_prob':
         ed_low, ed_high = est_disp(Ac, PGA)
         ed_mean = np.mean((np.dstack((ed_low, ed_high))), axis=2)  # Get mean estimated displacements
-        dn = ed_mean * numcycles(M) * PGA
+        Dn = ed_mean * numcycles(M) * PGA
         if uncertfile is not None:
             Dnmin = ed_mean * numcycles(M) * PGAmin
             Dnmax = ed_mean * numcycles(M) * PGAmax
     else:  # Calculate newmark displacement using a regression model
-        if regressionmodel is 'J_PGA':
-            dn, logDnstd = J_PGA(Ac, PGA)
-            if uncertfile is not None:
-                Dnmin, logDnminstd = J_PGA(Ac, PGAmin)
-                Dnmax, logDnmaxstd = J_PGA(Ac, PGAmax)
-        elif regressionmodel is 'J_PGA_M':
-            dn, logDnstd = J_PGA_M(Ac, PGA, M)
-            if uncertfile is not None:
-                Dnmin, logDnminstd = J_PGA_M(Ac, PGAmin, M)
-                Dnmax, logDnmaxstd = J_PGA_M(Ac, PGAmax, M)
-        elif regressionmodel is 'RS_PGA_M':
-            dn, lnDnstd = RS_PGA_M(Ac, PGA, M)
-            if uncertfile is not None:
-                Dnmin, lnDnminstd = RS_PGA_M(Ac, PGAmin, M)
-                Dnmax, lnDnmaxstd = RS_PGA_M(Ac, PGAmax, M)
-        elif regressionmodel is 'RS_PGA_PGV':
-            dn, lnDnstd = RS_PGA_PGV(Ac, PGA, PGV)
-            if uncertfile is not None:
-                Dnmin, lnDnminstd = RS_PGA_PGV(Ac, PGAmin, PGVmin)
-                Dnmax, lnDnmaxstd = RS_PGA_PGV(Ac, PGAmax, PGVmax)
-        else:
-            print('Unrecognized model, using J_PGA\n')
-            dn, logDnstd = J_PGA(Ac, PGA)
+        Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=regressionmodel, M=M, PGV=PGV)
+        if uncertfile is not None:
+            Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=regressionmodel, M=M, PGV=PGVmin)
+            Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=regressionmodel, M=M, PGV=PGVmax)
 
-    # Calculate probability from dn, if necessary for selected model
+    # Calculate probability from Dn, if necessary for selected model
     if modeltype == 'ac_classic_prob' or modeltype == 'dn_prob':
         if probtype.lower() in 'jibson2000':
-            PROB = 0.335*(1-np.exp(-0.048*dn**1.565))
+            PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
             dnthresh = None
             if uncertfile is not None:
                 PROBmin = 0.335*(1-np.exp(-0.048*Dnmin**1.565))
                 PROBmax = 0.335*(1-np.exp(-0.048*Dnmax**1.565))
         elif probtype.lower() in 'threshold':
-            PROB = dn.copy()
+            PROB = Dn.copy()
             PROB[PROB <= dnthresh] = 0
             PROB[PROB > dnthresh] = 1
             units = 'prediction'
@@ -292,7 +266,7 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
                 PROBmax[PROBmax > dnthresh] = 1
         else:
             raise NameError('invalid probtype, assuming jibson2000')
-            PROB = 0.335*(1-np.exp(-0.048*dn**1.565))
+            PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
             dnthresh = None
             if uncertfile is not None:
                 PROBmin = 0.335*(1-np.exp(-0.048*Dnmin**1.565))
@@ -305,29 +279,56 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype='cover
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
     if modeltype == 'coverage':
-        maplayers['model'] = {'grid': GDALGrid(areal, gdict), 'label': 'Areal coverage', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
+        maplayers['model'] = {'grid': GDALGrid(areal, gdict), 'label': 'Areal coverage', 'type': 'output',
+                              'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage',
+                                              'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
     elif modeltype == 'dn_hazus':
-        maplayers['model'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
+        maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
+                              'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
+                                              'shakemap': shakedetail,
+                                              'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
     elif modeltype == 'ac_classic_dn':
-        maplayers['model'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
+        maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
+                              'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
+                                              'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel,
+                                                                                      'modeltype': modeltype}}}
     elif modeltype == 'dn_prob':
-        maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
+        maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output',
+                              'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
+                                              'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel,
+                                                                                      'dnthresh_cm': dnthresh,
+                                                                                      'modeltype': modeltype,
+                                                                                      'probtype': probtype}}}
     elif modeltype == 'ac_classic_prob':
-        maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output', 'description': {'name': modelsref, 'longref': modellref, 'units': 'probability', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'dnthresh_cm': dnthresh, 'modeltype': modeltype, 'probtype': probtype}}}
+        maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output',
+                              'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
+                                              'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel,
+                                                                                      'dnthresh_cm': dnthresh,
+                                                                                      'modeltype': modeltype,
+                                                                                      'probtype': probtype}}}
 
     label = 'Probability'
     if uncertfile is not None:
-        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output', 'description': {}}
-        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output', 'description': {}}
+        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output',
+                                 'description': {}}
+        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output',
+                                 'description': {}}
 
     if saveinputs is True:
-        maplayers['suscat'] = {'grid': sus, 'label': 'Susceptibility Category', 'type': 'input', 'description': {'name': sussref, 'longref': suslref, 'units': 'Category'}}
-        maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Ac (g)', 'type': 'output', 'description': {'units': 'g', 'shakemap': shakedetail}}
-        maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
+        maplayers['suscat'] = {'grid': sus, 'label': 'Susceptibility Category', 'type': 'input',
+                               'description': {'name': sussref, 'longref': suslref, 'units': 'Category'}}
+        maplayers['Ac'] = {'grid': GDALGrid(Ac, gdict), 'label': 'Ac (g)', 'type': 'output',
+                           'description': {'units': 'g', 'shakemap': shakedetail}}
+        maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input',
+                            'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'pgv' in regressionmodel.lower():
-            maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+            maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input',
+                                'description': {'units': 'cm/s', 'shakemap': shakedetail}}
         if 'dn' not in modeltype.lower() and modeltype != 'coverage':
-            maplayers['dn'] = {'grid': GDALGrid(dn, gdict), 'label': 'Dn (cm)', 'type': 'output', 'description': {'units': 'displacement', 'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
+            maplayers['dn'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
+                               'description': {'units': 'displacement', 'shakemap': shakedetail,
+                                               'parameters': {'regressionmodel': regressionmodel,
+                                                              'modeltype': modeltype}}}
 
     return maplayers
 
@@ -384,7 +385,7 @@ def numcycles(M):
     return n
 
 
-def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', probtype='jibson2000',
+def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel=None, probtype=None,
             slopediv=1., codiv=1., bounds=None):
     """This function uses the Newmark method to estimate probability of failure at each grid cell.
     Factor of Safety and critcal accelerations are calculated following Jibson et al. (2000) and the
@@ -394,31 +395,39 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
 
     :param shakefile: URL or complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
-    :param config: Model configuration file object containing locations of input files and other input values config = ConfigObj(configfilepath)
+    :param config: Model configuration file object containing locations of input files and other input values
+        config = ConfigObj(configfilepath)
     :type config: ConfigObj
-    :param uncertfile: complete file path to the location of the uncertainty.xml for the shakefile, if this is not None, it will compute the model for +-std in addition to the best estimate
+    :param uncertfile: complete file path to the location of the uncertainty.xml for the shakefile,
+        if this is not None, it will compute the model for +-std in addition to the best estimate
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param regressionmodel: Newmark displacement regression model to use
+    :param regressionmodel: Newmark displacement regression model to use OVERWRITES CONFIG FILE CHOICES
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type regressionmodel: string
-    :param probtype: Method used to estimate probability.
-        * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
-        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greather than this threshold fails
+    :param probtype: Method used to estimate probability. OVERWRITES CONFIG FILE CHOICES
+        * 'jibson2000' (default) uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes
+            anything greather than this threshold fails
     :type probtype: string
     :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
     :type slopediv: float
-    :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10 because that is how it was calibrated, but values are reasonable without multiplying for regular analysis)
+    :param codiv: Divide cohesion by this number to get reasonable numbers (For Godt method, need to divide by 10
+        because it was calibrated downwards to adjust for lower resolution slope estimates)
     :type codiv: float
 
     :returns:
-        maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle, potentially including source information'}
+        maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata
+        formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line
+        of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle,
+        potentially including source information'}
 
     :raises:
-        NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+        NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when
+        unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
 
         NameError: when probtype does not match a predifined probability type, will cause to default to 'jibson2000'
 
@@ -433,7 +442,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     modellref = 'unknown'
     modelsref = 'unknown'
 
-    # Parse config - should make it so it uses defaults if any are missing...
+    # Parse config
     try:
         slopefile = config['classic_newmark']['layers']['slope']['file']
         slopeunits = config['classic_newmark']['layers']['slope']['units']
@@ -441,9 +450,26 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         cohesionunits = config['classic_newmark']['layers']['cohesion']['units']
         frictionfile = config['classic_newmark']['layers']['friction']['file']
         frictionunits = config['classic_newmark']['layers']['friction']['units']
+        if regressionmodel is None:
+            try:
+                regressionmodel = config['classic_newmark']['parameters']['regressionmodel']
+            except:
+                print('No regression model specified, using default of J_PGA')
+                regressionmodel = 'J_PGA'
+        if probtype is None:
+            try:
+                probtype = config['classic_newmark']['parameters']['probtype']
+            except:
+                print('No probability type (probtype) specified, using default of jibson2000')
+                probtype = 'jibson2000'
 
         thick = float(config['classic_newmark']['parameters']['thick'])
         uwt = float(config['classic_newmark']['parameters']['uwt'])
+        try:
+            uwtw = float(config['classic_newmark']['parameters']['uwtw'])
+        except:
+            print('Could not read soil wet unit weight, using 18.8 kN/m3')
+            uwtw = 18.8
         nodata_cohesion = float(config['classic_newmark']['parameters']['nodata_cohesion'])
         nodata_friction = float(config['classic_newmark']['parameters']['nodata_friction'])
         try:
@@ -457,11 +483,15 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         fsthresh = float(config['classic_newmark']['parameters']['fsthresh'])
         acthresh = float(config['classic_newmark']['parameters']['acthresh'])
         slopethresh = float(config['classic_newmark']['parameters']['slopethresh'])
-        try:
-            m = float(config['classic_newmark']['parameters']['m'])
-        except:
-            print('no constant saturated thickness specified, m=0 if no watertable file is found')
-            m = 0.
+        if config['classic_newmark']['parameters']['m'] == 'file':
+            wtfile = 1
+        else:
+            wtfile = 0
+            try:
+                m = float(config['classic_newmark']['parameters']['m'])
+            except:
+                print('no constant saturated thickness specified, setting m=0')
+                m = 0.
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
         return
@@ -527,27 +557,22 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     friction[np.isnan(friction)] = nodata_friction
 
     # See if there is a water table depth file and read it in if there is
-    try:
-        waterfile = config['classic_newmark']['layers']['watertable']['file']
-        watertable = GDALGrid.load(waterfile, samplegeodict=gdict, resample=True, method='linear').getData()  # Needs to be in meters!
-        uwtw = float(config['classic_newmark']['parameters']['uwtw'])
+    if wtfile:
         try:
-            watersref = config['classic_newmark']['layers']['watertable']['shortref']
-            waterlref = config['classic_newmark']['layers']['watertable']['longref']
-        except:
-            print('Was not able to retrieve water table references from config file. Continuing')
+            waterfile = config['classic_newmark']['layers']['watertable']['file']
+            watertable = GDALGrid.load(waterfile, samplegeodict=gdict, resample=True, method='linear').getData()  # Needs to be in meters!
+            try:
+                watersref = config['classic_newmark']['layers']['watertable']['shortref']
+                waterlref = config['classic_newmark']['layers']['watertable']['longref']
+            except:
+                print('Was not able to retrieve water table references from config file. Continuing')
 
-    except:
-        print(('Water table file not specified or readable, assuming constant saturated thickness proportion of %0.1f' % m))
-        watertable = None
-        try:
-            uwtw = float(config['classic_newmark']['parameters']['uwtw'])
         except:
-            print('Could not read soil wet unit weight, using 18.8 kN/m3')
-            uwtw = 18.8
+            print('Water table file not specified or readable, assuming constant saturated thickness proportion of 0.')
+            wtfile = 0
 
     # Factor of safety
-    if watertable is not None:
+    if wtfile:
         watertable[watertable > thick] = thick
         m = (thick - watertable)/thick
         m[np.isnan(m)] = 0.
@@ -574,29 +599,10 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
-    if regressionmodel is 'J_PGA':
-        Dn, logDnstd = J_PGA(Ac, PGA)
-        if uncertfile is not None:
-            Dnmin, logDnminstd = J_PGA(Ac, PGAmin)
-            Dnmax, logDnmaxstd = J_PGA(Ac, PGAmax)
-    elif regressionmodel is 'J_PGA_M':
-        Dn, logDnstd = J_PGA_M(Ac, PGA, M)
-        if uncertfile is not None:
-            Dnmin, logDnminstd = J_PGA_M(Ac, PGAmin, M)
-            Dnmax, logDnmaxstd = J_PGA_M(Ac, PGAmax, M)
-    elif regressionmodel is 'RS_PGA_M':
-        Dn, lnDnstd = RS_PGA_M(Ac, PGA, M)
-        if uncertfile is not None:
-            Dnmin, lnDnminstd = RS_PGA_M(Ac, PGAmin, M)
-            Dnmax, lnDnmaxstd = RS_PGA_M(Ac, PGAmax, M)
-    elif regressionmodel is 'RS_PGA_PGV':
-        Dn, lnDnstd = RS_PGA_PGV(Ac, PGA, PGV)
-        if uncertfile is not None:
-            Dnmin, lnDnminstd = RS_PGA_PGV(Ac, PGAmin, PGVmin)
-            Dnmax, lnDnmaxstd = RS_PGA_PGV(Ac, PGAmax, PGVmax)
-    else:
-        print('Unrecognized model, using J_PGA\n')
-        Dn, logDnstd = J_PGA(Ac, PGA)
+    Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=regressionmodel, M=M, PGV=PGV)
+    if uncertfile is not None:
+        Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=regressionmodel, M=M, PGV=PGVmin)
+        Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=regressionmodel, M=M, PGV=PGVmax)
 
     units = 'probability'
     label = 'Landslide Probability'
@@ -666,7 +672,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     return maplayers
 
 
-def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel='J_PGA', bounds=None, slopediv=100.,
+def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel=None, bounds=None, slopediv=100.,
              codiv=10.):
     """ This function runs the Godt et al. (2008) global method for a given ShakeMap. The Factor of Safety
     is calculated using infinite slope analysis assumuing dry conditions. The method uses threshold newmark
@@ -735,6 +741,13 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
         return
+
+    if regressionmodel is None:
+        try:
+            regressionmodel = config['classic_newmark']['parameters']['regressionmodel']
+        except:
+            print('No regression model specified, using default of J_PGA')
+            regressionmodel = 'J_PGA'
 
     # TO DO, ADD ERROR CATCHING ON UNITS, MAKE SURE THEY ARE WHAT THEY SHOULD BE FOR THIS MODEL
 
@@ -837,29 +850,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
-    if regressionmodel is 'J_PGA':
-        Dn, logDnstd = J_PGA(Ac, PGA)
-        if uncertfile is not None:
-            Dnmin, logDnminstd = J_PGA(Ac, PGAmin)
-            Dnmax, logDnmaxstd = J_PGA(Ac, PGAmax)
-    elif regressionmodel is 'J_PGA_M':
-        Dn, logDnstd = J_PGA_M(Ac, PGA, M)
-        if uncertfile is not None:
-            Dnmin, logDnminstd = J_PGA_M(Ac, PGAmin, M)
-            Dnmax, logDnmaxstd = J_PGA_M(Ac, PGAmax, M)
-    elif regressionmodel is 'RS_PGA_M':
-        Dn, lnDnstd = RS_PGA_M(Ac, PGA, M)
-        if uncertfile is not None:
-            Dnmin, lnDnminstd = RS_PGA_M(Ac, PGAmin, M)
-            Dnmax, lnDnmaxstd = RS_PGA_M(Ac, PGAmax, M)
-    elif regressionmodel is 'RS_PGA_PGV':
-        Dn, lnDnstd = RS_PGA_PGV(Ac, PGA, PGV)
-        if uncertfile is not None:
-            Dnmin, lnDnminstd = RS_PGA_PGV(Ac, PGAmin, PGVmin)
-            Dnmax, lnDnmaxstd = RS_PGA_PGV(Ac, PGAmax, PGVmax)
-    else:
-        print('Unrecognized model, using J_PGA\n')
-        Dn, logDnstd = J_PGA(Ac, PGA)
+    Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=regressionmodel, M=M, PGV=PGV)
+    if uncertfile is not None:
+        Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=regressionmodel, M=M, PGV=PGVmin)
+        Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=regressionmodel, M=M, PGV=PGVmax)
 
     PROB = Dn.copy()
     PROB[PROB < dnthresh] = 0.
@@ -923,197 +917,104 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     return maplayers
 
 
-def Saade2016():
+def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
     """
-    NOT IMPLEMENTED YET
-    Limit equilibrium approach combining mohr-coulomb for shallower slopes and GSI for steeper. No assumption of failure depth required (this could be moved to a different module since it doesn't exactly use Newmark)
-    """
-    print('Saade2016 not implemented yet')
-
-
-def multiNewmark():
-    """
-    NOT IMPLEMENTED YET
-    Run Classic or Godt model for set of different thicknesses, cell sizes, and unit weights to simulate different landslide sizes
-    (borrow from )
-    """
-    print('multiNewmark not implemented yet')
-
-
-def J_PGA(Ac, PGA):
-    """
-    PGA-based Newmark Displacement model from Jibson (2007), equation 6
+    PGA-based Newmark Displacement model
 
     :param Ac: NxM Array of critical accelerations in units of g
     :type Ac: numpy Array
     :param PGA: NxM Array of PGA values in units of g
     :type PGA: numpy Array
 
-    :returns:
-        Dn(array): NxM array of Newmark displacements in cm
-        logDnstd(array): NxM array of sigma Dn in log units
-    """
-    # Deal with non-array inputs
-    if isinstance(Ac, float) or isinstance(Ac, int):
-        flag = 1
-    else:
-        flag = 0
-    np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
-    C1 = 0.215  # additive constant in newmark displacement calculation
-    C2 = 2.341  # first exponential constant
-    C3 = -1.438  # second exponential constant
-    #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3))
-    Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3)))
-    #import pdb; pdb.set_trace()
-    Dn[np.isnan(Dn)] = 0.
-    logDnstd = np.ones(np.shape(Dn))*0.51
-    if flag == 1:
-        Dn = float(Dn)
-    return Dn, logDnstd
+    :param model:
+      *'J_PGA' - PGA only model from Jibson (2007), equation 6 Applicable for Magnitude range of dataset (5.3-7.6)
+      *'J_PGA_M' - PGA-and M- based Newmark Displacement model from Jibson (2007), equation 7 Applicable for Magnitude range of dataset (5.3-7.6)
+      *'RS_PGA_M' - PGA and M-based Newmark displacement model from Rathje and Saygili (2009)
+      *'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
+      *'BT_PGA_M' - PGA and M-based model from Bray and Travasarou, 2007 assuming natural fundamental
+        period of sliding mass Ts = 0 (equation 6)
+    :type model: string
 
-
-def J_PGA_M(Ac, PGA, M):
-    """
-    PGA-and M- based Newmark Displacement model from Jibson (2007), equation 7
-    Applicable for Magnitude range of dataset (5.3-7.6)
-
-    :param Ac: NxM Array of critical accelerations in units of g
-    :type Ac: numpy Array or float
-    :param PGA: NxM Array of PGA values in units of g
-    :type PGA: numpy Array or float
-    :param M: Magnitude
+    :param M: Magnitude - only needed for models with M in the name
     :type M: float
+    :param PGV: NxM Array of PGV values in units of cm/sec - only needed for models with PGV in the name
+    :type PGV: numpy array or float
 
     :returns:
         Dn(array): NxM array of Newmark displacements in cm
         logDnstd(array): NxM array of sigma Dn in log units
-
     """
     # Deal with non-array inputs
     if isinstance(Ac, float) or isinstance(Ac, int):
         flag = 1
     else:
         flag = 0
-
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
-    C1 = -2.71  # additive constant in newmark displacement calculation
-    C2 = 2.335  # first exponential constant
-    C3 = -1.478  # second exponential constant
-    C4 = 0.424
-    #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
-    Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M))
-    Dn[np.isnan(Dn)] = 0.
-    logDnstd = np.ones(np.shape(Dn))*0.454
+
+    if model is 'J_PGA':
+        C1 = 0.215  # additive constant in newmark displacement calculation
+        C2 = 2.341  # first exponential constant
+        C3 = -1.438  # second exponential constant
+        Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3)))
+        Dn[np.isnan(Dn)] = 0.
+        logDnstd = np.ones(np.shape(Dn))*0.51
+        logtype = 'log10'
+
+    elif model is 'J_PGA_M':
+        if M is None:
+            raise Exception('M (magnitude) not found, cannot use RS_PGA_M model')
+        else:
+            C1 = -2.71  # additive constant in newmark displacement calculation
+            C2 = 2.335  # first exponential constant
+            C3 = -1.478  # second exponential constant
+            C4 = 0.424
+            #Dn = np.exp(C1 + np.log(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M)
+            Dn = np.array(10.**(C1 + np.log10(((1-Ac/PGA)**C2)*(Ac/PGA)**C3) + C4*M))
+            Dn[np.isnan(Dn)] = 0.
+            logDnstd = np.ones(np.shape(Dn))*0.454
+            logtype = 'log10'
+
+    elif model is 'RS_PGA_M':
+        if M is None:
+            raise Exception('You must enter a value for M to use the RS_PGA_M model')
+        C1 = 4.89
+        C2 = -4.85
+        C3 = -19.64
+        C4 = 42.49
+        C5 = -29.06
+        C6 = 0.72
+        C7 = 0.89
+        Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+        Dn[np.isnan(Dn)] = 0.
+        logDnstd = 0.732 + 0.789*(Ac/PGA) - 0.539*(Ac/PGA)**2
+        logtype = 'ln'
+
+    elif model is 'RS_PGA_PGV':
+        if PGV is None:
+            raise Exception('You must enter a value for M to use the RS_PGA_PGV model')
+        C1 = -1.56
+        C2 = -4.58
+        C3 = -20.84
+        C4 = 44.75
+        C5 = -30.50
+        C6 = -0.64
+        C7 = 1.55
+        Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
+        Dn[np.isnan(Dn)] = 0.
+        logDnstd = 0.405 + 0.524*(Ac/PGA)
+        logtype = 'ln'
+
+    elif model is 'BT_PGA_M':
+        if M is None:
+            raise Exception('You must enter a value for M to use the BT_PGA_M model')
+        Dn = np.array(np.exp(-0.22 - 2.83*np.log(Ac) - 0.333*(np.log(Ac))**2 + 0.566*np.log(Ac)*np.log(PGA) + 3.04*np.log(PGA)
+                      - 0.244*(np.log(PGA))**2 + 0.278*(M-7.)))
+        Dn[np.isnan(Dn)] = 0.
+        logDnstd = np.ones(np.shape(Dn))*0.66
+        logtype = 'log10'
+
     if flag == 1:
         Dn = float(Dn)
         logDnstd = float(logDnstd)
-    return Dn, logDnstd
 
-
-def RS_PGA_M(Ac, PGA, M):
-    """
-    PGA and M-based Newmark displacement model from Rathje and Saygili (2009)
-
-    :param Ac: NxM Array of critical accelerations in units of g
-    :type Ac: numpy Array
-    :param PGA: NxM Array of PGA values in units of g
-    :type PGA: numpy Array
-    :param M: Magnitude
-    :type M: float
-
-    :returns:
-        Dn(array): NxM array of Newmark displacements in cm
-        lnDnstd(array): NxM array of sigma Dn in natural log units
-
-    """
-    # Deal with non-array inputs
-    if isinstance(Ac, float) or isinstance(Ac, int):
-        flag = 1
-    else:
-        flag = 0
-
-    np.seterr(invalid='ignore')
-    C1 = 4.89
-    C2 = -4.85
-    C3 = -19.64
-    C4 = 42.49
-    C5 = -29.06
-    C6 = 0.72
-    C7 = 0.89
-    Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*(M-6)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
-    Dn[np.isnan(Dn)] = 0.
-    lnDnstd = 0.732 + 0.789*(Ac/PGA) - 0.539*(Ac/PGA)**2
-    if flag == 1:
-        Dn = float(Dn)
-        lnDnstd = float(lnDnstd)
-    return Dn, lnDnstd
-
-
-def RS_PGA_PGV(Ac, PGA, PGV):
-    """
-    PGA and PGV-based model from Saygili and Rathje (2008) - equation 6
-
-    :param Ac: NxM Array of critical accelerations in units of g
-    :type Ac: numpy array or float
-    :param PGA: NxM Array of PGA values in units of g
-    :type PGA: numpy array or float
-    :param PGV: NxM Array of PGV values in units of cm/sec
-    :type PGV: numpy array or float
-    :returns:
-        Dn(array): NxM array of Newmark displacements in cm
-        lnDnstd(array): NxM array of sigma Dn in natural log units
-
-    """
-
-    # Deal with non-array inputs
-    if isinstance(Ac, float) or isinstance(Ac, int):
-        flag = 1
-    else:
-        flag = 0
-    np.seterr(invalid='ignore')
-    C1 = -1.56
-    C2 = -4.58
-    C3 = -20.84
-    C4 = 44.75
-    C5 = -30.50
-    C6 = -0.64
-    C7 = 1.55
-    Dn = np.array(np.exp(C1 + C2*(Ac/PGA) + C3*(Ac/PGA)**2 + C4*(Ac/PGA)**3 + C5*(Ac/PGA)**4 + C6*np.log(PGA)+C7*np.log(PGV)))  # Equation from Saygili and Rathje (2008)/Rathje and Saygili (2009)
-    Dn[np.isnan(Dn)] = 0.
-    lnDnstd = 0.405 + 0.524*(Ac/PGA)
-    if flag == 1:
-        Dn = float(Dn)
-        lnDnstd = float(lnDnstd)
-    return Dn, lnDnstd
-
-
-def BT_PGA_M(Ac, PGA, M, Ts=0.):
-    """PGA and M-based model from Bray and Travasarou, 2007 assuming natural fundamental
-    period of sliding mass Ts = 0 (equation 6)
-
-    :param Ac: NxM Array of critical accelerations in units of g
-    :type Ac: numpy array or float
-    :param PGA: NxM Array of PGA values in units of g
-    :type PGA: numpy array or float
-    :param M: Magnitude
-    :type M: float
-
-    :returns:
-        Dn(array): NxM array of Newmark displacements in cm
-        lnDnstd(array): NxM array of sigma Dn in natural log units
-    """
-    #from scipy.stats import norm
-    if isinstance(Ac, float) or isinstance(Ac, int):
-        flag = 1
-    else:
-        flag = 0
-    #PD0 = 1 - norm.cdf(-1.76 - 3.22*np.log(Ac) - 3.52*np.log(PGA))  # probability of zero displacement
-    Dn = np.array(np.exp(-0.22 - 2.83*np.log(Ac) - 0.333*(np.log(Ac))**2 + 0.566*np.log(Ac)*np.log(PGA) + 3.04*np.log(PGA)
-                  - 0.244*(np.log(PGA))**2 + 0.278*(M-7.)))
-    Dn[np.isnan(Dn)] = 0.
-    lnDnstd = np.ones(np.shape(Dn))*0.66
-    # HOW DOES PD0 come into play?
-    if flag == 1:
-        Dn = float(Dn)
-        lnDnstd = float(lnDnstd)
-    return Dn, lnDnstd
+    return Dn, logDnstd, logtype
