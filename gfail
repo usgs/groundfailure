@@ -7,10 +7,10 @@ import datetime
 from configobj import ConfigObj
 
 #third party imports
-from mapio.shake import ShakeGrid
+from mapio.shake import getHeaderData
 
 #local imports
-from groundfailure.conf import correct_file_paths
+from groundfailure.conf import correct_config_filepaths
 import groundfailure.logisticmodel as LM
 from groundfailure.newmark import godt2008, classic, hazus
 from groundfailure.savelayers import savelayers
@@ -18,16 +18,16 @@ from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap
 
 
 def main(args):
-    # NEED TO ADD CONFIG VALIDATION STEP
+    # NEED TO ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
 
     # Figure out what models will be run
-    if args.gridfile is not None:  # user intends to actually run some models
+    if args.shakefile is not None:  # user intends to actually run some models
         # Make folder in outfolder for all results, if it doesn't already exist
-        eventid = ShakeGrid.getEventDict(args.gridfile)['event_id']
+        eventid = getHeaderData(args.shakefile)[0]['event_id']
         if args.save_models or args.make_static_plots or args.make_interactive_plots:
-            if args.outfile is None:
-                args.outfile = os.getcwd()
-            outdir = os.path.join(args.outfile, eventid)
+            if args.output_filepath is None:
+                args.output_filepath = os.getcwd()
+            outdir = os.path.join(args.output_filepath, eventid)
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
 
@@ -35,7 +35,11 @@ def main(args):
             args.config = os.path.join(args.config_filepath, args.config)
         try:
             # see if input is a single config file, put in a list for iteration
-            configs = [ConfigObj(args.config)]
+            temp = ConfigObj(args.config)
+            if args.data_path is not None:
+                temp = correct_config_filepaths(args.data_path, temp)
+            configs = [temp]
+            conffail = []
         except:
             #input is probably a list of config files, check
             f = open(args.config, 'r')
@@ -48,17 +52,18 @@ def main(args):
                 try:
                     temp = ConfigObj(conf)
                     if args.data_path is not None:
-                        temp = correct_file_paths(args.data_path, temp)
+                        temp = correct_config_filepaths(args.data_path, temp)
                     configs.append(temp)
                 except:
                     conffail.append(conf)
         print('Running the following models:\n')
         for conf in configs:
             print('\t%s\n' % conf.keys()[0])
-        print('Could not find or read in the following config files:\n')
-        for conf in conffail:
-            print('\t%s\n' % conf)
-        print('\nContinuing...\n')
+        if len(conffail) > 0:
+            print('Could not find or read in the following config files:\n')
+            for conf in conffail:
+                print('\t%s\n' % conf)
+            print('\nContinuing...\n')
 
         if args.set_bounds is not None:
             bounds = {'xmin': args.set_bounds[0], 'xmax': args.set_bounds[1], 'ymin': args.set_bounds[2],
@@ -69,21 +74,23 @@ def main(args):
         # Loop over config files
         for conf in configs:
             modelname = conf.keys()[0]
+            print('Now running %s' % modelname)
             modelfunc = conf[modelname]['funcname']
-            if modelfunc is 'LogisticModel':
+            if modelfunc == 'LogisticModel':
                 lm = LM.LogisticModel(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                       bounds=bounds)
                 maplayers = lm.calculate()
-            elif modelfunc is 'hazus':
+            elif modelfunc == 'hazus':
                 maplayers = hazus(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                   bounds=bounds)
-            elif modelfunc is 'classic':
+            elif modelfunc == 'classic':
                 maplayers = classic(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                     bounds=bounds)
-            elif modelfunc is 'godt2008':
+            elif modelfunc == 'godt2008':
                 maplayers = godt2008(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                      bounds=bounds)
             else:
+                print(modelfunc)
                 print('Unknown model function specified in config for %s model, skipping to next config' % modelfunc)
                 continue
             time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
@@ -94,7 +101,8 @@ def main(args):
 
             if args.make_static_pdfs or args.make_static_pngs:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
-                kwargs = parseMapConfig(os.path.join(args.mapdata_filepath, args.mapconfig))
+                mapconfig = ConfigObj(args.mapconfig)
+                kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
                 modelMap(maplayers, args.shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
                          zthresh=0., lims=lims, maskthreshes=maskthreshes, maproads=True, mapcities=True,
                          savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
@@ -136,9 +144,6 @@ if __name__ == '__main__':
                         help='Make static plots for each model')
     parser.add_argument('-pi', '--make-interactive-plots', action='store_true', default=False,
                         help='Make interactive html plots for each model')
-
-    #parser.add_argument('-v', '--validate-config', action='store_true', default=False,
-    #                    help='Validate config file parameters.')
     #parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 

@@ -41,8 +41,9 @@ mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
 
 
-def parseMapConfig(config):
+def parseMapConfig(config, fileext=None):
     # Parse config object
+    # fileext will be prepended to any file paths in config
     # ADD PLOTORDER TO CONFIG? OTHER THINGS LIKE COLORMAPS?
     topofile = None
     roadfolder = None
@@ -51,61 +52,60 @@ def parseMapConfig(config):
     countrycolor = '177F10'
     watercolor = 'B8EEFF'
     ALPHA = 0.7
-    outputdir = None
     oceanfile = None
+    oceanref = None
+    roadref = None
+    cityref = None
 
-    try:
-        config1 = config['display_options']
-        if 'dem' in config1:
-            topofile = config1['dem']['file']
-            if os.path.exists(topofile) is False:
-                print('DEM not valid - hillshade will not be possible\n')
-        if 'ocean' in config1:
-            oceanfile = config1['ocean']['file']
-            try:
-                oceanref = config1['ocean']['shortref']
-            except:
-                oceanref = 'unknown'
-        if 'roads' in config1:
-            roadfolder = config1['roads']['file']
-            if os.path.exists(roadfolder) is False:
-                print('roadfolder not valid - roads will not be displayed\n')
-                roadfolder = None
-            try:
-                roadref = config1['roads']['shortref']
-            except:
-                roadref = 'unknown'
-        if 'cities' in config1:
-            cityfile = config1['cities']['file']
-            try:
-                cityref = config1['cities']['shortref']
-            except:
-                cityref = 'unknown'
-            if os.path.exists(cityfile):
-                try:
-                    #PagerCity(cityfile)
-                    BasemapCities.loadFromGeoNames(cityfile=cityfile)
-                except Exception as e:
-                    print(e)
-                    print('cities file not valid - cities will not be displayed\n')
-                    cityfile = None
-            else:
-                print('cities file not valid - cities will not be displayed\n')
-                cityfile = False
-        if 'roadcolor' in config1['colors']:
-            roadcolor = config1['colors']['roadcolor']
-        if 'countrycolor' in config1['colors']:
-            countrycolor = config1['colors']['countrycolor']
-        if 'watercolor' in config1['colors']:
-            watercolor = config1['colors']['watercolor']
-        if 'alpha' in config1['colors']:
-            ALPHA = float(config1['colors']['alpha'])
+    #try:
+    if fileext is None:
+        fileext = '.'
+    if 'dem' in config:
+        topofile = os.path.join(fileext, config['dem']['file'])
+        if os.path.exists(topofile) is False:
+            print('DEM not valid - hillshade will not be possible\n')
+    if 'ocean' in config:
+        oceanfile = os.path.join(fileext, config['ocean']['file'])
         try:
-            outputdir = config['output']['folder']
+            oceanref = config['ocean']['shortref']
         except:
-            outputdir = None
-    except Exception as e:
-        print(('%s - display_options missing from or misformatted in config' % e))
+            oceanref = 'unknown'
+    if 'roads' in config:
+        roadfolder = os.path.join(fileext, config['roads']['file'])
+        if os.path.exists(roadfolder) is False:
+            print('roadfolder not valid - roads will not be displayed\n')
+            roadfolder = None
+        try:
+            roadref = config['roads']['shortref']
+        except:
+            roadref = 'unknown'
+    if 'cities' in config:
+        cityfile = os.path.join(fileext, config['cities']['file'])
+        try:
+            cityref = config['cities']['shortref']
+        except:
+            cityref = 'unknown'
+        if os.path.exists(cityfile):
+            try:
+                #PagerCity(cityfile)
+                BasemapCities.loadFromGeoNames(cityfile=cityfile)
+            except Exception as e:
+                print(e)
+                print('cities file not valid - cities will not be displayed\n')
+                cityfile = None
+        else:
+            print('cities file not valid - cities will not be displayed\n')
+            cityfile = False
+    if 'roadcolor' in config['colors']:
+        roadcolor = config['colors']['roadcolor']
+    if 'countrycolor' in config['colors']:
+        countrycolor = config['colors']['countrycolor']
+    if 'watercolor' in config['colors']:
+        watercolor = config['colors']['watercolor']
+    if 'alpha' in config['colors']:
+        ALPHA = float(config['colors']['alpha'])
+    #except Exception as e:
+    #    print(('%s - mapping options missing from or misformatted in config' % e))
 
     countrycolor = '#'+countrycolor
     watercolor = '#'+watercolor
@@ -114,7 +114,7 @@ def parseMapConfig(config):
     mapin = {'topofile': topofile, 'roadfolder': roadfolder,
              'cityfile': cityfile, 'roadcolor': roadcolor,
              'countrycolor': countrycolor, 'watercolor': watercolor,
-             'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref,
+             'ALPHA': ALPHA, 'roadref': roadref,
              'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
 
     return mapin
@@ -374,10 +374,10 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     if outputdir is None:
         print('No output location given, using current directory for outputs\n')
         outputdir = os.getcwd()
-    if edict is not None:
-        outfolder = os.path.join(outputdir, edict['event_id'])
-    else:
-        outfolder = outputdir
+    #if edict is not None:
+    #    outfolder = os.path.join(outputdir, edict['event_id'])
+    #else:
+    outfolder = outputdir
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
 
@@ -690,6 +690,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         topodata = None
 
     # Load in roads, if needed
+    roadslist = None
     if maproads is True and roadfolder is not None:
         try:
             roadslist = []
@@ -705,7 +706,6 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                     f.close()
         except:
             print('Not able to plot roads')
-            roadslist = None
 
     val = 1
     for k, layer in enumerate(plotorder):

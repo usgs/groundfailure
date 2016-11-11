@@ -97,7 +97,9 @@ def correct_config_filepaths(input_path, config):
         for keys in config[outer_loop].keys():
             second_loop = keys
             if hasattr(config[outer_loop][second_loop], 'keys') is False:
-                pass
+                if second_loop == 'slopefile' or second_loop == 'file':
+                            path_to_correct = config[outer_loop][second_loop]
+                            config[outer_loop][second_loop] = os.path.join(input_path, path_to_correct)
             else:
                 for keys in config[outer_loop][second_loop].keys():
                     third_loop = keys
