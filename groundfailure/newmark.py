@@ -803,11 +803,11 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
             print('Specified bounds are outside shakemap area, using ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
-        tempgdict = GeoDict({'xmin': bounds['xmin'], 'ymin': bounds['ymin'], 'xmax': bounds['xmax'],
-                            'ymax': bounds['ymax'], 'dx': shkgdict.dx, 'dy': shkgdict.dy, 'nx': shkgdict.nx,
-                            'ny': shkgdict.ny}, adjust='res')
+        tempgdict = GeoDict.createDictFromBox(bounds['xmin'], bounds['xmax'], bounds['ymin'], bounds['ymax'],
+                                              shkgdict.dx, shkgdict.dy, inside=False)
         gdict = shkgdict.getBoundsWithin(tempgdict)
         shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, adjust='bounds')
+        #shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, resample=True, method='linear', adjust='bounds')
     else:
         shakemap = ShakeGrid.load(shakefile, adjust='res')
     shkgdict = shakemap.getGeoDict()  # Get updated geodict
@@ -864,6 +864,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     PGA = np.repeat(shakemap.getLayer('pga').getData()[:, :, np.newaxis]/100., 7, axis=2).astype(float)
     if 'PGV' in regressionmodel:  # Load in PGV also, in cm/sec
         PGV = np.repeat(shakemap.getLayer('pgv').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
+    else:
+        PGV = None
 
     if uncertfile is not None:
         stdpga = np.repeat(uncert.getLayer('stdpga').getData()[:, :, np.newaxis], 7, axis=2).astype(float)

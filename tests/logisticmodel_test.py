@@ -82,10 +82,10 @@ def test_logisticmodel():
                                                 'b3': 0.02,
                                                 'b4': 1.e-05}}}
 
-    ls = LM.LogisticModel(modelLS, shakefile, uncertfile=None, slopefile=slopefile)
+    ls = LM.LogisticModel(shakefile, modelLS, uncertfile=None, slopefile=slopefile)
     LS = ls.calculate()
 
-    lsu = LM.LogisticModel(modelLS, shakefile, uncertfile=uncertfile, slopefile=slopefile)
+    lsu = LM.LogisticModel(shakefile, modelLS, uncertfile=uncertfile, slopefile=slopefile)
     try:
         lsu.getEquation()
         lsu.getEquations()
@@ -94,7 +94,7 @@ def test_logisticmodel():
         print('LogisticModel.getEquation and/or LogisticModel.getEquations did not work')
     LSU = lsu.calculate()
 
-    lq = LM.LogisticModel(modelLQ, shakefile, uncertfile=None, saveinputs=True)
+    lq = LM.LogisticModel(shakefile, modelLQ, uncertfile=None, saveinputs=True)
     LQ = lq.calculate()
 
     # See if getGeoDict works

@@ -96,7 +96,7 @@ def main(args):
             time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
             filename = ('%s_%s_%s' % (eventid, modelname, time1))
             if args.save_models:
-                filenameh = filename + 'hdf5'
+                filenameh = filename + '.hdf5'
                 savelayers(maplayers, os.path.join(outdir, filenameh))
 
             if args.make_static_pdfs or args.make_static_pngs:
@@ -104,9 +104,10 @@ def main(args):
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
                 modelMap(maplayers, args.shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
-                         zthresh=0., lims=lims, maskthreshes=maskthreshes, maproads=True, mapcities=True,
+                         zthresh=0., lims=lims, maskthreshes=maskthreshes, maproads=False, mapcities=True,
                          savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
-                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, **kwargs)
+                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='binned',
+                         logscale=logscale, **kwargs)
 
             if args.make_interactive_plots:
                 print('Interactive Plots not implemented yet\n')

@@ -9,7 +9,7 @@ from mpl_toolkits.basemap import maskoceans
 import copy
 import datetime
 import matplotlib as mpl
-from matplotlib.colors import LightSource
+from matplotlib.colors import LightSource, LogNorm
 #from matplotlib.colorbar import ColorbarBase
 
 #third party imports
@@ -133,35 +133,35 @@ def parseConfigLayers(maplayers, config):
     plotorder = []
 
     try:
-        limits = config['display_options']['lims']
+        limits = config[config.keys()[0]]['display_options']['lims']
         lims = []
     except:
         lims = None
         limits = None
 
     try:
-        colors = config['display_options']['colors']
+        colors = config[config.keys()[0]]['display_options']['colors']
         colormaps = []
     except:
         colormaps = None
         colors = None
 
     try:
-        logs = config['display_options']['logscale']
+        logs = config[config.keys()[0]]['display_options']['logscale']
         logscale = []
     except:
         logscale = False
         logs = None
 
     try:
-        masks = config['display_options']['maskthresholds']
+        masks = config[config.keys()[0]]['display_options']['maskthresholds']
         maskthreshes = []
     except:
         maskthreshes = None
         masks = None
 
     try:
-        default = config['display_options']['colors']['default']
+        default = config[config.keys()[0]]['display_options']['colors']['default']
         default = eval(default)
     except:
         default = None
@@ -778,25 +778,46 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                 dat[dat <= maskthreshes[k]] = float('NaN')
                 dat = np.ma.array(dat, mask=np.isnan(dat))
 
-        if logscale is not False and len(logscale) == len(newgrids):
-            if logscale[k] is True:
-                dat = np.log10(dat)
-                label1 = r'$log_{10}$(' + label1 + ')'
+        # if logscale is not False and len(logscale) == len(newgrids):
+        #     if logscale[k] is True:
+        #         dat = np.log10(dat)
+        #         label1 = r'$log_{10}$(' + label1 + ')'
 
         if scaletype.lower() == 'binned':
-            # Find order of range to know how to scale
-            order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
-            if order < 1.:
-                scal = 10**-order
+            if logscale is not False and len(logscale) == len(newgrids):
+                if logscale[k] is True:
+                    clev = 10.**(np.arange(np.floor(np.log10(np.nanmin(dat))), np.ceil(np.log10(np.nanmax(dat))), 0.25))
+                else:
+                    # Find order of range to know how to scale
+                    order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                    if order < 1.:
+                        scal = 10**-order
+                    else:
+                        scal = 1.
+
+                    if lims is None or len(lims) != len(newgrids):
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        if lims[k] is None:
+                            clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                        else:
+                            clev = lims[k]
             else:
-                scal = 1.
-            if lims is None or len(lims) != len(newgrids):
-                clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
-            else:
-                if lims[k] is None:
+                # Find order of range to know how to scale
+                order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                if order < 1.:
+                    scal = 10**-order
+                else:
+                    scal = 1.
+
+                if lims is None or len(lims) != len(newgrids):
                     clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
                 else:
-                    clev = lims[k]
+                    if lims[k] is None:
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        clev = lims[k]
+
             # Adjust to colorbar levels
             dat[dat < clev[0]] = clev[0]
             for j, level in enumerate(clev[:-1]):
@@ -806,6 +827,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             #panelhandle = m.contourf(x1, y1, datm, clev, cmap=palette, linewidth=0., alpha=ALPHA, rasterized=True)
             vmin = clev[0]
             vmax = clev[-1]
+
         else:
             if lims is not None and len(lims) == len(newgrids):
                 if lims[k] is None:
@@ -850,10 +872,9 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                     ax.add_patch(patch)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        dat_im = m.transform_scalar(
-            np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy,
-            np.round(300.*wid), np.round(300.*ht), returnxy=False,
-            checkbounds=False, order=0, masked=True)
+        dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy,
+                                    np.round(300.*wid), np.round(300.*ht), returnxy=False,
+                                    checkbounds=False, order=0, masked=True)
         if topodata is not None:  # Drape over hillshade
             #turn data into an RGBA image
             cmap = palette
@@ -867,20 +888,27 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             rgb = np.squeeze(rgba_img[:, :, 0:3])
             rgb[maskvals] = 1.
             draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
-            m.imshow(draped_hsv, zorder=3., interpolation='none')
+            if logscale[k] is True:
+                logsc = LogNorm(vmin=vmin, vmax=vmax)
+            else:
+                logsc = None
+            m.imshow(draped_hsv, zorder=3., interpolation='none', norm=logsc)
             # This is just a dummy layer that will be deleted to make the
             # colorbar look right
             panelhandle = m.imshow(dat_im, cmap=palette, zorder=0.,
-                                   vmin=vmin, vmax=vmax)
+                                   vmin=vmin, vmax=vmax, norm=logsc, interpolation='none')
         else:
-            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3.,
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3., norm=logsc,
                                    vmin=vmin, vmax=vmax, interpolation='none')
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
         #panelhandle.set_edgecolors('face')
         # add colorbar
         cbfmt = '%1.1f'
         if vmax is not None and vmin is not None:
-            if (vmax - vmin) < 1.:
+            if logscale is not False and len(logscale) == len(newgrids):
+                if logscale[k] is True:
+                    cbfmt = None
+            elif (vmax - vmin) < 1.:
                 cbfmt = '%1.2f'
             elif vmax > 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
@@ -889,12 +917,12 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         if scaletype.lower() == 'binned':
             cbar = fig.colorbar(panelhandle, spacing='proportional',
                                 ticks=clev, boundaries=clev, fraction=0.036,
-                                pad=0.04, format=cbfmt, extend='both')
+                                pad=0.04, format=cbfmt, extend='both')  # extend='both'
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both', extendfrac='auto')
 
         else:
             cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04,
-                                extend='both', format=cbfmt)
+                                extend='both', format=cbfmt)  # extend='both'
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, fraction=0.036, pad=0.04, extend='both', extendfrac='auto', format=cbfmt)
 
         if topodata is not None:
@@ -1028,8 +1056,8 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         outfile = os.path.join(outfolder, '%s_%s_%s.pdf' % (eventid, suptitle, time1))
         pngfile = os.path.join(outfolder, '%s_%s_%s.png' % (eventid, suptitle, time1))
     else:
-        outfile = os.path.join(outfolder, outfilename)
-        pngfile = os.path.join(outfolder, outfilename)
+        outfile = os.path.join(outfolder, outfilename + '.pdf')
+        pngfile = os.path.join(outfolder, outfilename + '.png')
 
     if savepdf is True:
         print('Saving map output to %s' % outfile)
