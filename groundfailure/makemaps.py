@@ -26,6 +26,11 @@ from matplotlib.patches import Polygon, Rectangle
 from skimage.measure import block_reduce
 import collections
 from descartes import PolygonPatch
+import shapefile
+from json import dumps
+import folium
+from folium import plugins
+
 
 #local imports
 from mapio.gmt import GMTGrid
@@ -1071,6 +1076,152 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         plt.close(fig)
 
     return newgrids
+
+
+def interactiveMap(grids, keys=None, shakefile=None, suptitle=None, inventory_shapefile=None,
+                   maskthreshes=None, colormaps=None,
+                   zthresh=0, scaletype='continuous', lims=None, logscale=False,
+                   ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
+                   printparam=False, ds=True, dstype='mean'):
+    """Make single panel interactive map of grid
+    """
+    clear_color = [0, 0, 0, 0.0]
+    if keys is None:
+        keys = grids.keys()
+
+    if suptitle is None:
+        suptitle = ' '
+
+    defaultcolormap = cm.jet
+
+    if shakefile is not None:
+        edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
+        temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+        edict['eventid'] = temp['shakemap_id']
+        edict['version'] = temp['shakemap_version']
+    else:
+        edict = None
+
+    # Get output file location
+    if outputdir is None:
+        print('No output location given, using current directory for outputs\n')
+        outputdir = os.getcwd()
+    if edict is not None:
+        outfolder = os.path.join(outputdir, edict['event_id'])
+    else:
+        outfolder = outputdir
+    if not os.path.isdir(outfolder):
+        os.makedirs(outfolder)
+
+    # ADD IN DOWNSAMPLING CODE FROM MODELMAP
+
+    for k, key in enumerate(keys):
+        grid = grids[key]['grid']
+
+        # get labels and metadata info
+        if 'label' in list(grids[key].keys()):
+            label1 = grids[key]['label']
+        else:
+            label1 = key
+        try:
+            sref = grids[key]['description']['name']
+        except:
+            sref = None
+
+        if colormaps is not None and len(colormaps) == len(keys):
+            if colormaps[k] is not None:
+                palette = colormaps[k]
+            else:
+                palette = defaultcolormap
+        else:  # Find preferred default color map for each type of layer
+            if 'prob' in key.lower() or 'pga' in key.lower() or \
+               'pgv' in key.lower() or 'cohesion' in key.lower() or \
+               'friction' in key.lower() or 'fs' in key.lower():
+                palette = cm.inferno
+            elif 'slope' in key.lower():
+                palette = cm.gnuplot2
+            elif 'precip' in key.lower():
+                palette = cm2.s3pcpn
+            else:
+                palette = defaultcolormap
+
+        palette.set_bad(clear_color, alpha=0.0)
+
+        dat = grid.getData().copy()
+
+        if maskthreshes is not None and len(maskthreshes) == len(keys):
+            if maskthreshes[k] is not None:
+                dat[dat <= maskthreshes[k]] = float('NaN')
+                dat = np.ma.array(dat, mask=np.isnan(dat))
+
+        # ADD IN BINNED OPTION, JUST CONTINUOUS AVAILABLE FOR NOW
+        if lims is not None and len(lims) == len(keys):
+            if lims[k] is None:
+                vmin = np.nanmin(dat)
+                vmax = np.nanmax(dat)
+            else:
+                vmin = lims[k][0]
+                vmax = lims[k][-1]
+        else:
+            vmin = np.nanmin(dat)
+            vmax = np.nanmax(dat)
+
+        #turn data into an RGBA image
+        #adjust data so scaled between vmin and vmax and between 0 and 1
+        cmap = palette
+        dat1 = dat.copy()
+        dat1[dat1 < vmin] = vmin
+        dat1[dat1 > vmax] = vmax
+        dat1 = (dat1 - vmin)/(vmax-vmin)
+        rgba_img = cmap(dat1)
+
+        gd = grid.getGeoDict()
+        minlat = gd.ymin - gd.dy/2
+        minlon = gd.xmin - gd.dx/2
+        maxlat = gd.ymax + gd.dy/2
+        maxlon = gd.xmax + gd.dx/2
+
+        if inventory_shapefile is not None:
+            reader = shapefile.Reader(inventory_shapefile)
+            fields = reader.fields[1:]
+            field_names = [field[0] for field in fields]
+            buffer = []
+            for sr in reader.shapeRecords():
+                atr = dict(zip(field_names, sr.record))
+                geom = sr.shape.__geo_interface__
+                buffer.append(dict(type="Feature", geometry=geom, properties=atr))
+
+            # write the temporary GeoJSON file
+            geojson = open("temporary541.json", "w")
+            geojson.write(dumps({"type": "FeatureCollection", "features": buffer}, indent=2) + "\n")
+            geojson.close()
+
+        map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
+                          tiles=tiletype, zoom_start=9, max_zoom=12, min_lat=minlat, max_lat=maxlat,
+                          min_lon=minlon, max_lon=maxlon)
+
+        map1.add_children(plugins.ImageOverlay(rgba_img, opacity=0.5, bounds=[[minlat, minlon],
+                          [maxlat, maxlon]], mercator_project=True))
+
+        if inventory_shapefile is not None:
+                map1.geo_json(geo_path='temporary541.json', fill_color='none', line_color='Black')
+                # DELETE TEMPORARY FILE
+
+        # Add colorbar
+        #map1.geo_json(geo_path=district_geo, data_out='crimeagg.json', data=crimedata2,
+        #              columns=['District', 'Number'], key_on='feature.properties.DISTRICT',
+        #              fill_color=palette, fill_opacity=0.5, line_opacity=0.2,
+        #              legend_name=label1)
+
+        #map1.save(outputfilename, words)
+
+
+def InteractivePage(grids, key=None, shakefile=None, suptitle=None, inventory_shapefile=None,
+                    plotorder=None, maskthreshes=None, colormaps=None, boundaries=None,
+                    zthresh=0, scaletype='continuous', lims=None, logscale=False,
+                    ALPHA=0.7, outputdir=None, outfilename=None,
+                    printparam=False, ds=True, dstype='mean', upsample=False):
+    pass
 
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
