@@ -14,7 +14,7 @@ from groundfailure.conf import correct_config_filepaths
 import groundfailure.logisticmodel as LM
 from groundfailure.newmark import godt2008, classic, hazus
 from groundfailure.savelayers import savelayers
-from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap
+from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap, interactiveMap
 
 
 def main(args):
@@ -110,7 +110,11 @@ def main(args):
                          logscale=logscale, **kwargs)
 
             if args.make_interactive_plots:
-                print('Interactive Plots not implemented yet\n')
+                plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
+                interactiveMap(maplayers, keys=None, shakefile=args.shakefile, inventory_shapefile=None,
+                               maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
+                               scaletype='continuous', lims=lims, logscale=logscale,
+                               ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
 
 
 if __name__ == '__main__':

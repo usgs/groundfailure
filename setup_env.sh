@@ -27,7 +27,8 @@ pip -v install https://github.com/usgs/earthquake-impact-utils/archive/master.zi
 pip -v install https://github.com/gem/oq-hazardlib/archive/master.zip
 pip install scikit-image
 pip install sphinx_rtd_theme
-pip install folium
+pip install git+git://github.com/python-visualization/folium.git
+
 
 # tell the user they have to activate this environment
 echo "Type 'source activate gf' to use this new virtual environment."

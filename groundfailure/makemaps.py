@@ -125,7 +125,7 @@ def parseMapConfig(config, fileext=None):
     return mapin
 
 
-def parseConfigLayers(maplayers, config):
+def parseConfigLayers(maplayers, config, keys=None):
     """
     Parse things that need to coodinate with each layer (like lims, logscale,
     colormaps etc.) from config file, in right order - takes orders from
@@ -134,7 +134,8 @@ def parseConfigLayers(maplayers, config):
     """
     # get all key names, create a plotorder list in case maplayers is not an
     # ordered dict, making sure that anything called 'model' is first
-    keys = list(maplayers.keys())
+    if keys is None:
+        keys = list(maplayers.keys())
     plotorder = []
 
     try:
@@ -826,7 +827,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             # Adjust to colorbar levels
             dat[dat < clev[0]] = clev[0]
             for j, level in enumerate(clev[:-1]):
-                dat[(dat >= clev[j]) & (dat < clev[j+1])] = clev[j]
+                dat[(dat >= clev[j]) & (dat < clev[j+1])] = (clev[j] + clev[j+1])/2.
             # So colorbar saturates at top
             dat[dat > clev[-1]] = clev[-1]
             #panelhandle = m.contourf(x1, y1, datm, clev, cmap=palette, linewidth=0., alpha=ALPHA, rasterized=True)
@@ -922,12 +923,12 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         if scaletype.lower() == 'binned':
             cbar = fig.colorbar(panelhandle, spacing='proportional',
                                 ticks=clev, boundaries=clev, fraction=0.036,
-                                pad=0.04, format=cbfmt, extend='both')  # extend='both'
+                                pad=0.04, format=cbfmt, extend='both', norm=logsc)  # extend='both'
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both', extendfrac='auto')
 
         else:
             cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04,
-                                extend='both', format=cbfmt)  # extend='both'
+                                extend='both', format=cbfmt, norm=logsc)  # extend='both'
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, fraction=0.036, pad=0.04, extend='both', extendfrac='auto', format=cbfmt)
 
         if topodata is not None:
@@ -1078,19 +1079,17 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     return newgrids
 
 
-def interactiveMap(grids, keys=None, shakefile=None, suptitle=None, inventory_shapefile=None,
-                   maskthreshes=None, colormaps=None,
-                   zthresh=0, scaletype='continuous', lims=None, logscale=False,
+def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
+                   maskthreshes=None, colormaps=None, isScenario=False,
+                   scaletype='continuous', lims=None, logscale=False,
                    ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
                    printparam=False, ds=True, dstype='mean'):
     """Make single panel interactive map of grid
     """
+    plt.ioff()
     clear_color = [0, 0, 0, 0.0]
     if keys is None:
         keys = grids.keys()
-
-    if suptitle is None:
-        suptitle = ' '
 
     defaultcolormap = cm.jet
 
@@ -1113,7 +1112,7 @@ def interactiveMap(grids, keys=None, shakefile=None, suptitle=None, inventory_sh
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
 
-    # ADD IN DOWNSAMPLING CODE FROM MODELMAP
+    # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE
 
     for k, key in enumerate(keys):
         grid = grids[key]['grid']
@@ -1154,32 +1153,131 @@ def interactiveMap(grids, keys=None, shakefile=None, suptitle=None, inventory_sh
                 dat[dat <= maskthreshes[k]] = float('NaN')
                 dat = np.ma.array(dat, mask=np.isnan(dat))
 
-        # ADD IN BINNED OPTION, JUST CONTINUOUS AVAILABLE FOR NOW
-        if lims is not None and len(lims) == len(keys):
-            if lims[k] is None:
+        if scaletype.lower() == 'binned':
+            if logscale is not False and len(logscale) == len(keys):
+                if logscale[k] is True:
+                    clev = 10.**(np.arange(np.floor(np.log10(np.nanmin(dat))), np.ceil(np.log10(np.nanmax(dat))), 0.25))
+                else:
+                    # Find order of range to know how to scale
+                    order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                    if order < 1.:
+                        scal = 10**-order
+                    else:
+                        scal = 1.
+
+                    if lims is None or len(lims) != len(keys):
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        if lims[k] is None:
+                            clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                        else:
+                            clev = lims[k]
+            else:
+                # Find order of range to know how to scale
+                order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                if order < 1.:
+                    scal = 10**-order
+                else:
+                    scal = 1.
+
+                if lims is None or len(lims) != len(keys):
+                    clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                else:
+                    if lims[k] is None:
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        clev = lims[k]
+
+            # Adjust to colorbar levels
+            dat[dat < clev[0]] = clev[0]
+            for j, level in enumerate(clev[:-1]):
+                dat[(dat >= clev[j]) & (dat < clev[j+1])] = (clev[j] + clev[j+1])/2.
+            # So colorbar saturates at top
+            dat[dat > clev[-1]] = clev[-1]
+            vmin = clev[0]
+            vmax = clev[-1]
+
+        else:
+            if lims is not None and len(lims) == len(keys):
+                if lims[k] is None:
+                    vmin = np.nanmin(dat)
+                    vmax = np.nanmax(dat)
+                else:
+                    vmin = lims[k][0]
+                    vmax = lims[k][-1]
+            else:
                 vmin = np.nanmin(dat)
                 vmax = np.nanmax(dat)
-            else:
-                vmin = lims[k][0]
-                vmax = lims[k][-1]
-        else:
-            vmin = np.nanmin(dat)
-            vmax = np.nanmax(dat)
 
         #turn data into an RGBA image
         #adjust data so scaled between vmin and vmax and between 0 and 1
         cmap = palette
         dat1 = dat.copy()
-        dat1[dat1 < vmin] = vmin
+        dat1[dat1 < vmin] = vmin  # saturate at ends
         dat1[dat1 > vmax] = vmax
         dat1 = (dat1 - vmin)/(vmax-vmin)
         rgba_img = cmap(dat1)
 
         gd = grid.getGeoDict()
-        minlat = gd.ymin - gd.dy/2
-        minlon = gd.xmin - gd.dx/2
-        maxlat = gd.ymax + gd.dy/2
-        maxlon = gd.xmax + gd.dx/2
+        minlat = gd.ymin - gd.dy/2.
+        minlon = gd.xmin - gd.dx/2.
+        maxlat = gd.ymax + gd.dy/2.
+        maxlon = gd.xmax + gd.dx/2.
+
+        if logscale is not False and len(logscale) == len(keys):
+            logsc = None
+            if logscale[k] is True:
+                logsc = LogNorm(vmin=vmin, vmax=vmax)
+        else:
+            logsc = None
+
+        # Make colorbar figure
+
+        # This is just a dummy layer that will be deleted to make the colorbar look right
+        panelhandle = plt.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
+
+        cbfmt = '%1.1f'
+        if vmax is not None and vmin is not None:
+            if logscale is not False and len(logscale) == len(keys):
+                if logscale[k] is True:
+                    cbfmt = '%e'
+            elif (vmax - vmin) < 1.:
+                cbfmt = '%1.2f'
+            elif vmax > 5.:  # (vmax - vmin) > len(clev):
+                cbfmt = '%1.0f'
+
+        fig = plt.figure(figsize=(7., 2.5))
+
+        if scaletype.lower() == 'binned':
+            cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+                                extend='both', format=cbfmt, spacing='proportional',
+                                ticks=clev, boundaries=clev)
+        else:
+            cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+                                extend='both', format=cbfmt)
+        cbar.set_label(label1, fontsize=14)
+        cbar.ax.tick_params(labelsize=14)
+        plt.axis('off')
+        panelhandle.remove()
+        if edict is not None:
+            if isScenario:
+                title = edict['event_description']
+            else:
+                timestr = edict['event_timestamp'].strftime('%b %d %Y')
+                title = 'M%.1f %s v%i - %s' % (edict['magnitude'], timestr, edict['version'], edict['event_description'])
+            plt.suptitle(title+'\n'+sref, fontsize=16)
+        else:
+            plt.suptitle(sref, fontsize=16)
+
+        if sref is not None:
+            outfilename = sref.replace('(', '_')
+            outfilename = outfilename.replace(')', '')
+            outfilename = outfilename.replace(' ', '')
+        else:
+            outfilename = title
+
+        plt.tight_layout()
+        fig.savefig(('%s_colorbar.png' % outfilename), transparent=True)  # This file has to move with the html files
 
         if inventory_shapefile is not None:
             reader = shapefile.Reader(inventory_shapefile)
@@ -1197,30 +1295,34 @@ def interactiveMap(grids, keys=None, shakefile=None, suptitle=None, inventory_sh
             geojson.close()
 
         map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                          tiles=tiletype, zoom_start=9, max_zoom=12, min_lat=minlat, max_lat=maxlat,
-                          min_lon=minlon, max_lon=maxlon)
+                          tiles=tiletype, zoom_start=8, max_zoom=12, min_lat=minlat, max_lat=maxlat,
+                          min_lon=minlon, max_lon=maxlon, prefer_canvas=True)
 
-        map1.add_children(plugins.ImageOverlay(rgba_img, opacity=0.5, bounds=[[minlat, minlon],
-                          [maxlat, maxlon]], mercator_project=True))
+        #map1.add_children(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
+        img = plugins.ImageOverlay(rgba_img, opacity=ALPHA, bounds=[[minlat, minlon],
+                                   [maxlat, maxlon]], mercator_project=True, attr=label1)
+        img.layer_name = label1
+        map1.add_children(img)
+
+        plugins.FloatImage(('%s_colorbar.png' % outfilename), bottom=0, left=1).add_to(map1)
+        plt.close('all')
+
+        folium.LayerControl().add_to(map1)
 
         if inventory_shapefile is not None:
-                map1.geo_json(geo_path='temporary541.json', fill_color='none', line_color='Black')
-                # DELETE TEMPORARY FILE
+                map1.choropleth(geo_path='temporary541.json', fill_color='none', line_color='Black')
+                # DELETE TEMPORARY FILE, OR USE TEMPFILE MODULE
 
-        # Add colorbar
-        #map1.geo_json(geo_path=district_geo, data_out='crimeagg.json', data=crimedata2,
-        #              columns=['District', 'Number'], key_on='feature.properties.DISTRICT',
-        #              fill_color=palette, fill_opacity=0.5, line_opacity=0.2,
-        #              legend_name=label1)
-
-        #map1.save(outputfilename, words)
+        map1.save(os.path.join(outputdir, '%s_%s.html' % (outfilename, key)))
 
 
-def InteractivePage(grids, key=None, shakefile=None, suptitle=None, inventory_shapefile=None,
-                    plotorder=None, maskthreshes=None, colormaps=None, boundaries=None,
+def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,
+                    maskthreshes=None, colormaps=None, isScenario=False,
                     zthresh=0, scaletype='continuous', lims=None, logscale=False,
-                    ALPHA=0.7, outputdir=None, outfilename=None,
-                    printparam=False, ds=True, dstype='mean', upsample=False):
+                    ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
+                    printparam=False, ds=True, dstype='mean'):
+    """embed multiple interactive plots in one page
+    """
     pass
 
 
