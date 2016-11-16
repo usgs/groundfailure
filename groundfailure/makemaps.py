@@ -10,6 +10,7 @@ import copy
 import datetime
 import matplotlib as mpl
 from matplotlib.colors import LightSource, LogNorm
+import re
 #from matplotlib.colorbar import ColorbarBase
 
 #third party imports
@@ -178,7 +179,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for l in limits:
                 getlim = None
-                if l in key:
+                if key in l:
                     if type(limits[l]) is list:
                         getlim = np.array(limits[l]).astype(np.float)
                     else:
@@ -195,7 +196,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for c in colors:
                 #colorobject = default
-                if c in key:
+                if key in c:
                     getcol = colors[c]
                     colorobject = eval(getcol)
                     if colorobject is None:
@@ -209,7 +210,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for g in logs:
                 getlog = False
-                if g in key:
+                if key in g:
                     if logs[g].lower() == 'true':
                         getlog = True
                     logscale.append(getlog)
@@ -221,7 +222,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for m in masks:
                 #getmask = None
-                if m in key:
+                if key in m:
                     getmask = eval(masks[m])
                     maskthreshes.append(getmask)
                     found = True
@@ -1079,17 +1080,85 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     return newgrids
 
 
-def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
-                   maskthreshes=None, colormaps=None, isScenario=False,
-                   scaletype='continuous', lims=None, logscale=False,
-                   ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
+def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=None,
+                   maskthreshes=None, colormaps=None, scaletype='continuous', lims=None, logscale=False,
+                   ALPHA=0.7, isScenario=False, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
                    printparam=False, ds=True, dstype='mean'):
-    """Make single panel interactive map of grid
+    """
+    This function creates interactive html plots of mapio grid layers (e.g. liquefaction or
+    landslide models with their input layers)
+
+    :param grids: Dictionary of N layers and metadata formatted like:
+        maplayers['layer name']={
+        'grid': mapio grid2D object,
+        'label': 'label for colorbar and top line of subtitle',
+        'type': 'output or input to model',
+        'description': 'detailed description of layer for subtitle'}.
+      Layer names must be unique.
+    :type name: Dictionary or Ordered dictionary - import collections;
+      grids = collections.OrderedDict()
+    :param shakefile: optional ShakeMap file (url or full file path) to extract information for labels and folder names
+    :type shakefile: Shakemap Event Dictionary
+    :param plotorder: List of keys describing the order to plot the grids, if
+      None and grids is an ordered dictionary, it will use the order of the
+      dictionary, otherwise it will choose order which may be somewhat random
+      but it will always put a probability grid first
+    :type plotorder: list
+    :param maskthreshes: N x 1 array or list of lower thresholds for masking
+      corresponding to order in plotorder or order of OrderedDict if plotorder
+      is None. If grids is not an ordered dict and plotorder is not specified,
+      this will not work right. If None (default), nothing will be masked
+    :param colormaps: List of strings of matplotlib colormaps (e.g. cm.autumn_r)
+      corresponding to plotorder or order of dictionary if plotorder is None.
+      The list can contain both strings and None e.g. colormaps = ['cm.autumn',
+      None, None, 'cm.jet'] and None's will default to default colormap
+    :param scaletype: Type of scale for plotting, 'continuous' or 'binned' -
+      will be reflected in colorbar
+    :type scaletype: string
+    :param lims: None or Nx1 list of tuples or numpy arrays corresponding to
+      plotorder defining the limits for saturating the colorbar (vmin, vmax) if
+      scaletype is continuous or the bins to use (clev) if scaletype if binned.
+      The list can contain tuples, arrays, and Nones, e.g. lims = [(0., 10.),
+      None, (0.1, 1.5), np.linspace(0., 1.5, 15)]. When None is specified, the
+      program will estimate the limits, when an array is specified but the scale
+      type is continuous, vmin will be set to min(array) and vmax will be set
+      to max(array)
+    :param lims: None or Nx1 list of Trues and Falses corresponding to
+      plotorder defining whether to use a linear or log scale (log10) for
+      plotting the layer. This will be reflected in the labels
+    :param logscale: None or Nx1 list of booleans defining whether to use a log scale or not for each layer
+    :param ALPHA: Transparency for mapping, if there is a hillshade that will
+      plot below each layer, it is recommended to set this to at least 0.7
+    :type ALPHA: float
+    :param isScenario: Whether this is a scenario (True) or a real event (False)
+      (default False)
+    :type isScenario: boolean
+    :param outputdir: File path for outputting figures, if edict is defined, a
+      subfolder based on the event id will be created in this folder. If None,
+      will use current directory
+    :param outfilename: File name for output without any file extensions
+    :param tiletype: folium tile type:
+        - "OpenStreetMap"
+        - "Mapbox Bright" (Limited levels of zoom for free tiles)
+        - "Mapbox Control Room" (Limited levels of zoom for free tiles)
+        - "Stamen" (Terrain, Toner, and Watercolor)
+        - "Cloudmade" (Must pass API key)
+        - "Mapbox" (Must pass API key)
+        - "CartoDB" (positron and dark_matter)
+    :param printparam: True prints model parameters on figure - NOT IMPLEMENTED YET
+    :param ds: True to allow downsampling for display (necessary when arrays
+      are quite large, False to not allow) NOT IMPLEMENTED YET
+    :param dstype: What function to use in downsampling, options are 'min',
+      'max', 'median', or 'mean' NOT IMPLEMENTED YET
+
+    :returns:
+        * Interactive plot (html file) of all grids listed in plotorder
+
     """
     plt.ioff()
     clear_color = [0, 0, 0, 0.0]
-    if keys is None:
-        keys = grids.keys()
+    if plotorder is None:
+        plotorder = grids.keys()
 
     defaultcolormap = cm.jet
 
@@ -1111,10 +1180,25 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
         outfolder = outputdir
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
+    cbfolder = os.path.join(outfolder, 'cbfolder')
+    if not os.path.isdir(cbfolder):
+        os.makedirs(cbfolder)
 
     # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE
 
-    for k, key in enumerate(keys):
+    for k, key in enumerate(plotorder):
+
+        # Get simplified name of key for file naming
+        RIDOF = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
+        OPERATORPAT = '[\+\-\*\/]*'
+        keyS = re.sub(OPERATORPAT, '', key)
+        #remove floating point numbers
+        keyS = re.sub(RIDOF, '', keyS)
+        #remove parentheses
+        keyS = re.sub('[()]*', '', keyS)
+        #remove any blank spaces
+        keyS = keyS.replace(' ', '')
+
         grid = grids[key]['grid']
 
         # get labels and metadata info
@@ -1125,9 +1209,9 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
         try:
             sref = grids[key]['description']['name']
         except:
-            sref = None
+            sref = ''
 
-        if colormaps is not None and len(colormaps) == len(keys):
+        if colormaps is not None and len(colormaps) == len(plotorder):
             if colormaps[k] is not None:
                 palette = colormaps[k]
             else:
@@ -1148,13 +1232,13 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
 
         dat = grid.getData().copy()
 
-        if maskthreshes is not None and len(maskthreshes) == len(keys):
+        if maskthreshes is not None and len(maskthreshes) == len(plotorder):
             if maskthreshes[k] is not None:
                 dat[dat <= maskthreshes[k]] = float('NaN')
                 dat = np.ma.array(dat, mask=np.isnan(dat))
 
         if scaletype.lower() == 'binned':
-            if logscale is not False and len(logscale) == len(keys):
+            if logscale is not False and len(logscale) == len(plotorder):
                 if logscale[k] is True:
                     clev = 10.**(np.arange(np.floor(np.log10(np.nanmin(dat))), np.ceil(np.log10(np.nanmax(dat))), 0.25))
                 else:
@@ -1165,7 +1249,7 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
                     else:
                         scal = 1.
 
-                    if lims is None or len(lims) != len(keys):
+                    if lims is None or len(lims) != len(plotorder):
                         clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
                     else:
                         if lims[k] is None:
@@ -1180,7 +1264,7 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
                 else:
                     scal = 1.
 
-                if lims is None or len(lims) != len(keys):
+                if lims is None or len(lims) != len(plotorder):
                     clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
                 else:
                     if lims[k] is None:
@@ -1198,7 +1282,7 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
             vmax = clev[-1]
 
         else:
-            if lims is not None and len(lims) == len(keys):
+            if lims is not None and len(lims) == len(plotorder):
                 if lims[k] is None:
                     vmin = np.nanmin(dat)
                     vmax = np.nanmax(dat)
@@ -1224,7 +1308,7 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
         maxlat = gd.ymax + gd.dy/2.
         maxlon = gd.xmax + gd.dx/2.
 
-        if logscale is not False and len(logscale) == len(keys):
+        if logscale is not False and len(logscale) == len(plotorder):
             logsc = None
             if logscale[k] is True:
                 logsc = LogNorm(vmin=vmin, vmax=vmax)
@@ -1238,9 +1322,9 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
 
         cbfmt = '%1.1f'
         if vmax is not None and vmin is not None:
-            if logscale is not False and len(logscale) == len(keys):
+            if logscale is not False and len(logscale) == len(plotorder):
                 if logscale[k] is True:
-                    cbfmt = '%e'
+                    cbfmt = '%1.0e'
             elif (vmax - vmin) < 1.:
                 cbfmt = '%1.2f'
             elif vmax > 5.:  # (vmax - vmin) > len(clev):
@@ -1269,15 +1353,18 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
         else:
             plt.suptitle(sref, fontsize=16)
 
-        if sref is not None:
-            outfilename = sref.replace('(', '_')
-            outfilename = outfilename.replace(')', '')
-            outfilename = outfilename.replace(' ', '')
-        else:
-            outfilename = title
+        sref_fix = sref
+        if sref != '':
+            sref_fix = sref_fix.replace(' (', '_')
+            sref_fix = sref_fix.replace(')', '')
+            sref_fix = sref_fix.replace(' ', '_')
+
+        if outfilename is None:
+            time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+            outfilename = os.path.join(outfolder, '%s_%s_%s.pdf' % (edict['event_id'], sref_fix, time1))
 
         plt.tight_layout()
-        fig.savefig(('%s_colorbar.png' % outfilename), transparent=True)  # This file has to move with the html files
+        fig.savefig(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), transparent=True)  # This file has to move with the html files
 
         if inventory_shapefile is not None:
             reader = shapefile.Reader(inventory_shapefile)
@@ -1304,7 +1391,7 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
         img.layer_name = label1
         map1.add_children(img)
 
-        plugins.FloatImage(('%s_colorbar.png' % outfilename), bottom=0, left=1).add_to(map1)
+        plugins.FloatImage(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), bottom=0, left=1).add_to(map1)
         plt.close('all')
 
         folium.LayerControl().add_to(map1)
@@ -1313,7 +1400,7 @@ def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
                 map1.choropleth(geo_path='temporary541.json', fill_color='none', line_color='Black')
                 # DELETE TEMPORARY FILE, OR USE TEMPFILE MODULE
 
-        map1.save(os.path.join(outputdir, '%s_%s.html' % (outfilename, key)))
+        map1.save(os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS)))
 
 
 def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,

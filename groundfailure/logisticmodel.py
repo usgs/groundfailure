@@ -611,6 +611,8 @@ class LogisticModel(object):
         if self.saveinputs is True:
             for layername, layergrid in list(self.layerdict.items()):
                 units = self.units[layername]
+                if units is None:
+                    units = ''
                 rdict[layername] = {'grid': layergrid,
                                     'label': '%s (%s)' % (layername, units),
                                     'type': 'input',
@@ -619,25 +621,30 @@ class LogisticModel(object):
                 if 'pga' in gmused:
                     units = '%g'
                     getkey = 'pga'
-                if 'pgv' in gmused:
+                elif 'pgv' in gmused:
                     units = 'cm/s'
                     getkey = 'pgv'
-                if 'mmi' in gmused:
+                elif 'mmi' in gmused:
                     units = 'intensity'
                     getkey = 'mmi'
+                else:
+                    continue
+                    # Layer is derived from several input layers, skip outputting this layer
+                if getkey in rdict:
+                    continue
                 layer = self.shakemap.getLayer(getkey)
-                rdict[gmused] = {'grid': layer,
+                rdict[getkey] = {'grid': layer,
                                  'label': '%s (%s)' % (getkey.upper(), units),
                                  'type': 'input',
                                  'description': {'units': units, 'shakemap': shakedetail}}
                 if self.uncert is not None:
                     layer1 = np.exp(np.log(layer.getData()) - self.uncert.getLayer('std'+getkey).getData())
-                    rdict[gmused + '-1std'] = {'grid': Grid2D(layer1, self.geodict),
+                    rdict[getkey + '-1std'] = {'grid': Grid2D(layer1, self.geodict),
                                                'label': '%s (%s)' % (getkey.upper()+' -1 std', units),
                                                'type': 'input',
                                                'description': {'units': units, 'shakemap': shakedetail}}
                     layer2 = np.exp(np.log(layer.getData()) + self.uncert.getLayer('std'+getkey).getData())
-                    rdict[gmused + '+1std'] = {'grid': Grid2D(layer2, self.geodict),
+                    rdict[getkey + '+1std'] = {'grid': Grid2D(layer2, self.geodict),
                                                'label': '%s (%s)' % (getkey.upper()+' +1 std', units),
                                                'type': 'input',
                                                'description': {'units': units, 'shakemap': shakedetail}}

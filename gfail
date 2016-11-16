@@ -19,30 +19,45 @@ from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap, 
 
 def main(args):
     # NEED TO ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
+    if args.set_default_paths:
+        set_default_paths(args)
+        print('default paths set, continuing...\n')
+
+    if args.list_default_paths:
+        list_default_paths()
+        return
+
+    if args.reset_default_paths:
+        reset_default_paths()
+        return
+
+    # If config filepaths given are full filepaths, change args.config_filepath
 
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
         # Make folder in outfolder for all results, if it doesn't already exist
         eventid = getHeaderData(args.shakefile)[0]['event_id']
-        if args.save_models or args.make_static_plots or args.make_interactive_plots:
+        if args.save_models or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots:
             if args.output_filepath is None:
-                args.output_filepath = os.getcwd()
-            outdir = os.path.join(args.output_filepath, eventid)
+                outdir = os.getcwd()
+            outdir = args.output_filepath
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
-
         if args.config_filepath is not None:
-            args.config = os.path.join(args.config_filepath, args.config)
+            config = os.path.join(args.config_filepath, args.config)
+        else:
+            config = args.config
+
         try:
             # see if input is a single config file, put in a list for iteration
-            temp = ConfigObj(args.config)
+            temp = ConfigObj(config)
             if args.data_path is not None:
                 temp = correct_config_filepaths(args.data_path, temp)
             configs = [temp]
             conffail = []
         except:
             #input is probably a list of config files, check
-            f = open(args.config, 'r')
+            f = open(config, 'r')
             configlist = f.readlines()
             configs = []
             conffail = []
@@ -66,8 +81,12 @@ def main(args):
             print('\nContinuing...\n')
 
         if args.set_bounds is not None:
-            bounds = {'xmin': args.set_bounds[0], 'xmax': args.set_bounds[1], 'ymin': args.set_bounds[2],
-                      'ymax': args.set_bounds[3]}
+            temp = eval(args.set_bounds)
+            latmin = temp[0]
+            latmax = temp[1]
+            lonmin = temp[2]
+            lonmax = temp[3]
+            bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
         else:
             bounds = None
 
@@ -111,32 +130,146 @@ def main(args):
 
             if args.make_interactive_plots:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
-                interactiveMap(maplayers, keys=None, shakefile=args.shakefile, inventory_shapefile=None,
+                interactiveMap(maplayers, plotorder=plotorder, shakefile=args.shakefile, inventory_shapefile=None,
                                maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
                                scaletype='continuous', lims=lims, logscale=logscale,
                                ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
 
 
+def set_default_paths(args):
+    """
+    Creates a file called .gfail_defaults that contains default path information to simplify running gfail
+    These will be overwritten by any manually entered paths. This updates any existing .gfail_defaults file
+    If 'reset' is given for a path name, it will remove any existing defaults for that input
+    """
+    filename = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    if os.path.exists(filename):
+        D = ConfigObj(filename)
+    else:
+        D = {}
+    if args.data_path is not None:
+        if args.data_path == 'reset':
+            D.pop('data_path')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.data_path):
+                D.update({'data_path': args.data_path})
+            else:
+                print('Path given for data_path does not exist: %s' % args.data_path)
+    if args.output_filepath is not None:
+        if args.output_filepath == 'reset':
+            D.pop('output_filepath')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.output_filepath):
+                D.update({'output_filepath': args.output_filepath})
+            else:
+                print('Path given for output_filepath does not exist: %s' % args.output_filepath)
+    if args.config_filepath is not None:
+        if args.config_filepath == 'reset':
+            D.pop('config_filepath')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.config_filepath):
+                D.update({'config_filepath': args.config_filepath})
+            else:
+                print('Path given for config_filepath does not exist: %s' % args.config_filepath)
+    if args.mapconfig is not None:
+        if args.mapconfig == 'reset':
+            D.pop('mapconfig')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.mapconfig):
+                D.update({'mapconfig': args.mapconfig})
+            else:
+                print('Path given for mapconfig does not exist: %s' % args.mapconfig)
+    if args.mapdata_filepath is not None:
+        if args.mapdata_filepath == 'reset':
+            D.pop('mapdata_filepath')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.mapdata_filepath):
+                D.update({'mapdata_filepath': args.mapdata_filepath})
+            else:
+                print('Path given for mapdata_filepath does not exist: %s' % args.mapdata_filepath)
+
+    if D:
+        C = ConfigObj(D)
+        C.filename = filename
+        C.write()
+        list_default_paths()
+    else:
+        print('no defaults set because no paths were input')
+
+
+def list_default_paths():
+    """
+    Lists all default paths currently set
+    """
+    filename = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    if os.path.exists(filename):
+        D = ConfigObj(filename)
+        print('Default paths currently set:')
+        for key in D:
+            print('\t%s = %s' % (key, D[key]))
+    else:
+        print('No default paths currently set\n')
+
+
+def reset_default_paths():
+    """
+    Clear default path file
+    """
+    filename = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    if os.path.exists(filename):
+        os.remove(filename)
+        print('Default paths cleared\n')
+    else:
+        print('No default paths currently set\n')
+
+
 if __name__ == '__main__':
-    defaultConfigpath = os.path.join('/'.join(LM.__file__.split('/')[:-2]), 'defaultconfigfiles')
+
+    # See if there is a default path file, load in if there is and replace any nones
+    defaults = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    data_path = None
+    output_filepath = None
+    config_filepath = None
+    mapconfig = None
+    mapdata_filepath = None
+
+    if os.path.exists(defaults):
+        D = ConfigObj(defaults)
+        for key in D:
+            if key == 'data_path':
+                data_path = D[key]
+            elif key == 'output_filepath':
+                output_filepath = D[key]
+            elif key == 'config_filepath':
+                config_filepath = D[key]
+            elif key == 'mapconfig':
+                mapconfig = D[key]
+            elif key == 'mapdata_filepath':
+                mapdata_filepath = D[key]
+
     parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
     parser.add_argument('config', metavar='config', nargs='?',
                         help='single config file of model to run, or text file listing config files')
     parser.add_argument('shakefile', nargs='?', help='single ShakeMap grid.xml file')
     parser.add_argument('-u', '--uncertfile', metavar='uncertfile', nargs='?', help='single ShakeMap uncertainty.xml file')
-    parser.add_argument('-d', '--data-path', metavar='datafilepath', nargs='?',
+    parser.add_argument('-d', '--data-path', metavar='datafilepath', nargs='?', default=data_path,
                         help='Set file path to model input data (only needed if file paths in config are relative)')
-    parser.add_argument('-o', '--output-filepath', metavar='outfilepath', nargs='?',
+    parser.add_argument('-o', '--output-filepath', metavar='outfilepath', nargs='?', default=output_filepath,
                         help='Filepath for output files, uses current directory if not specified')
-    parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?', default=defaultConfigpath,
+    parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?', default=config_filepath,
                         help='Filepath where config files are located, default is defaultconfigfiles folder of groundfailure repository')
-    parser.add_argument('-b', '--set-bounds', type=float, metavar=('xmin', 'xmax', 'ymin', 'ymax'), nargs=4,
-                        help='Set bounds of model run using four floats in this order: xmin xmax ymin ymax,\
-                              default uses shakemap bounds')
+    parser.add_argument('-b', '--set-bounds', type=str, metavar=('latmin, latmax, lonmin lonmax'), nargs='?',
+                        help="Set bounds of model run using four floats in this format, including quotes: 'latmin, latmax, lonmin, lonmax',\
+                              default uses shakemap bounds")
     parser.add_argument('-m', '--mapconfig', metavar='mapconfig', nargs='?', help='full file path to config file\
-                        containing mapping options')
+                        containing mapping options', default=mapconfig)
     parser.add_argument('-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?', help='Set file path to mapping\
-                        input data (only needed if file paths in mapconfig are relative)')
+                        input data (only needed if file paths in mapconfig are relative)', default=mapdata_filepath)
 
     # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,
@@ -149,6 +282,12 @@ if __name__ == '__main__':
                         help='Make static plots for each model')
     parser.add_argument('-pi', '--make-interactive-plots', action='store_true', default=False,
                         help='Make interactive html plots for each model')
+    parser.add_argument('--list-default-paths', action='store_true', default=False,
+                        help='See listing of currently set default paths')
+    parser.add_argument('--set-default-paths', action='store_true', default=False,
+                        help='Sets paths given as inputs as defaults (overwrites existing values)')
+    parser.add_argument('--reset-default-paths', action='store_true', default=False,
+                        help='Clears all existing default paths')
     #parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 

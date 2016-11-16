@@ -64,5 +64,7 @@ target/
 runmodels.py
 *DS_store*
 
+#Gfail defaults
+.gfail_defaults
 # Emacs backup files
 *~
