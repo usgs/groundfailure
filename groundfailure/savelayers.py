@@ -18,7 +18,8 @@ def savelayers(grids, filename):
     metadata = collections.OrderedDict()
     for key in list(grids.keys()):
         layers[key] = grids[key]['grid'].getData()
-        metadata[key] = {'description': grids[key]['description'], 'type': grids[key]['type'], 'label': grids[key]['label']}
+        metadata[key] = {'description': grids[key]['description'], 'type': grids[key]['type'],
+                         'label': grids[key]['label']}
     origin = {}
     header = {}
     mgrid = MultiHazardGrid(layers, grids[key]['grid'].getGeoDict(), origin, header, metadata=metadata)
@@ -32,6 +33,7 @@ def loadlayers(filename):
     mgrid = MultiHazardGrid.load(filename)
     grids = collections.OrderedDict()
     for key in mgrid.getLayerNames():
-        grids[key] = {'grid': mgrid.getData()[key], 'description': mgrid.getMetadata()[key]['description'], 'type': mgrid.getMetadata()[key]['type'], 'label': mgrid.getMetadata()[key]['label']}
+        grids[key] = {'grid': mgrid.getData()[key], 'description': mgrid.getMetadata()[key]['description'],
+                      'type': mgrid.getMetadata()[key]['type'], 'label': mgrid.getMetadata()[key]['label']}
 
     return grids

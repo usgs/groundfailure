@@ -9,7 +9,7 @@ from mpl_toolkits.basemap import maskoceans
 import copy
 import datetime
 import matplotlib as mpl
-from matplotlib.colors import LightSource
+from matplotlib.colors import LightSource, LogNorm
 #from matplotlib.colorbar import ColorbarBase
 
 #third party imports
@@ -26,6 +26,11 @@ from matplotlib.patches import Polygon, Rectangle
 from skimage.measure import block_reduce
 import collections
 from descartes import PolygonPatch
+import shapefile
+from json import dumps
+import folium
+from folium import plugins
+
 
 #local imports
 from mapio.gmt import GMTGrid
@@ -41,8 +46,9 @@ mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
 
 
-def parseMapConfig(config):
+def parseMapConfig(config, fileext=None):
     # Parse config object
+    # fileext will be prepended to any file paths in config
     # ADD PLOTORDER TO CONFIG? OTHER THINGS LIKE COLORMAPS?
     topofile = None
     roadfolder = None
@@ -51,61 +57,60 @@ def parseMapConfig(config):
     countrycolor = '177F10'
     watercolor = 'B8EEFF'
     ALPHA = 0.7
-    outputdir = None
     oceanfile = None
+    oceanref = None
+    roadref = None
+    cityref = None
 
-    try:
-        config1 = config['mapdata']
-        if 'dem' in config1:
-            topofile = config1['dem']['file']
-            if os.path.exists(topofile) is False:
-                print('DEM not valid - hillshade will not be possible\n')
-        if 'ocean' in config1:
-            oceanfile = config1['ocean']['file']
-            try:
-                oceanref = config1['ocean']['shortref']
-            except:
-                oceanref = 'unknown'
-        if 'roads' in config1:
-            roadfolder = config1['roads']['file']
-            if os.path.exists(roadfolder) is False:
-                print('roadfolder not valid - roads will not be displayed\n')
-                roadfolder = None
-            try:
-                roadref = config1['roads']['shortref']
-            except:
-                roadref = 'unknown'
-        if 'cities' in config1:
-            cityfile = config1['cities']['file']
-            try:
-                cityref = config1['cities']['shortref']
-            except:
-                cityref = 'unknown'
-            if os.path.exists(cityfile):
-                try:
-                    #PagerCity(cityfile)
-                    BasemapCities.loadFromGeoNames(cityfile=cityfile)
-                except Exception as e:
-                    print(e)
-                    print('cities file not valid - cities will not be displayed\n')
-                    cityfile = None
-            else:
-                print('cities file not valid - cities will not be displayed\n')
-                cityfile = False
-        if 'roadcolor' in config1['colors']:
-            roadcolor = config1['colors']['roadcolor']
-        if 'countrycolor' in config1['colors']:
-            countrycolor = config1['colors']['countrycolor']
-        if 'watercolor' in config1['colors']:
-            watercolor = config1['colors']['watercolor']
-        if 'alpha' in config1['colors']:
-            ALPHA = float(config1['colors']['alpha'])
+    #try:
+    if fileext is None:
+        fileext = '.'
+    if 'dem' in config:
+        topofile = os.path.join(fileext, config['dem']['file'])
+        if os.path.exists(topofile) is False:
+            print('DEM not valid - hillshade will not be possible\n')
+    if 'ocean' in config:
+        oceanfile = os.path.join(fileext, config['ocean']['file'])
         try:
-            outputdir = config['output']['folder']
+            oceanref = config['ocean']['shortref']
         except:
-            outputdir = None
-    except Exception as e:
-        print(('%s - mapdata missing from or misformatted in config' % e))
+            oceanref = 'unknown'
+    if 'roads' in config:
+        roadfolder = os.path.join(fileext, config['roads']['file'])
+        if os.path.exists(roadfolder) is False:
+            print('roadfolder not valid - roads will not be displayed\n')
+            roadfolder = None
+        try:
+            roadref = config['roads']['shortref']
+        except:
+            roadref = 'unknown'
+    if 'cities' in config:
+        cityfile = os.path.join(fileext, config['cities']['file'])
+        try:
+            cityref = config['cities']['shortref']
+        except:
+            cityref = 'unknown'
+        if os.path.exists(cityfile):
+            try:
+                #PagerCity(cityfile)
+                BasemapCities.loadFromGeoNames(cityfile=cityfile)
+            except Exception as e:
+                print(e)
+                print('cities file not valid - cities will not be displayed\n')
+                cityfile = None
+        else:
+            print('cities file not valid - cities will not be displayed\n')
+            cityfile = False
+    if 'roadcolor' in config['colors']:
+        roadcolor = config['colors']['roadcolor']
+    if 'countrycolor' in config['colors']:
+        countrycolor = config['colors']['countrycolor']
+    if 'watercolor' in config['colors']:
+        watercolor = config['colors']['watercolor']
+    if 'alpha' in config['colors']:
+        ALPHA = float(config['colors']['alpha'])
+    #except Exception as e:
+    #    print(('%s - mapping options missing from or misformatted in config' % e))
 
     countrycolor = '#'+countrycolor
     watercolor = '#'+watercolor
@@ -114,13 +119,13 @@ def parseMapConfig(config):
     mapin = {'topofile': topofile, 'roadfolder': roadfolder,
              'cityfile': cityfile, 'roadcolor': roadcolor,
              'countrycolor': countrycolor, 'watercolor': watercolor,
-             'ALPHA': ALPHA, 'outputdir': outputdir, 'roadref': roadref,
+             'ALPHA': ALPHA, 'roadref': roadref,
              'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
 
     return mapin
 
 
-def parseConfigLayers(maplayers, config):
+def parseConfigLayers(maplayers, config, keys=None):
     """
     Parse things that need to coodinate with each layer (like lims, logscale,
     colormaps etc.) from config file, in right order - takes orders from
@@ -129,39 +134,40 @@ def parseConfigLayers(maplayers, config):
     """
     # get all key names, create a plotorder list in case maplayers is not an
     # ordered dict, making sure that anything called 'model' is first
-    keys = list(maplayers.keys())
+    if keys is None:
+        keys = list(maplayers.keys())
     plotorder = []
 
     try:
-        limits = config['mapdata']['lims']
+        limits = config[config.keys()[0]]['display_options']['lims']
         lims = []
     except:
         lims = None
         limits = None
 
     try:
-        colors = config['mapdata']['colors']
+        colors = config[config.keys()[0]]['display_options']['colors']
         colormaps = []
     except:
         colormaps = None
         colors = None
 
     try:
-        logs = config['mapdata']['logscale']
+        logs = config[config.keys()[0]]['display_options']['logscale']
         logscale = []
     except:
         logscale = False
         logs = None
 
     try:
-        masks = config['mapdata']['maskthresholds']
+        masks = config[config.keys()[0]]['display_options']['maskthresholds']
         maskthreshes = []
     except:
         maskthreshes = None
         masks = None
 
     try:
-        default = config['mapdata']['colors']['default']
+        default = config[config.keys()[0]]['display_options']['colors']['default']
         default = eval(default)
     except:
         default = None
@@ -245,7 +251,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
              ALPHA=0.7, maproads=True, mapcities=True, isScenario=False,
              roadfolder=None, topofile=None, cityfile=None, oceanfile=None,
              roadcolor='#6E6E6E', watercolor='#B8EEFF', countrycolor='#177F10',
-             outputdir=None, savepdf=True, savepng=True, showplots=False,
+             outputdir=None, outfilename=None, savepdf=True, savepng=True, showplots=False,
              roadref='unknown', cityref='unknown', oceanref='unknown',
              printparam=False, ds=True, dstype='mean', upsample=False):
     """
@@ -374,10 +380,10 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     if outputdir is None:
         print('No output location given, using current directory for outputs\n')
         outputdir = os.getcwd()
-    if edict is not None:
-        outfolder = os.path.join(outputdir, edict['event_id'])
-    else:
-        outfolder = outputdir
+    #if edict is not None:
+    #    outfolder = os.path.join(outputdir, edict['event_id'])
+    #else:
+    outfolder = outputdir
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
 
@@ -690,6 +696,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         topodata = None
 
     # Load in roads, if needed
+    roadslist = None
     if maproads is True and roadfolder is not None:
         try:
             roadslist = []
@@ -705,7 +712,6 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                     f.close()
         except:
             print('Not able to plot roads')
-            roadslist = None
 
     val = 1
     for k, layer in enumerate(plotorder):
@@ -778,34 +784,56 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                 dat[dat <= maskthreshes[k]] = float('NaN')
                 dat = np.ma.array(dat, mask=np.isnan(dat))
 
-        if logscale is not False and len(logscale) == len(newgrids):
-            if logscale[k] is True:
-                dat = np.log10(dat)
-                label1 = r'$log_{10}$(' + label1 + ')'
+        # if logscale is not False and len(logscale) == len(newgrids):
+        #     if logscale[k] is True:
+        #         dat = np.log10(dat)
+        #         label1 = r'$log_{10}$(' + label1 + ')'
 
         if scaletype.lower() == 'binned':
-            # Find order of range to know how to scale
-            order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
-            if order < 1.:
-                scal = 10**-order
+            if logscale is not False and len(logscale) == len(newgrids):
+                if logscale[k] is True:
+                    clev = 10.**(np.arange(np.floor(np.log10(np.nanmin(dat))), np.ceil(np.log10(np.nanmax(dat))), 0.25))
+                else:
+                    # Find order of range to know how to scale
+                    order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                    if order < 1.:
+                        scal = 10**-order
+                    else:
+                        scal = 1.
+
+                    if lims is None or len(lims) != len(newgrids):
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        if lims[k] is None:
+                            clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                        else:
+                            clev = lims[k]
             else:
-                scal = 1.
-            if lims is None or len(lims) != len(newgrids):
-                clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
-            else:
-                if lims[k] is None:
+                # Find order of range to know how to scale
+                order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                if order < 1.:
+                    scal = 10**-order
+                else:
+                    scal = 1.
+
+                if lims is None or len(lims) != len(newgrids):
                     clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
                 else:
-                    clev = lims[k]
+                    if lims[k] is None:
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        clev = lims[k]
+
             # Adjust to colorbar levels
             dat[dat < clev[0]] = clev[0]
             for j, level in enumerate(clev[:-1]):
-                dat[(dat >= clev[j]) & (dat < clev[j+1])] = clev[j]
+                dat[(dat >= clev[j]) & (dat < clev[j+1])] = (clev[j] + clev[j+1])/2.
             # So colorbar saturates at top
             dat[dat > clev[-1]] = clev[-1]
             #panelhandle = m.contourf(x1, y1, datm, clev, cmap=palette, linewidth=0., alpha=ALPHA, rasterized=True)
             vmin = clev[0]
             vmax = clev[-1]
+
         else:
             if lims is not None and len(lims) == len(newgrids):
                 if lims[k] is None:
@@ -850,10 +878,9 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                     ax.add_patch(patch)
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
-        dat_im = m.transform_scalar(
-            np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy,
-            np.round(300.*wid), np.round(300.*ht), returnxy=False,
-            checkbounds=False, order=0, masked=True)
+        dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy,
+                                    np.round(300.*wid), np.round(300.*ht), returnxy=False,
+                                    checkbounds=False, order=0, masked=True)
         if topodata is not None:  # Drape over hillshade
             #turn data into an RGBA image
             cmap = palette
@@ -867,20 +894,27 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             rgb = np.squeeze(rgba_img[:, :, 0:3])
             rgb[maskvals] = 1.
             draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
-            m.imshow(draped_hsv, zorder=3., interpolation='none')
+            if logscale[k] is True:
+                logsc = LogNorm(vmin=vmin, vmax=vmax)
+            else:
+                logsc = None
+            m.imshow(draped_hsv, zorder=3., interpolation='none', norm=logsc)
             # This is just a dummy layer that will be deleted to make the
             # colorbar look right
             panelhandle = m.imshow(dat_im, cmap=palette, zorder=0.,
-                                   vmin=vmin, vmax=vmax)
+                                   vmin=vmin, vmax=vmax, norm=logsc, interpolation='none')
         else:
-            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3.,
+            panelhandle = m.imshow(dat_im, cmap=palette, zorder=3., norm=logsc,
                                    vmin=vmin, vmax=vmax, interpolation='none')
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
         #panelhandle.set_edgecolors('face')
         # add colorbar
         cbfmt = '%1.1f'
         if vmax is not None and vmin is not None:
-            if (vmax - vmin) < 1.:
+            if logscale is not False and len(logscale) == len(newgrids):
+                if logscale[k] is True:
+                    cbfmt = None
+            elif (vmax - vmin) < 1.:
                 cbfmt = '%1.2f'
             elif vmax > 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
@@ -889,12 +923,12 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         if scaletype.lower() == 'binned':
             cbar = fig.colorbar(panelhandle, spacing='proportional',
                                 ticks=clev, boundaries=clev, fraction=0.036,
-                                pad=0.04, format=cbfmt, extend='both')
+                                pad=0.04, format=cbfmt, extend='both', norm=logsc)  # extend='both'
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, spacing='proportional', ticks=clev, boundaries=clev, fraction=0.036, pad=0.04, format=cbfmt, extend='both', extendfrac='auto')
 
         else:
             cbar = fig.colorbar(panelhandle, fraction=0.036, pad=0.04,
-                                extend='both', format=cbfmt)
+                                extend='both', format=cbfmt, norm=logsc)  # extend='both'
             #cbar1 = ColorbarBase(cbar.ax, cmap=palette, norm=norm, fraction=0.036, pad=0.04, extend='both', extendfrac='auto', format=cbfmt)
 
         if topodata is not None:
@@ -1023,9 +1057,13 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     else:
         eventid = ''
 
-    time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-    outfile = os.path.join(outfolder, '%s_%s_%s.pdf' % (eventid, suptitle, time1))
-    pngfile = os.path.join(outfolder, '%s_%s_%s.png' % (eventid, suptitle, time1))
+    if outfilename is None:
+        time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+        outfile = os.path.join(outfolder, '%s_%s_%s.pdf' % (eventid, suptitle, time1))
+        pngfile = os.path.join(outfolder, '%s_%s_%s.png' % (eventid, suptitle, time1))
+    else:
+        outfile = os.path.join(outfolder, outfilename + '.pdf')
+        pngfile = os.path.join(outfolder, outfilename + '.png')
 
     if savepdf is True:
         print('Saving map output to %s' % outfile)
@@ -1039,6 +1077,253 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         plt.close(fig)
 
     return newgrids
+
+
+def interactiveMap(grids, keys=None, shakefile=None, inventory_shapefile=None,
+                   maskthreshes=None, colormaps=None, isScenario=False,
+                   scaletype='continuous', lims=None, logscale=False,
+                   ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
+                   printparam=False, ds=True, dstype='mean'):
+    """Make single panel interactive map of grid
+    """
+    plt.ioff()
+    clear_color = [0, 0, 0, 0.0]
+    if keys is None:
+        keys = grids.keys()
+
+    defaultcolormap = cm.jet
+
+    if shakefile is not None:
+        edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
+        temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+        edict['eventid'] = temp['shakemap_id']
+        edict['version'] = temp['shakemap_version']
+    else:
+        edict = None
+
+    # Get output file location
+    if outputdir is None:
+        print('No output location given, using current directory for outputs\n')
+        outputdir = os.getcwd()
+    if edict is not None:
+        outfolder = os.path.join(outputdir, edict['event_id'])
+    else:
+        outfolder = outputdir
+    if not os.path.isdir(outfolder):
+        os.makedirs(outfolder)
+
+    # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE
+
+    for k, key in enumerate(keys):
+        grid = grids[key]['grid']
+
+        # get labels and metadata info
+        if 'label' in list(grids[key].keys()):
+            label1 = grids[key]['label']
+        else:
+            label1 = key
+        try:
+            sref = grids[key]['description']['name']
+        except:
+            sref = None
+
+        if colormaps is not None and len(colormaps) == len(keys):
+            if colormaps[k] is not None:
+                palette = colormaps[k]
+            else:
+                palette = defaultcolormap
+        else:  # Find preferred default color map for each type of layer
+            if 'prob' in key.lower() or 'pga' in key.lower() or \
+               'pgv' in key.lower() or 'cohesion' in key.lower() or \
+               'friction' in key.lower() or 'fs' in key.lower():
+                palette = cm.inferno
+            elif 'slope' in key.lower():
+                palette = cm.gnuplot2
+            elif 'precip' in key.lower():
+                palette = cm2.s3pcpn
+            else:
+                palette = defaultcolormap
+
+        palette.set_bad(clear_color, alpha=0.0)
+
+        dat = grid.getData().copy()
+
+        if maskthreshes is not None and len(maskthreshes) == len(keys):
+            if maskthreshes[k] is not None:
+                dat[dat <= maskthreshes[k]] = float('NaN')
+                dat = np.ma.array(dat, mask=np.isnan(dat))
+
+        if scaletype.lower() == 'binned':
+            if logscale is not False and len(logscale) == len(keys):
+                if logscale[k] is True:
+                    clev = 10.**(np.arange(np.floor(np.log10(np.nanmin(dat))), np.ceil(np.log10(np.nanmax(dat))), 0.25))
+                else:
+                    # Find order of range to know how to scale
+                    order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                    if order < 1.:
+                        scal = 10**-order
+                    else:
+                        scal = 1.
+
+                    if lims is None or len(lims) != len(keys):
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        if lims[k] is None:
+                            clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                        else:
+                            clev = lims[k]
+            else:
+                # Find order of range to know how to scale
+                order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+                if order < 1.:
+                    scal = 10**-order
+                else:
+                    scal = 1.
+
+                if lims is None or len(lims) != len(keys):
+                    clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                else:
+                    if lims[k] is None:
+                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
+                    else:
+                        clev = lims[k]
+
+            # Adjust to colorbar levels
+            dat[dat < clev[0]] = clev[0]
+            for j, level in enumerate(clev[:-1]):
+                dat[(dat >= clev[j]) & (dat < clev[j+1])] = (clev[j] + clev[j+1])/2.
+            # So colorbar saturates at top
+            dat[dat > clev[-1]] = clev[-1]
+            vmin = clev[0]
+            vmax = clev[-1]
+
+        else:
+            if lims is not None and len(lims) == len(keys):
+                if lims[k] is None:
+                    vmin = np.nanmin(dat)
+                    vmax = np.nanmax(dat)
+                else:
+                    vmin = lims[k][0]
+                    vmax = lims[k][-1]
+            else:
+                vmin = np.nanmin(dat)
+                vmax = np.nanmax(dat)
+
+        #turn data into an RGBA image
+        #adjust data so scaled between vmin and vmax and between 0 and 1
+        cmap = palette
+        dat1 = dat.copy()
+        dat1[dat1 < vmin] = vmin  # saturate at ends
+        dat1[dat1 > vmax] = vmax
+        dat1 = (dat1 - vmin)/(vmax-vmin)
+        rgba_img = cmap(dat1)
+
+        gd = grid.getGeoDict()
+        minlat = gd.ymin - gd.dy/2.
+        minlon = gd.xmin - gd.dx/2.
+        maxlat = gd.ymax + gd.dy/2.
+        maxlon = gd.xmax + gd.dx/2.
+
+        if logscale is not False and len(logscale) == len(keys):
+            logsc = None
+            if logscale[k] is True:
+                logsc = LogNorm(vmin=vmin, vmax=vmax)
+        else:
+            logsc = None
+
+        # Make colorbar figure
+
+        # This is just a dummy layer that will be deleted to make the colorbar look right
+        panelhandle = plt.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
+
+        cbfmt = '%1.1f'
+        if vmax is not None and vmin is not None:
+            if logscale is not False and len(logscale) == len(keys):
+                if logscale[k] is True:
+                    cbfmt = '%e'
+            elif (vmax - vmin) < 1.:
+                cbfmt = '%1.2f'
+            elif vmax > 5.:  # (vmax - vmin) > len(clev):
+                cbfmt = '%1.0f'
+
+        fig = plt.figure(figsize=(7., 2.5))
+
+        if scaletype.lower() == 'binned':
+            cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+                                extend='both', format=cbfmt, spacing='proportional',
+                                ticks=clev, boundaries=clev)
+        else:
+            cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+                                extend='both', format=cbfmt)
+        cbar.set_label(label1, fontsize=14)
+        cbar.ax.tick_params(labelsize=14)
+        plt.axis('off')
+        panelhandle.remove()
+        if edict is not None:
+            if isScenario:
+                title = edict['event_description']
+            else:
+                timestr = edict['event_timestamp'].strftime('%b %d %Y')
+                title = 'M%.1f %s v%i - %s' % (edict['magnitude'], timestr, edict['version'], edict['event_description'])
+            plt.suptitle(title+'\n'+sref, fontsize=16)
+        else:
+            plt.suptitle(sref, fontsize=16)
+
+        if sref is not None:
+            outfilename = sref.replace('(', '_')
+            outfilename = outfilename.replace(')', '')
+            outfilename = outfilename.replace(' ', '')
+        else:
+            outfilename = title
+
+        plt.tight_layout()
+        fig.savefig(('%s_colorbar.png' % outfilename), transparent=True)  # This file has to move with the html files
+
+        if inventory_shapefile is not None:
+            reader = shapefile.Reader(inventory_shapefile)
+            fields = reader.fields[1:]
+            field_names = [field[0] for field in fields]
+            buffer = []
+            for sr in reader.shapeRecords():
+                atr = dict(zip(field_names, sr.record))
+                geom = sr.shape.__geo_interface__
+                buffer.append(dict(type="Feature", geometry=geom, properties=atr))
+
+            # write the temporary GeoJSON file
+            geojson = open("temporary541.json", "w")
+            geojson.write(dumps({"type": "FeatureCollection", "features": buffer}, indent=2) + "\n")
+            geojson.close()
+
+        map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
+                          tiles=tiletype, zoom_start=8, max_zoom=12, min_lat=minlat, max_lat=maxlat,
+                          min_lon=minlon, max_lon=maxlon, prefer_canvas=True)
+
+        #map1.add_children(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
+        img = plugins.ImageOverlay(rgba_img, opacity=ALPHA, bounds=[[minlat, minlon],
+                                   [maxlat, maxlon]], mercator_project=True, attr=label1)
+        img.layer_name = label1
+        map1.add_children(img)
+
+        plugins.FloatImage(('%s_colorbar.png' % outfilename), bottom=0, left=1).add_to(map1)
+        plt.close('all')
+
+        folium.LayerControl().add_to(map1)
+
+        if inventory_shapefile is not None:
+                map1.choropleth(geo_path='temporary541.json', fill_color='none', line_color='Black')
+                # DELETE TEMPORARY FILE, OR USE TEMPFILE MODULE
+
+        map1.save(os.path.join(outputdir, '%s_%s.html' % (outfilename, key)))
+
+
+def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,
+                    maskthreshes=None, colormaps=None, isScenario=False,
+                    zthresh=0, scaletype='continuous', lims=None, logscale=False,
+                    ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
+                    printparam=False, ds=True, dstype='mean'):
+    """embed multiple interactive plots in one page
+    """
+    pass
 
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):

@@ -15,88 +15,87 @@ datadir = os.path.abspath(os.path.join(homedir, 'data'))
 #logisticmodeldir = os.path.abspath(os.path.join(homedir, 'groundfailure'))
 #sys.path.insert(0, logisticmodeldir)  # put this at the front of the system path, ignoring any installed mapio stuff
 
-configfile = os.path.join(datadir, 'test.ini')
+configfile = os.path.join(datadir, 'testconfig_logimodel.ini')
 config = ConfigObj(configfile)
 # Test path correction (from conf.py)
-config['input'] = {'folder': datadir}
-config = correct_config_filepaths(config)
+config = correct_config_filepaths(datadir, config)
 
-cmodel = config['logistic_models']['test_model']
+cmodel = config['test_model']
 layers = []
 
 shakefile = os.path.join(datadir, 'test_shakegrid.xml')
 uncertfile = os.path.join(datadir, 'test_uncert.xml')
-cofile = os.path.join(datadir, 'test_friction.bil')
+cofile = os.path.join(datadir, 'test_cohesion.bil')
 slopefile = os.path.join(datadir, 'test_slope.bil')
 vs30file = os.path.join(datadir, 'test_vs30.bil')
-ctifile = os.path.join(datadir, 'test_cti.bil')
+ctifile = os.path.join(datadir, 'test_cti1.bil')
 precipfolder = os.path.join(datadir, 'test_precip')
 
-fakegeodict = GeoDict({'xmin': 0.0, 'xmax': 1.0,
-                      'ymin': 0.0, 'ymax': 1.0,
+fakegeodict = GeoDict({'xmin': 0.5, 'xmax': 1.5,
+                      'ymin': 0.5, 'ymax': 1.5,
                       'dx': 1.0, 'dy': 1.0,
                       'ny': 2, 'nx': 2})
 
 
 def test_logisticmodel():
     #print('Making sure the logistic model runs with and without uncertainty and precipitation - these files are 4x4 cells')
-    modelLQ = {'logistic_models': {'TestModelLQ': {'description': 'This is a test liquefaction model',
-                                                   'gfetype': 'liquefaction',
-                                                   'baselayer': 'vs30',
-                                                   'slopemin': 0.,
-                                                   'slopemax': 5.,
-                                                   'layers': {'vs30': {'file': vs30file, 'units': 'm/s', 'longref': 'more words',
-                                                                       'shortref': 'words'},
-                                                              'cti1': {'file': ctifile, 'units': 'unitless',
-                                                                       'longref': 'more words', 'shortref': 'words'}},
-                                                   'interpolations': {'vs30': 'nearest',
-                                                                      'cti1': 'linear'},
-                                                   'terms': {'b1': 'log((pga/100.0)*(power(MW,2.)))',
-                                                             'b2': 'cti1',
-                                                             'b3': 'log(vs30)'},
-                                                   'coefficients': {'b0': 15.,
-                                                                    'b1': 2.,
-                                                                    'b2': 0.3,
-                                                                    'b3': -4.}}}}
+    modelLQ = {'TestModelLQ': {'description': 'This is a test liquefaction model',
+                               'gfetype': 'liquefaction',
+                               'baselayer': 'vs30',
+                               'slopemin': 0.,
+                               'slopemax': 5.,
+                               'layers': {'vs30': {'file': vs30file, 'units': 'm/s', 'longref': 'more words',
+                                                   'shortref': 'words'},
+                                          'cti1': {'file': ctifile, 'units': 'unitless',
+                                                   'longref': 'more words', 'shortref': 'words'}},
+                               'interpolations': {'vs30': 'nearest',
+                                                  'cti1': 'linear'},
+                               'terms': {'b1': 'log((pga/100.0)*(power(MW,2.)))',
+                                         'b2': 'cti1',
+                                         'b3': 'log(vs30)'},
+                               'coefficients': {'b0': 15.,
+                                                'b1': 2.,
+                                                'b2': 0.3,
+                                                'b3': -4.}}}
 
-    modelLS = {'logistic_models': {'TestModelLS': {'description': 'This is a test landslide model',
-                                                   'gfetype': 'landslide',
-                                                   'baselayer': 'slope',
-                                                   'slopemin': 5.,
-                                                   'slopemax': 90.,
-                                                   'layers': {'friction': {'file': cofile, 'units': 'kPa',
-                                                                           'longref': 'more words',
-                                                                           'shortref': 'words'},
-                                                              'slope': {'file': slopefile, 'units': 'degrees',
-                                                                        'longref': 'more words', 'shortref': 'words'},
-                                                              'precip': {'file': precipfolder, 'units': 'mm',
-                                                                         'longref': 'more words', 'shortref': 'words'}},
-                                                   'interpolations': {'friction': 'linear', 'slope': 'linear',
-                                                                      'precip': 'nearest'},
-                                                   'terms': {'b1': 'pga',
-                                                             'b2': 'slope',
-                                                             'b3': 'precipMONTH',
-                                                             'b4': 'pga*slope*MW'},
-                                                   'coefficients': {'b0': -7.,
-                                                                    'b1': 0.06,
-                                                                    'b2': 0.0008,
-                                                                    'b3': 0.02,
-                                                                    'b4': 1.e-05}}}}
+    modelLS = {'TestModelLS': {'description': 'This is a test landslide model',
+                               'gfetype': 'landslide',
+                               'baselayer': 'slope',
+                               'slopemin': 5.,
+                               'slopemax': 90.,
+                               'layers': {'friction': {'file': cofile, 'units': 'kPa',
+                                                       'longref': 'more words',
+                                                       'shortref': 'words'},
+                                          'slope': {'file': slopefile, 'units': 'degrees',
+                                                    'longref': 'more words', 'shortref': 'words'},
+                                          'precip': {'file': precipfolder, 'units': 'mm',
+                                                     'longref': 'more words', 'shortref': 'words'}},
+                               'interpolations': {'friction': 'linear', 'slope': 'linear',
+                                                  'precip': 'nearest'},
+                               'terms': {'b1': 'pga',
+                                         'b2': 'slope',
+                                         'b3': 'precipMONTH',
+                                         'b4': 'pga*slope*MW'},
+                               'coefficients': {'b0': -7.,
+                                                'b1': 0.06,
+                                                'b2': 0.0008,
+                                                'b3': 0.02,
+                                                'b4': 1.e-05}}}
 
-    ls = LM.LogisticModel(modelLS, shakefile, 'TestModelLS', uncertfile=None)
-    LS = ls.calculate(slopefile=slopefile)
+    ls = LM.LogisticModel(shakefile, modelLS, uncertfile=None, slopefile=slopefile)
+    LS = ls.calculate()
 
-    lsu = LM.LogisticModel(modelLS, shakefile, 'TestModelLS', uncertfile)
+    lsu = LM.LogisticModel(shakefile, modelLS, uncertfile=uncertfile, slopefile=slopefile)
     try:
         lsu.getEquation()
         lsu.getEquations()
     except Exception as e:
         print(e)
         print('LogisticModel.getEquation and/or LogisticModel.getEquations did not work')
-    LSU = lsu.calculate(slopefile=slopefile)
+    LSU = lsu.calculate()
 
-    lq = LM.LogisticModel(modelLQ, shakefile, 'TestModelLQ', uncertfile=None)
-    LQ = lq.calculate(saveinputs=True)
+    lq = LM.LogisticModel(shakefile, modelLQ, uncertfile=None, saveinputs=True)
+    LQ = lq.calculate()
 
     # See if getGeoDict works
     assert(ls.getGeoDict() == fakegeodict), 'getGeoDict did not return the geodict expected'
@@ -208,4 +207,4 @@ if __name__ == "__main__":
     test_validateLogisticModels()
     test_validateRefs()
     test_checkTerm()
-    print('logisticmodel tests passed')
+    print('logisticmodel.py tests passed')
