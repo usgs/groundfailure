@@ -165,19 +165,19 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
 
     if modeltype is None:
         try:
-            modeltype = config['classic_newmark']['parameters']['modeltype']
+            modeltype = config['hazus']['parameters']['modeltype']
         except:
             print('No modeltype specified, using default of coverage')
             modeltype = 'coverage'
     if displmodel is None:
         try:
-            displmodel = config['classic_newmark']['parameters']['displmodel']
+            displmodel = config['hazus']['parameters']['displmodel']
         except:
             print('No regression model specified, using default of J_PGA_M')
             displmodel = 'J_PGA_M'
     if probtype is None:
         try:
-            probtype = config['classic_newmark']['parameters']['probtype']
+            probtype = config['hazus']['parameters']['probtype']
         except:
             print('No probability type (probtype) specified, using default of jibson2000')
             probtype = 'jibson2000'
@@ -769,7 +769,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
 
     if displmodel is None:
         try:
-            displmodel = config['classic_newmark']['parameters']['displmodel']
+            displmodel = config['godt_2008']['parameters']['displmodel']
         except:
             print('No regression model specified, using default of J_PGA_M')
             displmodel = 'J_PGA_M'
@@ -993,7 +993,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
         flag = 0
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
-    if model is 'J_PGA':
+    if model == 'J_PGA':
         C1 = 0.215  # additive constant in newmark displacement calculation
         C2 = 2.341  # first exponential constant
         C3 = -1.438  # second exponential constant
@@ -1002,7 +1002,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
         logDnstd = np.ones(np.shape(Dn))*0.51
         logtype = 'log10'
 
-    elif model is 'J_PGA_M':
+    elif model == 'J_PGA_M':
         if M is None:
             raise Exception('M (magnitude) not found, cannot use RS_PGA_M model')
         else:
@@ -1016,7 +1016,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
             logDnstd = np.ones(np.shape(Dn))*0.454
             logtype = 'log10'
 
-    elif model is 'RS_PGA_M':
+    elif model == 'RS_PGA_M':
         if M is None:
             raise Exception('You must enter a value for M to use the RS_PGA_M model')
         C1 = 4.89
@@ -1032,7 +1032,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
         logDnstd = 0.732 + 0.789*(Ac/PGA) - 0.539*(Ac/PGA)**2
         logtype = 'ln'
 
-    elif model is 'RS_PGA_PGV':
+    elif model == 'RS_PGA_PGV':
         if PGV is None:
             raise Exception('You must enter a value for M to use the RS_PGA_PGV model')
         C1 = -1.56
@@ -1048,7 +1048,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
         logDnstd = 0.405 + 0.524*(Ac/PGA)
         logtype = 'ln'
 
-    elif model is 'BT_PGA_M':
+    elif model == 'BT_PGA_M':
         if M is None:
             raise Exception('You must enter a value for M to use the BT_PGA_M model')
         Dn = np.array(np.exp(-0.22 - 2.83*np.log(Ac) - 0.333*(np.log(Ac))**2 + 0.566*np.log(Ac)*np.log(PGA)

@@ -28,9 +28,10 @@ from skimage.measure import block_reduce
 import collections
 from descartes import PolygonPatch
 import shapefile
-from json import dumps
+#from json import dumps
 import folium
 from folium import plugins
+from folium.features import GeoJson
 
 
 #local imports
@@ -1370,16 +1371,14 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             reader = shapefile.Reader(inventory_shapefile)
             fields = reader.fields[1:]
             field_names = [field[0] for field in fields]
-            buffer = []
+            buffer1 = []
             for sr in reader.shapeRecords():
                 atr = dict(zip(field_names, sr.record))
                 geom = sr.shape.__geo_interface__
-                buffer.append(dict(type="Feature", geometry=geom, properties=atr))
+                buffer1.append(dict(type="Feature", geometry=geom, properties=atr))
 
-            # write the temporary GeoJSON file
-            geojson = open("temporary541.json", "w")
-            geojson.write(dumps({"type": "FeatureCollection", "features": buffer}, indent=2) + "\n")
-            geojson.close()
+            # create geojson formatted structure
+            inv = GeoJson(buffer1)
 
         map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
                           tiles=tiletype, zoom_start=8, max_zoom=12, min_lat=minlat, max_lat=maxlat,
@@ -1387,7 +1386,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
 
         #map1.add_children(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
         img = plugins.ImageOverlay(rgba_img, opacity=ALPHA, bounds=[[minlat, minlon],
-                                   [maxlat, maxlon]], mercator_project=True, attr=label1)
+                                   [maxlat, maxlon]], mercator_project=True)
         img.layer_name = label1
         map1.add_children(img)
 
@@ -1395,9 +1394,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         plt.close('all')
 
         folium.LayerControl().add_to(map1)
+        map1.add_child(folium.LatLngPopup())
 
         if inventory_shapefile is not None:
-                map1.choropleth(geo_path='temporary541.json', fill_color='none', line_color='Black')
+                map1.choropleth(inv, fill_color='none', line_color='Black')
                 # DELETE TEMPORARY FILE, OR USE TEMPFILE MODULE
 
         map1.save(os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS)))
