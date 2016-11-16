@@ -68,7 +68,7 @@ def isURL(gridurl):
     return isURL
 
 
-def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, regressionmodel=None,
+def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, displmodel=None,
           probtype=None, bounds=None):
 
     """This function runs the HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories (I-X)
@@ -88,16 +88,16 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
         * 'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure.
         * 'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype.
         * 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined
-           by regressionmodel param to get Newmark displacement without relating to probability of failure.
+           by displmodel param to get Newmark displacement without relating to probability of failure.
         * 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model
-          defined by regressionmodel param to get Newmark displacement and probability defined by probtype method.
+          defined by displmodel param to get Newmark displacement and probability defined by probtype method.
     :type modeltype: string
-    :param regressionmodel: Newmark displacement regression model to use OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
+    :param displmodel: Newmark displacement regression model to use OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
-    :type regressionmodel: string
+    :type displmodel: string
     :param probtype: Method used to estimate probability. OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
         * 'jibson2000' (default) uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
         * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
@@ -169,12 +169,12 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
         except:
             print('No modeltype specified, using default of coverage')
             modeltype = 'coverage'
-    if regressionmodel is None:
+    if displmodel is None:
         try:
-            regressionmodel = config['classic_newmark']['parameters']['regressionmodel']
+            displmodel = config['classic_newmark']['parameters']['displmodel']
         except:
-            print('No regression model specified, using default of J_PGA')
-            regressionmodel = 'J_PGA'
+            print('No regression model specified, using default of J_PGA_M')
+            displmodel = 'J_PGA_M'
     if probtype is None:
         try:
             probtype = config['classic_newmark']['parameters']['probtype']
@@ -242,10 +242,10 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
             Dnmin = ed_mean * numcycles(M) * PGAmin
             Dnmax = ed_mean * numcycles(M) * PGAmax
     else:  # Calculate newmark displacement using a regression model
-        Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=regressionmodel, M=M, PGV=PGV)
+        Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=displmodel, M=M, PGV=PGV)
         if uncertfile is not None:
-            Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=regressionmodel, M=M, PGV=PGVmin)
-            Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=regressionmodel, M=M, PGV=PGVmax)
+            Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=displmodel, M=M, PGV=PGVmin)
+            Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=displmodel, M=M, PGV=PGVmax)
 
     # Calculate probability from Dn, if necessary for selected model
     if modeltype == 'ac_classic_prob' or modeltype == 'dn_prob':
@@ -290,23 +290,23 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
         maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
                                               'shakemap': shakedetail,
-                                              'parameters': {'regressionmodel': regressionmodel, 'modeltype': modeltype}}}
+                                              'parameters': {'displmodel': displmodel, 'modeltype': modeltype}}}
     elif modeltype == 'ac_classic_dn':
         maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
-                                              'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel,
+                                              'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
                                                                                       'modeltype': modeltype}}}
     elif modeltype == 'dn_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
-                                              'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel,
+                                              'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
                                                                                       'dnthresh_cm': dnthresh,
                                                                                       'modeltype': modeltype,
                                                                                       'probtype': probtype}}}
     elif modeltype == 'ac_classic_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
-                                              'shakemap': shakedetail, 'parameters': {'regressionmodel': regressionmodel,
+                                              'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
                                                                                       'dnthresh_cm': dnthresh,
                                                                                       'modeltype': modeltype,
                                                                                       'probtype': probtype}}}
@@ -325,13 +325,13 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
                            'description': {'units': 'g', 'shakemap': shakedetail}}
         maplayers['pga'] = {'grid': GDALGrid(PGA, gdict), 'label': 'PGA (g)', 'type': 'input',
                             'description': {'units': 'g', 'shakemap': shakedetail}}
-        if 'pgv' in regressionmodel.lower():
+        if 'pgv' in displmodel.lower():
             maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input',
                                 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
         if 'dn' not in modeltype.lower() and modeltype != 'coverage':
             maplayers['dn'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
                                'description': {'units': 'displacement', 'shakemap': shakedetail,
-                                               'parameters': {'regressionmodel': regressionmodel,
+                                               'parameters': {'displmodel': displmodel,
                                                               'modeltype': modeltype}}}
 
     return maplayers
@@ -389,7 +389,7 @@ def numcycles(M):
     return n
 
 
-def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel=None, probtype=None,
+def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=None, probtype=None,
             slopediv=1., codiv=1., bounds=None):
     """This function uses the Newmark method to estimate probability of failure at each grid cell.
     Factor of Safety and critcal accelerations are calculated following Jibson et al. (2000) and the
@@ -406,12 +406,12 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         if this is not None, it will compute the model for +-std in addition to the best estimate
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param regressionmodel: Newmark displacement regression model to use OVERWRITES CONFIG FILE CHOICES
+    :param displmodel: Newmark displacement regression model to use OVERWRITES CONFIG FILE CHOICES
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
-    :type regressionmodel: string
+    :type displmodel: string
     :param probtype: Method used to estimate probability. OVERWRITES CONFIG FILE CHOICES
         * 'jibson2000' (default) uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
         * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes
@@ -454,12 +454,12 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
         cohesionunits = config['classic_newmark']['layers']['cohesion']['units']
         frictionfile = config['classic_newmark']['layers']['friction']['file']
         frictionunits = config['classic_newmark']['layers']['friction']['units']
-        if regressionmodel is None:
+        if displmodel is None:
             try:
-                regressionmodel = config['classic_newmark']['parameters']['regressionmodel']
+                displmodel = config['classic_newmark']['parameters']['displmodel']
             except:
-                print('No regression model specified, using default of J_PGA')
-                regressionmodel = 'J_PGA'
+                print('No regression model specified, using default of J_PGA_M')
+                displmodel = 'J_PGA_M'
         if probtype is None:
             try:
                 probtype = config['classic_newmark']['parameters']['probtype']
@@ -604,10 +604,10 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
-    Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=regressionmodel, M=M, PGV=PGV)
+    Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=displmodel, M=M, PGV=PGV)
     if uncertfile is not None:
-        Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=regressionmodel, M=M, PGV=PGVmin)
-        Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=regressionmodel, M=M, PGV=PGVmax)
+        Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=displmodel, M=M, PGV=PGVmin)
+        Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=displmodel, M=M, PGV=PGVmax)
 
     units = 'probability'
     label = 'Landslide Probability'
@@ -649,7 +649,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     else:
         des = m
     description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail,
-                   'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
+                   'parameters': {'displmodel': displmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
                                   'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh,
                                   'slopethresh': slopethresh, 'sat_proportion': des}}
 
@@ -679,7 +679,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
                                    'description': {'units': 'g', 'shakemap': shakedetail}}
             maplayers['pgamax'] = {'grid': GDALGrid(PGAmax, gdict), 'label': 'PGA + 1std (g)', 'type': 'input',
                                    'description': {'units': 'g', 'shakemap': shakedetail}}
-        if 'PGV' in regressionmodel:
+        if 'PGV' in displmodel:
             maplayers['pgv'] = {'grid': GDALGrid(PGV, gdict), 'label': 'PGV (cm/s)', 'type': 'input',
                                 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
             if uncertfile is not None:
@@ -695,7 +695,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, regressionmode
     return maplayers
 
 
-def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmodel=None, bounds=None, slopediv=100.,
+def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=None, bounds=None, slopediv=100.,
              codiv=10.):
     """ This function runs the Godt et al. (2008) global method for a given ShakeMap. The Factor of Safety
     is calculated using infinite slope analysis assumuing dry conditions. The method uses threshold newmark
@@ -709,12 +709,12 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     :type config: ConfigObj
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param regressionmodel: Newmark displacement regression model to use
+    :param displmodel: Newmark displacement regression model to use
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
-    :type regressionmodel: string
+    :type displmodel: string
     :param probtype: Method used to estimate probability.
         * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
         * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
@@ -767,12 +767,12 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
         raise NameError('Could not parse configfile, %s' % e)
         return
 
-    if regressionmodel is None:
+    if displmodel is None:
         try:
-            regressionmodel = config['classic_newmark']['parameters']['regressionmodel']
+            displmodel = config['classic_newmark']['parameters']['displmodel']
         except:
-            print('No regression model specified, using default of J_PGA')
-            regressionmodel = 'J_PGA'
+            print('No regression model specified, using default of J_PGA_M')
+            displmodel = 'J_PGA_M'
 
     # TO DO, ADD ERROR CATCHING ON UNITS, MAKE SURE THEY ARE WHAT THEY SHOULD BE FOR THIS MODEL
 
@@ -862,7 +862,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     # Get PGA in g (PGA is %g in ShakeMap, convert to g)
     PGA = np.repeat(shakemap.getLayer('pga').getData()[:, :, np.newaxis]/100., 7, axis=2).astype(float)
-    if 'PGV' in regressionmodel:  # Load in PGV also, in cm/sec
+    if 'PGV' in displmodel:  # Load in PGV also, in cm/sec
         PGV = np.repeat(shakemap.getLayer('pgv').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
     else:
         PGV = None
@@ -878,10 +878,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 
-    Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=regressionmodel, M=M, PGV=PGV)
+    Dn, logDnstd, logtype = NMdisp(Ac, PGA, model=displmodel, M=M, PGV=PGV)
     if uncertfile is not None:
-        Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=regressionmodel, M=M, PGV=PGVmin)
-        Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=regressionmodel, M=M, PGV=PGVmax)
+        Dnmin, logDnstdmin, logtype = NMdisp(Ac, PGAmin, model=displmodel, M=M, PGV=PGVmin)
+        Dnmax, logDnstdmax, logtype = NMdisp(Ac, PGAmax, model=displmodel, M=M, PGV=PGVmax)
 
     PROB = Dn.copy()
     PROB[PROB < dnthresh] = 0.
@@ -927,7 +927,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
     description = {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail,
-                   'parameters': {'regressionmodel': regressionmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
+                   'parameters': {'displmodel': displmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
                                   'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, shakemap.getGeoDict()), 'label': 'Areal coverage', 'type': 'output',
@@ -941,7 +941,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, regressionmod
     if saveinputs is True:
         maplayers['pga'] = {'grid': GDALGrid(PGA[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA (g)', 'type': 'input',
                             'description': {'units': 'g', 'shakemap': shakedetail}}
-        if 'PGV' in regressionmodel:
+        if 'PGV' in displmodel:
             maplayers['pgv'] = {'grid': GDALGrid(PGV[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV (cm/s)',
                                 'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
         maplayers['minFS'] = {'grid': GDALGrid(np.min(FS, axis=2), shakemap.getGeoDict()),
