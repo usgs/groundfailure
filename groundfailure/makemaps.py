@@ -31,7 +31,7 @@ import shapefile
 #from json import dumps
 import folium
 from folium import plugins
-from folium.features import GeoJson
+from folium.features import GeoJson, RectangleMarker
 
 
 #local imports
@@ -1084,7 +1084,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=None,
                    maskthreshes=None, colormaps=None, scaletype='continuous', lims=None, logscale=False,
                    ALPHA=0.7, isScenario=False, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
-                   printparam=False, ds=True, dstype='mean'):
+                   printparam=False, ds=True, dstype='mean', smcontourfile=None):
     """
     This function creates interactive html plots of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers)
@@ -1151,6 +1151,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
       are quite large, False to not allow) NOT IMPLEMENTED YET
     :param dstype: What function to use in downsampling, options are 'min',
       'max', 'median', or 'mean' NOT IMPLEMENTED YET
+    :param smcontourfile: file extension to shakemap contour file to plot
+     NOT FUNCTIONAL YET
 
     :returns:
         * Interactive plot (html file) of all grids listed in plotorder
@@ -1361,8 +1363,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             sref_fix = sref_fix.replace(' ', '_')
 
         if outfilename is None:
-            time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-            outfilename = os.path.join(outfolder, '%s_%s_%s.pdf' % (edict['event_id'], sref_fix, time1))
+            outfilename = '%s_%s.pdf' % (edict['event_id'], sref_fix)
 
         plt.tight_layout()
         fig.savefig(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), transparent=True)  # This file has to move with the html files
@@ -1375,13 +1376,14 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             for sr in reader.shapeRecords():
                 atr = dict(zip(field_names, sr.record))
                 geom = sr.shape.__geo_interface__
+                style_function = lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 0.7}
                 buffer1.append(dict(type="Feature", geometry=geom, properties=atr))
 
-            # create geojson formatted structure
-            inv = GeoJson(buffer1)
+            # create geojson object
+            invt = GeoJson({"type": "FeatureCollection", "features": buffer1}, style_function=style_function)
 
         map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                          tiles=tiletype, zoom_start=8, max_zoom=12, min_lat=minlat, max_lat=maxlat,
+                          tiles=tiletype, zoom_start=9, max_zoom=14, min_lat=minlat, max_lat=maxlat,
                           min_lon=minlon, max_lon=maxlon, prefer_canvas=True)
 
         #map1.add_children(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
@@ -1391,16 +1393,29 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         map1.add_children(img)
 
         plugins.FloatImage(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), bottom=0, left=1).add_to(map1)
-        plt.close('all')
 
-        folium.LayerControl().add_to(map1)
         map1.add_child(folium.LatLngPopup())
+        map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
+                       weight=2, fill_color='none'))
 
         if inventory_shapefile is not None:
-                map1.choropleth(inv, fill_color='none', line_color='Black')
-                # DELETE TEMPORARY FILE, OR USE TEMPFILE MODULE
+                map1.add_child(invt)
+        invt.layer_name = 'Inventory'
+
+        folium.LayerControl().add_to(map1)
+
+        if smcontourfile is not None:
+            style_function = lambda x: {'fillColor': 'none', 'color': 'white', 'weight': 0.7}
+            smc = GeoJson(open(smcontourfile))
+            #smc.layer_name = 'ShakeMap Contours'
+            map1.add_child(smc)
+            #for feature in smc.data['features']:
+            #    label = ('%s (%s)') % (feature['properties']['value'], feature['properties']['units'].replace('pct', '%'))
+            #    plugins.PolyLineTextPath(feature['geometry']['coordinates'], label,
+            #                             center=True, attributes={'fill': 'white', 'font-size': '14'}).add_to(map1)
 
         map1.save(os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS)))
+        plt.close('all')
 
 
 def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,
