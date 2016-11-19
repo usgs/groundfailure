@@ -366,7 +366,8 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     if suptitle is None:
         suptitle = ' '
 
-    plt.ioff()
+    if not showplots or (not savepdf and not savepng):  # display fig only if static fig not output
+        plt.ioff()
 
     defaultcolormap = cm.jet
 
@@ -382,10 +383,10 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     if outputdir is None:
         print('No output location given, using current directory for outputs\n')
         outputdir = os.getcwd()
-    #if edict is not None:
-    #    outfolder = os.path.join(outputdir, edict['event_id'])
-    #else:
-    outfolder = outputdir
+    if edict is not None:
+        outfolder = os.path.join(outputdir, edict['event_id'])
+    else:
+        outfolder = outputdir
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
 
@@ -397,16 +398,16 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     cut = True
     if boundaries is None:
         cut = False
-        keytemp = list(grids.keys())
+        keytemp = list(plotorder)
         boundaries = grids[keytemp[0]]['grid'].getGeoDict()
     elif boundaries == 'zoom':
         # Find probability layer (will just take the maximum bounds if there is
         # more than one)
-        keytemp = list(grids.keys())
+        keytemp = list(plotorder)
         key1 = [key for key in keytemp if 'model' in key.lower()]
         if len(key1) == 0:
             print('Could not find model layer to use for zoom, using default boundaries')
-            keytemp = list(grids.keys())
+            keytemp = list(plotorder)
             boundaries = grids[keytemp[0]]['grid'].getGeoDict()
         else:
             lonmax = -1.e10
@@ -496,7 +497,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     # Determine if need a single panel or multi-panel plot and if multi-panel,
     # how many and how it will be arranged
     fig = plt.figure()
-    numpanels = len(grids)
+    numpanels = len(plotorder)
     if numpanels == 1:
         rowpan = 1
         colpan = 1
@@ -1333,7 +1334,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             elif vmax > 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
 
-        fig = plt.figure(figsize=(7., 2.5))
+        fig = plt.figure(figsize=(8., 2.5))
 
         if scaletype.lower() == 'binned':
             cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
@@ -1399,8 +1400,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
                        weight=2, fill_color='none'))
 
         if inventory_shapefile is not None:
-                map1.add_child(invt)
-        invt.layer_name = 'Inventory'
+            map1.add_child(invt)
+            invt.layer_name = 'Inventory'
 
         folium.LayerControl().add_to(map1)
 
@@ -1416,6 +1417,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
 
         map1.save(os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS)))
         plt.close('all')
+
+        return map1
 
 
 def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,

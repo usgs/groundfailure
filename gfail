@@ -31,8 +31,6 @@ def main(args):
         reset_default_paths()
         return
 
-    # If config filepaths given are full filepaths, change args.config_filepath
-
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
         # Make folder in outfolder for all results, if it doesn't already exist
@@ -43,34 +41,39 @@ def main(args):
             outdir = args.output_filepath
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
+        config = args.config
         if args.config_filepath is not None:
-            config = os.path.join(args.config_filepath, args.config)
-        else:
-            config = args.config
+            # only add config_filepath if full filepath not given and file ext is .ini
+            if not os.path.isabs(config) and os.path.splitext(config)[-1] == '.ini':
+                config = os.path.join(args.config_filepath, config)
 
-        try:
-            # see if input is a single config file, put in a list for iteration
+        if os.path.splitext(config)[-1] == '.ini':
             temp = ConfigObj(config)
             if args.data_path is not None:
                 temp = correct_config_filepaths(args.data_path, temp)
             configs = [temp]
             conffail = []
-        except:
-            #input is probably a list of config files, check
+        else:
+            #input is a list of config files
             f = open(config, 'r')
             configlist = f.readlines()
             configs = []
             conffail = []
             for conf in configlist:
-                conf.replace('\n', '')
-                conf = os.path.join(args.config_filepath, conf)
+                conf = conf.replace('\n', '')
+                if not os.path.isabs(args.config):  # only add config_filepath if full filepath not given
+                    conf = os.path.join(args.config_filepath, conf)
                 try:
                     temp = ConfigObj(conf)
-                    if args.data_path is not None:
-                        temp = correct_config_filepaths(args.data_path, temp)
-                    configs.append(temp)
+                    if temp:
+                        if args.data_path is not None:
+                            temp = correct_config_filepaths(args.data_path, temp)
+                        configs.append(temp)
+                    else:
+                        conffail.append(conf)
                 except:
                     conffail.append(conf)
+
         print('Running the following models:\n')
         for conf in configs:
             print('\t%s\n' % conf.keys()[0])
@@ -112,8 +115,9 @@ def main(args):
                 print(modelfunc)
                 print('Unknown model function specified in config for %s model, skipping to next config' % modelfunc)
                 continue
-            time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-            filename = ('%s_%s_%s' % (eventid, modelname, time1))
+            #time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+            #filename = ('%s_%s_%s' % (eventid, modelname, time1))
+            filename = ('%s_%s' % (eventid, modelname))
             if args.save_models:
                 filenameh = filename + '.hdf5'
                 savelayers(maplayers, os.path.join(outdir, filenameh))
@@ -123,13 +127,21 @@ def main(args):
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
                 modelMap(maplayers, args.shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
-                         zthresh=0., lims=lims, maskthreshes=maskthreshes, maproads=False, mapcities=True,
-                         savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
-                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='binned',
+                         zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
+                         mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
                          logscale=logscale, **kwargs)
+                # make model only plots too
+                if len(maplayers) > 1:
+                    plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
+                    modelMap(maplayers, args.shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                             zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
+                             mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                             inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
+                             scaletype='continuous', logscale=logscale, **kwargs)
 
             if args.make_interactive_plots:
-                plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
+                plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
                 interactiveMap(maplayers, plotorder=plotorder, shakefile=args.shakefile, inventory_shapefile=None,
                                maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
                                scaletype='continuous', lims=lims, logscale=logscale,
@@ -254,7 +266,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
     parser.add_argument('config', metavar='config', nargs='?',
-                        help='single config file of model to run, or text file listing config files')
+                        help='single config file of model to run, or text file listing config files (do not use .ini extension)')
     parser.add_argument('shakefile', nargs='?', help='single ShakeMap grid.xml file')
     parser.add_argument('-u', '--uncertfile', metavar='uncertfile', nargs='?', help='single ShakeMap uncertainty.xml file')
     parser.add_argument('-d', '--data-path', metavar='datafilepath', nargs='?', default=data_path,
