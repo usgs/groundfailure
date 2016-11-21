@@ -17,11 +17,23 @@ To upgrade this package:
 
 pip install -U git+git://github.com/usgs/groundfailure.git
 
+
 This package depends on a number of other libraries, most of which are installed with Anaconda. 
 We strongly suggest that users install Anaconda or one of the other Scipy Stack distributions
 described [here](http://www.scipy.org/install.html).
 
-Other dependencies that may not be installed with a distribution:
+The easiest way to set up your environment is to install Anaconda and then take use the setup script
+<pre>
+setup_env.sh
+</pre>
+which is included in the repository to set up a 
+[virtual environment](http://conda.pydata.org/docs/using/envs.html) using the following command:
+<pre>
+bash setup_env.sh
+</pre>
+
+If you don't want to set your system up using an anaconda virtual environment, here is a list of
+other dependencies that may not be installed with a distribution:
 * configobj
 * fiona
 * rasterio
@@ -34,26 +46,28 @@ Other dependencies that may not be installed with a distribution:
 Usually these packages can be installed with either conda (Anaconda installs) or pip. 
 
 Some other third party dependencies can be installed by the following:
+
 pip install https://github.com/usgs/MapIO/archive/master.zip
+
 pip install https://github.com/usgs/earthquake-impact-utils/archive/master.zip
+
 pip install https://github.com/gem/oq-hazardlib/archive/master.zip
+
 pip install scikit-image
+
 pip install sphinx_rtd_theme
+
 pip install git+git://github.com/python-visualization/folium.git
-
-The easiest way to set up your environment is to install Anaconda and then take use the setup script
-*setup_env.sh* which is included in the repository to set up a 
-[virtual environment](http://conda.pydata.org/docs/using/envs.html) using the following command:
-
-bash setup_env.sh
 
 For gdalfuncs to work (find proj.4 libraries), you may need to add the following line to 
 your .bash_profile:
+<pre>
 export PROJSO=/Library/Frameworks/PROJ.framework/PROJ
-
+</pre>
 To run gfail from the command line, you will need to add its location to your .bash_profile:
+<pre>
 export PATH=~/groundfailure:$PATH
-
+</pre>
 
 ## Configuration
 -------------
@@ -226,8 +240,8 @@ The config file format is a modified version of the "INI" format.  It is describ
       cti1 = None
 </pre>
 
-### Model config file format
-The model config file tells the program what files to use (roads, cities etc.) for creating static maps.
+### Mapping config file format
+The mapping config file tells the program what files to use (roads, cities etc.) for creating static maps.
 It is not required, but static maps may be bland without these.
 <pre>
 # All map inputs are optional, but desireable. File paths are relative to the mapping_inputs folder
