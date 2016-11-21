@@ -1,14 +1,14 @@
 # groundfailure
 
 ## Introduction
-------------
+
 groundfailure is a project designed to implement models for calculating landslide and
 liquefaction probability given an input ShakeMap.  
 
 Code documentation: http://usgs.github.io/groundfailure/
 
 ## Installation and Dependencies
------------------------------
+
 To install this package:
 
 pip install git+git://github.com/usgs/groundfailure.git
@@ -70,7 +70,6 @@ export PATH=~/groundfailure:$PATH
 </pre>
 
 ## Configuration
--------------
 
 For each model, there is a configuration file that describes the model parameters, default values, 
 metadata/source details, input file locations, and display preferences. Default versions with relative
@@ -276,7 +275,6 @@ It is not required, but static maps may be bland without these.
 </pre>
 
 ## API for Model Output
----------------------
 
 Each model should output a single dictionary, which has keys that correspond to the names of the 
 input and output layers from the model.
