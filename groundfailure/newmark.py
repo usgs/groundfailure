@@ -6,10 +6,6 @@ This module contains functions that can be used to run Newmark-based mechanistic
 #stdlib imports
 import os.path
 import warnings
-import urllib.request
-import urllib.error
-import urllib.parse
-import tempfile
 import collections
 
 #turn off all warnings...
@@ -24,57 +20,13 @@ from mapio.geodict import GeoDict
 import numpy as np
 
 
-def getGridURL(gridurl):
-    """getGridURL downloads the url of a shakemap xml file and returns the corresponding file object
-
-    :param gridurl: string defining a url
-    :type gridurl: string
-
-    :returns:
-        gridfile: file object corresponding to the url
-    """
-
-    gridfile = None
-    try:
-        fh = urllib.request.urlopen(gridurl)
-        data = fh.read().decode('utf-8')
-        fd, gridfile = tempfile.mkstemp()
-        os.close(fd)
-        f = open(gridfile, 'wt')
-        f.write(data)
-        f.close()
-        fh.close()
-    except:
-        raise IOError('Could not retrieve data from %s' % gridurl)
-    return gridfile
-
-
-def isURL(gridurl):
-    """This function determines if the provided string is a valid url
-
-    :param gridurl: string defining the potential url
-    :type gridurl: string
-
-    :returns:
-        isURL(boolean): True if griurl is a valid url, False otherwise
-    """
-
-    isURL = False
-    try:
-        urllib.request.urlopen(gridurl)
-        isURL = True
-    except:
-        pass
-    return isURL
-
-
 def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, displmodel=None,
           probtype=None, bounds=None):
 
     """This function runs the HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories (I-X)
     defined by the HAZUS manual.
 
-    :param shakefile: URL or complete file path to the location of the Shakemap to use as input
+    :param shakefile: complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
     :param config: Model configuration file object containing locations of input files and other input values config =
       ConfigObj(configfilepath)
@@ -397,7 +349,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
     from Shakemap with regression equations from Jibson (2007), Rathje and Saygili (2008) and
     Saygili and Rathje (2009)
 
-    :param shakefile: URL or complete file path to the location of the Shakemap to use as input
+    :param shakefile: complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
     :param config: Model configuration file object containing locations of input files and other input values
         config = ConfigObj(configfilepath)
@@ -431,7 +383,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
 
     :raises:
         NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when
-        unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+        unable to find the shakefile (Shakemap filepath) - these cause program to end
 
         NameError: when probtype does not match a predifined probability type, will cause to default to 'jibson2000'
 
@@ -535,14 +487,6 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
     slope = slopegrid.getData().astype(float)/slopediv  # Adjust slope to degrees, if needed
     # Change any zero slopes to a very small number to avoid dividing by zero later
     slope[slope == 0] = 1e-8
-
-    # Load in shakefile
-    if not os.path.isfile(shakefile):
-        if isURL(shakefile):
-            shakefile = getGridURL(shakefile)  # returns a file object
-        else:
-            raise NameError('Could not find "%s" as a file or a valid url' % (shakefile))
-            return
 
     # Load in shakemap, resample to slope file (this will be important when go to higher res)
     shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, resample=True, method='linear', adjust='res')
@@ -703,7 +647,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
     TO DO - add 'all' - averages Dn from all four equations, add term to convert PGA and PGV to Ia and use other
     equations, add Ambraseys and Menu (1988) option
 
-    :param shakefile: url or filepath to shakemap xml file
+    :param shakefile: filepath to shakemap xml file
     :type shakefile: string
     :param config: ConfigObj of config file containing inputs required for running the model
     :type config: ConfigObj
@@ -733,7 +677,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
 
     :raises:
          NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when
-         unable to find the shakefile (Shakemap URL or filepath) - these cause program to end
+         unable to find the shakefile (Shakemap filepath) - these cause program to end
 
     """
 
@@ -787,14 +731,6 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         frictionlref = config['godt_2008']['layers']['friction']['longref']
     except:
         print('Was not able to retrieve all references from config file. Continuing')
-
-    # Load in shakefile
-    if not os.path.isfile(shakefile):
-        if isURL(shakefile):
-            shakefile = getGridURL(shakefile)  # returns a file object
-        else:
-            raise NameError('Could not find "%s" as a file or a valid url' % (shakefile))
-            return
 
     shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid

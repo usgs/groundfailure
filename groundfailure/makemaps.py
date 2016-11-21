@@ -360,6 +360,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         * Downsampled and trimmed version of input grids. If no
         modification was needed for plotting, this will be identical to grids but
         without the metadata
+        * list of output filenames
 
     """
 
@@ -1068,18 +1069,21 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         outfile = os.path.join(outfolder, outfilename + '.pdf')
         pngfile = os.path.join(outfolder, outfilename + '.png')
 
+    filenames = []
     if savepdf is True:
         print('Saving map output to %s' % outfile)
         plt.savefig(outfile, dpi=300)
+        filenames.append(outfile)
     if savepng is True:
         print('Saving map output to %s' % pngfile)
         plt.savefig(pngfile)
+        filenames.append(pngfile)
     if showplots is True:
         plt.show()
     else:
         plt.close(fig)
 
-    return newgrids
+    return newgrids, filenames
 
 
 def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=None,
@@ -1364,7 +1368,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             sref_fix = sref_fix.replace(' ', '_')
 
         if outfilename is None:
-            outfilename = '%s_%s.pdf' % (edict['event_id'], sref_fix)
+            outfilename = '%s_%s' % (edict['event_id'], sref_fix)
 
         plt.tight_layout()
         fig.savefig(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), transparent=True)  # This file has to move with the html files

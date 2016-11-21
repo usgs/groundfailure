@@ -5,6 +5,10 @@ import argparse
 import os.path
 import datetime
 from configobj import ConfigObj
+import urllib.request
+import urllib.error
+import urllib.parse
+import tempfile
 
 #third party imports
 from mapio.shake import getHeaderData
@@ -33,8 +37,17 @@ def main(args):
 
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
+        shakefile = args.shakefile
+        # download if is url
+        if not os.path.isfile(shakefile):
+            if isURL(shakefile):
+                shakefile = getGridURL(shakefile)  # returns a file object
+            else:
+                raise NameError('Could not find "%s" as a file or a valid url' % (shakefile))
+                return
+
         # Make folder in outfolder for all results, if it doesn't already exist
-        eventid = getHeaderData(args.shakefile)[0]['event_id']
+        eventid = getHeaderData(shakefile)[0]['event_id']
         if args.save_models or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots:
             if args.output_filepath is None:
                 outdir = os.getcwd()
@@ -93,23 +106,24 @@ def main(args):
         else:
             bounds = None
 
+        filenames = []
         # Loop over config files
         for conf in configs:
             modelname = conf.keys()[0]
             print('Now running %s' % modelname)
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
-                lm = LM.LogisticModel(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                lm = LM.LogisticModel(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                       bounds=bounds)
                 maplayers = lm.calculate()
             elif modelfunc == 'hazus':
-                maplayers = hazus(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                maplayers = hazus(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                   bounds=bounds)
             elif modelfunc == 'classic':
-                maplayers = classic(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                maplayers = classic(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                     bounds=bounds)
             elif modelfunc == 'godt2008':
-                maplayers = godt2008(args.shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
+                maplayers = godt2008(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                      bounds=bounds)
             else:
                 print(modelfunc)
@@ -126,26 +140,79 @@ def main(args):
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
-                modelMap(maplayers, args.shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
-                         zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                         mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
-                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
-                         logscale=logscale, **kwargs)
+                _, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                                         zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
+                                         mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
+                                         logscale=logscale, **kwargs)
+                for filen in filenames1:
+                    filenames.append(filen)
+
                 # make model only plots too
                 if len(maplayers) > 1:
                     plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
-                    modelMap(maplayers, args.shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
-                             zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                             mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
-                             inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
-                             scaletype='continuous', logscale=logscale, **kwargs)
-
+                    _, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                                             zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
+                                             mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                                             inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
+                                             scaletype='continuous', logscale=logscale, **kwargs)
+                    for filen in filenames1:
+                        filenames.append(filen)
             if args.make_interactive_plots:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
-                interactiveMap(maplayers, plotorder=plotorder, shakefile=args.shakefile, inventory_shapefile=None,
-                               maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
-                               scaletype='continuous', lims=lims, logscale=logscale,
-                               ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
+                _, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=args.shakefile, inventory_shapefile=None,
+                                               maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
+                                               scaletype='continuous', lims=lims, logscale=logscale,
+                                               ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
+                for filen in filenames1:
+                    filenames.append(filen)
+        print('Files created:\n')
+        for filen in filenames:
+            print('%s,' % filen)
+
+
+def getGridURL(gridurl):
+    """getGridURL downloads the url of a shakemap xml file and returns the corresponding file object
+
+    :param gridurl: string defining a url
+    :type gridurl: string
+
+    :returns:
+        gridfile: file object corresponding to the url
+    """
+
+    gridfile = None
+    try:
+        fh = urllib.request.urlopen(gridurl)
+        data = fh.read().decode('utf-8')
+        fd, gridfile = tempfile.mkstemp()
+        os.close(fd)
+        f = open(gridfile, 'wt')
+        f.write(data)
+        f.close()
+        fh.close()
+    except:
+        raise IOError('Could not retrieve data from %s' % gridurl)
+    return gridfile
+
+
+def isURL(gridurl):
+    """This function determines if the provided string is a valid url
+
+    :param gridurl: string defining the potential url
+    :type gridurl: string
+
+    :returns:
+        isURL(boolean): True if griurl is a valid url, False otherwise
+    """
+
+    isURL = False
+    try:
+        urllib.request.urlopen(gridurl)
+        isURL = True
+    except:
+        pass
+    return isURL
 
 
 def set_default_paths(args):
@@ -266,22 +333,29 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
     parser.add_argument('config', metavar='config', nargs='?',
-                        help='single config file of model to run, or text file listing config files (do not use .ini extension)')
-    parser.add_argument('shakefile', nargs='?', help='single ShakeMap grid.xml file')
-    parser.add_argument('-u', '--uncertfile', metavar='uncertfile', nargs='?', help='single ShakeMap uncertainty.xml file')
+                        help='single config file of model to run (.ini extension), or text file \
+                        listing config files (do not use .ini extension)')
+    parser.add_argument('shakefile', nargs='?', help='single ShakeMap grid.xml file or url')
+    parser.add_argument('-u', '--uncertfile', metavar='uncertfile', nargs='?', help='single \
+                        ShakeMap uncertainty.xml file')
     parser.add_argument('-d', '--data-path', metavar='datafilepath', nargs='?', default=data_path,
-                        help='Set file path to model input data (only needed if file paths in config are relative)')
-    parser.add_argument('-o', '--output-filepath', metavar='outfilepath', nargs='?', default=output_filepath,
-                        help='Filepath for output files, uses current directory if not specified')
-    parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?', default=config_filepath,
-                        help='Filepath where config files are located, default is defaultconfigfiles folder of groundfailure repository')
-    parser.add_argument('-b', '--set-bounds', type=str, metavar=('latmin, latmax, lonmin lonmax'), nargs='?',
-                        help="Set bounds of model run using four floats in this format, including quotes: 'latmin, latmax, lonmin, lonmax',\
-                              default uses shakemap bounds")
-    parser.add_argument('-m', '--mapconfig', metavar='mapconfig', nargs='?', help='full file path to config file\
-                        containing mapping options', default=mapconfig)
-    parser.add_argument('-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?', help='Set file path to mapping\
-                        input data (only needed if file paths in mapconfig are relative)', default=mapdata_filepath)
+                        help='Set file path to model input data (only needed if file paths in config \
+                        are relative)')
+    parser.add_argument('-o', '--output-filepath', metavar='outfilepath', nargs='?',
+                        default=output_filepath, help='Filepath for output files, uses current \
+                        directory if not specified')
+    parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?',
+                        default=config_filepath, help='Filepath where config files are located, \
+                        default is defaultconfigfiles folder of groundfailure repository')
+    parser.add_argument('-b', '--set-bounds', type=str, metavar=('latmin, latmax, lonmin lonmax'),
+                        nargs='?', help="Set bounds of model run using four floats in this format, \
+                        including quotes: 'latmin, latmax, lonmin, lonmax', default uses shakemap \
+                        bounds")
+    parser.add_argument('-m', '--mapconfig', metavar='mapconfig', nargs='?', help='full file path \
+                        to config file containing mapping options', default=mapconfig)
+    parser.add_argument('-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
+                        help='Set file path to mapping input data (only needed if file paths in \
+                        mapconfig are relative)', default=mapdata_filepath)
 
     # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,
