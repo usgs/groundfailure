@@ -9,9 +9,11 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import tempfile
+import re
 
 #third party imports
 from mapio.shake import getHeaderData
+from mapio.gdal import GDALGrid
 
 #local imports
 from groundfailure.conf import correct_config_filepaths
@@ -48,7 +50,7 @@ def main(args):
 
         # Make folder in outfolder for all results, if it doesn't already exist
         eventid = getHeaderData(shakefile)[0]['event_id']
-        if args.save_models or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots:
+        if args.hdf5 or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots:
             if args.output_filepath is None:
                 outdir = os.getcwd()
             outdir = args.output_filepath
@@ -132,7 +134,7 @@ def main(args):
             #time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
             #filename = ('%s_%s_%s' % (eventid, modelname, time1))
             filename = ('%s_%s' % (eventid, modelname))
-            if args.save_models:
+            if args.hdf5:
                 filenameh = filename + '.hdf5'
                 savelayers(maplayers, os.path.join(outdir, filenameh))
 
@@ -140,32 +142,48 @@ def main(args):
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
-                _, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
-                                         zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                                         mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
-                                         inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
-                                         logscale=logscale, **kwargs)
+                junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                                            zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
+                                            mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                                            inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
+                                            logscale=logscale, **kwargs)
                 for filen in filenames1:
                     filenames.append(filen)
 
                 # make model only plots too
                 if len(maplayers) > 1:
                     plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
-                    _, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
-                                             zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                                             mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
-                                             inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
-                                             scaletype='continuous', logscale=logscale, **kwargs)
+                    junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                                                zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
+                                                mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                                                inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
+                                                scaletype='continuous', logscale=logscale, **kwargs)
                     for filen in filenames1:
                         filenames.append(filen)
             if args.make_interactive_plots:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
-                _, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=args.shakefile, inventory_shapefile=None,
-                                               maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
-                                               scaletype='continuous', lims=lims, logscale=logscale,
-                                               ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
+                junk, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=args.shakefile, inventory_shapefile=None,
+                                                  maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
+                                                  scaletype='continuous', lims=lims, logscale=logscale,
+                                                  ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
                 for filen in filenames1:
                     filenames.append(filen)
+            if args.gis:
+                for key in maplayers:
+                    # Get simplified name of key for file naming
+                    RIDOF = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
+                    OPERATORPAT = '[\+\-\*\/]*'
+                    keyS = re.sub(OPERATORPAT, '', key)
+                    #remove floating point numbers
+                    keyS = re.sub(RIDOF, '', keyS)
+                    #remove parentheses
+                    keyS = re.sub('[()]*', '', keyS)
+                    #remove any blank spaces
+                    keyS = keyS.replace(' ', '')
+                    filen = '%s_%s.bil' % (filename, keyS)
+                    GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
+                    filenames.append(filen)
+
         print('Files created:\n')
         for filen in filenames:
             print('%s,' % filen)
@@ -360,8 +378,10 @@ if __name__ == '__main__':
     # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,
                         help='Save input layer grids with model output')
-    parser.add_argument('-s', '--save-models', action='store_true', default=False,
+    parser.add_argument('--hdf5', action='store_true', default=False,
                         help='Save model results as MultiHazard HDF file (MapIO)')
+    parser.add_argument('--gis', action='store_true', default=False,
+                        help='Save GIS file (ESRI .bil format) of model result')
     parser.add_argument('-pd', '--make-static-pdfs', action='store_true', default=False,
                         help='Make static plots for each model')
     parser.add_argument('-pn', '--make-static-pngs', action='store_true', default=False,
