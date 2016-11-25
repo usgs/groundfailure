@@ -1193,7 +1193,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         os.makedirs(cbfolder)
 
     # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE
-
+    filenames = []
     for k, key in enumerate(plotorder):
 
         # Get simplified name of key for file naming
@@ -1419,10 +1419,12 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             #    plugins.PolyLineTextPath(feature['geometry']['coordinates'], label,
             #                             center=True, attributes={'fill': 'white', 'font-size': '14'}).add_to(map1)
 
-        map1.save(os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS)))
+        filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
+        map1.save(filen)
+        filenames.append(filen)
         plt.close('all')
 
-        return map1
+    return map1, filenames
 
 
 def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,

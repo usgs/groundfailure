@@ -180,11 +180,11 @@ def main(args):
                     keyS = re.sub('[()]*', '', keyS)
                     #remove any blank spaces
                     keyS = keyS.replace(' ', '')
-                    filen = '%s_%s.bil' % (filename, keyS)
+                    filen = os.path.join(outdir, '%s_%s.bil' % (filename, keyS))
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     filenames.append(filen)
 
-        print('Files created:\n')
+        print('\nFiles created:\n')
         for filen in filenames:
             print('%s,' % filen)
 
