@@ -15,6 +15,7 @@ import re
 
 #third party imports
 import matplotlib.cm as cm
+import branca.colormap as cmb
 import numpy as np
 import matplotlib.pyplot as plt
 import fiona
@@ -1188,9 +1189,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         outfolder = outputdir
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
-    cbfolder = os.path.join(outfolder, 'cbfolder')
-    if not os.path.isdir(cbfolder):
-        os.makedirs(cbfolder)
+    # cbfolder = os.path.join(outfolder, 'cbfolder')
+    # if not os.path.isdir(cbfolder):
+    #     os.makedirs(cbfolder)
 
     # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE
     filenames = []
@@ -1300,6 +1301,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             else:
                 vmin = np.nanmin(dat)
                 vmax = np.nanmax(dat)
+            clev = np.linspace(vmin, vmax, 10)
 
         #turn data into an RGBA image
         #adjust data so scaled between vmin and vmax and between 0 and 1
@@ -1316,41 +1318,42 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         maxlat = gd.ymax + gd.dy/2.
         maxlon = gd.xmax + gd.dx/2.
 
-        if logscale is not False and len(logscale) == len(plotorder):
-            logsc = None
-            if logscale[k] is True:
-                logsc = LogNorm(vmin=vmin, vmax=vmax)
-        else:
-            logsc = None
+        # if logscale is not False and len(logscale) == len(plotorder):
+        #     logsc = None
+        #     if logscale[k] is True:
+        #         logsc = LogNorm(vmin=vmin, vmax=vmax)
+        # else:
+        #     logsc = None
 
-        # Make colorbar figure
+        # # Make colorbar figure
 
-        # This is just a dummy layer that will be deleted to make the colorbar look right
-        panelhandle = plt.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
+        # # This is just a dummy layer that will be deleted to make the colorbar look right
+        # panelhandle = plt.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
 
-        cbfmt = '%1.1f'
-        if vmax is not None and vmin is not None:
-            if logscale is not False and len(logscale) == len(plotorder):
-                if logscale[k] is True:
-                    cbfmt = '%1.0e'
-            elif (vmax - vmin) < 1.:
-                cbfmt = '%1.2f'
-            elif vmax > 5.:  # (vmax - vmin) > len(clev):
-                cbfmt = '%1.0f'
+        # cbfmt = '%1.1f'
+        # if vmax is not None and vmin is not None:
+        #     if logscale is not False and len(logscale) == len(plotorder):
+        #         if logscale[k] is True:
+        #             cbfmt = '%1.0e'
+        #     elif (vmax - vmin) < 1.:
+        #         cbfmt = '%1.2f'
+        #     elif vmax > 5.:  # (vmax - vmin) > len(clev):
+        #         cbfmt = '%1.0f'
 
-        fig = plt.figure(figsize=(8., 2.5))
+        # fig = plt.figure(figsize=(8., 2.5))
 
-        if scaletype.lower() == 'binned':
-            cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
-                                extend='both', format=cbfmt, spacing='proportional',
-                                ticks=clev, boundaries=clev)
-        else:
-            cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
-                                extend='both', format=cbfmt)
-        cbar.set_label(label1, fontsize=14)
-        cbar.ax.tick_params(labelsize=14)
-        plt.axis('off')
-        panelhandle.remove()
+        # if scaletype.lower() == 'binned':
+        #     cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+        #                         extend='both', format=cbfmt, spacing='proportional',
+        #                         ticks=clev, boundaries=clev)
+        # else:
+        #     cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+        #                         extend='both', format=cbfmt)
+        # cbar.set_label(label1, fontsize=14)
+        # cbar.ax.tick_params(labelsize=14)
+        # plt.axis('off')
+        # panelhandle.remove()
+
         if edict is not None:
             if isScenario:
                 title = edict['event_description']
@@ -1370,8 +1373,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         if outfilename is None:
             outfilename = '%s_%s' % (edict['event_id'], sref_fix)
 
-        plt.tight_layout()
-        fig.savefig(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), transparent=True)  # This file has to move with the html files
+        # plt.tight_layout()
+        # fig.savefig(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), transparent=True)  # This file has to move with the html files
 
         if inventory_shapefile is not None:
             reader = shapefile.Reader(inventory_shapefile)
@@ -1397,8 +1400,19 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         img.layer_name = label1
         map1.add_children(img)
 
-        plugins.FloatImage(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), bottom=0, left=1).add_to(map1)
+        # plugins.FloatImage(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), bottom=0, left=1).add_to(map1)
+        if scaletype.lower() == 'binned':
+            color1 = palette(clev/clev.max())
+            cbar = cmb.StepColormap(color1, vmin=vmin, vmax=vmax, index=clev, caption=label1)
+        else:
+            color1 = [tuple(p) for p in palette._lut]
+            cbar = cmb.LinearColormap(color1, vmin=vmin, vmax=vmax, caption=label1)
+        map1.add_child(cbar)
 
+        # map1.choropleth(threshold_scale=clev,
+        #                 fill_color=color1, fill_opacity=0.7, line_opacity=0.5,
+        #                 legend_name=label1,
+        #                 reset=True)
         map1.add_child(folium.LatLngPopup())
         map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
                        weight=2, fill_color='none'))
