@@ -13,16 +13,18 @@ from datetime import datetime
 import email
 from email import encoders
 from email.mime.text import MIMEText
-from email.message import Message
+#from email.message import Message
 from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
-from email.mime.application import MIMEApplication
+#from email.mime.application import MIMEApplication
 from email.mime.base import MIMEBase
+import mimetypes
 
 #third party
 from impactutils.io.cmd import get_command_output
 
-CONFIGFILE = 'mailconfig.ini'
+CONFIGFILE = 'SecondaryHazards/Codes/mailconfig.ini'
+CONFIGLIST = 'SecondaryHazards/Codes/configlist.txt'
 #dictionary containing table definitions and column definitions column:type
 tablecols = [('id', 'integer primary key'),
              ('eventcode', 'text'),
@@ -36,7 +38,7 @@ tablecols = [('id', 'integer primary key'),
              ('maxmmi', 'real'),
              ('location', 'text')]
 TABLES = {'shakemap': OrderedDict(tablecols)}
-DBFILE = 'mail.db'
+DBFILE = 'SecondaryHazards/Codes/mail.db'
 
 #FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_hour.geojson'
 #FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson'
@@ -45,10 +47,11 @@ FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojso
 ALERTLEVELS = ['green', 'yellow', 'orange', 'red', 'pending']
 
 
-def mailUsers(pdf, png, event, config):
+def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
     eid = event['eventcode']
     vnum = event['version']
-    text = 'Attached are the two most recent secondary hazard pdf/png files for v%i of %s.' % (vnum, eid)
+    text = 'Attached are the most recent secondary hazard files for v%i of %s.\nTo see all files \
+            produced, see the ftp site' % (vnum, eid)
     subject = 'Groundfailure Maps for v%i of %s' % (vnum, eid)
     server = config.get('MAIL', 'server')
     sender = config.get('MAIL', 'sender')
@@ -60,26 +63,34 @@ def mailUsers(pdf, png, event, config):
         outer['To'] = recipient
         outer['From'] = sender
         outer['Date'] = email.utils.formatdate()
-        firstSubMsg = Message()
-        firstSubMsg["Content-type"] = "text/plain"
-        firstSubMsg["Content-transfer-encoding"] = "7bit"
-        firstSubMsg.set_payload(text)
-        outer.attach(firstSubMsg)
-        fp = open(png, 'rb')
-        pngmsg = MIMEImage(fp.read(), _subtype=None)
-        fp.close()
-        pngmsg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(png))
-        outer.attach(pngmsg)
+        outer.attach(text)
+        for filen in filenames:
+            ctype, encoding = mimetypes.guess_type(filen)
+            if ctype is None or encoding is not None:
+                # No guess could be made, or the file is encoded (compressed), so
+                # use a generic bag-of-bits type.
+                ctype = 'application/octet-stream'
+            maintype, subtype = ctype.split('/', 1)
+            if maintype == 'text':
+                fp = open(filen)
+                # Note: we should handle calculating the charset
+                msg = MIMEText(fp.read(), _subtype=subtype)
+                fp.close()
+            elif maintype == 'image':
+                fp = open(filen, 'rb')
+                msg = MIMEImage(fp.read(), _subtype=subtype)
+                fp.close()
+            else:
+                fp = open(filen, 'rb')
+                msg = MIMEBase(maintype, subtype)
+                msg.set_payload(fp.read())
+                fp.close()
+                # Encode the payload using Base64
+                encoders.encode_base64(msg)
+            # Set the filename parameter
+            msg.add_header('Content-Disposition', 'attachment', filename=filen)
+            outer.attach(msg)
 
-        fp = open(pdf, 'rb')
-        pdfmsg = MIMEBase('application/pdf', None)
-        pdfmsg.set_payload(fp.read())
-        fp.close()
-        pdfmsg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(pdf))
-        #Encode the payload using Base64
-        encoders.encode_base64(pdfmsg)
-
-        outer.attach(pdfmsg)
         msgtxt = outer.as_string()
         session.sendmail(sender, recipient, msgtxt)
 
@@ -89,15 +100,18 @@ def mailUsers(pdf, png, event, config):
 def runGF(modelconfig, shakefile):
     cmd = 'gfail -i -pd -pn -pi %s %s' % (modelconfig, shakefile)
     retcode, stdout, stderr = get_command_output(cmd)
-    for line in stdout.split('\n'):
-        if line.find('Files created:') > -1:
-            parts = line.split(',')
-            tfile = parts[-1]
-            if tfile.find('pdf') > -1:
-                pdf = tfile
-            if tfile.find('png') > -1:
-                png = tfile
-    return (pdf, png)
+    temp = stdout.decode('utf-8')
+    if temp.find('Files created:\n') > -1:
+        temp = temp.split('Files created:\n')[1]
+        filenames = []
+        for line in temp.split('\n'):
+            if 'pdf' in line or 'png' in line or 'html' in line or 'hdf5' in line or 'bil' in line:
+                filenames.append(line)
+    else:
+        raise Exception('Did not find any files output by runGF, these warnings were output: \
+                        %s\n' % stderr)
+        return
+    return filenames
 
 
 def getProductInfo(shakemap, pager):
@@ -143,7 +157,7 @@ def getRecentEvents(thresholds):
         getShake = False
         if 'mag' in thresholds and pmag > thresholds['mag']:
             getShake = True
-        if 'mmi' in thresholds and pmag > thresholds['mag']:
+        if 'mmi' in thresholds and pmmi > thresholds['mmi']:
             getShake = True
         if 'eis' in thresholds and palert >= ALERTLEVELS.index(thresholds['eis']):
             getShake = True
@@ -155,7 +169,7 @@ def getRecentEvents(thresholds):
 
 
 def connect():
-    dbfile = os.path.join(os.path.expanduser('~'), '.secondary', DBFILE)
+    dbfile = os.path.join(os.path.expanduser('~'), DBFILE)
     doCreate = False
     if not os.path.isfile(dbfile):
         doCreate = True
@@ -177,9 +191,9 @@ def connect():
 
 def main():
     print('%s - Running autosec' % datetime.now())
-    configfile = os.path.join(os.path.expanduser('~'), '.secondary', CONFIGFILE)
+    configfile = os.path.join(os.path.expanduser('~'), CONFIGFILE)
     config = configparser.ConfigParser()
-    config.readfp(open(configfile))
+    config.read_file(open(configfile))
     sections = config.sections()
     if 'THRESHOLDS' not in sections or 'MAIL' not in sections:
         print('Missing THRESHOLDS or MAIL section in %s.  Returning' % configfile)
@@ -200,8 +214,9 @@ def main():
         row = cursor.fetchone()
         if row is None:
             #this event has not been processed before
+            modelconfig = os.path.join(os.path.expanduser('~'), CONFIGLIST)
             filenames = runGF(modelconfig, event['url'])
-            mailUsers(pdf, png, event, config)
+            mailUsers(filenames, event, config)
             fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s")'
             eid = event['eventcode']
             enum = event['version']
