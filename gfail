@@ -76,7 +76,7 @@ def main(args):
             conffail = []
             for conf in configlist:
                 conf = conf.replace('\n', '')
-                if not os.path.isabs(args.config):  # only add config_filepath if full filepath not given
+                if not os.path.isabs(conf):  # only add config_filepath if full filepath not given
                     conf = os.path.join(args.config_filepath, conf)
                 try:
                     temp = ConfigObj(conf)
@@ -139,6 +139,7 @@ def main(args):
                 savelayers(maplayers, os.path.join(outdir, filenameh))
 
             if args.make_static_pdfs or args.make_static_pngs:
+                import pdb; pdb.set_trace()
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
@@ -162,7 +163,7 @@ def main(args):
                         filenames.append(filen)
             if args.make_interactive_plots:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
-                junk, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=args.shakefile, inventory_shapefile=None,
+                junk, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=shakefile, inventory_shapefile=None,
                                                   maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
                                                   scaletype='continuous', lims=lims, logscale=logscale,
                                                   ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
@@ -186,7 +187,7 @@ def main(args):
 
         print('\nFiles created:\n')
         for filen in filenames:
-            print('%s,' % filen)
+            print('%s' % filen)
 
 
 def getGridURL(gridurl):

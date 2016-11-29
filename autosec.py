@@ -24,7 +24,7 @@ import mimetypes
 from impactutils.io.cmd import get_command_output
 
 CONFIGFILE = 'SecondaryHazards/Codes/mailconfig.ini'
-CONFIGLIST = 'SecondaryHazards/Codes/configlist.txt'
+CONFIGLIST = 'SecondaryHazards/Codes/shortconfiglist.txt'
 #dictionary containing table definitions and column definitions column:type
 tablecols = [('id', 'integer primary key'),
              ('eventcode', 'text'),
@@ -49,10 +49,16 @@ ALERTLEVELS = ['green', 'yellow', 'orange', 'red', 'pending']
 
 def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
     eid = event['eventcode']
+    title = event['title']
     vnum = event['version']
-    text = 'Attached are the most recent secondary hazard files for v%i of %s.\nTo see all files \
-            produced, see the ftp site' % (vnum, eid)
-    subject = 'Groundfailure Maps for v%i of %s' % (vnum, eid)
+    text = """Attached are the most recent secondary hazard files for ShakeMap v%i of event id %s.
+              Event name: %s
+              If html file is attached, view it in any web browser.
+
+              Do not reply to this message.
+
+              Contact kallstadt@usgs.gov with questions.""" % (vnum, eid, title)
+    subject = 'Groundfailure Maps for v%i of %s' % (vnum, title)
     server = config.get('MAIL', 'server')
     sender = config.get('MAIL', 'sender')
     recipients = config.get('MAIL', 'recipients').split(',')
@@ -63,7 +69,7 @@ def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
         outer['To'] = recipient
         outer['From'] = sender
         outer['Date'] = email.utils.formatdate()
-        outer.attach(text)
+        outer.attach(MIMEText(text))
         for filen in filenames:
             ctype, encoding = mimetypes.guess_type(filen)
             if ctype is None or encoding is not None:
@@ -88,7 +94,7 @@ def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
                 # Encode the payload using Base64
                 encoders.encode_base64(msg)
             # Set the filename parameter
-            msg.add_header('Content-Disposition', 'attachment', filename=filen)
+            msg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(filen))
             outer.attach(msg)
 
         msgtxt = outer.as_string()
@@ -98,7 +104,7 @@ def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
 
 
 def runGF(modelconfig, shakefile):
-    cmd = 'gfail -i -pd -pn -pi %s %s' % (modelconfig, shakefile)
+    cmd = 'gfail -i -pd -pi %s %s' % (modelconfig, shakefile)
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
     if temp.find('Files created:\n') > -1:
@@ -111,7 +117,7 @@ def runGF(modelconfig, shakefile):
         raise Exception('Did not find any files output by runGF, these warnings were output: \
                         %s\n' % stderr)
         return
-    return filenames
+    return filenames, stdout
 
 
 def getProductInfo(shakemap, pager):
@@ -164,6 +170,7 @@ def getRecentEvents(thresholds):
         if getShake:
             edict = getProductInfo(shakemap, pager)
             edict['time'] = datetime.utcfromtimestamp(event['properties']['time']/1000)
+            edict['title'] = event['properties']['title']
             eventlist.append(edict.copy())
     return eventlist
 
@@ -215,7 +222,11 @@ def main():
         if row is None:
             #this event has not been processed before
             modelconfig = os.path.join(os.path.expanduser('~'), CONFIGLIST)
-            filenames = runGF(modelconfig, event['url'])
+            filenames, stdout = runGF(modelconfig, event['url'])
+            print(stdout.decode('utf-8'))
+            if not filenames:
+                print('No outputs found, problem with codes\n')
+                continue
             mailUsers(filenames, event, config)
             fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s")'
             eid = event['eventcode']
