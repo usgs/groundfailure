@@ -139,7 +139,6 @@ def main(args):
                 savelayers(maplayers, os.path.join(outdir, filenameh))
 
             if args.make_static_pdfs or args.make_static_pngs:
-                import pdb; pdb.set_trace()
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)

@@ -24,7 +24,7 @@ import mimetypes
 from impactutils.io.cmd import get_command_output
 
 CONFIGFILE = 'SecondaryHazards/Codes/mailconfig.ini'
-CONFIGLIST = 'SecondaryHazards/Codes/shortconfiglist.txt'
+CONFIGLIST = 'SecondaryHazards/Codes/configlist.txt'
 #dictionary containing table definitions and column definitions column:type
 tablecols = [('id', 'integer primary key'),
              ('eventcode', 'text'),
@@ -47,17 +47,21 @@ FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojso
 ALERTLEVELS = ['green', 'yellow', 'orange', 'red', 'pending']
 
 
-def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
+def mailUsers(filenames, event, config, filetypes=('.png', '.html')):
     eid = event['eventcode']
     title = event['title']
     vnum = event['version']
+    filepath = os.path.dirname(filenames[0])
     text = """Attached are the most recent secondary hazard files for ShakeMap v%i of event id %s.
-              Event name: %s
-              If html file is attached, view it in any web browser.
+    Event name: %s
+    If html file is attached, view it in any web browser.
 
-              Do not reply to this message.
+    Only some of the output files are sent through email, the rest of the files, including GIS files and
+    pdfs can be found here: %s
 
-              Contact kallstadt@usgs.gov with questions.""" % (vnum, eid, title)
+    Do not reply to this message.
+
+    Contact kallstadt@usgs.gov with questions.""" % (vnum, eid, title, filepath)
     subject = 'Groundfailure Maps for v%i of %s' % (vnum, title)
     server = config.get('MAIL', 'server')
     sender = config.get('MAIL', 'sender')
@@ -71,31 +75,32 @@ def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
         outer['Date'] = email.utils.formatdate()
         outer.attach(MIMEText(text))
         for filen in filenames:
-            ctype, encoding = mimetypes.guess_type(filen)
-            if ctype is None or encoding is not None:
-                # No guess could be made, or the file is encoded (compressed), so
-                # use a generic bag-of-bits type.
-                ctype = 'application/octet-stream'
-            maintype, subtype = ctype.split('/', 1)
-            if maintype == 'text':
-                fp = open(filen)
-                # Note: we should handle calculating the charset
-                msg = MIMEText(fp.read(), _subtype=subtype)
-                fp.close()
-            elif maintype == 'image':
-                fp = open(filen, 'rb')
-                msg = MIMEImage(fp.read(), _subtype=subtype)
-                fp.close()
-            else:
-                fp = open(filen, 'rb')
-                msg = MIMEBase(maintype, subtype)
-                msg.set_payload(fp.read())
-                fp.close()
-                # Encode the payload using Base64
-                encoders.encode_base64(msg)
-            # Set the filename parameter
-            msg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(filen))
-            outer.attach(msg)
+            if os.path.splitext(filen)[1] in filetypes:  # only attach specified extensions
+                ctype, encoding = mimetypes.guess_type(filen)
+                if ctype is None or encoding is not None:
+                    # No guess could be made, or the file is encoded (compressed), so
+                    # use a generic bag-of-bits type.
+                    ctype = 'application/octet-stream'
+                maintype, subtype = ctype.split('/', 1)
+                if maintype == 'text':
+                    fp = open(filen)
+                    # Note: we should handle calculating the charset
+                    msg = MIMEText(fp.read(), _subtype=subtype)
+                    fp.close()
+                elif maintype == 'image':
+                    fp = open(filen, 'rb')
+                    msg = MIMEImage(fp.read(), _subtype=subtype)
+                    fp.close()
+                else:
+                    fp = open(filen, 'rb')
+                    msg = MIMEBase(maintype, subtype)
+                    msg.set_payload(fp.read())
+                    fp.close()
+                    # Encode the payload using Base64
+                    encoders.encode_base64(msg)
+                # Set the filename parameter
+                msg.add_header('Content-Disposition', 'attachment', filename=os.path.basename(filen))
+                outer.attach(msg)
 
         msgtxt = outer.as_string()
         session.sendmail(sender, recipient, msgtxt)
@@ -104,7 +109,7 @@ def mailUsers(filenames, event, config, filetypes=('pdf', 'html')):
 
 
 def runGF(modelconfig, shakefile):
-    cmd = 'gfail -i -pd -pi %s %s' % (modelconfig, shakefile)
+    cmd = 'gfail --gis -pn -pi %s %s' % (modelconfig, shakefile)
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
     if temp.find('Files created:\n') > -1:
@@ -227,7 +232,7 @@ def main():
             if not filenames:
                 print('No outputs found, problem with codes\n')
                 continue
-            mailUsers(filenames, event, config)
+            mailUsers(filenames, event, config, filetypes=('.png', '.html'))
             fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s")'
             eid = event['eventcode']
             enum = event['version']

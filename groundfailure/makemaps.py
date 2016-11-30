@@ -181,7 +181,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for l in limits:
                 getlim = None
-                if key in l:
+                if l in key:
                     if type(limits[l]) is list:
                         getlim = np.array(limits[l]).astype(np.float)
                     else:
@@ -198,7 +198,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for c in colors:
                 #colorobject = default
-                if key in c:
+                if c in key:
                     getcol = colors[c]
                     colorobject = eval(getcol)
                     if colorobject is None:
@@ -212,7 +212,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for g in logs:
                 getlog = False
-                if key in g:
+                if g in key:
                     if logs[g].lower() == 'true':
                         getlog = True
                     logscale.append(getlog)
@@ -224,7 +224,7 @@ def parseConfigLayers(maplayers, config, keys=None):
             found = False
             for m in masks:
                 #getmask = None
-                if key in m:
+                if m in key:
                     getmask = eval(masks[m])
                     maskthreshes.append(getmask)
                     found = True
@@ -783,11 +783,6 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         dat = layergrid.getData().copy()
 
         # mask out anything below any specified thresholds
-        # Might need to move this up to before downsampling...might give illusion of no hazard in places where there is some that just got averaged out
-        if maskthreshes is not None and len(maskthreshes) == len(newgrids):
-            if maskthreshes[k] is not None:
-                dat[dat <= maskthreshes[k]] = float('NaN')
-                dat = np.ma.array(dat, mask=np.isnan(dat))
 
         # if logscale is not False and len(logscale) == len(newgrids):
         #     if logscale[k] is True:
@@ -850,6 +845,12 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             else:
                 vmin = np.nanmin(dat)
                 vmax = np.nanmax(dat)
+
+        # Might need to move this up to before downsampling...might give illusion of no hazard in places where there is some that just got averaged out
+        if maskthreshes is not None and len(maskthreshes) == len(newgrids):
+            if maskthreshes[k] is not None:
+                dat[dat <= maskthreshes[k]] = float('NaN')
+                dat = np.ma.array(dat, mask=np.isnan(dat))
 
         # Mask out cells overlying oceans or block with a shapefile if available
         if oceanfile is None:
@@ -1241,11 +1242,6 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
 
         dat = grid.getData().copy()
 
-        if maskthreshes is not None and len(maskthreshes) == len(plotorder):
-            if maskthreshes[k] is not None:
-                dat[dat <= maskthreshes[k]] = float('NaN')
-                dat = np.ma.array(dat, mask=np.isnan(dat))
-
         if scaletype.lower() == 'binned':
             if logscale is not False and len(logscale) == len(plotorder):
                 if logscale[k] is True:
@@ -1302,6 +1298,11 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
                 vmin = np.nanmin(dat)
                 vmax = np.nanmax(dat)
             clev = np.linspace(vmin, vmax, 10)
+
+        if maskthreshes is not None and len(maskthreshes) == len(plotorder):
+            if maskthreshes[k] is not None:
+                dat[dat <= maskthreshes[k]] = float('NaN')
+                dat = np.ma.array(dat, mask=np.isnan(dat))
 
         #turn data into an RGBA image
         #adjust data so scaled between vmin and vmax and between 0 and 1
