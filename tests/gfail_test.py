@@ -38,7 +38,7 @@ if os.path.exists(defaultfilepath) and not os.path.exists(tempname):
 shutil.copy(gfaildefaults, defaultfilepath)
 
 
-def test_list_default_paths():
+def tes_list_default_paths():
     cmd = 'gfail --list-default-paths'
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
@@ -48,7 +48,7 @@ def test_list_default_paths():
     assert('test_outputs' in temp2[1]), 'list_default_paths did not return expected output'
 
 
-def test_reset_default_paths():
+def tes_reset_default_paths():
     cmd = 'gfail --reset-default-paths'
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
@@ -56,7 +56,7 @@ def test_reset_default_paths():
     retcode, stdout, stderr = get_command_output(cmd)
 
 
-def test_set_default_paths():
+def tes_set_default_paths():
     cmd = ('gfail --set-default-paths -o %s -d %s -c %s -m %s' % (text['output_filepath'],
            text['data_path'], text['config_filepath'], text['mapconfig']))
     retcode, stdout, stderr = get_command_output(cmd)
@@ -68,7 +68,7 @@ def test_set_default_paths():
     assert('does not exist' not in temp2[1]), 'set_default_paths could not find one of the paths expected'
 
 
-def test_main():
+def tes_main():
     cmd = 'gfail -i -pd -pn -pi %s %s' % (configfile, shakefile)
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
@@ -76,20 +76,20 @@ def test_main():
     # SEE IF GIVES EXPECTED OUTPUTS
 
 
-def test_getGridURL():
+def tes_getGridURL():
     pass
 
 
-def test_isURL():
+def tes_isURL():
     pass
 
 try:
-    test_list_default_paths()
-    test_reset_default_paths()
-    test_set_default_paths()
-    test_getGridURL()
-    test_isURL()
-    test_main()
+    tes_list_default_paths()
+    tes_reset_default_paths()
+    tes_set_default_paths()
+    tes_getGridURL()
+    tes_isURL()
+    tes_main()
     print('gfail tests passed')
 finally:
     # Put back defaults if they were there
