@@ -35,9 +35,9 @@ def test_hazus():
     maplayers1 = NM.hazus(shakefile, config, modeltype='coverage', saveinputs=True)
     maplayers2 = NM.hazus(shakefile, config, modeltype='dn_hazus')
     maplayers3 = NM.hazus(shakefile, config, modeltype='dn_prob', probtype='jibson2000')
-    maplayers4 = NM.hazus(shakefile, config, modeltype='ac_classic_dn', regressionmodel='RS_PGA_PGV',
+    maplayers4 = NM.hazus(shakefile, config, modeltype='ac_classic_dn', displmodel='RS_PGA_PGV',
                           probtype='jibson2000')
-    maplayers5 = NM.hazus(shakefile, config, modeltype='ac_classic_prob', regressionmodel='RS_PGA_M',
+    maplayers5 = NM.hazus(shakefile, config, modeltype='ac_classic_prob', displmodel='RS_PGA_M',
                           probtype='threshold')
 
     np.testing.assert_allclose(maplayers1['model']['grid'].getData(),
