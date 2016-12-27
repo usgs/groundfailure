@@ -331,6 +331,7 @@ class LogisticModel(object):
             raise Exception('Config file contains more than one model which is no longer allowed,\
                             update your config file to the newer format')
         self.model = mnames[0]
+        self.config = config
         cmodel = config[self.model]
         self.modeltype = cmodel['gfetype']
         self.coeffs = validateCoefficients(cmodel)
@@ -544,6 +545,16 @@ class LogisticModel(object):
         """
         X = eval(self.equation)
         P = 1/(1 + np.exp(-X))
+        if 'vs30max' in self.config[self.model].keys():
+            vs30 = self.layerdict['vs30'].getData()
+            P[vs30 > float(self.config[self.model]['vs30max']) ] = 0.0
+        if 'pgvmin' in self.config[self.model].keys():
+            pgv = self.shakemap.getLayer('pgv').getData()
+            P[pgv < float(self.config[self.model]['pgvmin']) ] = 0.0
+        if 'coverage' in self.config[self.model].keys():
+            eqn = self.config[self.model]['coverage']['eqn']
+            ind = copy.copy(P)
+            P = eval(eqn)
         if self.uncert is not None:
             Xmin = eval(self.equationmin)
             Xmax = eval(self.equationmax)
