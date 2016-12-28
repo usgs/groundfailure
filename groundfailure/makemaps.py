@@ -887,6 +887,10 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy,
                                     np.round(300.*wid), np.round(300.*ht), returnxy=False,
                                     checkbounds=False, order=0, masked=True)
+        if logscale[k] is True:
+            logsc = LogNorm(vmin=vmin, vmax=vmax)
+        else:
+            logsc = None
         if topodata is not None:  # Drape over hillshade
             #turn data into an RGBA image
             cmap = palette
@@ -900,10 +904,6 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             rgb = np.squeeze(rgba_img[:, :, 0:3])
             rgb[maskvals] = 1.
             draped_hsv = ls.blend_hsv(rgb, np.expand_dims(intensity, 2))
-            if logscale[k] is True:
-                logsc = LogNorm(vmin=vmin, vmax=vmax)
-            else:
-                logsc = None
             m.imshow(draped_hsv, zorder=3., interpolation='none', norm=logsc)
             # This is just a dummy layer that will be deleted to make the
             # colorbar look right
@@ -915,7 +915,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         #panelhandle = m.pcolormesh(x1, y1, dat, linewidth=0., cmap=palette, vmin=vmin, vmax=vmax, alpha=ALPHA, rasterized=True, zorder=2.);
         #panelhandle.set_edgecolors('face')
         # add colorbar
-        cbfmt = '%1.1f'
+        cbfmt = '%1.2f'
         if vmax is not None and vmin is not None:
             if logscale is not False and len(logscale) == len(newgrids):
                 if logscale[k] is True:
@@ -1006,11 +1006,15 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         m.drawcountries(color=countrycolor, linewidth=1.0)
 
         #add map scale
-        m.drawmapscale((bxmax+bxmin)/2., (bymin+(bymax-bymin)/9.), clon, clat, np.round((((bxmax-bxmin)*111)/5)/10.)*10, barstyle='fancy', zorder=10)
+        m.drawmapscale((bxmax+bxmin)/2., (bymin+0.1*(bymax-bymin)), clon, clat, 
+                       np.round((((bxmax-bxmin)*111)/5)/10.)*10, 
+                       barstyle='simple', zorder=200)
 
         # Add border
         autoAxis = ax.axis()
-        rec = Rectangle((autoAxis[0]-0.7, autoAxis[2]-0.2), (autoAxis[1]-autoAxis[0])+1, (autoAxis[3]-autoAxis[2])+0.4, fill=False, lw=1, zorder=1e8)
+        rec = Rectangle((autoAxis[0]-0.7, autoAxis[2]-0.2), 
+                        (autoAxis[1]-autoAxis[0])+1, (autoAxis[3]-autoAxis[2])+0.4, 
+                        fill=False, lw=1, zorder=1e8)
         rec = ax.add_patch(rec)
         rec.set_clip_on(False)
 
