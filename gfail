@@ -19,6 +19,7 @@ from mapio.gdal import GDALGrid
 from groundfailure.conf import correct_config_filepaths
 import groundfailure.logisticmodel as LM
 from groundfailure.newmark import godt2008, classic, hazus
+from groundfailure.hazus_liq_cal import hazus_liq_cal
 from groundfailure.savelayers import savelayers
 from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap, interactiveMap
 
@@ -127,6 +128,8 @@ def main(args):
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                      bounds=bounds)
+            elif modelfunc == 'hazus_liq_cal':
+                maplayers = hazus_liq_cal(shakefile, conf)
             else:
                 print(modelfunc)
                 print('Unknown model function specified in config for %s model, skipping to next config' % modelfunc)
@@ -144,7 +147,8 @@ def main(args):
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
                 junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
                                             zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                                            mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
+                                            mapcities=True, colormaps=colormaps, savepdf=args.make_static_pdfs, 
+                                            savepng=args.make_static_pngs, printparam=True,
                                             inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
                                             logscale=logscale, **kwargs)
                 for filen in filenames1:
@@ -157,7 +161,7 @@ def main(args):
                                                 zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
                                                 mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
                                                 inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
-                                                scaletype='continuous', logscale=logscale, **kwargs)
+                                                colormaps=colormaps, scaletype='continuous', logscale=logscale, **kwargs)
                     for filen in filenames1:
                         filenames.append(filen)
             if args.make_interactive_plots:
