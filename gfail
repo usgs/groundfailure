@@ -19,7 +19,8 @@ from mapio.gdal import GDALGrid
 from groundfailure.conf import correct_config_filepaths
 import groundfailure.logisticmodel as LM
 from groundfailure.newmark import godt2008, classic, hazus
-from groundfailure.hazus_liq_cal import hazus_liq_cal
+from groundfailure.hazus import hazus_liq
+from groundfailure.holzer import holzer_liq
 from groundfailure.savelayers import savelayers
 from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap, interactiveMap
 
@@ -128,8 +129,10 @@ def main(args):
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
                                      bounds=bounds)
-            elif modelfunc == 'hazus_liq_cal':
-                maplayers = hazus_liq_cal(shakefile, conf)
+            elif modelfunc == 'hazus_liq':
+                maplayers = hazus_liq(shakefile, conf)
+            elif modelfunc == 'holzer_liq':
+                maplayers = holzer_liq(shakefile, conf)
             else:
                 print(modelfunc)
                 print('Unknown model function specified in config for %s model, skipping to next config' % modelfunc)

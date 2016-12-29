@@ -17,15 +17,15 @@ from mapio.geodict import GeoDict
 import numpy as np
 
 
-def hazus_liq_cal(shakefile, config, uncertfile=None, saveinputs=False,
-                  modeltype=None, displmodel=None,
-                  probtype=None, bounds=None):
+def holzer_liq(shakefile, config, uncertfile=None, saveinputs=False,
+               modeltype=None, displmodel=None,
+               probtype=None, bounds=None):
     """
-    Method for computing the probability of liquefaction using the Hazus method
+    Method for computing the probability of liquefaction using the Holzer method
     using the Wills et al. (2015) Vs30 map of California to define the
     susceptibility classes and the Fan et al. global water table model. 
     """
-    layers = config['hazus_liq_cal']['layers']
+    layers = config['holzer_liq_cal']['layers']
     vs30_file = layers['vs30']['file']
     wtd_file = layers['watertable']['file']
     shkgdict = ShakeGrid.getFileGeoDict(shakefile)
@@ -33,7 +33,7 @@ def hazus_liq_cal(shakefile, config, uncertfile=None, saveinputs=False,
 
     
     #---------------------------------------------------------------------------
-    # Loading
+    # Loading info
     #---------------------------------------------------------------------------
     shakemap = ShakeGrid.load(shakefile, fgeodict, resample=True,
                               method='linear', doPadding=True)
@@ -41,45 +41,28 @@ def hazus_liq_cal(shakefile, config, uncertfile=None, saveinputs=False,
     griddict,eventdict,specdict,fields,uncertainties = getHeaderData(shakefile)
     mag = eventdict['magnitude']
 
-    # Correction factor for moment magnitudes other than M=7.5
-    k_m = 0.0027*mag**3 - 0.0267*mag**2 - 0.2055*mag + 2.9188
 
     #---------------------------------------------------------------------------
-    # Susceptibility from Vs30
+    # Logistic funciton parameters from Vs30
     #---------------------------------------------------------------------------
     vs30_grid = GMTGrid.load(vs30_file)
 
     vs30 = vs30_grid.getData()
-    p_ml = np.zeros_like(vs30)
-    a = np.zeros_like(vs30)
-    b = np.zeros_like(vs30)
-    for k,v in config['hazus_liq_cal']['parameters'].items():
+    a0 = np.zeros_like(vs30)
+    b0 = np.zeros_like(vs30)
+    c0 = np.zeros_like(vs30)
+    a1 = np.zeros_like(vs30)
+    b1 = np.zeros_like(vs30)
+    c1 = np.zeros_like(vs30)
+    for k,v in config['holzer_liq_cal']['parameters'].items():
         ind = np.where(vs30 == float(v[0]))
-        if v[1] == "VH":
-            p_ml[ind] = 0.25
-            a[ind] = 9.09
-            b[ind] = -0.82
-        if v[1] == "H":
-            p_ml[ind] = 0.2
-            a[ind] = 7.67
-            b[ind] = -0.92
-        if v[1] == "M":
-            p_ml[ind] = 0.1
-            a[ind] = 6.67
-            b[ind] = -1.0
-        if v[1] == "L":
-            p_ml[ind] = 0.05
-            a[ind] = 5.57
-            b[ind] = -1.18
-        if v[1] == "VL":
-            p_ml[ind] = 0.02
-            a[ind] = 4.16
-            b[ind] = -1.08
+        a0[ind] = v[1]
+        b0[ind] = v[2]
+        c0[ind] = v[3]
+        a1[ind] = v[4]
+        b1[ind] = v[5]
+        c1[ind] = v[6]
 
-    # Conditional liquefaction probability for a given susceptibility category 
-    # at a specified PGA
-    p_liq_pga = a*PGA + b
-    p_liq_pga = p_liq_pga.clip(min = 0, max = 1)
 
     #---------------------------------------------------------------------------
     # Water table
@@ -90,16 +73,15 @@ def hazus_liq_cal(shakefile, config, uncertfile=None, saveinputs=False,
     tmp = wtd_grid._data
     tmp = np.nan_to_num(tmp)
 
-    # Convert to ft
-    wt_ft = tmp * 3.28084
-
-    # Correction factor for groundwater depths other than five feet
-    k_w = 0.022*wt_ft + 0.93
+    # Compute water weights
+    w0, w1 = get_water_weights(tmp)
     
     #---------------------------------------------------------------------------
-    # Combine to get conditional liquefaction probability
+    # Compute probability of liquefaction
     #---------------------------------------------------------------------------
-    p_liq_sc = p_liq_pga * p_ml / k_m / k_w
+    prob0 = get_prob(PGA, a0, b0, c0, mag)
+    prob1 = get_prob(PGA, a1, b1, c1, mag)
+    prob = prob0*w0 + prob1*w1
 
     #---------------------------------------------------------------------------
     # Turn output and inputs into into grids and put in maplayers dictionary
@@ -108,10 +90,10 @@ def hazus_liq_cal(shakefile, config, uncertfile=None, saveinputs=False,
     
     temp = shakemap.getShakeDict()
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
-    modelsref = config['hazus_liq_cal']['shortref']
-    modellref = config['hazus_liq_cal']['longref']
-    modeltype = 'Hazus/Wills'
-    maplayers['model'] = {'grid': GDALGrid(p_liq_sc, fgeodict), 
+    modelsref = config['holzer_liq_cal']['shortref']
+    modellref = config['holzer_liq_cal']['longref']
+    modeltype = 'Holzer/Wills'
+    maplayers['model'] = {'grid': GDALGrid(prob, fgeodict), 
                           'label': 'Probability', 
                           'type': 'output',
                           'description': {'name': modelsref, 
@@ -136,3 +118,25 @@ def hazus_liq_cal(shakefile, config, uncertfile=None, saveinputs=False,
                             'type': 'input',
                             'description': {'units': 'm'}}
     return maplayers
+
+
+def get_prob(pga, a, b, c, M):
+    """Compute probability of liquefaction from logistic function and 
+    magnitude scaling factor. 
+    """
+    msf = 10**2.24/(M**2.56)
+    prob = np.nan_to_num(a/(1 + ((pga/msf)/b)**c))
+    return prob
+
+
+def get_water_weights(z):
+    """Compute weights for the two different water table depths
+    for an arbitrary depth z. 
+    """
+    w0 = np.ones_like(z)
+    w0[(z > 1.5) & (z <= 5)] = 1 + 1.5/3.5 - z[(z > 1.5) & (z <= 5)]/3.5
+    w0[z > 5] = 0
+    w1 = np.zeros_like(z)
+    w1[(z > 1.5) & (z <= 5)] = 1 - w0[(z > 1.5) & (z <= 5)]
+    w1[(z > 5) & (z <= 20)] = 1 + 5/15 - z[(z > 5) & (z <= 20)]/15
+    return w0, w1
