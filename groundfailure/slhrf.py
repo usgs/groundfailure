@@ -66,12 +66,12 @@ def slhrf_liq(shakefile, config, uncertfile=None, saveinputs=False,
     Fmag = mag_factor(mag)
     Fpga = pga_factor(PGA)
     Fdw = dw_factor(dw)
-
+    Fnehrp = nehrp_factor(vs30)
     
     #---------------------------------------------------------------------------
     # Combine factors
     #---------------------------------------------------------------------------
-    SLHRF = Fz * Fmag * Fpga * Fdw * Fgeo
+    SLHRF = Fz * Fmag * Fpga * Fdw * Fgeo * Fnehrp
 
     # Transform into a 'probability'
     prob = 0.4 * (1 - np.exp(-0.2 * SLHRF**2) )
@@ -134,6 +134,10 @@ def slhrf_liq(shakefile, config, uncertfile=None, saveinputs=False,
                            'label': 'Fz', 
                            'type': 'input',
                            'description': {'units': 'none'}}
+        maplayers['FNEHRP'] = {'grid': GDALGrid(Fnehrp, fgeodict),
+                               'label': 'Fnehrp', 
+                               'type': 'input',
+                               'description': {'units': 'none'}}
     return maplayers
 
 
@@ -168,4 +172,11 @@ def dw_factor(dw):
     fac[dw > 0.5] = 0.9
     return fac
 
-
+def nehrp_factor(vs30):
+    fac = np.ones_like(vs30) * 0.9
+    fac[vs30 < 760] = 0.95 # C
+    fac[vs30 < 360] = 1.0  # D
+    fac[vs30 < 270] = 1.05 # DE?????
+    fac[vs30 < 180] = 1.1  # E
+    # Note: F not defined by Vs30
+    return fac
