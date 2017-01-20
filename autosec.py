@@ -23,8 +23,8 @@ import mimetypes
 #third party
 from impactutils.io.cmd import get_command_output
 
-CONFIGFILE = 'SecondaryHazards/Codes/mailconfig.ini'
-CONFIGLIST = 'SecondaryHazards/Codes/configlist.txt'
+CONFIGFILE = 'mailconfig.ini'
+CONFIGLIST = 'configlist.txt'
 #dictionary containing table definitions and column definitions column:type
 tablecols = [('id', 'integer primary key'),
              ('eventcode', 'text'),
