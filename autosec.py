@@ -38,11 +38,11 @@ tablecols = [('id', 'integer primary key'),
              ('maxmmi', 'real'),
              ('location', 'text')]
 TABLES = {'shakemap': OrderedDict(tablecols)}
-DBFILE = 'SecondaryHazards/Codes/mail.db'
+DBFILE = 'mail.db'
 
-#FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_hour.geojson'
+FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_hour.geojson'
 #FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson'
-FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson'
+#FEED = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson'
 
 ALERTLEVELS = ['green', 'yellow', 'orange', 'red', 'pending']
 
