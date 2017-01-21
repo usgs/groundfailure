@@ -116,26 +116,26 @@ can be specified using gfail, see below for details.
 
 #### set default paths
 
-```py
+```sh
 gfail --set-default-paths -d full/modelinput/data/path -o full/output/location/filepath
 -c full/filepath/to/model/config/files -m full/filepath/to/mapping/config/file -md full/filepath/to/data/for/mapping
 ```
 
 #### check default paths that are currently set
 
-```py
+```sh
 gfail --list-default-paths
 ```
 
 #### clear all default paths
 
-```py
+```sh
 gfail --reset-default-paths
 ```
 
 #### after setting default paths, gfail can be run like this:
 
-```py
+```sh
 gfail modelconfig.ini shakefile.xml -s -pd -pi
 ```
 
@@ -159,7 +159,7 @@ The config file format is a modified version of the "INI" format.  It is describ
   running models manually and/or not setting default paths in gfail you will need
   to run correct_config_filepaths() after reading in the config file. See notebooks for details.
 
-```py
+```ini
 [nowicki_2014_global]
   # Detailed description of the model and references.
   description = 'This is the original landslide model of Nowicki et al 2014 using PGA, Slope, Cohesion, and CTI based on global datasets.'
@@ -284,7 +284,7 @@ The config file format is a modified version of the "INI" format.  It is describ
 The mapping config file tells the program what files to use (roads, cities etc.) for creating static maps.
 It is not required, but static maps may be bland without these.
 
-```py
+```ini
 # All map inputs are optional, but desireable. File paths are relative to the mapping_inputs folder
 # Default display options for each input layer are found in the model config file
 
