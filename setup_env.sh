@@ -5,7 +5,7 @@ VENV=gf
 PYVER=3.5
 
 
-DEPARRAY=(numpy scipy pip matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj pandas sphinx scikit-learn psutil ipython jupyter branca)
+DEPARRAY=(numpy scipy pip matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj pandas sphinx scikit-learn scikit-image psutil ipython jupyter branca paramiko)
 
 # turn off whatever other virtual environment user might be in
 source deactivate
@@ -25,7 +25,6 @@ source activate $VENV
 pip -v install https://github.com/usgs/MapIO/archive/master.zip
 pip -v install https://github.com/usgs/earthquake-impact-utils/archive/master.zip
 pip -v install https://github.com/gem/oq-hazardlib/archive/master.zip
-pip install scikit-image
 pip install sphinx_rtd_theme
 pip install git+git://github.com/python-visualization/folium.git
 
