@@ -9,6 +9,7 @@ from mpl_toolkits.basemap import maskoceans
 import copy
 import datetime
 import matplotlib as mpl
+mpl.use('Agg')  # so figures will still be created even without disply
 from matplotlib.colors import LightSource, LogNorm
 import re
 #from matplotlib.colorbar import ColorbarBase
@@ -46,7 +47,7 @@ from mapio.shake import ShakeGrid
 
 # Make fonts readable and recognizable by illustrator
 mpl.rcParams['pdf.fonttype'] = 42
-mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
+mpl.rcParams['font.sans-serif'] = ['Helvetica', 'Arial', 'Bitstream Vera Serif', 'sans-serif']
 
 
 def parseMapConfig(config, fileext=None):
@@ -973,17 +974,17 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         #add city names to map
         if mapcities is True and cityfile is not None:
             try:
-                fontname = 'Arial'
+                #fontname = 'Helvetica'
                 fontsize = 8
                 if k == 0:  # Only need to choose cities first time and then apply to rest
                     fcities = bcities.limitByMapCollision(
-                        m, fontname=fontname, fontsize=fontsize)
+                        m, fontsize=fontsize)
                     ctlats, ctlons, names = fcities.getCities()
                     cxis, cyis = m(ctlons, ctlats)
                 for ctlat, ctlon, cxi, cyi, name in zip(ctlats, ctlons, cxis, cyis, names):
                     m.scatter(ctlon, ctlat, c='k', latlon=True, marker='.',
                               zorder=100000)
-                    ax.text(cxi, cyi, name, fontname=fontname,
+                    ax.text(cxi, cyi, name,
                             fontsize=fontsize, zorder=100000)
             except Exception as e:
                 print('Failed to plot cities, %s' % e)
@@ -1006,14 +1007,14 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         m.drawcountries(color=countrycolor, linewidth=1.0)
 
         #add map scale
-        m.drawmapscale((bxmax+bxmin)/2., (bymin+0.1*(bymax-bymin)), clon, clat, 
-                       np.round((((bxmax-bxmin)*111)/5)/10.)*10, 
+        m.drawmapscale((bxmax+bxmin)/2., (bymin+0.1*(bymax-bymin)), clon, clat,
+                       np.round((((bxmax-bxmin)*111)/5)/10.)*10,
                        barstyle='simple', zorder=200)
 
         # Add border
         autoAxis = ax.axis()
-        rec = Rectangle((autoAxis[0]-0.7, autoAxis[2]-0.2), 
-                        (autoAxis[1]-autoAxis[0])+1, (autoAxis[3]-autoAxis[2])+0.4, 
+        rec = Rectangle((autoAxis[0]-0.7, autoAxis[2]-0.2),
+                        (autoAxis[1]-autoAxis[0])+1, (autoAxis[3]-autoAxis[2])+0.4,
                         fill=False, lw=1, zorder=1e8)
         rec = ax.add_patch(rec)
         rec.set_clip_on(False)
