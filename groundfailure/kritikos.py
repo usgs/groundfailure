@@ -91,10 +91,10 @@ import numpy as np
 
 def kritikos_fuzzygamma(shakefile, config, bounds=None):
     """
-    Runs kritikos procedure with fuzzy gamma
+    Runs kritikos procedure with fuzzy gamma overlay method
     """
 
-    cmodel = config['statistic_models']['kritikos_2014']
+    cmodel = config['kritikos_2015']
     gamma = cmodel['gamma_value']
 
     ## Read in layer files and get data

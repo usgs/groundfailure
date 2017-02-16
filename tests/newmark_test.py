@@ -14,6 +14,7 @@ homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
 shakefile = os.path.join(datadir, 'test_shakegrid.xml')
+shakefileGodt = os.path.join(datadir, 'test_shakegrid_godt.xml')
 uncertfile = os.path.join(datadir, 'test_uncert.xml')
 cofile = os.path.join(datadir, 'test_friction.bil')
 slopefile = os.path.join(datadir, 'test_slope.bil')
@@ -86,7 +87,52 @@ def test_classic():
 
 
 def test_godt2008():
-    pass
+    configfile = os.path.join(datadir, 'testconfig_godt.ini')
+    config = ConfigObj(configfile)
+    # Test path correction (from conf.py)
+    config = correct_config_filepaths(datadir, config)
+    maplayers1 = NM.godt2008(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile)
+    maplayers2 = NM.godt2008(shakefile, config, displmodel='J_PGA_M')
+    maplayers3 = NM.godt2008(shakefile, config, displmodel='RS_PGA_M')
+    maplayers4 = NM.godt2008(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile)
+    maplayers5 = NM.godt2008(shakefile, config)
+
+    # Testing J_PGA with Uncertainty - Model Type 1
+    np.testing.assert_allclose(maplayers1['model']['grid'].getData(),
+                               np.array([[0., 0.1],
+                                        [0.9, 0.]]), rtol=0.01)
+    np.testing.assert_allclose(maplayers1['modelmin']['grid'].getData(),
+                               np.array([[0., 0.01],
+                                        [0.9, 0.]]))
+    np.testing.assert_allclose(maplayers1['modelmax']['grid'].getData(),
+                               np.array([[0., 0.7],
+                                        [0.99, 0.]]))
+
+    # Testing J_PGA_M with Uncertainty - Model Type 2
+    np.testing.assert_allclose(maplayers2['model']['grid'].getData(),
+                               np.array([[0., 0.01],
+                                        [0.9, 0.]]), rtol=0.01)
+
+    # Testing RS_PGA_M with Uncertainty - Model Type 3
+    np.testing.assert_allclose(maplayers3['model']['grid'].getData(),
+                               np.array([[0., 0.5],
+                                        [0.99, 0.]]), rtol=0.01)
+
+    # Testing RS_PGA_PGV with Uncertainty - Model Type 4
+    np.testing.assert_allclose(maplayers4['model']['grid'].getData(),
+                               np.array([[0., 0.7],
+                                        [0.99, 0.]]), rtol=0.01)
+    np.testing.assert_allclose(maplayers4['modelmin']['grid'].getData(),
+                               np.array([[0., 0.1],
+                                        [0.9, 0.]]))
+    np.testing.assert_allclose(maplayers4['modelmax']['grid'].getData(),
+                               np.array([[0., 0.99],
+                                        [0.99, 0.]]))
+
+    # Testing default model and no uncertainty
+    np.testing.assert_allclose(maplayers5['model']['grid'].getData(),
+                               np.array([[0., 0.01],
+                                        [0.9, 0.]]), rtol=0.01)
 
 
 def test_NMdisp():
