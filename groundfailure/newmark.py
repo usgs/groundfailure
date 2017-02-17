@@ -807,10 +807,14 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         stdpga = np.repeat(uncert.getLayer('stdpga').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
         stdpgv = np.repeat(uncert.getLayer('stdpgv').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
         # estimate PGA +- 1std
-        PGAmin = np.exp(np.log(PGA*100.) - stdpga/100.)
-        PGAmax = np.exp(np.log(PGA*100.) + stdpga/100.)
-        PGVmin = np.exp(np.log(PGV) - stdpgv)
-        PGVmax = np.exp(np.log(PGV) + stdpgv)
+        PGAmin = np.exp(np.log(PGA*100) - stdpga)/100
+        PGAmax = np.exp(np.log(PGA*100) + stdpga)/100
+        if 'PGV' in displmodel:
+            PGVmin = np.exp(np.log(PGV) - stdpgv)
+            PGVmax = np.exp(np.log(PGV) + stdpgv)
+        else:
+            PGVmin = None
+            PGVmax = None
 
     np.seterr(invalid='ignore')  # Ignore errors so still runs when Ac > PGA, just leaves nan instead of crashing
 

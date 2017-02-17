@@ -11,6 +11,7 @@ from configobj import ConfigObj
 friction = np.array([[25., 30.], [14., 20.]], dtype=float)  # degrees
 cohesion = np.array([[5., 8.], [12., 9.]])  # kPa
 slope = np.array([[10., 30.], [47., 15.]], dtype=float)  # degrees
+slopeGodt = np.array([[1000., 3000.], [4700., 1500.]], dtype=float)  # degrees
 slopequants = [0.15, 0.3, 0.5, 0.6, 0.7, 0.8, 1.0]  # multipliers for quants in godt model
 slopequantnames = ['_min', '10', '30', '50', '70', '90', '_max']
 vs30 = np.array([[244., 400.], [500., 1000.]], dtype=float)  # m/s
@@ -26,11 +27,10 @@ units = {'friction': 'degrees', 'cohesion': 'kPa', 'slope': 'degrees',
          'vs30': 'm/s', 'cti1': 'unitless', 'precip': 'mm', 'susceptibility': 'category', 'watertable': 'm',
          'pga': 'g', 'pgv': 'cm/s'}
 
-
 pga = np.array([[24., 72.], [54., 11.]], dtype=float)  # %g
 pgv = np.array([[50., 73.], [32., 84.]], dtype=float)  # cm/s
 stdpga = np.array([[0.43, 0.49], [0.32, 0.16]], dtype=float)  # ln(%g)
-
+stdpgv = np.array([[0.43, 0.49], [0.32, 0.16]], dtype=float)  # ln(%g)
 
 geodict = GeoDict({'xmin': 0.5, 'xmax': 1.5,
                   'ymin': 0.5, 'ymax': 1.5,
@@ -185,20 +185,24 @@ def makeTestData():
 
     for k, items in enumerate(Xgod):
         # make a GDALGrid object
-        testgrid = GDALGrid(eval(items), geodict)
+        if items == 'slope':
+            testgrid = GDALGrid(eval('slopeGodt'), geodict)
+        else:
+            testgrid = GDALGrid(eval(items), geodict)
         # Save the file
         filename = 'test_%s.bil' % (items)
         word = 'file'
         if items == 'slope':
             word = 'filepath'
             try:
-                os.mkdir('test_slope_quantiles')
+                os.mkdir('test_slope_quantiles_godt')
             except:
                 pass
             for j, slp in enumerate(slopequants):
-                filename = 'test_slope_quantiles/slope%s.bil' % (slopequantnames[j])  # Only make January for testing
-                temp = GDALGrid(eval(items) * slopequants[j], geodict)
+                filename = 'test_slope_quantiles_godt/slope%s.bil' % (slopequantnames[j])  # Only make January for testing
+                temp = GDALGrid(eval('slopeGodt') * slopequants[j], geodict)
                 temp.save(filename, format='EHdr')
+            filename = 'test_slope_quantiles_godt'
         elif items == 'cohesion':
             testgrid.save(filename, format='EHdr')
 
@@ -252,7 +256,7 @@ def makeTestData():
     shakegrid = ShakeGrid(layers1, geodict, eventDict, shakeDict, uncertaintyDict)
     shakegrid.save('test_shakegrid.xml')
 
-    layers2 = {'stdpga': stdpga}
+    layers2 = {'stdpga': stdpga, 'stdpgv': stdpgv}
     uncertgrid = ShakeGrid(layers2, geodict, eventDict, shakeDict, uncertaintyDict)
     uncertgrid.save('test_uncert.xml')
 

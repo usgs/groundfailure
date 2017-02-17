@@ -52,7 +52,7 @@ def main(args):
 
         # Make folder in outfolder for all results, if it doesn't already exist
         eventid = getHeaderData(shakefile)[0]['event_id']
-        if args.hdf5 or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots:
+        if args.hdf5 or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots or args.gis:
             if args.output_filepath is None:
                 outdir = os.getcwd()
             outdir = args.output_filepath
@@ -362,7 +362,7 @@ if __name__ == '__main__':
                         listing config files (do not use .ini extension)')
     parser.add_argument('shakefile', nargs='?', help='single ShakeMap grid.xml file or url')
     parser.add_argument('-u', '--uncertfile', metavar='uncertfile', nargs='?', help='single \
-                        ShakeMap uncertainty.xml file')
+                        ShakeMap uncertainty.xml file', default=None)
     parser.add_argument('-d', '--data-path', metavar='datafilepath', nargs='?', default=data_path,
                         help='Set file path to model input data (only needed if file paths in config \
                         are relative)')
