@@ -21,29 +21,36 @@ damages resulting from the authorized or unauthorized use of the software.
 
 To install this package:
 
+```sh
 pip install git+git://github.com/usgs/groundfailure.git
+```
 
 To upgrade this package:
 
+```sh
 pip install -U git+git://github.com/usgs/groundfailure.git
-
+```
 
 This package depends on a number of other libraries, most of which are installed with Anaconda. 
 We strongly suggest that users install Anaconda or one of the other Scipy Stack distributions
 described [here](http://www.scipy.org/install.html).
 
 The easiest way to set up your environment is to install Anaconda and then take use the setup script
-<pre>
+
+```sh
 setup_env.sh
-</pre>
+```
+
 which is included in the repository to set up a 
 [virtual environment](http://conda.pydata.org/docs/using/envs.html) using the following command:
-<pre>
+
+```sh
 bash setup_env.sh
-</pre>
+```
 
 If you don't want to set your system up using an anaconda virtual environment, here is a list of
 other dependencies that may not be installed with a distribution:
+
 * configobj
 * fiona
 * rasterio
@@ -57,27 +64,42 @@ Usually these packages can be installed with either conda (Anaconda installs) or
 
 Some other third party dependencies can be installed by the following:
 
+```sh
 pip install https://github.com/usgs/MapIO/archive/master.zip
+```
 
+```sh
 pip install https://github.com/usgs/earthquake-impact-utils/archive/master.zip
+```
 
+```sh
 pip install https://github.com/gem/oq-hazardlib/archive/master.zip
+```
 
+```sh
 pip install scikit-image
+```
 
+```sh
 pip install sphinx_rtd_theme
+```
 
+```sh
 pip install git+git://github.com/python-visualization/folium.git
+```
 
 For gdalfuncs to work (find proj.4 libraries), you may need to add the following line to 
 your .bash_profile:
-<pre>
+
+```sh
 export PROJSO=/Library/Frameworks/PROJ.framework/PROJ
-</pre>
+```
+
 To run gfail from the command line, you will need to add its location to your .bash_profile:
-<pre>
+
+```sh
 export PATH=~/groundfailure:$PATH
-</pre>
+```
 
 ## Configuration
 
@@ -91,23 +113,32 @@ Default options, such as the output directory, paths to input data files, paths 
 can be specified using gfail, see below for details.
 
 ### Using gfail to set default paths on system (gfail must be in system path)
+
 #### set default paths
-<pre>
+
+```sh
 gfail --set-default-paths -d full/modelinput/data/path -o full/output/location/filepath
 -c full/filepath/to/model/config/files -m full/filepath/to/mapping/config/file -md full/filepath/to/data/for/mapping
-</pre>
+```
+
 #### check default paths that are currently set
-<pre>
+
+```sh
 gfail --list-default-paths
-</pre>
+```
+
 #### clear all default paths
-<pre>
+
+```sh
 gfail --reset-default-paths
-</pre>
+```
+
 #### after setting default paths, gfail can be run like this:
-<pre>
+
+```sh
 gfail modelconfig.ini shakefile.xml -s -pd -pi
-</pre>
+```
+
 * the pd flag outputs static pdfs of model results
 * the pi flag creates interactive plots as html files
 * type gfail -h to see all options
@@ -128,7 +159,7 @@ The config file format is a modified version of the "INI" format.  It is describ
   running models manually and/or not setting default paths in gfail you will need
   to run correct_config_filepaths() after reading in the config file. See notebooks for details.
 
-<pre>
+```ini
 [nowicki_2014_global]
   # Detailed description of the model and references.
   description = 'This is the original landslide model of Nowicki et al 2014 using PGA, Slope, Cohesion, and CTI based on global datasets.'
@@ -247,12 +278,13 @@ The config file format is a modified version of the "INI" format.  It is describ
       pga = None
       slope = None
       cti1 = None
-</pre>
+```
 
 ### Mapping config file format
 The mapping config file tells the program what files to use (roads, cities etc.) for creating static maps.
 It is not required, but static maps may be bland without these.
-<pre>
+
+```ini
 # All map inputs are optional, but desireable. File paths are relative to the mapping_inputs folder
 # Default display options for each input layer are found in the model config file
 
@@ -282,7 +314,7 @@ It is not required, but static maps may be bland without these.
   countrycolor = 474747
   watercolor = B8EEFF
 
-</pre>
+```
 
 ## API for Model Output
 
@@ -310,7 +342,8 @@ Each layer in the dictionary is itself a dictionary, with the following fields:
  - *grid* Input data or model output, in the form of a Grid2D object. 
 
 A template model function implementation is shown below.
-<pre>
+
+```py
 def failure_model():
     geodict = GeoDict({'xmin':0.5,'xmax':3.5,
                        'ymin':0.5,'ymax':3.5,
@@ -358,4 +391,4 @@ def failure_model():
               'pga':layer3}
 
     return output
-</pre>
+```
