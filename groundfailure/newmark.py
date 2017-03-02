@@ -895,6 +895,17 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         maplayers['friction angle'] = {'grid': GDALGrid(friction[:, :, 0], shakemap.getGeoDict()),
                                        'label': 'Friction angle ($^\circ$)', 'type': 'input',
                                        'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
+        if uncertfile is not None:
+            maplayers['pgamin'] = {'grid': GDALGrid(PGAmin[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA - 1std (g)',
+                                    'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
+            maplayers['pgamax'] = {'grid': GDALGrid(PGAmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA + 1std (g)',
+                                    'type': 'input','description': {'units': 'g', 'shakemap': shakedetail}}
+        if 'PGV' in displmodel:
+            if uncertfile is not None:
+                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin[:, :, 0], shakemap.getGeodict()),'label': 'PGV - 1std (cm/s)',
+                                        'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax[:, :, 0], shakemap.getGeodict), 'label': 'PGV + 1std (cm/s)',
+                                        'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
 
     return maplayers
 
