@@ -56,15 +56,15 @@ def test_hazus():
     np.testing.assert_allclose(maplayers3['model']['grid'].getData(),
                                np.array([[0., np.nan, 0.334865],
                                         [np.nan, np.nan, np.nan],
-                                        [0.3350, np.nan, 0.0422]]), rtol=0.01)
+                                        [0.3350, np.nan, 0.0422]]), atol=0.01)
     np.testing.assert_allclose(maplayers4['model']['grid'].getData(),
                                np.array([[4.6e-39, 0., 13.84],
                                         [0., 0., 0.],
-                                        [37.97, 0., 25.368]]), rtol=0.1)
+                                        [37.97, 0., 25.368]]), atol=0.1)
     np.testing.assert_allclose(maplayers5['model']['grid'].getData(),
                                np.array([[0, 0, 1],
                                         [0, 0, 0],
-                                        [1, 0, 0]]), rtol=0)
+                                        [1, 0, 0]]), atol=0)
 
 
 def test_est_disp():
@@ -75,15 +75,51 @@ def test_est_disp():
     ed_low = 3.
     ed_high = 5.
     el, eh = NM.est_disp(ac, pga)
-    np.testing.assert_allclose(ed_low, el, rtol=0.3)
-    np.testing.assert_allclose(ed_high, eh, rtol=0.3)
+    np.testing.assert_allclose(ed_low, el, atol=0.3)
+    np.testing.assert_allclose(ed_high, eh, atol=0.3)
     el, eh = NM.est_disp(0.01, 1.)
-    np.testing.assert_allclose(20., el, rtol=0.3)
-    np.testing.assert_allclose(40., eh, rtol=0.3)
+    np.testing.assert_allclose(20., el, atol=0.3)
+    np.testing.assert_allclose(40., eh, atol=0.3)
 
 
 def test_classic():
-    pass
+    configfile = os.path.join(datadir, 'testconfig_classic.ini')
+    config = ConfigObj(configfile)
+    # Test path correction (from conf.py)
+    config = correct_config_filepaths(datadir, config)
+    maplayers1 = NM.classic(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile)
+    maplayers2 = NM.classic(shakefile, config, displmodel='J_PGA_M')
+    maplayers3 = NM.classic(shakefile, config, displmodel='RS_PGA_M')
+    maplayers4 = NM.classic(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile)
+    maplayers5 = NM.classic(shakefile, config)
+
+    # Testing J_PGA with Uncertainty - Model Type 1
+    np.testing.assert_allclose(maplayers1['model']['grid'].getData(),
+                               np.array([[0.004, 0.335], [0.334, 0.]]), atol=0.01)
+    np.testing.assert_allclose(maplayers1['modelmin']['grid'].getData(),
+                               np.array([[0., 0.334], [0.334, 0.]]), atol=0.01)
+    np.testing.assert_allclose(maplayers1['modelmax']['grid'].getData(),
+                               np.array([[0.0459, 0.335], [0.335, 0.]]), atol=0.01)
+
+    # Testing J_PGA_M with Uncertainty - Model Type 2
+    np.testing.assert_allclose(maplayers2['model']['grid'].getData(),
+                               np.array([[0.001, 0.3314], [0.3349, 0.]]), atol=0.01)
+
+    # Testing RS_PGA_M with Uncertainty - Model Type 3
+    np.testing.assert_allclose(maplayers3['model']['grid'].getData(),
+                               np.array([[0.014, 0.335], [0.335, 0.]]), atol=0.01)
+
+    # Testing RS_PGA_PGV with Uncertainty - Model Type 4
+    np.testing.assert_allclose(maplayers4['model']['grid'].getData(),
+                               np.array([[0.0616, 0.33499], [0.335, 0.]]), atol=0.01)
+    np.testing.assert_allclose(maplayers4['modelmin']['grid'].getData(),
+                               np.array([[0., 0.3341], [0.335, 0.]]), atol=0.01)
+    np.testing.assert_allclose(maplayers4['modelmax']['grid'].getData(),
+                               np.array([[0.32888, 0.335], [0.335, 0.0003]]), atol=0.01)
+
+    # Testing default model and no uncertainty
+    np.testing.assert_allclose(maplayers5['model']['grid'].getData(),
+                               np.array([[0.004, 0.335], [0.334, 0.]]), atol=0.01)
 
 
 def test_godt2008():
@@ -99,40 +135,31 @@ def test_godt2008():
 
     # Testing J_PGA with Uncertainty - Model Type 1
     np.testing.assert_allclose(maplayers1['model']['grid'].getData(),
-                               np.array([[0., 0.1],
-                                        [0.9, 0.]]), rtol=0.01)
+                               np.array([[0., 0.1], [0.9, 0.]]), atol=0.01)
     np.testing.assert_allclose(maplayers1['modelmin']['grid'].getData(),
-                               np.array([[0., 0.01],
-                                        [0.9, 0.]]))
+                               np.array([[0., 0.01], [0.9, 0.]]))
     np.testing.assert_allclose(maplayers1['modelmax']['grid'].getData(),
-                               np.array([[0., 0.7],
-                                        [0.99, 0.]]))
+                               np.array([[0., 0.7], [0.99, 0.]]))
 
     # Testing J_PGA_M with Uncertainty - Model Type 2
     np.testing.assert_allclose(maplayers2['model']['grid'].getData(),
-                               np.array([[0., 0.01],
-                                        [0.9, 0.]]), rtol=0.01)
+                               np.array([[0., 0.01], [0.9, 0.]]), atol=0.01)
 
     # Testing RS_PGA_M with Uncertainty - Model Type 3
     np.testing.assert_allclose(maplayers3['model']['grid'].getData(),
-                               np.array([[0., 0.5],
-                                        [0.99, 0.]]), rtol=0.01)
+                               np.array([[0., 0.5], [0.99, 0.]]), atol=0.01)
 
     # Testing RS_PGA_PGV with Uncertainty - Model Type 4
     np.testing.assert_allclose(maplayers4['model']['grid'].getData(),
-                               np.array([[0., 0.7],
-                                        [0.99, 0.]]), rtol=0.01)
+                               np.array([[0., 0.7], [0.99, 0.]]), atol=0.01)
     np.testing.assert_allclose(maplayers4['modelmin']['grid'].getData(),
-                               np.array([[0., 0.1],
-                                        [0.9, 0.]]))
+                               np.array([[0., 0.1], [0.9, 0.]]))
     np.testing.assert_allclose(maplayers4['modelmax']['grid'].getData(),
-                               np.array([[0., 0.99],
-                                        [0.99, 0.]]))
+                               np.array([[0., 0.99], [0.99, 0.]]))
 
     # Testing default model and no uncertainty
     np.testing.assert_allclose(maplayers5['model']['grid'].getData(),
-                               np.array([[0., 0.01],
-                                        [0.9, 0.]]), rtol=0.01)
+                               np.array([[0., 0.01], [0.9, 0.]]), atol=0.01)
 
 
 def test_NMdisp():
@@ -146,12 +173,12 @@ def test_NMdisp():
     amax = 1.
     logDn = -1.
     val, std, logtype = NM.NMdisp(ac, amax, model='J_PGA')
-    np.testing.assert_allclose(val, 10**logDn, rtol=0.05)
+    np.testing.assert_allclose(val, 10**logDn, atol=0.05)
     # Try another on different part of curve
     ac = 0.2
     logDn = 1.
     val, std, logtype = NM.NMdisp(ac, amax, model='J_PGA')
-    np.testing.assert_allclose(np.log10(val), logDn, rtol=0.01)
+    np.testing.assert_allclose(np.log10(val), logDn, atol=0.01)
 
     #test J_PGA_M
     #No data published to compare against so this model is based on solving the equation analytically
@@ -161,7 +188,7 @@ def test_NMdisp():
     M = 7.
     val, std, logtype = NM.NMdisp(ac, amax, model='J_PGA_M', M=M)
     assert(logtype == 'log10'), 'NMdisp did not return logtype expected for J_PGA_M'
-    np.testing.assert_allclose(val, 0.1088552, rtol=0.001)
+    np.testing.assert_allclose(val, 0.1088552, atol=0.001)
 
     # test_RS_PGA_M():
     # This test compares against values plotted in Figure 7 of Rathje and Saygili 2009
@@ -171,7 +198,7 @@ def test_NMdisp():
     M = 7.5
     Dn = 2.25
     val, std, logtype = NM.NMdisp(ac, amax, M=M, model='RS_PGA_M')
-    np.testing.assert_allclose(val, Dn, rtol=0.01)
+    np.testing.assert_allclose(val, Dn, atol=0.01)
 
     #test_RS_PGA_PGV():
     #This test compares against values plotted in Figure 7 of Rathje and Saygili 2009
@@ -180,7 +207,7 @@ def test_NMdisp():
     pgv = 30.
     Dn = 2.5
     val, std, logtype = NM.NMdisp(ac, amax, PGV=pgv, model='RS_PGA_PGV')
-    np.testing.assert_allclose(val, Dn, rtol=0.05)
+    np.testing.assert_allclose(val, Dn, atol=0.05)
     assert(logtype == 'ln'), 'NMdisp did not return logtype expected for J_PGA_M'
 
 test_hazus()

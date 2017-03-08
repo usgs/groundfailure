@@ -525,8 +525,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
         watertable[watertable > thick] = thick
         m = (thick - watertable)/thick
         m[np.isnan(m)] = 0.
-    FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.))\
-        - (m*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
+    FS = cohesion/(uwt*thick*np.sin(slope*(np.pi/180.))) + np.tan(friction*(np.pi/180.))/np.tan(slope*(np.pi/180.)) - (m*uwtw*np.tan(friction*(np.pi/180.)))/(uwt*np.tan(slope*(np.pi/180.)))
     FS[FS < fsthresh] = fsthresh
 
     # Compute critical acceleration, in g
@@ -588,7 +587,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
     temp = shakemap.getShakeDict()
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
 
-    if watertable is not None:
+    if wtfile:
         des = 'variable'
     else:
         des = m
@@ -631,7 +630,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
                                        'description': {'units': 'cm/s', 'shakemap': shakedetail}}
                 maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax, gdict), 'label': 'PGV + 1std (cm/s)', 'type': 'input',
                                        'description': {'units': 'cm/s', 'shakemap': shakedetail}}
-        if watertable is not None:
+        if wtfile:
             maplayers['sat thick prop'] = {'grid': GDALGrid(m, gdict), 'label': 'Saturated thickness proprtion [0,1]',
                                            'type': 'input', 'description': {'units': 'meters', 'name': watersref,
                                                                             'longref': waterlref}}
