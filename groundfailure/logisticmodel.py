@@ -327,6 +327,8 @@ class LogisticModel(object):
 
         """
         mnames = getLogisticModelNames(config)
+        if len(mnames) == 0:
+            raise Exception('No config file found or problem with config file format')
         if len(mnames) > 1:
             raise Exception('Config file contains more than one model which is no longer allowed,\
                             update your config file to the newer format')
@@ -650,14 +652,14 @@ class LogisticModel(object):
                                  'description': {'units': units, 'shakemap': shakedetail}}
                 if self.uncert is not None:
                     layer1 = np.exp(np.log(layer.getData()) - self.uncert.getLayer('std'+getkey).getData())
-                    rdict[getkey + 'minus1std'] = {'grid': Grid2D(layer1, self.geodict),
-                                               'label': '%s (%s)' % (getkey.upper()+' -1 std', units),
-                                               'type': 'input',
-                                               'description': {'units': units, 'shakemap': shakedetail}}
+                    rdict[getkey + 'modelmin'] = {'grid': Grid2D(layer1, self.geodict),
+                                                  'label': '%s (%s)' % (getkey.upper()+' -1 std', units),
+                                                  'type': 'input',
+                                                  'description': {'units': units, 'shakemap': shakedetail}}
                     layer2 = np.exp(np.log(layer.getData()) + self.uncert.getLayer('std'+getkey).getData())
-                    rdict[getkey + 'plus1std'] = {'grid': Grid2D(layer2, self.geodict),
-                                               'label': '%s (%s)' % (getkey.upper()+' +1 std', units),
-                                               'type': 'input',
-                                               'description': {'units': units, 'shakemap': shakedetail}}
+                    rdict[getkey + 'modelmax'] = {'grid': Grid2D(layer2, self.geodict),
+                                                  'label': '%s (%s)' % (getkey.upper()+' +1 std', units),
+                                                  'type': 'input',
+                                                  'description': {'units': units, 'shakemap': shakedetail}}
 
         return rdict

@@ -836,6 +836,9 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             vmax = clev[-1]
 
         else:
+            if isinstance(logscale, (bool)):
+                # Put it in a list so it won't break things later
+                logscale = [logscale]
             if lims is not None and len(lims) == len(newgrids):
                 if lims[k] is None:
                     vmin = np.nanmin(dat)

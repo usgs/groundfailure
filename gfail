@@ -14,6 +14,7 @@ import re
 #third party imports
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
+import numpy as np
 
 #local imports
 from groundfailure.conf import correct_config_filepaths
@@ -101,15 +102,21 @@ def main(args):
             print('\nContinuing...\n')
 
         if args.set_bounds is not None:
-            temp = eval(args.set_bounds)
-            latmin = temp[0]
-            latmax = temp[1]
-            lonmin = temp[2]
-            lonmax = temp[3]
-            bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
+            if 'zoom' in args.set_bounds:
+                temp = args.set_bounds.split(',')
+                print('Using %s threshold of %1.1f to cut model bounds' % (temp[1].strip(), float(temp[2].strip())))
+                bounds = get_bounds(shakefile, temp[1].strip(), float(temp[2].strip()))
+            else:
+                temp = eval(args.set_bounds)
+                latmin = temp[0]
+                latmax = temp[1]
+                lonmin = temp[2]
+                lonmax = temp[3]
+                bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
+            print('Applying bounds of lonmin %1.2f, lonmax %1.2f, latmin %1.2f, latmax %1.2f' % (bounds['xmin'],
+                  bounds['xmax'], bounds['ymin'], bounds['ymax']))
         else:
             bounds = None
-
         filenames = []
         # Loop over config files
         for conf in configs:
@@ -144,13 +151,18 @@ def main(args):
                 filenameh = filename + '.hdf5'
                 savelayers(maplayers, os.path.join(outdir, filenameh))
 
+            if 'zoom' in args.set_bounds:
+                bounds1 = None  # don't set bounds for mapping if it was cut in the first place
+            else:
+                bounds1 = bounds
+
             if args.make_static_pdfs or args.make_static_pngs:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
-                junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds1,
                                             zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                                            mapcities=True, colormaps=colormaps, savepdf=args.make_static_pdfs, 
+                                            mapcities=True, colormaps=colormaps, savepdf=args.make_static_pdfs,
                                             savepng=args.make_static_pngs, printparam=True,
                                             inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
                                             logscale=logscale, **kwargs)
@@ -160,7 +172,7 @@ def main(args):
                 # make model only plots too
                 if len(maplayers) > 1:
                     plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
-                    junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds,
+                    junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=bounds1,
                                                 zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
                                                 mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
                                                 inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
@@ -332,6 +344,53 @@ def reset_default_paths():
         print('No default paths currently set\n')
 
 
+def get_bounds(shakefile, parameter='pga', threshold=2):
+    """
+    Get the boundaries of the shakemap that include all areas with shaking above the defined threshold
+    :param shakefile: full shakemap file path
+    :param parameter: pga or pgv
+    :param threshold: minimum value of parameter of interest, in units of %g for pga and cm/s for pgv
+    default value is based on minimum pga threshold ever observed to have triggered landslides from Jibson and Harp (2016)
+    """
+    from mapio.shake import ShakeGrid
+
+    shakemap = ShakeGrid.load(shakefile, adjust='res')
+    if parameter == 'pga':
+        vals = shakemap.getLayer('pga')
+    elif parameter == 'pgv':
+        vals = shakemap.getLayer('pgv')
+    else:
+        raise Exception('parameter not valid')
+    xmin, xmax, ymin, ymax = vals.getBounds()
+    lons = np.linspace(xmin, xmax, vals.getGeoDict().nx)
+    lats = np.linspace(ymax, ymin, vals.getGeoDict().ny)  # backwards so it plots right
+    row, col = np.where(vals.getData() > float(threshold))
+    lonmin = lons[col].min()
+    lonmax = lons[col].max()
+    latmin = lats[row].min()
+    latmax = lats[row].max()
+
+    boundaries1 = {'dx': 100, 'dy': 100., 'nx': 100., 'ny': 100}  # dummy fillers, only really care about bounds
+    if xmin < lonmin:
+        boundaries1['xmin'] = lonmin
+    else:
+        boundaries1['xmin'] = xmin
+    if xmax > lonmax:
+        boundaries1['xmax'] = lonmax
+    else:
+        boundaries1['xmax'] = xmax
+    if ymin < latmin:
+        boundaries1['ymin'] = latmin
+    else:
+        boundaries1['ymin'] = ymin
+    if ymax > latmax:
+        boundaries1['ymax'] = latmax
+    else:
+        boundaries1['ymax'] = ymax
+
+    return boundaries1
+
+
 if __name__ == '__main__':
 
     # See if there is a default path file, load in if there is and replace any nones
@@ -375,7 +434,8 @@ if __name__ == '__main__':
     parser.add_argument('-b', '--set-bounds', type=str, metavar=('latmin, latmax, lonmin lonmax'),
                         nargs='?', help="Set bounds of model run using four floats in this format, \
                         including quotes: 'latmin, latmax, lonmin, lonmax', default uses shakemap \
-                        bounds")
+                        bounds, 'zoom, parameter, threshold' in single quotes uses a shakemap threshold\
+                        value, e.g. 'zoom, pga, 2' where 2 is in %g")
     parser.add_argument('-m', '--mapconfig', metavar='mapconfig', nargs='?', help='full file path \
                         to config file containing mapping options', default=mapconfig)
     parser.add_argument('-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
