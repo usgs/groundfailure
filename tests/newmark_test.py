@@ -14,7 +14,7 @@ homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
 shakefile = os.path.join(datadir, 'test_shakegrid.xml')
-shakefileGodt = os.path.join(datadir, 'test_shakegrid_godt.xml')
+shakefileBounds = os.path.join(datadir, 'test_shakegrid_bounds.xml')
 uncertfile = os.path.join(datadir, 'test_uncert.xml')
 cofile = os.path.join(datadir, 'test_friction.bil')
 slopefile = os.path.join(datadir, 'test_slope.bil')
@@ -33,13 +33,14 @@ def test_hazus():
     config = ConfigObj(configfile)
     # Test path correction (from conf.py)
     config = correct_config_filepaths(datadir, config)
-    maplayers1 = NM.hazus(shakefile, config, modeltype='coverage', saveinputs=True)
-    maplayers2 = NM.hazus(shakefile, config, modeltype='dn_hazus')
+    bounds = {'xmin': -1.5, 'xmax': 3, 'ymin': -1.5, 'ymax': 3}
+    maplayers1 = NM.hazus(shakefile, config, modeltype='coverage', saveinputs=True, bounds=bounds, uncertfile=uncertfile)
+    maplayers2 = NM.hazus(shakefile, config, modeltype='dn_hazus', uncertfile=uncertfile)
     maplayers3 = NM.hazus(shakefile, config, modeltype='dn_prob', probtype='jibson2000')
-    maplayers4 = NM.hazus(shakefile, config, modeltype='ac_classic_dn', displmodel='RS_PGA_PGV',
-                          probtype='jibson2000')
+    maplayers4 = NM.hazus(shakefile, config, modeltype='ac_classic_dn', displmodel='RS_PGA_PGV', uncertfile=uncertfile,
+                          probtype='jibson2000', saveinputs=True)
     maplayers5 = NM.hazus(shakefile, config, modeltype='ac_classic_prob', displmodel='RS_PGA_M',
-                          probtype='threshold')
+                          probtype='threshold', uncertfile=uncertfile)
 
     np.testing.assert_allclose(maplayers1['model']['grid'].getData(),
                                np.array([[0., 0., 0.1],
@@ -49,6 +50,14 @@ def test_hazus():
                                np.array([[0.4, 0.35, 0.25],
                                         [0.4, 0.35, 0.25],
                                         [0.05, 0.05, 0.05]]))
+    np.testing.assert_allclose(maplayers1['modelmin']['grid'].getData(),
+                               np.array([[0., 0., 0.1],
+                                        [0., 0., 0.],
+                                        [0.3, 0., 0.3]]))  # NEED TO FIX NAN's ONCE MAPIO IS FIXED
+    np.testing.assert_allclose(maplayers1['modelmax']['grid'].getData(),
+                               np.array([[0., 0., 0.1],
+                                        [0., 0., 0.],
+                                        [0.3, 0., 0.3]]))  # NEED TO FIX NAN's ONCE MAPIO IS FIXED
     np.testing.assert_allclose(maplayers2['model']['grid'].getData(),
                                np.array([[0., np.nan, 25.9],
                                         [np.nan, np.nan, np.nan],
@@ -61,10 +70,32 @@ def test_hazus():
                                np.array([[4.6e-39, 0., 13.84],
                                         [0., 0., 0.],
                                         [37.97, 0., 25.368]]), atol=0.1)
+    np.testing.assert_allclose(maplayers4['modelmin']['grid'].getData(),
+                               np.array([[0., 0., 1.78],
+                                        [0., 0., 0.],
+                                        [21.69, 0., 12.48]]), atol=0.1)
+    np.testing.assert_allclose(maplayers4['pgv']['grid'].getData(),
+                               np.array([[50, np.nan, 73.],
+                                        [np.nan, np.nan, np.nan],
+                                        [32., np.nan, 84.]]), atol=0.1)
     np.testing.assert_allclose(maplayers5['model']['grid'].getData(),
                                np.array([[0, 0, 1],
                                         [0, 0, 0],
                                         [1, 0, 0]]), atol=0)
+
+    # Recut grid for testing
+    bounds = {'xmin': 0.5, 'xmax': 1.5, 'ymin': 0.5, 'ymax': 1.5}
+    # Null config values
+    del config['hazus']['shortref']
+    del config['hazus']['parameters']['dnthresh']
+    # Set uncertfile to null location
+    uncertfile2 = os.path.join(datadir, 'test_uncert_error.xml')
+
+    maplayers6 = NM.hazus(shakefileBounds, config, bounds=bounds, probtype='threshold', uncertfile=uncertfile2)
+    np.testing.assert_allclose(maplayers6['model']['grid'].getData(),
+                                np.array([[0., 0., 0.1],
+                                        [0., 0., 0.],
+                                        [0.3, 0., 0.3]]), atol=0.1)
 
 
 def test_est_disp():
@@ -88,7 +119,7 @@ def test_classic():
     # Test path correction (from conf.py)
     config = correct_config_filepaths(datadir, config)
     maplayers1 = NM.classic(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile)
-    maplayers2 = NM.classic(shakefile, config, displmodel='J_PGA_M')
+    maplayers2 = NM.classic(shakefile, config, displmodel='J_PGA_M', saveinputs=True)
     maplayers3 = NM.classic(shakefile, config, displmodel='RS_PGA_M')
     maplayers4 = NM.classic(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile)
     maplayers5 = NM.classic(shakefile, config)
@@ -128,7 +159,7 @@ def test_godt2008():
     # Test path correction (from conf.py)
     config = correct_config_filepaths(datadir, config)
     maplayers1 = NM.godt2008(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile)
-    maplayers2 = NM.godt2008(shakefile, config, displmodel='J_PGA_M')
+    maplayers2 = NM.godt2008(shakefile, config, displmodel='J_PGA_M', saveinputs=True)
     maplayers3 = NM.godt2008(shakefile, config, displmodel='RS_PGA_M')
     maplayers4 = NM.godt2008(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile)
     maplayers5 = NM.godt2008(shakefile, config)

@@ -148,10 +148,10 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
         stdpga = uncert.getLayer('stdpga').subdivide(gdict).getData().astype(float)
         stdpgv = uncert.getLayer('stdpgv').subdivide(gdict).getData().astype(float)
         # estimate PGA +- 1std
-        PGAmin = np.exp(np.log(PGA*100.) - stdpga.getData())/100.
-        PGAmax = np.exp(np.log(PGA*100.) + stdpga.getData())/100.
-        PGVmin = np.exp(np.log(PGV) - stdpgv.getData())
-        PGVmax = np.exp(np.log(PGV) + stdpgv.getData())
+        PGAmin = np.exp(np.log(PGA*100.) - stdpga)/100.
+        PGAmax = np.exp(np.log(PGA*100.) + stdpga)/100.
+        PGVmin = np.exp(np.log(PGV) - stdpgv)
+        PGVmax = np.exp(np.log(PGV) + stdpgv)
     M = shakemap.getEventDict()['magnitude']
 
     # Get critical accelerations in g
@@ -185,7 +185,33 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
         areal[(PGA >= Ac) & (Ac == 0.15)] = 0.2
         areal[(PGA >= Ac) & (Ac == 0.1)] = 0.25
         areal[(PGA >= Ac) & (Ac == 0.05)] = 0.3
-
+        if uncertfile is not None:
+            # areal coverage minimum
+            arealmin = np.zeros(np.shape(PGA))
+            # This seems to be slow for large matrices
+            arealmin[(PGAmin >= Ac) & (Ac == 0.6)] = 0.01
+            arealmin[(PGAmin >= Ac) & (Ac == 0.5)] = 0.02
+            arealmin[(PGAmin >= Ac) & (Ac == 0.4)] = 0.03
+            arealmin[(PGAmin >= Ac) & (Ac == 0.35)] = 0.05
+            arealmin[(PGAmin >= Ac) & (Ac == 0.3)] = 0.08
+            arealmin[(PGAmin >= Ac) & (Ac == 0.25)] = 0.1
+            arealmin[(PGAmin >= Ac) & (Ac == 0.2)] = 0.15
+            arealmin[(PGAmin >= Ac) & (Ac == 0.15)] = 0.2
+            arealmin[(PGAmin >= Ac) & (Ac == 0.1)] = 0.25
+            arealmin[(PGAmin >= Ac) & (Ac == 0.05)] = 0.3
+            # areal coverage maximum
+            arealmax = np.zeros(np.shape(PGA))
+            # This seems to be slow for large matrices
+            arealmax[(PGAmax >= Ac) & (Ac == 0.6)] = 0.01
+            arealmax[(PGAmax >= Ac) & (Ac == 0.5)] = 0.02
+            arealmax[(PGAmax >= Ac) & (Ac == 0.4)] = 0.03
+            arealmax[(PGAmax >= Ac) & (Ac == 0.35)] = 0.05
+            arealmax[(PGAmax >= Ac) & (Ac == 0.3)] = 0.08
+            arealmax[(PGAmax >= Ac) & (Ac == 0.25)] = 0.1
+            arealmax[(PGAmax >= Ac) & (Ac == 0.2)] = 0.15
+            arealmax[(PGAmax >= Ac) & (Ac == 0.15)] = 0.2
+            arealmax[(PGAmax >= Ac) & (Ac == 0.1)] = 0.25
+            arealmax[(PGAmax >= Ac) & (Ac == 0.05)] = 0.3
     elif modeltype == 'dn_hazus' or modeltype == 'dn_prob':
         ed_low, ed_high = est_disp(Ac, PGA)
         ed_mean = np.mean((np.dstack((ed_low, ed_high))), axis=2)  # Get mean estimated displacements
@@ -238,16 +264,27 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
         maplayers['model'] = {'grid': GDALGrid(areal, gdict), 'label': 'Areal coverage', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage',
                                               'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
+        if uncertfile is not None:
+            maplayers['modelmin'] = {'grid': GDALGrid(arealmin, gdict), 'label': 'Areal coverage', 'type': 'output',
+                                     'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage',
+                                                     'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
+            maplayers['modelmax'] = {'grid': GDALGrid(arealmax, gdict), 'label': 'Areal coverage', 'type': 'output',
+                                     'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage',
+                                                     'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
     elif modeltype == 'dn_hazus':
         maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
                                               'shakemap': shakedetail,
                                               'parameters': {'displmodel': displmodel, 'modeltype': modeltype}}}
-    elif modeltype == 'ac_classic_dn':
-        maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
-                              'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
-                                              'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
-                                                                                      'modeltype': modeltype}}}
+        if uncertfile is not None:
+            maplayers['modelmin'] = {'grid': GDALGrid(Dnmin, gdict), 'label': 'Dn (cm)', 'type': 'output',
+                                     'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
+                                                     'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
+                                                                                             'modeltype': modeltype}}}
+            maplayers['modelmax'] = {'grid': GDALGrid(Dnmax, gdict), 'label': 'Dn (cm)', 'type': 'output',
+                                     'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
+                                                     'shakemap': shakedetail,
+                                                     'parameters': {'displmodel': displmodel, 'modeltype': modeltype}}}
     elif modeltype == 'dn_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
@@ -262,13 +299,30 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
                                                                                       'dnthresh_cm': dnthresh,
                                                                                       'modeltype': modeltype,
                                                                                       'probtype': probtype}}}
+    elif modeltype == 'ac_classic_dn':
+        maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Landslide Probability', 'type': 'output',
+                              'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
+                                              'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
+                                                                                      'dnthresh_cm': dnthresh,
+                                                                                      'modeltype': modeltype,
+                                                                                      'probtype': probtype}}}
+        if uncertfile is not None:
+            maplayers['modelmin'] = {'grid': GDALGrid(Dnmin, gdict), 'label': 'Dn (cm)', 'type': 'output',
+                                     'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
+                                                     'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
+                                                                                             'modeltype': modeltype}}}
+            maplayers['modelmax'] = {'grid': GDALGrid(Dnmax, gdict), 'label': 'Dn (cm)', 'type': 'output',
+                                     'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
+                                                     'shakemap': shakedetail,
+                                                     'parameters': {'displmodel': displmodel, 'modeltype': modeltype}}}
 
     label = 'Probability'
-    if uncertfile is not None:
-        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output',
-                                 'description': {}}
-        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output',
-                                 'description': {}}
+    if modeltype != 'coverage' and modeltype != 'dn_hazus' and modeltype != 'ac_classic_dn':
+        if uncertfile is not None:
+            maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, gdict), 'label': label+' -1std', 'type': 'output',
+                                     'description': {}}
+            maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, gdict), 'label': label+' +1std', 'type': 'output',
+                                     'description': {}}
 
     if saveinputs is True:
         maplayers['suscat'] = {'grid': sus, 'label': 'Susceptibility Category', 'type': 'input',
