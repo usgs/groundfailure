@@ -29,6 +29,8 @@ units = {'friction': 'degrees', 'cohesion': 'kPa', 'slope': 'degrees',
 
 pga = np.array([[24., 72.], [54., 11.]], dtype=float)  # %g
 pgv = np.array([[50., 73.], [32., 84.]], dtype=float)  # cm/s
+pga1 = np.array([[1., 1., 1., 1.], [1., 24., 72., 1.], [1., 54., 11., 1.], [1., 1., 1., 1.]], dtype=float)  # %g
+pgv1 = np.array([[1., 1., 1., 1.], [1., 50., 73., 1.], [1., 32., 84., 1.], [1., 1., 1., 1.]], dtype=float)  # cm/s
 stdpga = np.array([[0.43, 0.49], [0.32, 0.16]], dtype=float)  # ln(%g)
 stdpgv = np.array([[0.43, 0.49], [0.32, 0.16]], dtype=float)  # ln(%g)
 
@@ -36,6 +38,11 @@ geodict = GeoDict({'xmin': 0.5, 'xmax': 1.5,
                   'ymin': 0.5, 'ymax': 1.5,
                   'dx': 1., 'dy': 1.,
                   'ny': 2, 'nx': 2})
+
+geodict1 = GeoDict({'xmin': -0.5, 'xmax': 2.5,
+                  'ymin': -0.5, 'ymax': 2.5,
+                  'dx': 1., 'dy': 1.,
+                  'ny': 4, 'nx': 4})
 
 susgeodict = GeoDict({'xmin': 0., 'xmax': 2.0,
                       'ymin': 0., 'ymax': 2.0,
@@ -259,6 +266,10 @@ def makeTestData():
     layers2 = {'stdpga': stdpga, 'stdpgv': stdpgv}
     uncertgrid = ShakeGrid(layers2, geodict, eventDict, shakeDict, uncertaintyDict)
     uncertgrid.save('test_uncert.xml')
+
+    layers3 = {'pga': pga1, 'pgv': pgv1}
+    shakegrid = ShakeGrid(layers3, geodict1, eventDict, shakeDict, uncertaintyDict)
+    shakegrid.save('test_shakegrid_bounds.xml')
 
     C = ConfigObj(configModel)
     C.filename = 'testconfig_logimodel.ini'
