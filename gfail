@@ -151,10 +151,8 @@ def main(args):
                 filenameh = filename + '.hdf5'
                 savelayers(maplayers, os.path.join(outdir, filenameh))
 
-            if 'zoom' in args.set_bounds:
+            if args.set_bounds is not None:
                 bounds1 = None  # don't set bounds for mapping if it was cut in the first place
-            else:
-                bounds1 = bounds
 
             if args.make_static_pdfs or args.make_static_pngs:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
@@ -431,11 +429,11 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?',
                         default=config_filepath, help='Filepath where config files are located, \
                         default is defaultconfigfiles folder of groundfailure repository')
-    parser.add_argument('-b', '--set-bounds', type=str, metavar=('latmin, latmax, lonmin lonmax'),
+    parser.add_argument('-b', '--set-bounds', type=str, metavar=('lonmin, lonmax, latmin latmax'),
                         nargs='?', help="Set bounds of model run using four floats in this format, \
                         including quotes: 'latmin, latmax, lonmin, lonmax', default uses shakemap \
                         bounds, 'zoom, parameter, threshold' in single quotes uses a shakemap threshold\
-                        value, e.g. 'zoom, pga, 2' where 2 is in %g")
+                        value, e.g. 'zoom, pga, 2' where 2 is in percent g", default=None)
     parser.add_argument('-m', '--mapconfig', metavar='mapconfig', nargs='?', help='full file path \
                         to config file containing mapping options', default=mapconfig)
     parser.add_argument('-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
