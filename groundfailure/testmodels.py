@@ -43,7 +43,7 @@ def concatanateModels(modellist, astitle='id'):
 
 
 def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, histtype='bar', bounds=None, bins=25,
-                 semilogy=False, normed=True, thresh=0., showplots=True, savecsv=False, saveplots=False, filepath=None):
+                 semilogy=False, normed=True, thresh=0., showplots=True, csvfile=None, saveplots=False, filepath=None):
     """
     Function for creating a summary histogram of a model output
 
@@ -61,11 +61,12 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
     :param semilogy: uses log scale instead of linear on y axis if True
     :param thresh: threshold for a nonoccurrence, default is zero but for models that never have nonzero values, can set
                    to what you decide is insignificant
+    :param csvfile: name of csvfile of summary of outputs, if None, not output
     :param showplots: if True, will display the plots
     :param saveplots: if True, will save the plots
     :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name
                      and time stamp
-    :returns: axis of figure
+    :returns: means, medians, totareas, titles, n, bins
     """
     fig = plt.figure()
     ax = fig.add_subplot(111)
@@ -142,7 +143,18 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
     else:
         plt.close(fig)
 
-    return means, medians, totareas
+    if csvfile is not None:
+        #binrange = (bins[:-1] + bins[1:])/2.
+        binsS = ['%0.2f - %0.2f' % (b0, b1) for b0, b1 in zip(bins[:-1], bins[1:])]
+        import csv
+        with open(csvfile, 'w') as csvfile1:
+            writer = csv.writer(csvfile1)
+            writer.writerow(['Id', 'Mean', 'Median', 'Area affected', 'Threshold'] + binsS)
+            for i, ti in enumerate(titles):
+                nvals = ['%0.2f' % nval for nval in n[i]]
+            writer.writerow([titles[i], means[i], medians[i], totareas[i], thresh] + nvals)
+
+    return means, medians, totareas, titles, n, bins
 
 
 def computeArea(grid2D, proj='moll', thresh=0.0):
