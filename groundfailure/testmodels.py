@@ -88,13 +88,13 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
             model1 = mod
         grid = model1[keylist[k]]['grid'].getData()
         allvals = grid[~np.isnan(grid)]
-        means.append(np.mean(allvals))
-        medians.append(np.median(allvals))
         # compute area
-        totareas.append(computeArea(model1[keylist[k]['grid']]))
+        totareas.append(computeArea(model1[keylist[k]]['grid'], thresh=thresh))
         total = len(allvals)
         totalnonz = len(allvals[allvals > float(thresh)])
         allvals = allvals[allvals > float(thresh)]
+        means.append(np.mean(allvals))
+        medians.append(np.median(allvals))
         vallist.append(allvals)
 
     if k == len(models)-1:
@@ -142,7 +142,7 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
     else:
         plt.close(fig)
 
-    return ax
+    return means, medians, totareas
 
 
 def computeArea(grid2D, proj='moll', thresh=0.0):
