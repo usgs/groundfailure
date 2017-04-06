@@ -734,11 +734,11 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         val += 1
         clat = bymin + (bymax-bymin)/2.0
         clon = bxmin + (bxmax-bxmin)/2.0
-        # setup of basemap ('lcc' = lambert conformal conic).
+        # setup of basemap ('lcc' = lambert conformal conic, or tmerc is transverse mercator).
         # use major and minor sphere radii from WGS84 ellipsoid.
         m = Basemap(llcrnrlon=bxmin, llcrnrlat=bymin, urcrnrlon=bxmax, urcrnrlat=bymax,
                     rsphere=(6378137.00, 6356752.3142),
-                    resolution='l', area_thresh=1000., projection='lcc',
+                    resolution='l', area_thresh=1000., projection='tmerc',
                     lat_1=clat, lon_0=clon, ax=ax)
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
