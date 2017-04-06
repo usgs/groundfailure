@@ -18,6 +18,8 @@ import collections
 #local imports
 from groundfailure.sample import pointsFromShapes
 from mapio.gdal import GDALGrid
+from mapio.geodict import GeoDict
+from mapio.grid2d import Grid2D
 
 # Make fonts readable and recognizable by illustrator
 import matplotlib as mpl
@@ -147,7 +149,7 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
         #binrange = (bins[:-1] + bins[1:])/2.
         binsS = ['%0.2f - %0.2f' % (b0, b1) for b0, b1 in zip(bins[:-1], bins[1:])]
         import csv
-        with open(csvfile, 'w') as csvfile1:
+        with open(csvfile, 'wb') as csvfile1:
             writer = csv.writer(csvfile1)
             writer.writerow(['Id', 'Mean', 'Median', 'Area affected', 'Threshold'] + binsS)
             for i, ti in enumerate(titles):
@@ -176,74 +178,7 @@ def computeArea(grid2D, proj='moll', thresh=0.0):
     return totarea
 
 
-def computeCoverage_accurate(gdict, inventory, numdiv=10.):
-    """
-    VERY SLOW!!
-    Slow but more accurate method to produce grid of area actually affected by landsliding in each cell defined by geodict
-
-    :param gdict: geodict, likely taken from model to compare inventory against
-    :param inventory: full file path to shapefile of inventory, must be in geographic coordinates, WGS84
-    :type inventory: string
-    :param numdiv: Approximate amount to subdivide each cell of geodict by to compute areas (higher number slower but more accurate)
-
-    :returns: Grid2D object reporting areal coverage of landsliding inside each cell defined by geodict
-    """
-
-    f = fiona.collection(inventory, 'r')
-    shapes = list(f)
-    bxmin, bymin, bxmax, bymax = f.bounds
-
-    lons = np.linspace(gdict.xmin, gdict.xmax, gdict.nx)
-    lats = np.linspace(gdict.ymax, gdict.ymin, gdict.ny)
-    llons, llats = np.meshgrid(lons, lats)
-
-    spacing = np.round(np.abs(((lats[1]-lats[0])*111.12*1000.)/numdiv))  # in meters
-    yespoints, nopoints, xvar, yvar, pshapes, proj = pointsFromShapes(shapes, bounds=(gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax), dx=spacing)
-
-    # Loop over lat lon pairs that are within boundaries of yes and no points
-    ptlonmax = (np.max((yespoints[:, 0].max(), nopoints[:, 0].max())))
-    ptlonmin = (np.max((yespoints[:, 0].min(), nopoints[:, 0].min())))
-    ptlatmax = (np.max((yespoints[:, 1].max(), nopoints[:, 1].max())))
-    ptlatmin = (np.max((yespoints[:, 1].min(), nopoints[:, 1].min())))
-
-    subllons = llons[(llons >= ptlonmin) & (llons <= ptlonmax) & (llats >= ptlatmin) & (llats <= ptlatmax)]
-    subllats = llats[(llons >= ptlonmin) & (llons <= ptlonmax) & (llats >= ptlatmin) & (llats <= ptlatmax)]
-
-    import time
-    # Contains points method
-    t1 = time.clock()
-    dx = gdict.dx
-    area = np.zeros(np.shape(llons))
-    numpts = area.copy()
-    numyes = area.copy()
-    for lat1, lon1 in zip(subllats, subllons):
-        # Find ratio of yes points to no points
-        bbPath = mplPath.Path(np.array([[lon1-0.5*dx, lat1-0.5*dx], [lon1-0.5*dx, lat1+0.5*dx], [lon1+0.5*dx, lat1+0.5*dx], [lon1+0.5*dx, lat1-0.5*dx]]))
-        yesin = sum(bbPath.contains_points(yespoints))  # sum([(yes0 > lon1-0.5*dx) & (yes0 <= lon1+0.5*dx) & (yes1 > lat1-0.5*dx) & (yes1 <= lat1+0.5*dx)])
-        noin = sum(bbPath.contains_points(nopoints))  # sum([(no0 > lon1-0.5*dx) & (no0 <= lon1+0.5*dx) & (no1 > lat1-0.5*dx) & (no1 <= lat1+0.5*dx)])
-        total = yesin + noin
-        if total == 0.:
-            continue
-        # get indices
-        row = np.where(lats == lat1)
-        col = np.where(lons == lon1)
-        # Store total number of points in matrix
-        numpts[row, col] = total
-        # Store area
-        numyes[row, col] = yesin
-    t2 = time.clock()
-    print(('Time elapsed %0.2f seconds' % (t2-t1)))
-
-    # Correct for incompletely sampled squared (all unsampled points would be no points)
-    numpts[numpts < (numpts[numpts != 0].mean() - numpts[numpts != 0].std())] = np.median(numpts[numpts != 0])  # Will change zeros to nonzeros, but yeses will be 0 in those cells so it doesn't matter
-    area = numyes/numpts
-
-    inventorygrid = GDALGrid(area, gdict)
-
-    return inventorygrid
-
-
-def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
+def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
     """Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
 
     :param gdict: geodict, likely taken from model to compare inventory against
@@ -256,129 +191,38 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest'):
     :returns: Grid2D object reporting approximate areal coverage of input inventory corresponding to geodict
     """
 
-    f = fiona.collection(inventory, 'r')
-    shapes = list(f.items(bbox=(gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax)))  # get only shapes that are intersect area of interest from gdict
-    bxmin, bymin, bxmax, bymax = f.bounds
+    lat0 = np.mean((gdict.ymin, gdict.ymax))
+    lon0 = np.mean((gdict.xmin, gdict.xmax))
+    gdsubdiv = {'xmin': gdict.xmin, 'xmax': gdict.xmax, 'ymin': gdict.ymin, 'ymax': gdict.ymax, 'dx': gdict.dx/numdiv,
+                'dy': gdict.dy/numdiv, 'ny': gdict.ny*numdiv, 'nx': gdict.nx*numdiv}
+    subgd = GeoDict(gdsubdiv, adjust='res')
 
-    lons = np.linspace(gdict.xmin, gdict.xmax, gdict.nx)
-    lats = np.linspace(gdict.ymax, gdict.ymin, gdict.ny)
+    f = fiona.open(inventory)
 
-    # # Convert Shapes and input grid to Transverse mercator
-    bclat = bymin + (bymax-bymin)/2.0
-    bclon = bxmin + (bxmax-bxmin)/2.0
-    original = pyproj.Proj(f.crs)
-    destination = pyproj.Proj(projparams='+proj=tmerc +datum=WGS84 +lat_0=%0.5f +lon_0=%0.5F +units=meters +x_0=0 +y_0=0' % (bclat, bclon))
-    project = partial(pyproj.transform, original, destination)
-    unproject = partial(pyproj.transform, destination, original)
-    pshapes = []
-    for tshape in shapes:
-        gshape = shape(tshape[1]['geometry'])
-        pshape = transform(project, gshape)
-        pshapes.append(pshape)
+    invshp = list(f.items())
+    f.close()
+    shapes = [shape(inv[1]['geometry']) for inv in invshp]
 
-    # Get corners for sampling mesh from gdict
-    urcnr = Point(gdict.xmax, gdict.ymax)
-    llcnr = Point(gdict.xmin, gdict.ymin)
-    urcnr1 = transform(project, urcnr)
-    llcnr1 = transform(project, llcnr)
+    # Rasterize with oversampled area
+    rast = Grid2D.rasterizeFromGeometry(shapes, subgd, fillValue=0., burnValue=1.0, mustContainCenter=True)
 
-    # Figure out what max extent of shapes is
-    sxmax = 0.
-    sxmin = 1.e12
-    symax = 0.
-    symin = 1.e12
+    # Transform to equal area projection
+    projs = '+proj=%s +datum=WGS84 +lat_0=%0.5f +lon_0=%0.5F +units=meters +x_0=0 +y_0=0' % (proj, lat0, lon0)
+    equal_area = rast.project(projection=projs)
+    egdict = equal_area.getGeoDict()
 
-    for pshape in pshapes:
-        x, y = np.array(pshape.exterior.coords.xy)
-        if x.max() > sxmax:
-            sxmax = x.max()
-        if x.min() < sxmin:
-            sxmin = x.min()
-        if y.max() > symax:
-            symax = y.max()
-        if y.min() < symin:
-            symin = y.min()
+    gdds = {'xmin': egdict.xmin, 'xmax': egdict.xmax, 'ymin': egdict.ymin, 'ymax': egdict.ymax, 'dx': egdict.dx*numdiv,
+            'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv}
+    dsgd = GeoDict(gdds, adjust='res')
 
-    # Create mesh in projected space that would oversample by numdiv
-    numsampx = (np.array(urcnr.coords.xy[0]) - np.array(llcnr.coords.xy[0]))/gdict.dx * numdiv
-    numsampy = (np.array(urcnr.coords.xy[1]) - np.array(llcnr.coords.xy[1]))/gdict.dy * numdiv
+    # NEED METHOD THAT WILL USE BLOCK MEAN OR SUM
+    eabig = equal_area.interpolateToGrid(dsgd, method='block_mean')
 
-    xdiff = sxmax - sxmin
-    ydiff = symax - symin
-    xvec = np.linspace(np.array(llcnr1.coords.xy[0]), np.array(urcnr1.coords.xy[0]), numsampx)
-    xvec = xvec[(xvec > sxmin-0.15*xdiff) & (xvec < sxmax+0.15*xdiff)]
-    yvec = np.linspace(np.array(llcnr1.coords.xy[1]), np.array(urcnr1.coords.xy[1]), numsampy)
-    yvec = yvec[(yvec > symin-0.15*ydiff) & (yvec < symax+0.15*ydiff)]
+    # Project back
+    eabigproj = eabig.project(projection=gdict.projection)
 
-    values = np.zeros((len(yvec), len(xvec)))
-
-    # Basically rasterize. There could be a better way to do this using rasterio, but hard to maintain the right grids
-    shapeidx = 0
-    yespoints = []
-    for pshape in pshapes:
-        if not shapeidx % 2000:
-            print('Searching polygon %i of %i' % (shapeidx, len(pshapes)))
-        shapeidx += 1
-        pxmin, pymin, pxmax, pymax = pshape.bounds
-        try:
-            leftcol = np.where((pxmin - xvec) >= 0)[0].argmax()
-            rightcol = np.where((xvec - pxmax) >= 0)[0][0]
-            bottomrow = np.where((pymin - yvec) >= 0)[0].argmax()
-            toprow = np.where((yvec - pymax) >= 0)[0][0]
-        except:  # Shape out of bounds, skip
-            continue
-        xp = xvec[leftcol:rightcol+1]
-        yp = yvec[bottomrow:toprow+1]
-        xmesh, ymesh = np.meshgrid(xp, yp)
-        xy = list(zip(xmesh.flatten(), ymesh.flatten()))
-        for point in xy:
-            ix = np.where(xvec == point[0])[0][0]
-            iy = np.where(yvec == point[1])[0][0]
-            if pshape.contains(Point(point)):
-                yespoints.append(point)
-                values[iy, ix] = 1
-
-    # Block mean to downsample
-    areaval = block_mean(values, numdiv)
-    xvecnew = line_mean(xvec, numdiv)
-    yvecnew = line_mean(yvec, numdiv)
-
-    xm, ym = np.meshgrid(xvecnew, yvecnew)
-    nzpts = MultiPoint(list(zip(*[xm[areaval > 0], ym[areaval > 0]])))
-    nzvals = areaval[areaval > 0]
-
-    # Project nonzero points back
-    nzpts_proj = transform(unproject, nzpts)
-
-    # Find nearest coordinate for each on original grid
-
-    import time
-    t1 = time.clock()
-    if method == 'nearest':  # This is more efficient than using nearest with griddata
-        area = np.zeros((len(lats), len(lons)))
-        latidx = 0
-        for pt, val in zip(nzpts_proj, nzvals):
-            if not latidx % 1000:
-                print('Searching coord %i of %i' % (latidx, len(nzpts_proj)))
-            latidx += 1
-            lon, lat = np.array(pt.coords.xy)
-            row = (np.abs(lats - lat)).argmin()
-            col = (np.abs(lons - lon)).argmin()
-            area[row, col] = val
-        t2 = time.clock()
-    else:
-        latidx = 0
-        PTS = np.squeeze(np.array([pt.coords.xy for pt in nzpts_proj]))
-        llons, llats = np.meshgrid(lons, lats)
-        numpts = np.shape(llons)[0]*np.shape(llons)[1]
-        xdatpts = np.reshape(llons, numpts)
-        ydatpts = np.reshape(llats, numpts)
-        area = interpolate.griddata(PTS, nzvals, list(zip(xdatpts, ydatpts)), method=method.lower(), fill_value=0.)
-        area = np.reshape(area, np.shape(llons))
-        t2 = time.clock()
-    print(('Time elapsed %0.2f seconds' % (t2-t1)))
-
-    inventorygrid = GDALGrid(area, gdict)
+    # Resample to original grid
+    inventorygrid = eabigproj.interpolateToGrid(gdict, method='linear')
 
     return inventorygrid
 
@@ -723,3 +567,71 @@ def line_mean(ar, fact):
         regions = np.concatenate((regions, np.repeat(row, xdiff)))
     res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
     return res
+
+
+# def computeCoverage_accurate(gdict, inventory, numdiv=10.):
+#     """
+#     VERY SLOW!!
+#     Slow but more accurate method to produce grid of area actually affected by landsliding in each cell defined by geodict
+
+#     :param gdict: geodict, likely taken from model to compare inventory against
+#     :param inventory: full file path to shapefile of inventory, must be in geographic coordinates, WGS84
+#     :type inventory: string
+#     :param numdiv: Approximate amount to subdivide each cell of geodict by to compute areas (higher number slower but more accurate)
+
+#     :returns: Grid2D object reporting areal coverage of landsliding inside each cell defined by geodict
+#     """
+
+#     f = fiona.collection(inventory, 'r')
+#     shapes = list(f)
+#     bxmin, bymin, bxmax, bymax = f.bounds
+
+#     lons = np.linspace(gdict.xmin, gdict.xmax, gdict.nx)
+#     lats = np.linspace(gdict.ymax, gdict.ymin, gdict.ny)
+#     llons, llats = np.meshgrid(lons, lats)
+
+#     spacing = np.round(np.abs(((lats[1]-lats[0])*111.12*1000.)/numdiv))  # in meters
+#     yespoints, nopoints, xvar, yvar, pshapes, proj = pointsFromShapes(shapes, bounds=(gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax), dx=spacing)
+
+#     # Loop over lat lon pairs that are within boundaries of yes and no points
+#     ptlonmax = (np.max((yespoints[:, 0].max(), nopoints[:, 0].max())))
+#     ptlonmin = (np.max((yespoints[:, 0].min(), nopoints[:, 0].min())))
+#     ptlatmax = (np.max((yespoints[:, 1].max(), nopoints[:, 1].max())))
+#     ptlatmin = (np.max((yespoints[:, 1].min(), nopoints[:, 1].min())))
+
+#     subllons = llons[(llons >= ptlonmin) & (llons <= ptlonmax) & (llats >= ptlatmin) & (llats <= ptlatmax)]
+#     subllats = llats[(llons >= ptlonmin) & (llons <= ptlonmax) & (llats >= ptlatmin) & (llats <= ptlatmax)]
+
+#     import time
+#     # Contains points method
+#     t1 = time.clock()
+#     dx = gdict.dx
+#     area = np.zeros(np.shape(llons))
+#     numpts = area.copy()
+#     numyes = area.copy()
+#     for lat1, lon1 in zip(subllats, subllons):
+#         # Find ratio of yes points to no points
+#         bbPath = mplPath.Path(np.array([[lon1-0.5*dx, lat1-0.5*dx], [lon1-0.5*dx, lat1+0.5*dx], [lon1+0.5*dx, lat1+0.5*dx], [lon1+0.5*dx, lat1-0.5*dx]]))
+#         yesin = sum(bbPath.contains_points(yespoints))  # sum([(yes0 > lon1-0.5*dx) & (yes0 <= lon1+0.5*dx) & (yes1 > lat1-0.5*dx) & (yes1 <= lat1+0.5*dx)])
+#         noin = sum(bbPath.contains_points(nopoints))  # sum([(no0 > lon1-0.5*dx) & (no0 <= lon1+0.5*dx) & (no1 > lat1-0.5*dx) & (no1 <= lat1+0.5*dx)])
+#         total = yesin + noin
+#         if total == 0.:
+#             continue
+#         # get indices
+#         row = np.where(lats == lat1)
+#         col = np.where(lons == lon1)
+#         # Store total number of points in matrix
+#         numpts[row, col] = total
+#         # Store area
+#         numyes[row, col] = yesin
+#     t2 = time.clock()
+#     print(('Time elapsed %0.2f seconds' % (t2-t1)))
+
+#     # Correct for incompletely sampled squared (all unsampled points would be no points)
+#     numpts[numpts < (numpts[numpts != 0].mean() - numpts[numpts != 0].std())] = np.median(numpts[numpts != 0])  # Will change zeros to nonzeros, but yeses will be 0 in those cells so it doesn't matter
+#     area = numyes/numpts
+
+#     inventorygrid = GDALGrid(area, gdict)
+
+#     return inventorygrid
+
