@@ -13,6 +13,7 @@ import matplotlib.path as mplPath
 from scipy import interpolate
 from sklearn.metrics import roc_curve, roc_auc_score, auc
 import copy
+import collections
 
 #local imports
 from groundfailure.sample import pointsFromShapes
@@ -24,91 +25,107 @@ mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
 
 
-def modelSummary(models, titles=None, outputtype=None, plottype='hist', bounds=None, bins=10, semilogy=False, thresh=0., excludenon=False, showplots=True, saveplots=False, filepath=None):
+def concatanateModels(modellist, astitle='id'):
+    """
+    Put several models together into dictionary in format for modelSummary
+    :param astitle: 'id' to use shakemap id or 'model' to use model name
+    """
+    models = []
+    for model in modellist:
+        newdict = collections.OrderedDict()
+        if astitle == 'id':
+            title = model['model']['description']['shakemap']
+        else:
+            title = model['model']['description']['name']
+        newdict[title] = model['model']
+        models.append(newdict)
+    return models
+
+
+def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, histtype='bar', bounds=None, bins=25,
+                 semilogy=False, normed=True, thresh=0., showplots=True, savecsv=False, saveplots=False, filepath=None):
     """
     Function for creating a summary histogram of a model output
 
-    :param model: Grid2D object of model results or list of Grid2D objects of multiple models
+    :param models: model results (ordered dict ) or list of model results (list of ordered dicts) of multiple models
+                   (Model results should be in the original output format from the model codes) - only the first key
+                    will be used, the rest are ignored
     :param titles: List of titles to use for each model, in same order as model. If none, will use key of each model (may be non-unique)
     :param outputtype: Type of model output, just used for label (e.g.'probability', 'coverage', 'index')
-    :param plottype: 'hist' or 'cumul' for histogram or cumulative plot
-    :param bounds: Bounding box to include in summary as dictionary e.g. {'xmin': -119.2, 'xmax': -118., 'ymin': 34., 'ymax': 34.7}. If None, will use entire area in model
-    :param bins: bins to use for histogram and pie chart, if a single integer, will create that number of bins using min and max of data, if a numpy array, will use those as bin edges
-    :param semilogy: = uses log scale instead of linear on y axis if True
-    :param thresh: threshold for a nonoccurrence, default is zero but for models that never have nonzero values, can set to what you decide is insignificant
-    :param excludenon: If True, will exclude cells that are <=thresh from plot results
+    :param cumulative: True for cumulative histogram, false for non-cumulative
+    :param histtype: ‘bar’, ‘barstacked’, ‘step’, ‘stepfilled’ (same as for plt.hist)
+    :param bounds: Bounding box of area to include in summary. Input as dictionary e.g. {'xmin': -119.2, 'xmax': -118.,
+                   'ymin': 34., 'ymax': 34.7}. If None, will use entire area in model
+    :param bins: bins to use for histogram. if a single integer, will create that number of bins using min
+                 and max of data, if a numpy array, will use those as bin edges
+    :param semilogy: uses log scale instead of linear on y axis if True
+    :param thresh: threshold for a nonoccurrence, default is zero but for models that never have nonzero values, can set
+                   to what you decide is insignificant
     :param showplots: if True, will display the plots
     :param saveplots: if True, will save the plots
-    :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name and time stamp
-    :returns: Grid2D object of difference between inventory and model (inventory - model)
+    :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name
+                     and time stamp
+    :returns: axis of figure
     """
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
     means = []
+    medians = []
+    totareas = []
     vallist = []
     if type(models) != list:
         models = [models]
+    keylist = [list(mod.keys())[0] for mod in models]
     if titles is None:
-        titles = [list(mod.keys()) for mod in models]
+        titles = keylist
     for k, mod in enumerate(models):
-        grid = mod.getData()
-        if type(bins) is int:
-            bins = np.linspace(grid.min(), grid.max(), bins)
         # Trim model, if needed
         if bounds is not None and len(bounds) == 4:
             model1 = copy.deepcopy(mod)  # to avoid changing original file
             model1 = model1.cut(bounds['xmin'], bounds['xmax'], bounds['ymin'], bounds['ymax'], align=True)
         else:
             model1 = mod
-
-        grid = model1.getData()
+        grid = model1[keylist[k]]['grid'].getData()
         allvals = grid[~np.isnan(grid)]
         means.append(np.mean(allvals))
+        medians.append(np.median(allvals))
+        # compute area
+        totareas.append(computeArea(model1[keylist[k]['grid']]))
         total = len(allvals)
         totalnonz = len(allvals[allvals > float(thresh)])
-        if excludenon is True:
-            totalf = totalnonz
-            allvals = allvals[allvals > float(thresh)]
-        else:
-            totalf = total
+        allvals = allvals[allvals > float(thresh)]
+        vallist.append(allvals)
 
-        # if plottype == 'pie':
-        #     hist, bin_edges = np.histogram(allvals, bins=bins)
-        #     labels = ['%0.1f-%0.1f' % (bin_edges[i], bin_edges[i+1]) for i in range(len(bin_edges)-1)]
-        #     output = ax.pie(hist/float(totalf)*100, labels=None, autopct='%1.1f%%', shadow=False, startangle=90)
-        #     plt.legend(output[0], labels, loc="best")
-        #     plt.tight_layout()
-        #     #import pdb; pdb.set_trace()
-        #     plt.axis('equal')
-
-        if plottype == 'cumul':
-            values, base = np.histogram(allvals, bins=200)
-            cumulative = np.cumsum(values)
-            ax.plot(base[:-1], cumulative/float(totalf), label='%s - %1.1e' % (titles[k], means[k]))
-            #sd = np.sort(allvals)
-            #ax.step(sd, np.arange(sd.size)/float(totalf))
-            ax.set_ylabel('Proportion of cells (cumulative)')
-        else:
-            vallist.append(allvals)
-            if k == len(models)-1:
-                n, bins, rects = ax.hist(tuple(vallist), bins=bins, normed=True)
-                # for rect in rects:
-                #     height = rect.get_height()
-                #     plt.text(rect.get_x()+rect.get_width()/2., 1.05*height, '%0.1f%%' % (height/float(totalf),), ha='center', va='bottom')
-                ax.set_ylabel('Proportion of cells')
-        ax.set_xlabel(outputtype)
-
-        # Put a legend below current axis
-        ax.legend(loc=9, bbox_to_anchor=(0.5, -0.1), fancybox=True, ncol=2)
-
-    if semilogy is True:
+    if k == len(models)-1:
+        labels = ['%s - %1.1e' % (t, m) for t, m in zip(titles, means)]
+        n, bins, rects = ax.hist(tuple(vallist), bins=bins, normed=normed, cumulative=cumulative, histtype=histtype,
+                                 label=labels)
+        if cumulative and histtype == 'step':
+            for r in rects:
+                try:
+                    r.set_xy(r.get_xy()[:-1])
+                except:
+                    for rect in r:
+                        rect.set_xy(rect.get_xy()[:-1])
+    if normed:
+        ax.set_ylabel('Proportion of cells')
+    else:
+        ax.set_ylabel('Total cells')
+    ax.set_xlabel(outputtype)
+    if semilogy:
         ax.set_yscale('log')
 
-    # if excludenon is True:
-    #     plt.suptitle('%d cells > %0.1f out of %d total cells (%0.2f%%)\nTotals plotted exclude cells <= %0.1f' % (totalnonz, thresh, total, totalnonz/float(total), thresh))
-    # else:
-    #     plt.suptitle('%d cells > %0.1f out of %d total cells (%0.2f%%)' % (totalnonz, thresh, total, totalnonz/float(total)))
+    # Put a legend below current axis
+    ax.legend(loc=9, bbox_to_anchor=(0.5, -0.1), fancybox=True, ncol=2)
+
+    if cumulative:
+        cumul = 'Cumulative'
+    else:
+        cumul = 'Non-cumulative'
+    if thresh > 0:
+        plt.suptitle('%s Summary Plot\nExcluded %d out of %d cells (%0.1f%%) that were < threshold of %0.2f' % (cumul,
+                     totalnonz, total, totalnonz/float(total) * 100., thresh))
     #plt.tight_layout()
     #plt.subplots_adjust(top=0.95)
     plt.subplots_adjust(bottom=0.25)
@@ -126,6 +143,25 @@ def modelSummary(models, titles=None, outputtype=None, plottype='hist', bounds=N
         plt.close(fig)
 
     return ax
+
+
+def computeArea(grid2D, proj='moll', thresh=0.0):
+    """
+    Computes the probability * area of grid cell = total area affected in km2
+    model = grid2D object of model output
+    proj = 'moll' mollweide or 'laea' lambert equal area
+    """
+    bounds = grid2D.getBounds()
+    lat0 = np.mean((bounds[2], bounds[3]))
+    lon0 = np.mean((bounds[0], bounds[1]))
+    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
+    grid = grid2D.project(projection=projs)
+    geodict = grid.getGeoDict()
+    cell_area_km2 = geodict.dx * geodict.dy
+    temp = grid.getData()
+    temp[np.isnan(temp)] = -1.
+    totarea = np.nansum(temp[temp >= thresh] * cell_area_km2)
+    return totarea
 
 
 def computeCoverage_accurate(gdict, inventory, numdiv=10.):
