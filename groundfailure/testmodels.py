@@ -10,10 +10,13 @@ from shapely.geometry import shape, Point, MultiPoint
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.path as mplPath
+from matplotlib.patches import Polygon
 from scipy import interpolate
 from sklearn.metrics import roc_curve, roc_auc_score, auc
 import copy
 import collections
+import urllib
+import json
 
 #local imports
 from groundfailure.sample import pointsFromShapes
@@ -27,25 +30,30 @@ mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
 
 
-def concatanateModels(modellist, astitle='id'):
+def concatenateModels(modellist, astitle='id', includeunc=False):
     """
     Put several models together into dictionary in format for modelSummary
     :param astitle: 'id' to use shakemap id or 'model' to use model name
+    :param includeunc: include modelmin and modelmax if present, will include in same dictionary as model
     """
     models = []
     for model in modellist:
-        newdict = collections.OrderedDict()
-        if astitle == 'id':
-            title = model['model']['description']['shakemap']
-        else:
-            title = model['model']['description']['name']
-        newdict[title] = model['model']
-        models.append(newdict)
+            newdict = collections.OrderedDict()
+            if astitle == 'id':
+                title = model['model']['description']['shakemap']
+            else:
+                title = model['model']['description']['name']
+            newdict[title] = model['model']
+            if len(model) == 3 and includeunc:
+                newdict[title + '_min'] = model['modelmin']
+                newdict[title + '_max'] = model['modelmax']
+            models.append(newdict)
     return models
 
 
 def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, histtype='bar', bounds=None, bins=25,
-                 semilogy=False, normed=True, thresh=0., showplots=True, csvfile=None, saveplots=False, filepath=None):
+                 semilogy=False, normed=True, thresh=0., showplots=True, csvfile=None, saveplots=False, filepath=None,
+                 getquakenames=False, includeunc=True, xlims=[0., 1.], ylims=[0., 1.]):
     """
     Function for creating a summary histogram of a model output
 
@@ -68,8 +76,11 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
     :param saveplots: if True, will save the plots
     :param filepath: Filepath for saved plots, if None, will save in current directory. Files are named with test name
                      and time stamp
+    :param getquakenames: Get earthquake names from comcat using event id
+    :param includeunc: Include uncertainty in summary, if files are present?
     :returns: means, medians, totareas, titles, n, bins
     """
+    plt.ioff()
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
@@ -77,9 +88,18 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
     medians = []
     totareas = []
     vallist = []
+    if includeunc:
+        means_min = []
+        medians_min = []
+        totareas_min = []
+        vallist_min = []
+        means_max = []
+        medians_max = []
+        totareas_max = []
+        vallist_max = []
     if type(models) != list:
         models = [models]
-    keylist = [list(mod.keys())[0] for mod in models]
+    keylist = [list(mod.keys())[0] for mod in models]  # will only get first one, not min and max if includeunc is True
     if titles is None:
         titles = keylist
     for k, mod in enumerate(models):
@@ -99,12 +119,77 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
         means.append(np.mean(allvals))
         medians.append(np.median(allvals))
         vallist.append(allvals)
+        if includeunc:
+            try:
+                # first - 1std
+                gridmin = model1[keylist[k] + '_min']['grid'].getData()
+                allvalsmin = gridmin[~np.isnan(gridmin)]
+                # compute area
+                totareas_min.append(computeArea(model1[keylist[k] + '_min']['grid'], thresh=thresh))
+                #totalmin = len(allvalsmin)
+                #totalnonzmin = len(allvalsmin[allvalsmin > float(thresh)])
+                allvalsmin = allvalsmin[allvalsmin > float(thresh)]
+                means_min.append(np.mean(allvalsmin))
+                medians_min.append(np.median(allvalsmin))
+                vallist_min.append(allvalsmin)
+                # and +1 std
+                gridmax = model1[keylist[k] + '_max']['grid'].getData()
+                allvalsmax = gridmax[~np.isnan(gridmax)]
+                # compute area
+                totareas_max.append(computeArea(model1[keylist[k] + '_max']['grid'], thresh=thresh))
+                #totalmax = len(allvalsmax)
+                #totalnonzmax = len(allvalsmax[allvalsmax > float(thresh)])
+                allvalsmax = allvalsmax[allvalsmax > float(thresh)]
+                means_max.append(np.mean(allvalsmax))
+                medians_max.append(np.median(allvalsmax))
+                vallist_max.append(allvalsmax)
+            except Exception as e:
+                print(e)
+                print('Unable to include uncertainty for %s\n' % keylist[k])
+                vallist_max.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
+                vallist_min.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
+                totareas_min.append(float('nan'))
+                means_min.append(float('nan'))
+                medians_min.append(float('nan'))
+                vallist_min.append(float('nan'))
+                # and +1 std
+                totareas_max.append(float('nan'))
+                means_max.append(float('nan'))
+                medians_max.append(float('nan'))
+                vallist_max.append(float('nan'))
 
     if k == len(models)-1:
-        labels = ['%s - %1.1e' % (t, m) for t, m in zip(titles, means)]
+        labels = ['%s - %1.1e km2' % (t, m) for t, m in zip(titles, totareas)]
+
         n, bins, rects = ax.hist(tuple(vallist), bins=bins, normed=normed, cumulative=cumulative, histtype=histtype,
                                  label=labels)
-        if cumulative and histtype == 'step':
+        if includeunc:  # can we get matching color from rects?
+            figjunk = plt.figure(frameon=False)
+            axjunk = figjunk.add_subplot(111)
+            if type(n) != list:
+                n = [n]
+            for vmin, vmax, nt, r in zip(vallist_max, vallist_min, n, rects):
+                if type(vmin) is int:  # skip if there are not uncertainties
+                    continue
+                ymin, bins, rects2 = axjunk.hist(vmin, bins=bins, normed=normed, cumulative=cumulative, histtype=histtype)
+                ymax, bins, rects2 = axjunk.hist(vmax, bins=bins, normed=normed, cumulative=cumulative, histtype=histtype)
+                mid = 0.5*(bins[1:] + bins[:-1])
+                if histtype == 'step':  # draw transparent boxes the same color around line instead of error bars
+                    try:
+                        color = r.get_facecolor()
+                    except:
+                        color = r[0].get_facecolor()
+                    x = np.concatenate(([0.], mid, mid[::-1], [0.]))
+                    y = np.concatenate(([0.], ymin, ymax[::-1], [0.]))
+                    #import pdb; pdb.set_trace()
+                    poly = Polygon(np.vstack([x, y]).T, facecolor=color, edgecolor='none', alpha=0.2)
+                    ax.add_patch(poly)
+                else:
+                    yerr = np.vstack((np.abs(nt-ymin), np.abs(ymax - nt)))
+                    ax.errorbar(mid, nt, yerr=yerr, fmt='none', ecolor='k')
+            plt.close(figjunk)
+            plt.ion()
+        if cumulative and histtype == 'step':  # remove ugly vertical line at end
             for r in rects:
                 try:
                     r.set_xy(r.get_xy()[:-1])
@@ -121,6 +206,8 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
 
     # Put a legend below current axis
     ax.legend(loc=9, bbox_to_anchor=(0.5, -0.1), fancybox=True, ncol=2)
+    ax.set_xlim(xlims)
+    ax.set_ylim(ylims)
 
     if cumulative:
         cumul = 'Cumulative'
@@ -149,14 +236,54 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
         #binrange = (bins[:-1] + bins[1:])/2.
         binsS = ['%0.2f - %0.2f' % (b0, b1) for b0, b1 in zip(bins[:-1], bins[1:])]
         import csv
-        with open(csvfile, 'wb') as csvfile1:
+        with open(csvfile, 'w') as csvfile1:
             writer = csv.writer(csvfile1)
-            writer.writerow(['Id', 'Mean', 'Median', 'Area affected', 'Threshold'] + binsS)
-            for i, ti in enumerate(titles):
-                nvals = ['%0.2f' % nval for nval in n[i]]
-            writer.writerow([titles[i], means[i], medians[i], totareas[i], thresh] + nvals)
+            if includeunc:
+                writer.writerow(['Id', 'Name', 'Time', 'Magnitude', 'Mean', 'Meanmin', 'Meanmax', 'Median', 'Medianmin',
+                                 'Medianmax', 'Area affected', 'Area affected_min', 'Area affected_max',
+                                 'Threshold'] + binsS)
+                for i, ti in enumerate(titles):
+                    nvals = ['%0.2f' % nval for nval in n[i]]
+                    if getquakenames:
+                        try:
+                            id1 = titles[i].split('_')[0]
+                            name, time, magnitude = getQuakeInfo(id1)
+                        except Exception as e:
+                            print(e)
+                            print('setting quake info to unknown')
+                            name = 'unknown'
+                            time = 'unknown'
+                            magnitude = 'unknown'
+                    else:
+                        name = 'unknown'
+                        time = 'unknown'
+                        magnitude = 'unknown'
+                    writer.writerow([titles[i], name, time, magnitude, means[i], means_min[i], means_max[i], medians[i],
+                                     medians_min[i], medians_max[i], totareas[i], totareas_min[i], totareas_max[i],
+                                     thresh] + nvals)
 
-    return means, medians, totareas, titles, n, bins
+                return means, medians, totareas, titles, n, bins, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
+            else:
+                writer.writerow(['Id', 'Name', 'Time', 'Magnitude', 'Mean', 'Median', 'Area affected', 'Threshold'] + binsS)
+                for i, ti in enumerate(titles):
+                    nvals = ['%0.2f' % nval for nval in n[i]]
+                    if getquakenames:
+                        try:
+                            id1 = titles[i].split('_')[0]
+                            name, time, magnitude = getQuakeInfo(id1)
+                        except Exception as e:
+                            print(e)
+                            print('setting quake info to unknown')
+                            name = 'unknown'
+                            time = 'unknown'
+                            magnitude = 'unknown'
+                    else:
+                        name = 'unknown'
+                        time = 'unknown'
+                        magnitude = 'unknown'
+                    writer.writerow([titles[i], name, time, magnitude, means[i], medians[i], totareas[i], thresh] + nvals)
+
+                return means, medians, totareas, titles, n, bins
 
 
 def computeArea(grid2D, proj='moll', thresh=0.0):
@@ -176,6 +303,38 @@ def computeArea(grid2D, proj='moll', thresh=0.0):
     temp[np.isnan(temp)] = -1.
     totarea = np.nansum(temp[temp >= thresh] * cell_area_km2)
     return totarea
+
+
+def getQuakeInfo(id):
+    BASEURL = 'http://earthquake.usgs.gov/fdsnws/event/1/query?'
+    #here we're using the request submodule to open a url, just like we would use open() to open a file.
+    contribs = ['', 'us', 'nc', 'atlas', 'ci', 'ak', 'at', 'cgs', 'hv', 'ismp', 'ld', 'mb', 'nc', 'nm', 'nn', 'np', 'pr', 'pt', 'se', 'us', 'uu', 'uw']
+    for con in contribs:
+        indict = {'format': 'geojson',
+                  'eventid': con + id,
+                  'producttype': 'origin',
+                  'includesuperseded': 'false'}
+        #the urllib module (in Python 3) encapsulates everything the standard library knows about urls
+        params = urllib.parse.urlencode(indict)
+        try:
+            #assemble complete url
+            url = '%s%s' % (BASEURL, params)
+            f = urllib.request.urlopen(url)
+            break
+        except:
+            continue
+    #urlopen() returns a file-like object, which means that it behaves just like a file object does, including
+    #allowing you to read in all the data from the thing that has been opened.
+    #note the decode() method, which is a new necessity in Python 3, in order to convert a string of bytes
+    #into ASCII (utf-8).
+    data = f.read().decode('utf-8')
+    #Always close your file!
+    f.close()
+    jsondict = json.loads(data)
+    title = jsondict['properties']['title']
+    time = jsondict['properties']['products']['origin'][0]['properties']['eventtime']
+    magnitude = jsondict['properties']['mag']
+    return title, time, magnitude
 
 
 def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
