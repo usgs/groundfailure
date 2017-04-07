@@ -53,7 +53,7 @@ def concatenateModels(modellist, astitle='id', includeunc=False):
 
 def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, histtype='bar', bounds=None, bins=25,
                  semilogy=False, normed=True, thresh=0., showplots=True, csvfile=None, saveplots=False, filepath=None,
-                 getquakenames=False, includeunc=True, xlims=[0., 1.], ylims=[0., 1.]):
+                 getquakenames=False, includeunc=True, xlims=[0., 1.], ylims=None):
     """
     Function for creating a summary histogram of a model output
 
@@ -151,12 +151,10 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
                 totareas_min.append(float('nan'))
                 means_min.append(float('nan'))
                 medians_min.append(float('nan'))
-                vallist_min.append(float('nan'))
                 # and +1 std
                 totareas_max.append(float('nan'))
                 means_max.append(float('nan'))
                 medians_max.append(float('nan'))
-                vallist_max.append(float('nan'))
 
     if k == len(models)-1:
         labels = ['%s - %1.1e km2' % (t, m) for t, m in zip(titles, totareas)]
@@ -168,7 +166,7 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
             axjunk = figjunk.add_subplot(111)
             if type(n) != list:
                 n = [n]
-            for vmin, vmax, nt, r in zip(vallist_max, vallist_min, n, rects):
+            for vmin, vmax, nt, r in zip(vallist_max, vallist_min, n, rects[::-1]):  # for some reason, need to flip rectangle order to get colors right
                 if type(vmin) is int:  # skip if there are not uncertainties
                     continue
                 ymin, bins, rects2 = axjunk.hist(vmin, bins=bins, normed=normed, cumulative=cumulative, histtype=histtype)
