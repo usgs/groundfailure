@@ -53,9 +53,9 @@ def concatenateModels(modellist, astitle='id', includeunc=False):
 
 def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, histtype='bar', bounds=None, bins=25,
                  semilogy=False, normed=True, thresh=0., showplots=True, csvfile=None, saveplots=False, filepath=None,
-                 getquakenames=False, includeunc=True, xlims=[0., 1.], ylims=None):
+                 getquakenames=False, xlims=[0., 1.], ylims=None, combine_events=False):
     """
-    Function for creating a summary histogram of a model output
+    Function for creating a summary histogram of a model output - can only do cumulative step plot if combine_events=True
 
     :param models: model results (ordered dict ) or list of model results (list of ordered dicts) of multiple models
                    (Model results should be in the original output format from the model codes) - only the first key
@@ -78,28 +78,26 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
                      and time stamp
     :param getquakenames: Get earthquake names from comcat using event id
     :param includeunc: Include uncertainty in summary, if files are present?
+    :param combine_events: if True, put all events on same plot
     :returns: means, medians, totareas, titles, n, bins
     """
     plt.ioff()
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
 
     means = []
     medians = []
     totareas = []
     vallist = []
-    if includeunc:
-        means_min = []
-        medians_min = []
-        totareas_min = []
-        vallist_min = []
-        means_max = []
-        medians_max = []
-        totareas_max = []
-        vallist_max = []
+    means_min = []
+    medians_min = []
+    totareas_min = []
+    vallist_min = []
+    means_max = []
+    medians_max = []
+    totareas_max = []
+    vallist_max = []
     if type(models) != list:
         models = [models]
-    keylist = [list(mod.keys())[0] for mod in models]  # will only get first one, not min and max if includeunc is True
+    keylist = [list(mod.keys())[0] for mod in models]  # will only get first one, not min and max
     if titles is None:
         titles = keylist
     for k, mod in enumerate(models):
@@ -119,56 +117,121 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
         means.append(np.mean(allvals))
         medians.append(np.median(allvals))
         vallist.append(allvals)
-        if includeunc:
-            try:
-                # first - 1std
-                gridmin = model1[keylist[k] + '_min']['grid'].getData()
-                allvalsmin = gridmin[~np.isnan(gridmin)]
-                # compute area
-                totareas_min.append(computeArea(model1[keylist[k] + '_min']['grid'], thresh=thresh))
-                #totalmin = len(allvalsmin)
-                #totalnonzmin = len(allvalsmin[allvalsmin > float(thresh)])
-                allvalsmin = allvalsmin[allvalsmin > float(thresh)]
-                means_min.append(np.mean(allvalsmin))
-                medians_min.append(np.median(allvalsmin))
-                vallist_min.append(allvalsmin)
-                # and +1 std
-                gridmax = model1[keylist[k] + '_max']['grid'].getData()
-                allvalsmax = gridmax[~np.isnan(gridmax)]
-                # compute area
-                totareas_max.append(computeArea(model1[keylist[k] + '_max']['grid'], thresh=thresh))
-                #totalmax = len(allvalsmax)
-                #totalnonzmax = len(allvalsmax[allvalsmax > float(thresh)])
-                allvalsmax = allvalsmax[allvalsmax > float(thresh)]
-                means_max.append(np.mean(allvalsmax))
-                medians_max.append(np.median(allvalsmax))
-                vallist_max.append(allvalsmax)
-            except Exception as e:
-                print(e)
-                print('Unable to include uncertainty for %s\n' % keylist[k])
-                vallist_max.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
-                vallist_min.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
-                totareas_min.append(float('nan'))
-                means_min.append(float('nan'))
-                medians_min.append(float('nan'))
-                # and +1 std
-                totareas_max.append(float('nan'))
-                means_max.append(float('nan'))
-                medians_max.append(float('nan'))
+        try:
+            # first - 1std
+            gridmin = model1[keylist[k] + '_min']['grid'].getData()
+            allvalsmin = gridmin[~np.isnan(gridmin)]
+            # compute area
+            totareas_min.append(computeArea(model1[keylist[k] + '_min']['grid'], thresh=thresh))
+            #totalmin = len(allvalsmin)
+            #totalnonzmin = len(allvalsmin[allvalsmin > float(thresh)])
+            allvalsmin = allvalsmin[allvalsmin > float(thresh)]
+            means_min.append(np.mean(allvalsmin))
+            medians_min.append(np.median(allvalsmin))
+            vallist_min.append(allvalsmin)
+            # and +1 std
+            gridmax = model1[keylist[k] + '_max']['grid'].getData()
+            allvalsmax = gridmax[~np.isnan(gridmax)]
+            # compute area
+            totareas_max.append(computeArea(model1[keylist[k] + '_max']['grid'], thresh=thresh))
+            #totalmax = len(allvalsmax)
+            #totalnonzmax = len(allvalsmax[allvalsmax > float(thresh)])
+            allvalsmax = allvalsmax[allvalsmax > float(thresh)]
+            means_max.append(np.mean(allvalsmax))
+            medians_max.append(np.median(allvalsmax))
+            vallist_max.append(allvalsmax)
+        except Exception as e:
+            print(e)
+            print('Unable to include uncertainty for %s\n' % keylist[k])
+            vallist_max.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
+            vallist_min.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
+            totareas_min.append(float('nan'))
+            means_min.append(float('nan'))
+            medians_min.append(float('nan'))
+            # and +1 std
+            totareas_max.append(float('nan'))
+            means_max.append(float('nan'))
+            medians_max.append(float('nan'))
 
-    if k == len(models)-1:
         labels = ['%s - %1.1e km2' % (t, m) for t, m in zip(titles, totareas)]
 
-        n, bins, rects = ax.hist(tuple(vallist), bins=bins, normed=normed, cumulative=cumulative, histtype=histtype,
+    if combine_events:
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
+        n, bins, rects = ax.hist(tuple(vallist), bins=bins, normed=normed, cumulative=True, histtype='step', range=(0., 1.),
                                  label=labels)
-        if includeunc:  # can we get matching color from rects?
-            figjunk = plt.figure(frameon=False)
-            axjunk = figjunk.add_subplot(111)
-            if type(n) != list:
-                n = [n]
-            for vmin, vmax, nt, r in zip(vallist_max, vallist_min, n, rects[::-1]):  # for some reason, need to flip rectangle order to get colors right
-                if type(vmin) is int:  # skip if there are not uncertainties
-                    continue
+        figjunk = plt.figure(frameon=False)
+        axjunk = figjunk.add_subplot(111)
+        if type(n) != list:
+            n = [n]
+        for vmin, vmax, nt, r in zip(vallist_max, vallist_min, n, rects[::-1]):  # for some reason, need to flip rectangle order to get colors right
+            if type(vmin) is int:  # skip if there are not uncertainties
+                continue
+            ymin, bins, rects2 = axjunk.hist(vmin, bins=bins, normed=normed, cumulative=True, histtype='step')
+            ymax, bins, rects2 = axjunk.hist(vmax, bins=bins, normed=normed, cumulative=True, histtype='step')
+            mid = 0.5*(bins[1:] + bins[:-1])
+            if histtype == 'step':  # draw transparent boxes the same color around line instead of error bars
+                try:
+                    color = r.get_facecolor()
+                except:
+                    color = r[0].get_facecolor()
+                x = np.concatenate(([0.], mid, mid[::-1], [0.]))
+                y = np.concatenate(([0.], ymin, ymax[::-1], [0.]))
+                #import pdb; pdb.set_trace()
+                poly = Polygon(np.vstack([x, y]).T, facecolor=color, edgecolor='none', alpha=0.2)
+                ax.add_patch(poly)
+            else:
+                yerr = np.vstack((np.abs(nt-ymin), np.abs(ymax - nt)))
+                ax.errorbar(mid, nt, yerr=yerr, fmt='none', ecolor='k')
+        plt.close(figjunk)
+        plt.ion()
+        if cumulative and histtype == 'step':  # remove ugly vertical line at end
+            for r in rects:
+                try:
+                    r.set_xy(r.get_xy()[:-1])
+                except:
+                    for rect in r:
+                        rect.set_xy(rect.get_xy()[:-1])
+        if normed:
+            ax.set_ylabel('Proportion of cells')
+        else:
+            ax.set_ylabel('Total cells')
+        ax.set_xlabel(outputtype)
+        if semilogy:
+            ax.set_yscale('log')
+
+        # Put a legend below current axis
+        ax.legend(loc=9, bbox_to_anchor=(0.5, -0.1), fancybox=True, ncol=2)
+        ax.set_xlim(xlims)
+        ax.set_ylim(ylims)
+
+        if cumulative:
+            cumul = 'Cumulative'
+        else:
+            cumul = 'Non-cumulative'
+        if thresh > 0:
+            plt.suptitle('%s Summary Plot\nExcluded %d out of %d cells (%0.1f%%) that were < threshold of %0.2f' % (cumul,
+                         totalnonz, total, totalnonz/float(total) * 100., thresh))
+        #plt.tight_layout()
+        #plt.subplots_adjust(top=0.95)
+        plt.subplots_adjust(bottom=0.25)
+
+        if saveplots is True:
+            if filepath is None:
+                filepath = os.getcwd()
+            import datetime
+            time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+            fig.savefig(os.path.join(filepath, 'Summary_%s.pdf' % (time1,)))
+
+    else:  # Make individual summary plots
+        for val, vmin, vmax, label in zip(vallist, vallist_max, vallist_min, labels):
+            fig = plt.figure()
+            ax = fig.add_subplot(111)
+            n, bins, rects = ax.hist(val, bins=bins, range=(0., 1.), normed=normed, cumulative=cumulative, histtype=histtype, label=label)
+            if type(vmin) is not int:  # skip this if no uncertainties
+                figjunk = plt.figure(frameon=False)
+                axjunk = figjunk.add_subplot(111)
                 ymin, bins, rects2 = axjunk.hist(vmin, bins=bins, normed=normed, cumulative=cumulative, histtype=histtype)
                 ymax, bins, rects2 = axjunk.hist(vmax, bins=bins, normed=normed, cumulative=cumulative, histtype=histtype)
                 mid = 0.5*(bins[1:] + bins[:-1])
@@ -179,109 +242,93 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
                         color = r[0].get_facecolor()
                     x = np.concatenate(([0.], mid, mid[::-1], [0.]))
                     y = np.concatenate(([0.], ymin, ymax[::-1], [0.]))
-                    #import pdb; pdb.set_trace()
                     poly = Polygon(np.vstack([x, y]).T, facecolor=color, edgecolor='none', alpha=0.2)
                     ax.add_patch(poly)
                 else:
-                    yerr = np.vstack((np.abs(nt-ymin), np.abs(ymax - nt)))
-                    ax.errorbar(mid, nt, yerr=yerr, fmt='none', ecolor='k')
-            plt.close(figjunk)
-            plt.ion()
-        if cumulative and histtype == 'step':  # remove ugly vertical line at end
-            for r in rects:
-                try:
-                    r.set_xy(r.get_xy()[:-1])
-                except:
-                    for rect in r:
-                        rect.set_xy(rect.get_xy()[:-1])
-    if normed:
-        ax.set_ylabel('Proportion of cells')
-    else:
-        ax.set_ylabel('Total cells')
-    ax.set_xlabel(outputtype)
-    if semilogy:
-        ax.set_yscale('log')
+                    yerr = np.vstack((np.abs(n-ymin), np.abs(ymax - n)))
+                    ax.errorbar(mid, n, yerr=yerr, fmt='none', ecolor='k')
+                plt.close(figjunk)
+                plt.ion()
 
-    # Put a legend below current axis
-    ax.legend(loc=9, bbox_to_anchor=(0.5, -0.1), fancybox=True, ncol=2)
-    ax.set_xlim(xlims)
-    ax.set_ylim(ylims)
+            if cumulative and histtype == 'step':  # remove ugly vertical line at end
+                for r in rects:
+                    try:
+                        r.set_xy(r.get_xy()[:-1])
+                    except:
+                        for rect in r:
+                            rect.set_xy(rect.get_xy()[:-1])
+            if normed:
+                ax.set_ylabel('Proportion of cells')
+            else:
+                ax.set_ylabel('Total cells')
+            ax.set_xlabel(outputtype)
+            if semilogy:
+                ax.set_yscale('log')
 
-    if cumulative:
-        cumul = 'Cumulative'
-    else:
-        cumul = 'Non-cumulative'
-    if thresh > 0:
-        plt.suptitle('%s Summary Plot\nExcluded %d out of %d cells (%0.1f%%) that were < threshold of %0.2f' % (cumul,
-                     totalnonz, total, totalnonz/float(total) * 100., thresh))
-    #plt.tight_layout()
-    #plt.subplots_adjust(top=0.95)
-    plt.subplots_adjust(bottom=0.25)
+            ax.set_xlim(xlims)
+            ax.set_ylim(ylims)
 
-    if saveplots is True:
-        if filepath is None:
-            filepath = os.getcwd()
-        import datetime
-        time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-        fig.savefig(os.path.join(filepath, 'Summary_%s.pdf' % (time1,)))
+            if cumulative:
+                cumul = 'Cumulative'
+            else:
+                cumul = 'Non-cumulative'
+            if thresh > 0:
+                plt.suptitle('%s Summary Plot for %s\nExcluded %d out of %d cells (%0.1f%%) that were < threshold of %0.2f' % (label, cumul,
+                             totalnonz, total, totalnonz/float(total) * 100., thresh))
+            else:
+                plt.suptitle(label)
+            #plt.tight_layout()
+            #plt.subplots_adjust(top=0.95)
+            plt.subplots_adjust(bottom=0.25)
+
+            if saveplots is True:
+                if filepath is None:
+                    filepath = os.getcwd()
+                import datetime
+                time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+                fig.savefig(os.path.join(filepath, 'Summary_%s_%s.pdf' % (label, time1)))
 
     if showplots is True:
         plt.show()
     else:
-        plt.close(fig)
+        plt.close('all')
 
     if csvfile is not None:
         #binrange = (bins[:-1] + bins[1:])/2.
-        binsS = ['%0.2f - %0.2f' % (b0, b1) for b0, b1 in zip(bins[:-1], bins[1:])]
+        if combine_events:
+            binsS = ['%0.2f - %0.2f' % (b0, b1) for b0, b1 in zip(bins[:-1], bins[1:])]
+        else:
+            binsS = []
         import csv
         with open(csvfile, 'w') as csvfile1:
             writer = csv.writer(csvfile1)
-            if includeunc:
-                writer.writerow(['Id', 'Name', 'Time', 'Magnitude', 'Mean', 'Meanmin', 'Meanmax', 'Median', 'Medianmin',
-                                 'Medianmax', 'Area affected', 'Area affected_min', 'Area affected_max',
-                                 'Threshold'] + binsS)
-                for i, ti in enumerate(titles):
+            writer.writerow(['Id', 'Name', 'Time', 'Magnitude', 'Mean', 'Meanmin', 'Meanmax', 'Median', 'Medianmin',
+                             'Medianmax', 'Area affected', 'Area affected_min', 'Area affected_max',
+                             'Threshold'] + binsS)
+            for i, ti in enumerate(titles):
+                if combine_events:
                     nvals = ['%0.2f' % nval for nval in n[i]]
-                    if getquakenames:
-                        try:
-                            id1 = titles[i].split('_')[0]
-                            name, time, magnitude = getQuakeInfo(id1)
-                        except Exception as e:
-                            print(e)
-                            print('setting quake info to unknown')
-                            name = 'unknown'
-                            time = 'unknown'
-                            magnitude = 'unknown'
-                    else:
+                else:
+                    nvals = []
+                if getquakenames:
+                    try:
+                        id1 = titles[i].split('_')[0]
+                        name, time, magnitude = getQuakeInfo(id1)
+                    except Exception as e:
+                        print(e)
+                        print('setting quake info to unknown')
                         name = 'unknown'
                         time = 'unknown'
                         magnitude = 'unknown'
-                    writer.writerow([titles[i], name, time, magnitude, means[i], means_min[i], means_max[i], medians[i],
-                                     medians_min[i], medians_max[i], totareas[i], totareas_min[i], totareas_max[i],
-                                     thresh] + nvals)
+                else:
+                    name = 'unknown'
+                    time = 'unknown'
+                    magnitude = 'unknown'
+                writer.writerow([titles[i], name, time, magnitude, means[i], means_min[i], means_max[i], medians[i],
+                                 medians_min[i], medians_max[i], totareas[i], totareas_min[i], totareas_max[i],
+                                 thresh] + nvals)
 
-                return means, medians, totareas, titles, n, bins, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
-            else:
-                writer.writerow(['Id', 'Name', 'Time', 'Magnitude', 'Mean', 'Median', 'Area affected', 'Threshold'] + binsS)
-                for i, ti in enumerate(titles):
-                    nvals = ['%0.2f' % nval for nval in n[i]]
-                    if getquakenames:
-                        try:
-                            id1 = titles[i].split('_')[0]
-                            name, time, magnitude = getQuakeInfo(id1)
-                        except Exception as e:
-                            print(e)
-                            print('setting quake info to unknown')
-                            name = 'unknown'
-                            time = 'unknown'
-                            magnitude = 'unknown'
-                    else:
-                        name = 'unknown'
-                        time = 'unknown'
-                        magnitude = 'unknown'
-                    writer.writerow([titles[i], name, time, magnitude, means[i], medians[i], totareas[i], thresh] + nvals)
-
-                return means, medians, totareas, titles, n, bins
+                return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
 
 
 def computeArea(grid2D, proj='moll', thresh=0.0):
