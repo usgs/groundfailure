@@ -53,7 +53,7 @@ def concatenateModels(modellist, astitle='id', includeunc=False):
 
 def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, histtype='bar', bounds=None, bins=25,
                  semilogy=False, normed=True, thresh=0., showplots=True, csvfile=None, saveplots=False, filepath=None,
-                 getquakenames=False, xlims=[0., 1.], ylims=None, combine_events=False):
+                 getquakenames=False, xlims=[0., 1.], ylims=None, combine_events=False, fileprefix=''):
     """
     Function for creating a summary histogram of a model output - can only do cumulative step plot if combine_events=True
 
@@ -100,6 +100,32 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
     keylist = [list(mod.keys())[0] for mod in models]  # will only get first one, not min and max
     if titles is None:
         titles = keylist
+    else:
+        if len(titles) != len(models):
+            raise Exception('Length of titles provided are not equal to length of models provided')
+
+    for i in range(titles):
+        names = []
+        times = []
+        magnitudes = []
+        if getquakenames:
+            try:
+                id1 = titles[i].split('_')[0]
+                name, time, magnitude = getQuakeInfo(id1)
+                names.append(name)
+                times.append(time)
+                magnitudes.append(magnitude)
+            except Exception as e:
+                print(e)
+                print('setting quake info to unknown')
+                names.append('unknown')
+                times.append('unknown')
+                magnitudes.append('unknown')
+        else:
+            names.append('unknown')
+            times.append('unknown')
+            magnitudes.append('unknown')
+
     for k, mod in enumerate(models):
         # Trim model, if needed
         if bounds is not None and len(bounds) == 4:
@@ -153,14 +179,18 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
             means_max.append(float('nan'))
             medians_max.append(float('nan'))
 
-        labels = ['%s - %1.1e km2' % (t, m) for t, m in zip(titles, totareas)]
+        for n, m, t, ti, tot in zip(names, magnitudes, times, titles, totareas):
+            if 'unknown' in n:
+                labels = ['%s - %1.1e km2' % (t, m) for t, m in zip(titles, totareas)]
+            else:
+                labels = ['M%s %s - %s - %1.1e km2\nid: %s' % (m, n, t, tot, ti)]
 
     if combine_events:
         fig = plt.figure()
         ax = fig.add_subplot(111)
-
+        labels1 = [lab.split('\n')[0] for lab in labels]
         n, bins, rects = ax.hist(tuple(vallist), bins=bins, normed=normed, cumulative=True, histtype='step', range=(0., 1.),
-                                 label=labels)
+                                 label=labels1)
         figjunk = plt.figure(frameon=False)
         axjunk = figjunk.add_subplot(111)
         if type(n) != list:
@@ -211,8 +241,7 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
         else:
             cumul = 'Non-cumulative'
         if thresh > 0:
-            plt.suptitle('%s Summary Plot\nExcluded %d out of %d cells (%0.1f%%) that were < threshold of %0.2f' % (cumul,
-                         totalnonz, total, totalnonz/float(total) * 100., thresh))
+            plt.suptitle('%s Summary Plot\nExcluded that were < threshold of %0.2f' % (cumul, thresh))
         #plt.tight_layout()
         #plt.subplots_adjust(top=0.95)
         plt.subplots_adjust(bottom=0.25)
@@ -222,10 +251,12 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
                 filepath = os.getcwd()
             import datetime
             time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-            fig.savefig(os.path.join(filepath, 'Summary_%s.pdf' % (time1,)))
+            fig.savefig(os.path.join(filepath, '%sSummary_%s.png' % (fileprefix, time1,)))
 
     else:  # Make individual summary plots
         for val, vmin, vmax, label in zip(vallist, vallist_max, vallist_min, labels):
+            if len(val) == 0:
+                print('All values zero for %s, going to next event' % (label))
             fig = plt.figure()
             ax = fig.add_subplot(111)
             n, bins, rects = ax.hist(val, bins=bins, range=(0., 1.), normed=normed, cumulative=cumulative, histtype=histtype, label=label)
@@ -273,10 +304,10 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
             else:
                 cumul = 'Non-cumulative'
             if thresh > 0:
-                plt.suptitle('%s Summary Plot for %s\nExcluded %d out of %d cells (%0.1f%%) that were < threshold of %0.2f' % (label, cumul,
+                plt.suptitle('%s\n %s Summary Plot - Excluded %d out of %d cells (%0.1f%%) that were < threshold of %0.2f' % (label, cumul,
                              totalnonz, total, totalnonz/float(total) * 100., thresh))
             else:
-                plt.suptitle(label)
+                plt.suptitle('%s\n %s Summary Plot' % (label, cumul))
             #plt.tight_layout()
             #plt.subplots_adjust(top=0.95)
             plt.subplots_adjust(bottom=0.25)
@@ -286,7 +317,7 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
                     filepath = os.getcwd()
                 import datetime
                 time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-                fig.savefig(os.path.join(filepath, 'Summary_%s_%s.pdf' % (label, time1)))
+                fig.savefig(os.path.join(filepath, '%sSummary_%s_%s.png' % (fileprefix, label.split('\n')[0], time1)))
 
     if showplots is True:
         plt.show()
@@ -310,21 +341,7 @@ def modelSummary(models, titles=None, outputtype='unknown', cumulative=False, hi
                     nvals = ['%0.2f' % nval for nval in n[i]]
                 else:
                     nvals = []
-                if getquakenames:
-                    try:
-                        id1 = titles[i].split('_')[0]
-                        name, time, magnitude = getQuakeInfo(id1)
-                    except Exception as e:
-                        print(e)
-                        print('setting quake info to unknown')
-                        name = 'unknown'
-                        time = 'unknown'
-                        magnitude = 'unknown'
-                else:
-                    name = 'unknown'
-                    time = 'unknown'
-                    magnitude = 'unknown'
-                writer.writerow([titles[i], name, time, magnitude, means[i], means_min[i], means_max[i], medians[i],
+                writer.writerow([titles[i], names[i], times[i], magnitudes[i], means[i], means_min[i], means_max[i], medians[i],
                                  medians_min[i], medians_max[i], totareas[i], totareas_min[i], totareas_max[i],
                                  thresh] + nvals)
 

@@ -1184,7 +1184,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
     if plotorder is None:
         plotorder = grids.keys()
 
-    defaultcolormap = cm.jet
+    defaultcolormap = cm.CMRmap_r
 
     if shakefile is not None:
         edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()

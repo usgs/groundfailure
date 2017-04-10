@@ -475,14 +475,14 @@ class LogisticModel(object):
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pga').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('pga').getData())\
                                                              + self.uncert.getLayer('stdpga').getData()))")
-                elif "self.layerdict['pgv'].getData()" in nug:
+                elif "self.shakemap.getLayer('pgv').getData()" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pgv').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('pgv').getData())\
                                                              - self.uncert.getLayer('stdpgv').getData()))")
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pgv').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('pgv').getData())\
                                                              + self.uncert.getLayer('stdpgv').getData()))")
-                elif "self.layerdict['mmi'].getData()" in nug:
+                elif "self.shakemap.getLayer('mmi').getData()" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('mmi').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('mmi').getData())\
                                                              - self.uncert.getLayer('stdmmi').getData()))")
