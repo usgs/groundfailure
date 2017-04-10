@@ -550,9 +550,9 @@ class LogisticModel(object):
         if 'vs30max' in self.config[self.model].keys():
             vs30 = self.layerdict['vs30'].getData()
             P[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
-        if 'pgvminthresh' in self.config[self.model].keys():
+        if 'minpgv' in self.config[self.model].keys():
             pgv = self.shakemap.getLayer('pgv').getData()
-            P[pgv < float(self.config[self.model]['pgvminthresh'])] = 0.0
+            P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
             ind = copy.copy(P)
@@ -562,6 +562,19 @@ class LogisticModel(object):
             Xmax = eval(self.equationmax)
             Pmin = 1/(1 + np.exp(-Xmin))
             Pmax = 1/(1 + np.exp(-Xmax))
+            if 'vs30max' in self.config[self.model].keys():
+                vs30 = self.layerdict['vs30'].getData()
+                Pmin[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
+                Pmax[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
+            if 'minpgv' in self.config[self.model].keys():
+                pgv = self.shakemap.getLayer('pgv').getData()
+                Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
+                Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
+            if 'coverage' in self.config[self.model].keys():
+                eqnmin = eqn.replace('P', 'Pmin')
+                eqnmax = eqn.replace('P', 'Pmax')
+                Pmin = eval(eqnmin)
+                Pmax = eval(eqnmax)
         if self.slopefile is not None:
             ftype = getFileType(self.slopefile)
             sampledict = self.shakemap.getGeoDict()
