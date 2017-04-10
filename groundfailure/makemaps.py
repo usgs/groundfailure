@@ -739,7 +739,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         m = Basemap(llcrnrlon=bxmin, llcrnrlat=bymin, urcrnrlon=bxmax, urcrnrlat=bymax,
                     rsphere=(6378137.00, 6356752.3142),
                     resolution='l', area_thresh=1000., projection='tmerc',
-                    lat_1=clat, lon_0=clon, ax=ax)
+                    lat_0=clat, lon_0=clon, ax=ax)
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
         axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())

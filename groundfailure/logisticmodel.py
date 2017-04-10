@@ -549,10 +549,10 @@ class LogisticModel(object):
         P = 1/(1 + np.exp(-X))
         if 'vs30max' in self.config[self.model].keys():
             vs30 = self.layerdict['vs30'].getData()
-            P[vs30 > float(self.config[self.model]['vs30max']) ] = 0.0
-        if 'pgvmin' in self.config[self.model].keys():
+            P[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
+        if 'pgvminthresh' in self.config[self.model].keys():
             pgv = self.shakemap.getLayer('pgv').getData()
-            P[pgv < float(self.config[self.model]['pgvmin']) ] = 0.0
+            P[pgv < float(self.config[self.model]['pgvminthresh'])] = 0.0
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
             ind = copy.copy(P)

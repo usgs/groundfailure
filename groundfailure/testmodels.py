@@ -353,7 +353,7 @@ def computeArea(grid2D, proj='moll', thresh=0.0):
 def getQuakeInfo(id):
     BASEURL = 'http://earthquake.usgs.gov/fdsnws/event/1/query?'
     #here we're using the request submodule to open a url, just like we would use open() to open a file.
-    contribs = ['', 'us', 'nc', 'atlas', 'ci', 'ak', 'at', 'cgs', 'hv', 'ismp', 'ld', 'mb', 'nc', 'nm', 'nn', 'np', 'pr', 'pt', 'se', 'us', 'uu', 'uw']
+    contribs = ['', 'us', 'nc', 'usp', 'atlas', 'ci', 'ak', 'at', 'cgs', 'hv', 'ismp', 'ld', 'mb', 'nc', 'nm', 'nn', 'np', 'pr', 'pt', 'se', 'us', 'uu', 'uw']
     for con in contribs:
         indict = {'format': 'geojson',
                   'eventid': con + id,

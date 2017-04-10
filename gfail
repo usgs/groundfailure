@@ -167,6 +167,7 @@ def main(args):
                 # make model only plots too
                 if len(maplayers) > 1:
                     plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
+                    import pdb; pdb.set_trace()
                     junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=None,
                                                 zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
                                                 mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
