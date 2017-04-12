@@ -305,7 +305,7 @@ def checkTerm(term, layers):
 
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.,
-                 bounds=None):
+                 bounds=None, numstd=1):
         """Set up the logistic model
         # ADD BOUNDS TO THIS MODEL
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
@@ -324,6 +324,7 @@ class LogisticModel(object):
         :param slopediv: number to divide slope by to get to degrees (usually will be default
           of 1.)
         :type slopediv: float
+        :param numstd: number of +/- standard deviations to use if uncertainty is computed (uncertfile is not None)
 
         """
         mnames = getLogisticModelNames(config)
@@ -344,6 +345,7 @@ class LogisticModel(object):
         self.gmused = [value for term, value in cmodel['terms'].items() if 'pga' in value.lower() or 'pgv' in
                        value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
+        self.numstd = numstd
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to one of the files in the layer section.')
         self.saveinputs = saveinputs
@@ -471,24 +473,24 @@ class LogisticModel(object):
                 if "self.shakemap.getLayer('pga').getData()" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pga').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('pga').getData())\
-                                                             - self.uncert.getLayer('stdpga').getData()))")
+                                                             - self.numstd * self.uncert.getLayer('stdpga').getData()))")
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pga').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('pga').getData())\
-                                                             + self.uncert.getLayer('stdpga').getData()))")
+                                                             + self.numstd * self.uncert.getLayer('stdpga').getData()))")
                 elif "self.shakemap.getLayer('pgv').getData()" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('pgv').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('pgv').getData())\
-                                                             - self.uncert.getLayer('stdpgv').getData()))")
+                                                             - self.numstd * self.uncert.getLayer('stdpgv').getData()))")
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('pgv').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('pgv').getData())\
-                                                             + self.uncert.getLayer('stdpgv').getData()))")
+                                                             + self.numstd * self.uncert.getLayer('stdpgv').getData()))")
                 elif "self.shakemap.getLayer('mmi').getData()" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getLayer('mmi').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('mmi').getData())\
-                                                             - self.uncert.getLayer('stdmmi').getData()))")
+                                                             - self.numstd * self.uncert.getLayer('stdmmi').getData()))")
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getLayer('mmi').getData()",
                                                             "(np.exp(np.log(self.shakemap.getLayer('mmi').getData())\
-                                                             + self.uncert.getLayer('stdmmi').getData()))")
+                                                             + self.numstd * self.uncert.getLayer('stdmmi').getData()))")
             self.equationmin = ' + '.join(self.nugmin)
             self.equationmax = ' + '.join(self.nugmax)
         else:
@@ -626,11 +628,11 @@ class LogisticModel(object):
                           'description': description}
         if self.uncert is not None:
             rdict['modelmin'] = {'grid': Grid2D(Pmin, self.geodict),
-                                 'label': ('%s Probability (-1 std ground motion)') % (self.modeltype.capitalize()),
+                                 'label': ('%s Probability (-%0.1f std ground motion)') % (self.modeltype.capitalize(), self.numstd),
                                  'type': 'output',
                                  'description': description}
             rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
-                                 'label': ('%s Probability (+1 std ground motion)') % (self.modeltype.capitalize()),
+                                 'label': ('%s Probability (+%0.1f std ground motion)') % (self.modeltype.capitalize(), self.numstd),
                                  'type': 'output',
                                  'description': description}
 
@@ -666,12 +668,12 @@ class LogisticModel(object):
                 if self.uncert is not None:
                     layer1 = np.exp(np.log(layer.getData()) - self.uncert.getLayer('std'+getkey).getData())
                     rdict[getkey + 'modelmin'] = {'grid': Grid2D(layer1, self.geodict),
-                                                  'label': '%s (%s)' % (getkey.upper()+' -1 std', units),
+                                                  'label': '%s - %0.1f std (%s)' % (getkey.upper(), self.numstd, units),
                                                   'type': 'input',
                                                   'description': {'units': units, 'shakemap': shakedetail}}
                     layer2 = np.exp(np.log(layer.getData()) + self.uncert.getLayer('std'+getkey).getData())
                     rdict[getkey + 'modelmax'] = {'grid': Grid2D(layer2, self.geodict),
-                                                  'label': '%s (%s)' % (getkey.upper()+' +1 std', units),
+                                                  'label': '%s + %0.1f std (%s)' % (getkey.upper(), self.numstd, units),
                                                   'type': 'input',
                                                   'description': {'units': units, 'shakemap': shakedetail}}
 

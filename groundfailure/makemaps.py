@@ -372,7 +372,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     if not showplots or (not savepdf and not savepng):  # display fig only if static fig not output
         plt.ioff()
 
-    defaultcolormap = cm.jet
+    defaultcolormap = cm.CMRmap_r
 
     if shakefile is not None:
         edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
@@ -745,16 +745,13 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         if k == 0:
             wid, ht = axsize.width, axsize.height
+        default1 = True
         if len(colormaps) == 1 and len(newgrids) == 1:
             palette = colormaps
-        default1 = True
-        if colormaps is not None and len(colormaps) == len(newgrids):
-            if len(colormaps) == 1 and len(newgrids) == 1:
-                palette = colormaps
-                default1 = False
-            elif colormaps[k] is not None:
-                palette = colormaps[k]
-                default1 = False
+            default1 = False
+        if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
+            palette = colormaps[k]
+            default1 = False
         if default1:  # Find preferred default color map for each type of layer if no colormaps found
             if 'prob' in layer.lower() or 'pga' in layer.lower() or \
                'pgv' in layer.lower() or 'cohesion' in layer.lower() or \
