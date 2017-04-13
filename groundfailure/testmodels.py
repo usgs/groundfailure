@@ -353,7 +353,7 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
                                  medians_min[i], medians_max[i], totareas[i], totareas_min[i], totareas_max[i],
                                  thresh])  # + nvals)
 
-            return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
+    return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
 
 
 def computeArea(grid2D, proj='moll', thresh=0.0):
