@@ -560,6 +560,8 @@ class LogisticModel(object):
             ind = copy.copy(P)
             P = eval(eqn)
         if self.uncert is not None:
+            print(self.numstd)
+            print(type(self.numstd))
             Xmin = eval(self.equationmin)
             Xmax = eval(self.equationmax)
             Pmin = 1/(1 + np.exp(-Xmin))

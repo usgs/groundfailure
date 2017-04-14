@@ -173,9 +173,9 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
             means_max.append(np.mean(allvalsmax))
             medians_max.append(np.median(allvalsmax))
             vallist_max.append(allvalsmax)
-        except Exception as e:
-            print(e)
-            print('Unable to include uncertainty for %s\n' % keylist[k])
+        except Exception:  # as e:
+            #print(e)
+            print('Unable to include uncertainty for %s' % keylist[k])
             vallist_max.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
             vallist_min.append(0)  # (np.nan*(np.zeros(np.shape(allvals))))
             totareas_min.append(float('nan'))

@@ -125,7 +125,7 @@ def main(args):
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
                 lm = LM.LogisticModel(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
-                                      bounds=bounds, numstd=args.std)
+                                      bounds=bounds, numstd=float(args.std))
                 maplayers = lm.calculate()
             elif modelfunc == 'hazus':
                 maplayers = hazus(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
