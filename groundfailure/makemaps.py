@@ -372,7 +372,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     if not showplots or (not savepdf and not savepng):  # display fig only if static fig not output
         plt.ioff()
 
-    defaultcolormap = cm.jet
+    defaultcolormap = cm.CMRmap_r
 
     if shakefile is not None:
         edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
@@ -734,26 +734,29 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         val += 1
         clat = bymin + (bymax-bymin)/2.0
         clon = bxmin + (bxmax-bxmin)/2.0
-        # setup of basemap ('lcc' = lambert conformal conic).
+        # setup of basemap ('lcc' = lambert conformal conic, or tmerc is transverse mercator).
         # use major and minor sphere radii from WGS84 ellipsoid.
         m = Basemap(llcrnrlon=bxmin, llcrnrlat=bymin, urcrnrlon=bxmax, urcrnrlat=bymax,
                     rsphere=(6378137.00, 6356752.3142),
-                    resolution='l', area_thresh=1000., projection='lcc',
-                    lat_1=clat, lon_0=clon, ax=ax)
+                    resolution='l', area_thresh=1000., projection='tmerc',
+                    lat_0=clat, lon_0=clon, ax=ax)
 
         x1, y1 = m(llons1, llats1)  # get projection coordinates
         axsize = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         if k == 0:
             wid, ht = axsize.width, axsize.height
-        if colormaps is not None and \
-           len(colormaps) == len(newgrids) and \
-           colormaps[k] is not None:
+        default1 = True
+        if len(colormaps) == 1 and len(newgrids) == 1:
+            palette = colormaps
+            default1 = False
+        if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
             palette = colormaps[k]
-        else:  # Find preferred default color map for each type of layer
+            default1 = False
+        if default1:  # Find preferred default color map for each type of layer if no colormaps found
             if 'prob' in layer.lower() or 'pga' in layer.lower() or \
                'pgv' in layer.lower() or 'cohesion' in layer.lower() or \
                'friction' in layer.lower() or 'fs' in layer.lower():
-                palette = cm.jet
+                palette = cm.CMRmap_r
             elif 'slope' in layer.lower():
                 palette = cm.gnuplot2
             elif 'precip' in layer.lower():
@@ -1178,7 +1181,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
     if plotorder is None:
         plotorder = grids.keys()
 
-    defaultcolormap = cm.jet
+    defaultcolormap = cm.CMRmap_r
 
     if shakefile is not None:
         edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()

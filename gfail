@@ -125,7 +125,7 @@ def main(args):
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
                 lm = LM.LogisticModel(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
-                                      bounds=bounds)
+                                      bounds=bounds, numstd=float(args.std))
                 maplayers = lm.calculate()
             elif modelfunc == 'hazus':
                 maplayers = hazus(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
@@ -436,6 +436,9 @@ if __name__ == '__main__':
     parser.add_argument('-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
                         help='Set file path to mapping input data (only needed if file paths in \
                         mapconfig are relative)', default=mapdata_filepath)
+    parser.add_argument('-s', '--std', metavar='numstd', nargs='?',
+                        help='Number of ground motion standard deviations to use (only used if \
+                        uncertainty file used)', default=1.)
 
     # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,
