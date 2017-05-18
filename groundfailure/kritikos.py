@@ -1,92 +1,18 @@
 #!/usr/bin/env python
 
-"""
-Kritikos based landslide statistic_models
-"""
-
-"""
-These methods requires:
-    1) a comprehenive and accurate landslide inventory
-    2) multiple strong motion recordings or detailed isoseismals
-    3) accurate geologic maps
-    4) extensive geotechnical data
-    5) accurate digital elevation models (DEMs)
-Utilizes semi data-driven memberships
-"""
-
-
-"""
-Note that none of the functions used the ‘Hedge’ option. We combined these using the fuzzy Gamma Overlay with a gamma value of 0.9.
-
-Density of landslides calculated from a frequency ratio
-
-Frequency Ration = (N_Li / N_Ci) / (N_L / N_A)                      (3)
-
-where   N_Li is the number of landslide pixels in the factor i
-        N_Ci is the total number of pixels in the factor i
-        N_L is total number of landslide pixels in the study area
-        N_A is the total number of pixels of the study area
-"""
-
-"""
-Operators = fuzzyAND, fuzzyOR, fuzzyPRODUCT, fuzzySUM, fuzzyGAMMA
-
-fuzzyGAMMA operator ----
-mu_x = (pi_operator(mu_i, 1, n))^(1-gamma) * (1 - pi_operator(1-mu_i, 1, n))^(gamma)
-# pi_operator is a multiplication summation
-"""
-
-############# Config file
-'''
-[statistic_models]
-    [[kritikos_2014]]
-        gamma_value = 0.9
-        [[[layers]]]
-            slope = Users/kbiegel/Documents/GroundFailure/inputs/Northridge/Northridge_SLP_WGS84_1arcsec.bil
-            dff = 
-            dfs = 
-            slope_pos =
-        [[[divisor]]]
-            MMI = 7.5
-            slope = 4.875
-            dff = 2.375
-            dfs = 3.25
-            slope_pos = 2.325
-        [[[power]]]
-            MMI = -14
-            slope = -2.65
-            dff = 5.375
-            dfs = 5.5
-            slope_pos = -4.375
-        [[[classification]]]
-            MMI = 5,6,7,8,9
-            slope = 0-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-34, 35-39, 40-44, 45-49, 50+  # Reclassify as 1,2,3,etc.
-            dff = 0-4, 5-9, 10-19, 20-29, 30-39, 40-49, 50+  # Reclassify as 1,2,3,etc.
-            dfs = 0-0.49, 0.5-0.99, 1.0-1.49, 1.5-1.99, 2.0-2.49, 2.5+  # Reclassify as 1,2,3,etc.
-            slope_pos = 'Flat', 'Valley', 'Mid-Slope', 'Ridge'  # Reclassify as 1,2,3,etc.
-'''
-
-config = {'statistic_models': {'kritikos_2014': {'gamma_value': 0.9, 'layers': {'slope': 'Users/kbiegel/Documents/GroundFailure/inputs/Northridge/Northridge_SLP_WGS84_1arcsec.bil', 'dff': , 'dfs': , 'slope_pos': }, 'divisor': {'MMI': 7.5, 'slope': 4.875, 'dff': 2.375, 'dfs': 3.25, 'slope_pos': 2.325}, 'power': {'MMI': -14, 'slope': -2.65, 'dff': 5.375, 'dfs': 5.5, 'slope_pos': -4.375}, 'classification': {'MMI': [5,6,7,8,9], 'slope': [range(0,4), range(5,9), range(10,14), range(15,19), range(20,24), range(25,29), range(30,34), range(35,39), range(40,44), range(45,49), 50], 'dff': [range(0,4), range(5,9), range(10,19), range(20,29), range(30,39), range(40,49), 50], 'dfs': [[0,0.49],[0.5,0.99], [1.0,1.49], [1.5,1.99], [2.0,2.49], 2.5], 'slope': ['Flat', 'Valley', 'Mid-Slope', 'Ridge']}}}}
-
-######## Config File
-
-#stdlib imports
+#lib imports
 import os.path
 import warnings
 import urllib.request, urllib.error, urllib.parse
 import tempfile
 import collections
-
-#turn off all warnings...
-warnings.filterwarnings('ignore')
+import math
+import numpy as np
 
 #local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
-
-#third party imports
-import numpy as np
 
 
 def kritikos_fuzzygamma(shakefile, config, bounds=None):
@@ -106,8 +32,6 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
         dff_file = layers['dff']
         # DFS
         dfs_file = layers['dfs']
-        # Slope Position
-        slope_pos_file = layers['slope_pos']
     except:
         print('Unable to retrieve grid data.')
 
@@ -171,103 +95,76 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Data could not be retrieved.')
 
-            [[[classification]]]
-            MMI = 5,6,7,8,9
-            slope = 0-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-34, 35-39, 40-44, 45-49, 50+  # Reclassify as 1,2,3,etc.
-            dff = 0-4, 5-9, 10-19, 20-29, 30-39, 40-49, 50+  # Reclassify as 1,2,3,etc.
-            dfs = 0-0.49, 0.5-0.99, 1.0-1.49, 1.5-1.99, 2.0-2.49, 2.5+  # Reclassify as 1,2,3,etc.
-            slope_pos = 'Flat', 'Valley', 'Mid-Slope', 'Ridge'  # Reclassify as 1,2,3,etc.
+    try:
+        mmi_class = cmodel['classification']['MMI']
+        slope_class = cmodel['classification']['slope']
+        dff_class = cmodel['classification']['dff']
+        dfs_class = cmodel['classification']['dfs']
+        slope_pos_class = cmodel['classification']['slope_pos']
+    except:
+        print('Could not recover classifications from config.')
 
     try:
-        ranges = {}
-        for keys in cmodel['classification']:
-
-
-
-
-    try:
-        if MMI_data is in range(5,6):
-            MMI_data = 5
-        elif MMI_data is in range(6,7):
-            MMI_data = 6
-        elif MMI_data is in range(7,8):
-            MMI_data = 7
-        elif MMI_data is in range(8,9):
-            MMI_data = 8
-        else:
-            MMI_data = 9
+        mmi_classes = mmi_class.split(',')
+        for i in mmi_classes:
+            if i.find('-') != -1:
+                j = i.split('-')
+                if MMI_data in range(int(j[0]), int(j[1])):
+                    MMI_data = int(j[0])
+            else:
+                MMI_data = int(i)
     except:
         print('Could not categorize MMI values')
 
     try:
-        if slope_data is in range(0,4):
-            slope_data = 1
-        elif slope_data is in range(5,9):
-            slope_data = 2
-        elif slope_data is in range(10,14):
-            slope_data = 3
-        elif slope_data is in range(15,19):
-            slope_data = 4
-        elif slope_data is in range(20,24):
-            slope_data = 5
-        elif slope_data is in range(25,29):
-            slope_data = 6
-        elif slope_data is in range(30,34):
-            slope_data = 7
-        elif slope_data is in range(35,39):
-            slope_data = 8
-        elif slope_data is in range(40,44):
-            slope_data = 9
-        elif slope_data is in range(45,49):
-            slope_data = 10
-        else:
-            slope_data = 11
+        slope_classes = slope_class.split(',')
+        k = 1
+        for i in mmi_classes:
+            if i.find('-') != -1:
+                j = i.split('-')
+                if slope_data in range(int(j[0]), int(j[1])):
+                    slope_data = k
+                    k += 1
+            else:
+                slope_data = 11
     except:
         print('Could not recategorize Slope Values.')
 
     try:
-        if dff_data is in range(0,4):
-            dff_data = 1
-        elif dff_data is in range(5,9):
-            dff_data = 2
-        elif dff_data is in range(10,19):
-            dff_data = 3
-        elif dff_data is in range(20,29):
-            dff_data = 4
-        elif dff_data is in range(30,39):
-            dff_data = 5
-        elif dff_data is in range(40,49):
-            dff_data = 6
-        else:
-            dff_data = 7
+        dff_classes = dff_class.split(',')
+        k = 1
+        for i in dff_classes:
+            if i.find('-') != -1:
+                j = i.split('-')
+                if dff_data in range(int(j[0]), int(j[1])):
+                    dff_data = k
+                    k += 1
+            else:
+                dff_data = 7
     except:
         print('Could not recategorize DFF values.')
 
     try:
-        if int(dfs_data/10.) is in range(0,5):
-            dfs_data = 1
-        elif int(dfs_data/10) is in range(5,10):
-            dfs_data = 2
-        elif int(dfs_data/10) is in range(10,15):
-            dfs_data = 3
-        elif int(dfs_data/10) is in range(15,20):
-            dfs_data = 4
-        elif int(dfs_data/10) is in range(20,25):
-            dfs_data = 5
-        else:
-            dfs_data = 6
+        dfs_classes = dfs_class.split(',')
+        k = 1
+        for i in dfs_classes:
+            if i.find('-') != -1:
+                j = i.split('-')
+                if dfs_data in range(int(j[0]), int(j[1])):
+                    dfs_data = k
+                    k += 1
+            else:
+                dfs_data = 6
     except:
         print('Could not recategorize DFS values.')
 
     try:
-        if slope_pos_data is 'Flat':
-            slope_pos_data = 1
-        elif slope_pos_data is 'Valley':
-            slope_pos_data = 2
-        elif slope_pos_data is 'Mid-Slope':
-            slope_pos_data = 3
-        elif slope_pos_data is 'Ridge':
-            slope_pos_data = 4
+        slope_pos_classes = slope_pos_class.split(',')
+        k = 1
+        for i in slope_poss_classes:
+            if slope_pos_data == i:
+                slope_pos_data = k
+                k += 1
     except:
         print('Could not recategorize slope position values.')
 
