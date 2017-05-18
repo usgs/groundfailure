@@ -247,7 +247,7 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
                 PROBmax[PROBmax <= dnthresh] = 0
                 PROBmax[PROBmax > dnthresh] = 1
         else:
-            raise NameError('invalid probtype, assuming jibson2000')
+            print('invalid probtype, assuming jibson2000')
             PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
             dnthresh = None
             if uncertfile is not None:
@@ -628,7 +628,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
             PROBmax[PROBmax <= dnthresh] = 0
             PROBmax[PROBmax > dnthresh] = 1
     else:
-        raise NameError('invalid probtype, assuming jibson2000')
+        print('invalid probtype, assuming jibson2000')
         PROB = 0.335*(1-np.exp(-0.048*Dn**1.565))
         dnthresh = None
         if uncertfile is not None:
@@ -955,9 +955,9 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
                                     'type': 'input','description': {'units': 'g', 'shakemap': shakedetail}}
         if 'PGV' in displmodel:
             if uncertfile is not None:
-                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin[:, :, 0], shakemap.getGeodict()),'label': 'PGV - 1std (cm/s)',
+                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin[:, :, 0], shakemap.getGeoDict()),'label': 'PGV - 1std (cm/s)',
                                         'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
-                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax[:, :, 0], shakemap.getGeodict), 'label': 'PGV + 1std (cm/s)',
+                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV + 1std (cm/s)',
                                         'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
 
     return maplayers

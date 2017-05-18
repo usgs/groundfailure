@@ -41,6 +41,10 @@ def test_hazus():
                           probtype='jibson2000', saveinputs=True)
     maplayers5 = NM.hazus(shakefile, config, modeltype='ac_classic_prob', displmodel='RS_PGA_M',
                           probtype='threshold', uncertfile=uncertfile)
+    maplayers6 = NM.hazus(shakefile, config, modeltype='ac_classic_prob', uncertfile=uncertfile, probtype='jibson2000',
+                          saveinputs=True)
+    maplayers7 = NM.hazus(shakefile, config, modeltype='ac_classic_prob', uncertfile=uncertfile, probtype='errortype',
+                          saveinputs=True)
 
     np.testing.assert_allclose(maplayers1['model']['grid'].getData(),
                                np.array([[0., 0., 0.1],
@@ -82,6 +86,22 @@ def test_hazus():
                                np.array([[0, 0, 1],
                                         [0, 0, 0],
                                         [1, 0, 0]]), atol=0)
+    np.testing.assert_allclose(maplayers6['model']['grid'].getData(),
+                               np.array([[0., 0., 0.02],
+                                        [0., 0., 0.],
+                                        [0.33, 0., 0.01]]), atol=0.1)
+    np.testing.assert_allclose(maplayers6['modelmin']['grid'].getData(),
+                               np.array([[0., 0., 0.],
+                                        [0., 0., 0.],
+                                        [0.28, 0., 0.]]), atol=0.1)
+    np.testing.assert_allclose(maplayers7['model']['grid'].getData(),
+                               np.array([[0., 0., 0.02],
+                                        [0., 0., 0.],
+                                        [0.33, 0., 0.01]]), atol=0.1)
+    np.testing.assert_allclose(maplayers7['modelmin']['grid'].getData(),
+                               np.array([[0., 0., 0.],
+                                        [0., 0., 0.],
+                                        [0.28, 0., 0.]]), atol=0.1)
 
     # Recut grid for testing
     bounds = {'xmin': 0.5, 'xmax': 1.5, 'ymin': 0.5, 'ymax': 1.5}
@@ -91,9 +111,9 @@ def test_hazus():
     # Set uncertfile to null location
     uncertfile2 = os.path.join(datadir, 'test_uncert_error.xml')
 
-    maplayers6 = NM.hazus(shakefileBounds, config, bounds=bounds, probtype='threshold', uncertfile=uncertfile2)
-    np.testing.assert_allclose(maplayers6['model']['grid'].getData(),
-                                np.array([[0., 0., 0.1],
+    maplayers8 = NM.hazus(shakefileBounds, config, bounds=bounds, probtype='threshold', uncertfile=uncertfile2)
+    np.testing.assert_allclose(maplayers8['model']['grid'].getData(),
+                               np.array([[0., 0., 0.1],
                                         [0., 0., 0.],
                                         [0.3, 0., 0.3]]), atol=0.1)
 
@@ -116,13 +136,14 @@ def test_est_disp():
 def test_classic():
     configfile = os.path.join(datadir, 'testconfig_classic.ini')
     config = ConfigObj(configfile)
+    bounds = {'xmin': -1.5, 'xmax': 3, 'ymin': -1.5, 'ymax': 3}
     # Test path correction (from conf.py)
     config = correct_config_filepaths(datadir, config)
-    maplayers1 = NM.classic(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile)
+    maplayers1 = NM.classic(shakefile, config, bounds=bounds, displmodel='J_PGA', uncertfile=uncertfile)
     maplayers2 = NM.classic(shakefile, config, displmodel='J_PGA_M', saveinputs=True)
     maplayers3 = NM.classic(shakefile, config, displmodel='RS_PGA_M')
-    maplayers4 = NM.classic(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile)
-    maplayers5 = NM.classic(shakefile, config)
+    maplayers4 = NM.classic(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile, probtype='threshold', saveinputs=True)
+    maplayers5 = NM.classic(shakefile, config, probtype='thressshold', uncertfile=uncertfile)
 
     # Testing J_PGA with Uncertainty - Model Type 1
     np.testing.assert_allclose(maplayers1['model']['grid'].getData(),
@@ -132,36 +153,66 @@ def test_classic():
     np.testing.assert_allclose(maplayers1['modelmax']['grid'].getData(),
                                np.array([[0.0459, 0.335], [0.335, 0.]]), atol=0.01)
 
-    # Testing J_PGA_M with Uncertainty - Model Type 2
+    # Testing J_PGA_M without Uncertainty - Model Type 2
     np.testing.assert_allclose(maplayers2['model']['grid'].getData(),
                                np.array([[0.001, 0.3314], [0.3349, 0.]]), atol=0.01)
 
-    # Testing RS_PGA_M with Uncertainty - Model Type 3
+    # Testing RS_PGA_M without Uncertainty - Model Type 3
     np.testing.assert_allclose(maplayers3['model']['grid'].getData(),
                                np.array([[0.014, 0.335], [0.335, 0.]]), atol=0.01)
 
     # Testing RS_PGA_PGV with Uncertainty - Model Type 4
     np.testing.assert_allclose(maplayers4['model']['grid'].getData(),
-                               np.array([[0.0616, 0.33499], [0.335, 0.]]), atol=0.01)
+                               np.array([[0., 1.], [1., 0.]]), atol=0.01)
     np.testing.assert_allclose(maplayers4['modelmin']['grid'].getData(),
-                               np.array([[0., 0.3341], [0.335, 0.]]), atol=0.01)
+                               np.array([[0., 1.], [1., 0.]]), atol=0.01)
     np.testing.assert_allclose(maplayers4['modelmax']['grid'].getData(),
-                               np.array([[0.32888, 0.335], [0.335, 0.0003]]), atol=0.01)
+                               np.array([[1., 1.], [1., 0.0]]), atol=0.01)
+    np.testing.assert_allclose(maplayers4['pgvmin']['grid'].getData(),
+                               np.array([[32.53, 44.72], [23.24, 71.58]]), atol=0.01)
 
-    # Testing default model and no uncertainty
+    # Testing default model, probtype breaking with uncertainty
     np.testing.assert_allclose(maplayers5['model']['grid'].getData(),
+                               np.array([[0.004, 0.335], [0.334, 0.]]), atol=0.01)
+    np.testing.assert_allclose(maplayers5['modelmin']['grid'].getData(),
+                               np.array([[0., 0.311], [0.284, 0.]]), atol=0.01)
+    np.testing.assert_allclose(maplayers5['modelmax']['grid'].getData(),
+                               np.array([[0.013, 0.335], [0.335, 0.]]), atol=0.01)
+
+    # for models with different configs
+    del config['classic_newmark']['parameters']['dnthresh']
+    del config['classic_newmark']['shortref']
+    # add watertablefile
+    config['classic_newmark']['parameters']['m'] = 'file'
+    #reshape bounds
+    bounds = {'xmin': 0.5, 'xmax': 1.5, 'ymin': 0.5, 'ymax': 1.5}
+    # bad uncertfile
+    uncertfile2 = os.path.join(datadir, 'test_uncert_error.xml')
+
+    maplayers6 = NM.classic(shakefile, config, bounds=bounds, displmodel='J_PGA', probtype='threshold', saveinputs=True)
+    maplayers7 = NM.classic(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile2)
+
+    # Testing J_PGA, new config, weird bounds - Model Type 6
+    np.testing.assert_allclose(maplayers6['model']['grid'].getData(),
+                               np.array([[0., 1.], [1., 0.]]), atol=0.01)
+    np.testing.assert_allclose(maplayers6['sat thick prop']['grid'].getData(),
+                               np.array([[0., 0.96], [0.88, 0.17]]), atol=0.01)
+
+    # Testing J_PGA, new config, bad uncertainty file - Model Type 7
+    np.testing.assert_allclose(maplayers7['model']['grid'].getData(),
                                np.array([[0.004, 0.335], [0.334, 0.]]), atol=0.01)
 
 
 def test_godt2008():
     configfile = os.path.join(datadir, 'testconfig_godt.ini')
     config = ConfigObj(configfile)
+    bounds = {'xmin': -1.5, 'xmax': 3, 'ymin': -1.5, 'ymax': 3}
     # Test path correction (from conf.py)
     config = correct_config_filepaths(datadir, config)
-    maplayers1 = NM.godt2008(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile)
+    maplayers1 = NM.godt2008(shakefile, config, displmodel='J_PGA', uncertfile=uncertfile, bounds=bounds)
     maplayers2 = NM.godt2008(shakefile, config, displmodel='J_PGA_M', saveinputs=True)
     maplayers3 = NM.godt2008(shakefile, config, displmodel='RS_PGA_M')
-    maplayers4 = NM.godt2008(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile)
+    maplayers4 = NM.godt2008(shakefile, config, displmodel='RS_PGA_PGV', uncertfile=uncertfile, saveinputs=True)
     maplayers5 = NM.godt2008(shakefile, config)
 
     # Testing J_PGA with Uncertainty - Model Type 1
@@ -187,9 +238,24 @@ def test_godt2008():
                                np.array([[0., 0.1], [0.9, 0.]]))
     np.testing.assert_allclose(maplayers4['modelmax']['grid'].getData(),
                                np.array([[0., 0.99], [0.99, 0.]]))
+    np.testing.assert_allclose(maplayers4['pgvmin']['grid'].getData(),
+                               np.array([[32.53, 44.72], [23.24, 71.58]]), atol=0.01)
 
     # Testing default model and no uncertainty
     np.testing.assert_allclose(maplayers5['model']['grid'].getData(),
+                               np.array([[0., 0.01], [0.9, 0.]]), atol=0.01)
+
+    # delete reference
+    del config['godt_2008']['shortref']
+    #reshape bounds
+    bounds = {'xmin': 0.5, 'xmax': 1.5, 'ymin': 0.5, 'ymax': 1.5}
+    # bad uncertfile
+    uncertfile2 = os.path.join(datadir, 'test_uncert_error.xml')
+
+    maplayers6 = NM.godt2008(shakefile, config, bounds=bounds, uncertfile=uncertfile2)
+
+    # Testing with changed config
+    np.testing.assert_allclose(maplayers6['model']['grid'].getData(),
                                np.array([[0., 0.01], [0.9, 0.]]), atol=0.01)
 
 
