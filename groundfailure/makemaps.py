@@ -766,10 +766,11 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 
         if topodata is not None:
             if k == 0:
+                #lons[lons > 0] = lons[lons > 0] - 360
                 ptopo = m.transform_scalar(
                     np.flipud(topodata), lons+0.5*gdict.dx,
-                    lats[::-1]-0.5*gdict.dy, np.round(300.*wid),
-                    np.round(300.*ht), returnxy=False, checkbounds=False,
+                    lats[::-1]-0.5*gdict.dy, int(np.round(300.*wid)),
+                    int(np.round(300.*ht)), returnxy=False, checkbounds=False,
                     order=1, masked=False)
                 #use lightsource class to make our shaded topography
                 ls = LightSource(azdeg=135, altdeg=45)
@@ -892,7 +893,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         palette.set_bad(clear_color, alpha=0.0)
         # Plot it up
         dat_im = m.transform_scalar(np.flipud(dat), lons+0.5*gdict.dx, lats[::-1]-0.5*gdict.dy,
-                                    np.round(300.*wid), np.round(300.*ht), returnxy=False,
+                                    int(np.round(300.*wid)), int(np.round(300.*ht)), returnxy=False,
                                     checkbounds=False, order=0, masked=True)
         if logscale[k] is True:
             logsc = LogNorm(vmin=vmin, vmax=vmax)
