@@ -132,7 +132,7 @@ def test_validateLayers():
 
 
 def test_validateTerms():
-    data = {'b1': "self.layerdict['friction'].getData()", 'b2': "self.layerdict['slope'].getData()/100.",
+    data = {'b1': "np.nan_to_num(self.layerdict['friction'].getData())", 'b2': "self.layerdict['slope'].getData()/100.",
             'b3': "np.log(self.layerdict['vs30'].getData())", 'b4': "self.layerdict['cti1'].getData()",
             'b5': "self.layerdict['precip'].getData()"}
     timeField = 'MONTH'
