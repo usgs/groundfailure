@@ -5,7 +5,7 @@ VENV=gf
 PYVER=3.5
 
 
-DEPARRAY=(numpy scipy pip matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj pandas sphinx scikit-learn scikit-image psutil ipython jupyter branca paramiko)
+DEPARRAY=(numpy==1.12 scipy pip matplotlib rasterio fiona basemap basemap-data-hires shapely h5py gdal descartes pytest-cov pytest-mpl configobj pandas sphinx scikit-learn scikit-image psutil ipython jupyter branca paramiko)
 
 # turn off whatever other virtual environment user might be in
 source deactivate
