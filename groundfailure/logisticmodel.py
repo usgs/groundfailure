@@ -299,7 +299,10 @@ def checkTerm(term, layers):
             timeField = unit
 
     for layer in layers:
-        term = term.replace(layer, "self.layerdict['%s'].getData()" % layer)
+        if layer == 'friction':
+            term = term.replace(layer, "np.nan_to_num(self.layerdict['%s'].getData())" % layer)
+        else:
+            term = term.replace(layer, "self.layerdict['%s'].getData()" % layer)
     return (term, tterm, timeField)
 
 
@@ -678,5 +681,4 @@ class LogisticModel(object):
                                                   'label': '%s + %0.1f std (%s)' % (getkey.upper(), self.numstd, units),
                                                   'type': 'input',
                                                   'description': {'units': units, 'shakemap': shakedetail}}
-
         return rdict

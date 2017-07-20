@@ -762,7 +762,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         acthresh = float(config['godt_2008']['parameters']['acthresh'])
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
-        return
+        #return
 
     if displmodel is None:
         try:
@@ -832,13 +832,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
     slopestack[slopestack == 0] = 1e-8
 
     # Read in the cohesion and friction files and duplicate layers so they are same shape as slope structure
-    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shakemap.getGeoDict(), resample=True,
+    cohesion = np.repeat(GDALGrid.load(cohesionfile, samplegeodict=shkgdict, resample=True,
                          method='nearest').getData()[:, :, np.newaxis]/codiv, 7, axis=2)
     cohesion[cohesion == -999.9] = nodata_cohesion
+    cohesion = np.nan_to_num(cohesion)
     cohesion[cohesion == 0] = nodata_cohesion
-    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shakemap.getGeoDict(), resample=True,
+    friction = np.repeat(GDALGrid.load(frictionfile, samplegeodict=shkgdict, resample=True,
                          method='nearest').getData().astype(float)[:, :, np.newaxis], 7, axis=2)
     friction[friction == -9999] = nodata_friction
+    friction = np.nan_to_num(friction)
     friction[friction == 0] = nodata_friction
 
     # Do the calculations using Jibson (2007) PGA only model for Dn
