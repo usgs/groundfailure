@@ -22,18 +22,23 @@ def create_slopePos(slope, DEM, cmodel):
     """
     Takes the slope and elevation files and outputs a slope-pos file with classifications: valley, lower slope, mid-slope, flat,
     upper slope, ridge.
+    Documentation for this can be found here: http://www.jennessent.com/downloads/Land_Facet_Tools.pdf (pages 49 to 62)
     """
     # Double check the shapes are the same
     a, b = DEM.shape
     c, d = slope.shape
     if a != c or b != d:
         raise NameError('DEM and slope are not the same shape.')
-    slopethresh = cmodel['thresholds']['slope']
-    elevthresh = cmodel['thresholds']['elev']
-    locthresh = cmodel['thresholds']['loc']
+
+    # Load in variables
+    slopethresh = cmodel['thresholds']['slope']  # This is the minimum slope under which a slope is considered flat.
+    elevthresh = cmodel['thresholds']['elev'] # This is the elevation difference that is used to calculate the TPI (elevation in respect to surrounding elevation, how much difference in elevation is considered "flat")
+    locthresh = cmodel['thresholds']['loc']  # This is the grid padding for the moving DEM average calculation.  Defines the scale as small-neighborhood or large neighborhood which will significantly alter the classification (see Figures on pages 52 and 53)
 
     # Take a moving average over DEM
-    DEM_avg = np.empty((a, b))
+    # This is a neighborhood average of all the values within the distance threshold
+    ######## THERE IS PROBABLY A FASTER/EASIER WAY TO DO THIS ######
+    DEM_avg = np.empty((a, b), dtype=object)
     DEM_avg[:] = np.NAN
     for i in range(locthresh, a-locthresh):
         for j in range(locthresh, b-locthresh):
@@ -44,39 +49,43 @@ def create_slopePos(slope, DEM, cmodel):
             summ = 0
             count = 0
             try:
-                for k in range(e,f+1):
-                    for l in range(g,h+1):
-                        summ += DEM[k,l]
+                for k in range(e, f+1):
+                    for l in range(g, h+1):
+                        summ += DEM[k, l]
                         count += 1
-                DEM_avg[i,j] = summ/count
+                DEM_avg[i, j] = summ/count
             except:
                 raise NameError('Could not take average.')
-    print(DEM_avg)
 
     # Classify DEM into regions
+    # Based on the Figure on Page 52, along with email correspondance
+    ##############
+    # Valley = Low TPI, Low slope
+    # Flat slope = Mid TPI, Low slope
+    # Ridge = High TPI, Low slope
+    # Mid-slope (includes lower slopes, middle slopes, and steep slopes) = Any TPI, High slope
+    ##############
     DEM_comp = DEM - DEM_avg
-    print(DEM_comp)
     DEM_classified = np.empty((a, b), dtype=object)
     DEM_classified[:] = np.nan
-    for i in range(0,a):
-        for j in range(0,b):
-            if not np.isnan(DEM_comp[i,j]):
-                if DEM_comp[i,j] < -elevthresh:
-                    if slope[i,j] <= slopethresh:
-                        DEM_classified[i,j] = 'Valley'
+    for i in range(0, a):
+        for j in range(0, b):
+            if not np.isnan(DEM_comp[i, j]):
+                if DEM_comp[i, j] < -elevthresh:
+                    if slope[i, j] <= slopethresh:
+                        DEM_classified[i, j] = 'Valley'
                     else:
-                        DEM_classified[i,j] = 'Mid-Slope'
-                elif DEM_comp[i,j] > -elevthresh and DEM_comp[i,j] < elevthresh:
-                    if slope[i,j] <= slopethresh:
-                        DEM_classified[i,j] = 'Flat'
+                        DEM_classified[i, j] = 'Mid-Slope'
+                elif DEM_comp[i, j] > -elevthresh and DEM_comp[i, j] < elevthresh:
+                    if slope[i, j] <= slopethresh:
+                        DEM_classified[i, j] = 'Flat'
                     else:
-                        DEM_classified[i,j] = 'Mid-Slope'
-                elif DEM_comp[i,j] > elevthresh:
-                    if slope[i,j] <= slopethresh:
-                        DEM_classified[i,j] = 'Ridge'
+                        DEM_classified[i, j] = 'Mid-Slope'
+                elif DEM_comp[i, j] > elevthresh:
+                    if slope[i, j] <= slopethresh:
+                        DEM_classified[i, j] = 'Ridge'
                     else:
-                        DEM_classified[i,j] = 'Mid-Slope'
-    print(DEM_classified)
+                        DEM_classified[i, j] = 'Mid-Slope'
 
     return DEM_classified
 
@@ -89,6 +98,7 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     cmodel = config['statistical_models']['kritikos_2015']
     gamma = cmodel['gamma_value']
 
+    ############ This section reads in items from the config file
     ## Read in layer files and get data
     layers = cmodel['layers']
     try:
@@ -125,9 +135,9 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Unable to retrieve powers.')
 
-    # Cut and resample all files
+    # Cut and resample, create geodict
     try:
-        bounds=None
+        bounds = None
         shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
         slopedict, duplicated = GDALGrid.getFileGeoDict(slope_file)
         if bounds is not None:  # Make sure bounds are within ShakeMap Grid
@@ -143,6 +153,7 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
         raise NameError('Unable to create base geodict.')
 
     # Load in data
+    ############## Still need to make DFF and DFS layers
     try:
         # Load in slope data
         slopegrid = GDALGrid.load(slope_file, samplegeodict=gdict, resample=False)
@@ -151,17 +162,20 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
         shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, resample=True, method='linear', adjust='res')
         MMI_data = shakemap.getLayer('mmi').getData().astype(float)
         # Load in Dff
+        ############### STILL NEED THIS FILE
         dffgrid = GDALGrid.load(dff_file, samplegeodict=gdict, resample=False)
         dff_data = dffgrid.getData().astype(float)
         # Load in DFS
+        ############### STILL NEED THIS FILE
         dfsgrid = GDALGrid.load(dfs_file, samplegeodict=gdict, resample=False)
         dfs_data = dfsgrid.getData().astype(float)
-        # Load in Slope Position
+        # Load in elevation
         elev_grid = GDALGrid.load(elev_file, samplegeodict=gdict, resample=False)
         DEM = elev_grid.getData().astype(float)
     except:
         print('Data could not be retrieved.')
 
+    # Read in classifications
     try:
         mmi_class = cmodel['classification']['MMI']
         slope_class = cmodel['classification']['slope']
@@ -176,6 +190,8 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Could not create slope position grid.')
 
+    ####### Split classification strings into lists containing numbers and classify layers
+    # MMI classifications
     try:
         mmi_classes = mmi_class.split(',')
         for i in mmi_classes:
@@ -188,6 +204,7 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Could not categorize MMI values')
 
+    # Slope Classifications
     try:
         slope_classes = slope_class.split(',')
         k = 1
@@ -202,6 +219,7 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Could not recategorize Slope Values.')
 
+    # DFF classifications
     try:
         dff_classes = dff_class.split(',')
         k = 1
@@ -216,6 +234,7 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Could not recategorize DFF values.')
 
+    # DFS classifications
     try:
         dfs_classes = dfs_class.split(',')
         k = 1
@@ -230,6 +249,7 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Could not recategorize DFS values.')
 
+    # Slope position classification
     try:
         slope_pos_classes = slope_pos_class.split(',')
         k = 1
@@ -240,6 +260,10 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Could not recategorize slope position values.')
 
+    ##############
+    # This section runs all the calculations
+    ##############
+    # Run each layer through a membership function
     try:
         layers = []
         # Calculate layers
@@ -257,15 +281,15 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     except:
         print('Layer calculations failed.')
 
+    # Apply final calculations operator
+    # From Kritikos paper equation 4
+    ############ Haven't run.
     try:
-        # Calculate final model
-        for l in layers.items():
-
-
-        mu_x = (pi_operator(mu_i, 1, n))^(1-gamma) * (1 - pi_operator(1-mu_i, 1, n))^(gamma)
-        # pi_operator is a multiplication summation
-
-
+        a = np.prod(layers)
+        b = np.prod(1-layers)
+        mu_x = np.power(a, 1-gamma) * np.power(1-b, gamma)   
+    except:
+        print('Unable to calculate final product.')
 
 
 
