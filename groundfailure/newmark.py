@@ -94,7 +94,7 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
     else:
         tempgdict = susdict.getBoundsWithin(shkgdict)
     #sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=False)
-    sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=True, method='linear', adjust='bounds')
+    sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=True, method='linear')
     gdict = sus.getGeoDict()
     susdat = sus.getData()
     #except Exception as e:
@@ -537,7 +537,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
         gdict = slpdict.getBoundsWithin(shkgdict)
 
     # Load in slope file
-    slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=True, method='linear', adjust='bounds')
+    slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=True, method='linear')
     #slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=False)
     gdict = slopegrid.getGeoDict()  # Get this again just in case it changed
     slope = slopegrid.getData().astype(float)/slopediv  # Adjust slope to degrees, if needed
