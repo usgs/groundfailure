@@ -175,7 +175,7 @@ def main(args):
                     for filen in filenames1:
                         filenames.append(filen)
             if args.make_interactive_plots:
-                plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
+                plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
                 junk, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=shakefile, inventory_shapefile=None,
                                                   maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
                                                   scaletype='continuous', lims=lims, logscale=logscale,
