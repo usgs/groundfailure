@@ -3,7 +3,6 @@
 #stdlib imports
 import argparse
 import os.path
-import datetime
 from configobj import ConfigObj
 import urllib.request
 import urllib.error
@@ -24,6 +23,7 @@ from groundfailure.hazus import hazus_liq
 from groundfailure.holzer import holzer_liq
 from groundfailure.savelayers import savelayers
 from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap, interactiveMap
+from mapio.shake import ShakeGrid
 
 
 def main(args):
@@ -50,6 +50,15 @@ def main(args):
             else:
                 raise NameError('Could not find "%s" as a file or a valid url' % (shakefile))
                 return
+
+        try:
+            edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
+            temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+            edict['eventid'] = temp['shakemap_id']
+            edict['version'] = temp['shakemap_version']
+        except:
+            print('failed to get edict')
+            edict = None
 
         # Make folder in outfolder for all results, if it doesn't already exist
         eventid = getHeaderData(shakefile)[0]['event_id']
@@ -183,6 +192,15 @@ def main(args):
                 for filen in filenames1:
                     filenames.append(filen)
             if args.gis:
+                if outdir is None:
+                    print('No output location given, using current directory for outputs\n')
+                    outdir = os.getcwd()
+                if edict is not None:
+                    outfolder = os.path.join(outdir, edict['event_id'])
+                else:
+                    outfolder = outdir
+                if not os.path.isdir(outfolder):
+                    os.makedirs(outfolder)
                 for key in maplayers:
                     # Get simplified name of key for file naming
                     RIDOF = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
@@ -194,7 +212,7 @@ def main(args):
                     keyS = re.sub('[()]*', '', keyS)
                     #remove any blank spaces
                     keyS = keyS.replace(' ', '')
-                    filen = os.path.join(outdir, '%s_%s.bil' % (filename, keyS))
+                    filen = os.path.join(outfolder, '%s_%s.bil' % (filename, keyS))
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     filenames.append(filen)
 
