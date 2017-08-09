@@ -24,7 +24,7 @@ source activate $VENV
 # do pip installs of those things that are not available via conda.
 pip -v install https://github.com/usgs/MapIO/archive/master.zip
 pip -v install https://github.com/usgs/earthquake-impact-utils/archive/master.zip
-pip -v install https://github.com/gem/oq-hazardlib/archive/master.zip
+pip -v install https://github.com/gem/oq-engine/archive/master.zip
 pip install sphinx_rtd_theme
 pip install git+git://github.com/python-visualization/folium.git
 
