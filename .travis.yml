@@ -32,7 +32,7 @@ before_script:
     - sleep 3 # give xvfb some time to start
 script:
     - export PYTHONPATH="."
-    - py.test --cov=groundfailure
+    - py.test
     - echo `sphinx-build --version`
 after_success:
     - pip install codecov codacy-coverage
