@@ -21,10 +21,14 @@ conda create --name $VENV --yes --channel conda-forge python=$PYVER ${DEPARRAY[*
 # activate the new environment
 source activate $VENV
 
+# OpenQuake v2.5.0 - need this for mapio
+curl --max-time 60 --retry 3 -L https://github.com/gem/oq-engine/archive/v2.5.0.zip -o openquake.zip
+pip -v install --no-deps openquake.zip
+rm openquake.zip
+
 # do pip installs of those things that are not available via conda.
 pip -v install https://github.com/usgs/MapIO/archive/master.zip
 pip -v install https://github.com/usgs/earthquake-impact-utils/archive/master.zip
-#pip -v install https://github.com/gem/oq-engine/archive/master.zip
 pip install sphinx_rtd_theme
 pip install git+git://github.com/python-visualization/folium.git
 
