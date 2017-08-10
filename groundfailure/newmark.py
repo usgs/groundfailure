@@ -93,7 +93,8 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
         tempgdict = susdict.getBoundsWithin(tempgdict1)
     else:
         tempgdict = susdict.getBoundsWithin(shkgdict)
-    sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=False)
+    #sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=False)
+    sus = GDALGrid.load(susfile, samplegeodict=tempgdict, resample=True, method='linear')
     gdict = sus.getGeoDict()
     susdat = sus.getData()
     #except Exception as e:
@@ -536,7 +537,8 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
         gdict = slpdict.getBoundsWithin(shkgdict)
 
     # Load in slope file
-    slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=False)
+    slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=True, method='linear')
+    #slopegrid = GDALGrid.load(slopefile, samplegeodict=gdict, resample=False)
     gdict = slopegrid.getGeoDict()  # Get this again just in case it changed
     slope = slopegrid.getData().astype(float)/slopediv  # Adjust slope to degrees, if needed
     # Change any zero slopes to a very small number to avoid dividing by zero later
@@ -795,8 +797,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         tempgdict = GeoDict.createDictFromBox(bounds['xmin'], bounds['xmax'], bounds['ymin'], bounds['ymax'],
                                               shkgdict.dx, shkgdict.dy, inside=False)
         gdict = shkgdict.getBoundsWithin(tempgdict)
-        shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, adjust='bounds')
-        #shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, resample=True, method='linear', adjust='bounds')
+        #shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, adjust='bounds')
+        shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict, resample=True, method='linear', adjust='bounds')
     else:
         shakemap = ShakeGrid.load(shakefile, adjust='res')
     shkgdict = shakemap.getGeoDict()  # Get updated geodict

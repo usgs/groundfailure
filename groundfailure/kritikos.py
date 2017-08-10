@@ -32,7 +32,7 @@ def create_slopePos(slope, DEM, cmodel):
 
     # Load in variables
     slopethresh = cmodel['thresholds']['slope']  # This is the minimum slope under which a slope is considered flat.
-    elevthresh = cmodel['thresholds']['elev'] # This is the elevation difference that is used to calculate the TPI (elevation in respect to surrounding elevation, how much difference in elevation is considered "flat")
+    elevthresh = cmodel['thresholds']['elev']  # This is the elevation difference that is used to calculate the TPI (elevation in respect to surrounding elevation, how much difference in elevation is considered "flat")
     locthresh = cmodel['thresholds']['loc']  # This is the grid padding for the moving DEM average calculation.  Defines the scale as small-neighborhood or large neighborhood which will significantly alter the classification (see Figures on pages 52 and 53)
 
     # Take a moving average over DEM
@@ -287,16 +287,8 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     try:
         a = np.prod(layers)
         b = np.prod(1-layers)
-        mu_x = np.power(a, 1-gamma) * np.power(1-b, gamma)   
+
+        mu_x = np.power(a, 1-gamma) * np.power(1-b, gamma)
     except:
         print('Unable to calculate final product.')
-
-
-
-
-
-
-
-
-
 

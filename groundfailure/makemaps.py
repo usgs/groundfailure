@@ -1367,15 +1367,15 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         # plt.axis('off')
         # panelhandle.remove()
 
-        if edict is not None:
-            if isScenario:
-                title = edict['event_description']
-            else:
-                timestr = edict['event_timestamp'].strftime('%b %d %Y')
-                title = 'M%.1f %s v%i - %s' % (edict['magnitude'], timestr, edict['version'], edict['event_description'])
-            plt.suptitle(title+'\n'+sref, fontsize=16)
-        else:
-            plt.suptitle(sref, fontsize=16)
+        # if edict is not None:
+        #     if isScenario:
+        #         title = edict['event_description']
+        #     else:
+        #         timestr = edict['event_timestamp'].strftime('%b %d %Y')
+        #         title = 'M%.1f %s v%i - %s' % (edict['magnitude'], timestr, edict['version'], edict['event_description'])
+        #     plt.suptitle(title+'\n'+sref, fontsize=16)
+        # else:
+        #     plt.suptitle(sref, fontsize=16)
 
         sref_fix = sref
         if sref != '':
@@ -1445,6 +1445,11 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             #    label = ('%s (%s)') % (feature['properties']['value'], feature['properties']['units'].replace('pct', '%'))
             #    plugins.PolyLineTextPath(feature['geometry']['coordinates'], label,
             #                             center=True, attributes={'fill': 'white', 'font-size': '14'}).add_to(map1)
+
+        #draw star at epicenter
+        if edict is not None:
+            folium.RegularPolygonMarker(location=[edict['lat'], edict['lon']], popup='Epicenter',
+                                        fill_color='#769d96', number_of_sides=4, radius=6).add_to(map1)
 
         filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
         map1.save(filen)
