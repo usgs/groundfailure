@@ -9,6 +9,7 @@ import os.path
 import re
 import collections
 import copy
+from scipy import sparse
 
 #third party imports
 from mapio.shake import ShakeGrid
@@ -311,7 +312,6 @@ class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.,
                  bounds=None, numstd=1):
         """Set up the logistic model
-        # ADD BOUNDS TO THIS MODEL
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
           model should be described in each config file.
         :type config: dictionary
@@ -329,6 +329,9 @@ class LogisticModel(object):
           of 1.)
         :type slopediv: float
         :param numstd: number of +/- standard deviations to use if uncertainty is computed (uncertfile is not None)
+        :param bounds: dictionary of boundaries to cut to in the form bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
+          default of None uses ShakeMap boundaries
+        :param numstd: number of standard deviations to run for computing uncertainties (if uncertfile is not None)
 
         """
         mnames = getLogisticModelNames(config)
