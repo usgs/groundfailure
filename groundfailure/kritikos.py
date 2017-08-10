@@ -287,6 +287,8 @@ def kritikos_fuzzygamma(shakefile, config, bounds=None):
     try:
         a = np.prod(layers)
         b = np.prod(1-layers)
+
         mu_x = np.power(a, 1-gamma) * np.power(1-b, gamma)
     except:
         print('Unable to calculate final product.')
+
