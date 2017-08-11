@@ -332,6 +332,7 @@ class LogisticModel(object):
         :param bounds: dictionary of boundaries to cut to in the form bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
           default of None uses ShakeMap boundaries
         :param numstd: number of standard deviations to run for computing uncertainties (if uncertfile is not None)
+        :param sparse: Use sparse matrices to save on memory, needs slopefile to be useful, default True
 
         """
         mnames = getLogisticModelNames(config)
@@ -396,6 +397,43 @@ class LogisticModel(object):
         else:
             raise Exception('All predictor variable grids must be a valid GMT or ESRI file type')
 
+        # ADD SHAKING THRESHOLD TO FURTHER REDUCE CALCS?
+
+        try:
+            self.slopemin = float(config[self.model]['slopemin'])
+            self.slopemax = float(config[self.model]['slopemax'])
+        except:
+            print('could not find slopemin and/or slopemax in config, limits of 0 to 90 degrees will be used')
+            self.slopemin = 0.
+            self.slopemax = 90.
+
+        if self.slopefile is not None:  # Load in slopefile, if it exists, and add areas outside of thresholds to zeros layer
+            ftype = getFileType(self.slopefile)
+            if 'slope' in self.interpolations:
+                interp = self.interpolations['slope']
+            else:
+                interp = 'linear'
+            if ftype == 'gmt':
+                slope = GMTGrid.load(self.slopefile, sampledict, resample=True, method=interp,
+                                     doPadding=True)
+            elif ftype == 'esri':
+                slope = GDALGrid.load(self.slopefile, sampledict, resample=True, method=interp,
+                                      doPadding=True)
+            else:
+                msg = "Slopefile does not appear to be a valid GMT or ESRI file. Won't use slopefile to reduce computational load"
+                continue
+            slope1 = slope.getData().astype(float)/self.slopediv
+            nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
+            nonzero = nonzero[0, :, :]
+            #temp = slope1 * nonzero
+            #slope1 = sparse.bsr_matrix(temp)
+            # Clear unneeded variables out of memory
+            del(slope1)
+            del(slope)
+        else:
+            nonzero = None
+
+        # Apply to shakemap
         #now load the shakemap, resampling and padding if necessary
         self.shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict, resample=True, doPadding=True,
                                        adjust='res')
@@ -431,7 +469,9 @@ class LogisticModel(object):
                                 msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
                                                                                                               layerfile)
                                 raise Exception(msg)
-                            self.layerdict[layername] = lyr
+                            ## CONVERT SLOPEMINS TO ZEROS
+                            self.layerdict[layername] = sparse.to_bsr(lyr.getData())
+                            del(lyr)
             else:
                 #first, figure out what kind of file we have (or is it a directory?)
                 ftype = getFileType(layerfile)
@@ -495,14 +535,6 @@ class LogisticModel(object):
             self.equationmax = None
 
         self.geodict = self.shakemap.getGeoDict()
-
-        try:
-            self.slopemin = float(config[self.model]['slopemin'])
-            self.slopemax = float(config[self.model]['slopemax'])
-        except:
-            print('could not find slopemin and/or slopemax in config, no limits will be applied')
-            self.slopemin = 0.
-            self.slopemax = 90.
 
     def getEquation(self):
         """Method for LogisticModel class to extract a string defining the equation for the model which can be run
