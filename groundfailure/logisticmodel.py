@@ -316,9 +316,13 @@ def checkTerm(term, layers):
 
 
 class TempHdf(object):
-    def __init__(self, grid2dfile, filename):
+    def __init__(self, grid2dfile, filename, name=None):
         """
         Convert grid2d file into a temporary hdf5 file for reducing memory load
+        :param grid2dfile: grid2d file object to save
+        :param filename: full file path to where file should be saved (recommended it be a temporary dir)
+        :param name: name of layer, if None, will use filename minus the extension, or if a multihazard grid2d object,
+            each layer will have its own name
         """
         filename1, file_ext = os.path.splitext(filename)
         if file_ext != '.hdf5':
@@ -328,112 +332,109 @@ class TempHdf(object):
             self.gdict = grid2dfile.getGeoDict()
             if type(grid2dfile) == ShakeGrid:
                 for layer in grid2dfile.getLayerNames():
-                    tempfile.create_array(tempfile.root, layer, grid2dfile.getLayer(layer).getData())
+                    self.tempfile.create_array(self.tempfile.root, name=layer, obj=grid2dfile.getLayer(layer).getData())
                 self.shakedict = grid2dfile.getShakeDict()
                 self.edict = grid2dfile.getEventDict()
             else:
-                tempfile.create_array(tempfile.root, grid2dfile.getData())
+                if name is None:
+                    name=os.path.basename(filename1)
+                self.tempfile.create_array(self.tempfile.root, name=name, obj=grid2dfile.getData())
             self.filename = os.path.abspath(filename)
         
-        def getFilepath():
-            """
-            return full file path
-            """
-            return self.filename
+    def getFilepath(self):
+        """
+        return full file path
+        """
+        return self.filename
+    
+    def getGeoDict(self):
+        """
+        """
+        return self.gdict
         
-        def getGeoDict():
-            """
-            """
-            return self.gdict
-            
-        def getShakeDict():
-            """
-            """
-            try:
-                return self.shakedict
-            except Exception as e:
-                print(e)
-                print('no shake dictionary found')
-                return None
-        
-        def getEventDict():
-            """
-            """
-            try:
-                return self.edict
-            except Exception as e:
-                print(e)
-                print('no event dictionary found')
-                return None
+    def getShakeDict(self):
+        """
+        """
+        try:
+            return self.shakedict
+        except Exception as e:
+            print(e)
+            print('no shake dictionary found')
+            return None
+    
+    def getEventDict(self):
+        """
+        """
+        try:
+            return self.edict
+        except Exception as e:
+            print(e)
+            print('no event dictionary found')
+            return None
 
-        def getSlice(rowstart=None, rowend=None, colstart=None, colend=None, layer=None):
-            """
-            return specified slice of data
-            :param rowstart: tarting row index (inclusive), if None, will start at 0
-            :param rowend: ending row index (exclusive), if None, will end at last row
-            :param colstart: starting column index (inclusive), if None, will start at 0
-            :param colend: ending column index (exclusive), if None, will end at last row
-            :param layer: single string or tuple of strings to return. if None or tuple, will return dictionary
-              of numpy arrays from all layers (array if there is only one layer)
-            :returns dataslice: if layer is specified, will return numpy array, otherwise will return list of arrays
-            """
-            if rowstart is None:
-                rowstart = ''
-            else:
-                rowstart = int(rowstart)
-            if rowend is None:
-                rowend = ''
-            else:
-                rowend = int(rowend)
-            if colstart is None:
-                colstart = ''
-            else:
-                colstart = int(colstart)
-            if colend is None:
-                colend = ''
-            else:
-                colend = int(colend)
-                
-            indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
-            with tables.open_file(self.filename, mode='r') as file1:
-                if layer is None:
-                    dataslice = {}
-                    for layername, layerfile in self.root.items():
-                        dataslice[layername] = eval('file1.root.%s[%s]' % (layername, indstr))
-                else:
-                    if layer not in self.root.keys():
-                        raise Exception('No child with the name %s found in %s' % (layer, self.filename))
-                    dataslice = eval('file1.root.%s[%s]' % (layer, indstr))
-            return dataslice
+    def getSlice(self, rowstart=None, rowend=None, colstart=None, colend=None, layer=None):
+        """
+        return specified slice of data
+        :param rowstart: tarting row index (inclusive), if None, will start at 0
+        :param rowend: ending row index (exclusive), if None, will end at last row
+        :param colstart: starting column index (inclusive), if None, will start at 0
+        :param colend: ending column index (exclusive), if None, will end at last row
+        :param layer: single string of layer/child name to return. 
+        :returns dataslice: numpy array of sliced data
+        """
+        if rowstart is None:
+            rowstart = ''
+        else:
+            rowstart = int(rowstart)
+        if rowend is None:
+            rowend = ''
+        else:
+            rowend = int(rowend)
+        if colstart is None:
+            colstart = ''
+        else:
+            colstart = int(colstart)
+        if colend is None:
+            colend = ''
+        else:
+            colend = int(colend)
+            
+        indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
+        with tables.open_file(self.filename, mode='r') as file1:
+            try:
+                dataslice = eval('file1.root.%s[%s]' % (layer, indstr))
+            except Exception as e:
+                print(e)
+        return dataslice
  
-        def getSliceDiv(rowmax=500, colmax=None):
-            """
-            Determine how to slice the arrays
-            :param rowmax: maximum number of rows in each slice, default None uses entire row
-            :param colmax: maximum number of columns in each slice, default None uses entire column
-            :returns rowstarts, rowends, colstarts, colends:
-            """
-            numrows = self.gdict.ny
-            numcols = self.gdict.nx
-            if rowmax is None:
-                rowmax = numrows
-            if colmax is None:
-                colmax = numcols
-            numrowslice, rmrow = divmod(numrows, rowmax)
-            numcolslice, rmcol = divmod(numrows, rowmax)
-            rowst = np.arange(0, numrowslice * rowmax, rowmax)
-            rowen = np.arange(rowmax, numrowslice * rowmax, rowmax)
-            if rmrow > 0:
-                rowen = np.hstack([rowen, -1])
-            colst = np.arange(0, numcolslice * colmax, colmax)
-            colen = np.arange(colmax, numcolslice * colmax, colmax)
-            if rmcol > 0:
-                colen = np.hstack([colen, -1])
-            rowstarts = np.tile(rowst, len(colst))
-            colstarts = np.repeat(colst, len(rowst))
-            rowends = np.tile(rowen, len(colen))
-            colends = np.repeat(colen, len(rowen))
-            return rowstarts, rowends, colstarts, colends
+    def getSliceDiv(self, rowmax=500, colmax=None):
+        """
+        Determine how to slice the arrays
+        :param rowmax: maximum number of rows in each slice, default None uses entire row
+        :param colmax: maximum number of columns in each slice, default None uses entire column
+        :returns rowstarts, rowends, colstarts, colends:
+        """
+        numrows = self.gdict.ny
+        numcols = self.gdict.nx
+        if rowmax is None:
+            rowmax = numrows
+        if colmax is None:
+            colmax = numcols
+        numrowslice, rmrow = divmod(numrows, rowmax)
+        numcolslice, rmcol = divmod(numrows, rowmax)
+        rowst = np.arange(0, numrowslice * rowmax, rowmax)
+        rowen = np.arange(rowmax, numrowslice * rowmax, rowmax)
+        if rmrow > 0:
+            rowen = np.hstack([rowen, -1])
+        colst = np.arange(0, numcolslice * colmax, colmax)
+        colen = np.arange(colmax, numcolslice * colmax, colmax)
+        if rmcol > 0:
+            colen = np.hstack([colen, -1])
+        rowstarts = np.tile(rowst, len(colst))
+        colstarts = np.repeat(colst, len(rowst))
+        rowends = np.tile(rowen, len(colen))
+        colends = np.repeat(colen, len(rowen))
+        return rowstarts, rowends, colstarts, colends
 
 
 class LogisticModel(object):
@@ -713,7 +714,7 @@ class LogisticModel(object):
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
-            ind = copy.copy(P)
+            #ind = copy.copy(P)
             P = eval(eqn)
         if self.uncert is not None:
             # Make empty matrix to fill
@@ -721,6 +722,7 @@ class LogisticModel(object):
             Xmax = Xmin.copy()
             # Loop through slices, appending output each time
             for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
+                %import pdb; pdb.set_trace()
                 Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
                 Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
             Pmin = 1/(1 + np.exp(-Xmin))
@@ -764,13 +766,13 @@ class LogisticModel(object):
                                  'label': ('%s Probability (+%0.1f std ground motion)') % (self.modeltype.capitalize(), self.numstd),
                                  'type': 'output',
                                  'description': description}
-
+        # This step might swamp memory for higher resolution runs
         if self.saveinputs is True:
             for layername, layergrid in list(self.layerdict.items()):
                 units = self.units[layername]
                 if units is None:
                     units = ''
-                rdict[layername] = {'grid': layergrid,
+                rdict[layername] = {'grid': Grid2D(layergrid.getSlice(None, None, None, None, layer=layername), self.geodict),
                                     'label': '%s (%s)' % (layername, units),
                                     'type': 'input',
                                     'description': {'units': units, 'shakemap': shakedetail}}
@@ -789,18 +791,19 @@ class LogisticModel(object):
                     # Layer is derived from several input layers, skip outputting this layer
                 if getkey in rdict:
                     continue
-                layer = self.shakemap.getLayer(getkey)
-                rdict[getkey] = {'grid': layer,
+                layer = self.shakemap.getSlice(None, None, None, None, layer=getkey)
+                rdict[getkey] = {'grid': Grid2D(layer, self.geodict),
                                  'label': '%s (%s)' % (getkey.upper(), units),
                                  'type': 'input',
                                  'description': {'units': units, 'shakemap': shakedetail}}
                 if self.uncert is not None:
-                    layer1 = np.exp(np.log(layer.getData()) - self.uncert.getLayer('std'+getkey).getData())
+                    uncertlayer = self.uncert.getSlice(None, None, None, None, layer='std'+getkey)
+                    layer1 = np.exp(np.log(layer) - uncertlayer)
                     rdict[getkey + 'modelmin'] = {'grid': Grid2D(layer1, self.geodict),
                                                   'label': '%s - %0.1f std (%s)' % (getkey.upper(), self.numstd, units),
                                                   'type': 'input',
                                                   'description': {'units': units, 'shakemap': shakedetail}}
-                    layer2 = np.exp(np.log(layer.getData()) + self.uncert.getLayer('std'+getkey).getData())
+                    layer2 = np.exp(np.log(layer) + uncertlayer)
                     rdict[getkey + 'modelmax'] = {'grid': Grid2D(layer2, self.geodict),
                                                   'label': '%s + %0.1f std (%s)' % (getkey.upper(), self.numstd, units),
                                                   'type': 'input',
