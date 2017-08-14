@@ -10,6 +10,8 @@ import re
 import collections
 import copy
 from scipy import sparse
+import tempfile
+import tables
 
 #third party imports
 from mapio.shake import ShakeGrid
@@ -29,13 +31,15 @@ OPERATORS = ['log', 'log10', 'arctan', 'power', 'sqrt', 'minimum', 'pi']  # thes
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
 INTPAT = '[0-9]+'
 OPERATORPAT = '[\+\-\*\/]*'
-MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
+          'Nov', 'Dec']
 
 
 def getLogisticModelNames(config):
     """Get the names of the models present in the configobj
 
-    :param config: configobj (config .ini file read in using configobj) defining the model and its inputs
+    :param config: configobj (config .ini file read in using configobj)
+     defining the model and its inputs
     :type config: dictionary
     :returns:
         names: list of model names
@@ -98,9 +102,11 @@ def getAllGridFiles(indir):
 
 
 def validateCoefficients(cmodel):
-    """Ensures coefficients provided in model description are valid and outputs a dictionary of the coefficients.
+    """Ensures coefficients provided in model description are valid and outputs
+    a dictionary of the coefficients.
 
-    :param cmodel: subdictionary from config for specific model, e.g. cmodel = config['test_model']
+    :param cmodel: subdictionary from config for specific model,
+     e.g. cmodel = config['test_model']
     :type cmodel: dictionary
     :returns:
         coeffs(dictionary): a dictionary of model coefficients named b0, b1, b2...
@@ -308,6 +314,100 @@ def checkTerm(term, layers):
     return (term, tterm, timeField)
 
 
+class TempHdf(object):
+    def __init__(self, grid2dfile, filename):
+        """
+        Convert grid2d file into a temporary hdf5 file for reducing memory load
+        """
+        filename1, file_ext = os.path.splitext(filename)
+        if file_ext != '.hdf5':
+            filename = filename1 + '.hdf5'
+            print('Changed extension from %s to .hdf5' % (file_ext,))
+        with tables.open_file(filename, mode='w') as self.tempfile:
+            self.gdict = grid2dfile.getGeoDict()
+            if type(grid2dfile) == ShakeGrid:
+                for layer in grid2dfile.getLayerNames():
+                    tempfile.create_array(tempfile.root, layer, grid2dfile.getLayer(layer).getData())
+            else:
+                tempfile.create_array(tempfile.root, grid2dfile.getData())
+            self.filename = os.path.abspath(filename)
+        
+        def getFilepath():
+            """
+            return full file path
+            """
+            return self.filename
+        
+        def getSlice(rowstart='', rowend='', colstart='', colend='', layer=None):
+            """
+            return specified slice of data
+            :param rowstart: tarting row index (inclusive), if None, will start at 0
+            :param rowend: ending row index (exclusive), if None, will end at last row
+            :param colstart: starting column index (inclusive), if None, will start at 0
+            :param colend: ending column index (exclusive), if None, will end at last row
+            :param layer: single string or tuple of strings to return. if None or tuple, will return dictionary
+              of numpy arrays from all layers (array if there is only one layer)
+            :returns dataslice: if layer is specified, will return numpy array, otherwise will return list of arrays
+            """
+            if rowstart is None:
+                rowstart = ''
+            else:
+                rowstart = int(rowstart)
+            if rowend is None:
+                rowend = ''
+            else:
+                rowend = int(rowend)
+            if colstart is None:
+                colstart = ''
+            else:
+                colstart = int(colstart)
+            if colend is None:
+                colend = ''
+            else:
+                colend = int(colend)
+                
+            indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
+            with tables.open_file(self.filename, mode='r') as file1:
+                if layer is None:
+                    dataslice = {}
+                    for layername, layerfile in self.root.items():
+                        dataslice[layername] = eval('file1.root.%s[%s, %s]' % (layername, indstr))
+                else:
+                    if layer not in self.root.keys():
+                        raise Exception('No child with the name %s found in %s' % (layer, self.filename))
+                    dataslice = eval('file1.root.%s[%s, %s]' % (layer, indstr))
+            return dataslice
+ 
+        def getSliceDiv(rowmax=500, colmax=None):
+            """
+            Determine how to slice the arrays
+            :param rowmax: maximum number of rows in each slice, default None uses entire row
+            :param colmax: maximum number of columns in each slice, default None uses entire column
+            :returns rowstarts, rowends, colstarts, colends:
+            """
+            numrows = self.gdict.ny
+            numcols = self.gdict.nx
+            if rowmax is None:
+                rowmax = numrows
+            if colmax is None:
+                colmax = numcols
+            numrowslice, rmrow = divmod(numrows, rowmax)
+            numcolslice, rmcol = divmod(numrows, rowmax)
+            rowst = np.arange(0, numrowslice * rowmax, rowmax)
+            rowen = np.arange(rowmax, numrowslice * rowmax, rowmax)
+            if rmrow > 0:
+                rowen = np.hstack([rowen, -1])
+            colst = np.arange(0, numcolslice * colmax, colmax)
+            colen = np.arange(colmax, numcolslice * colmax, colmax)
+            if rmcol > 0:
+                colen = np.hstack([colen, -1])
+            rowstarts = np.tile(rowst, len(colst))
+            colstarts = np.repeat(colst, len(rowst))
+            rowends = np.tile(rowen, len(colen))
+            colends = np.repeat(colen, len(rowen))
+            return rowstarts, rowends, colstarts, colends
+
+
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.,
                  bounds=None, numstd=1):
@@ -332,8 +432,6 @@ class LogisticModel(object):
         :param bounds: dictionary of boundaries to cut to in the form bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
           default of None uses ShakeMap boundaries
         :param numstd: number of standard deviations to run for computing uncertainties (if uncertfile is not None)
-        :param sparse: Use sparse matrices to save on memory, needs slopefile to be useful, default True
-
         """
         mnames = getLogisticModelNames(config)
         if len(mnames) == 0:
@@ -370,6 +468,8 @@ class LogisticModel(object):
         # get month of event
         griddict, eventdict, specdict, fields, uncertainties = getHeaderData(shakefile)
         MONTH = MONTHS[(eventdict['event_timestamp'].month)-1]
+        
+        # ADD SHAKING THRESHOLD HERE TO FURTHER REDUCE CALCS?
 
         # Figure out how/if need to cut anything
         geodict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
@@ -397,8 +497,7 @@ class LogisticModel(object):
         else:
             raise Exception('All predictor variable grids must be a valid GMT or ESRI file type')
 
-        # ADD SHAKING THRESHOLD TO FURTHER REDUCE CALCS?
-
+        # Find slope thresholds, if applicable
         try:
             self.slopemin = float(config[self.model]['slopemin'])
             self.slopemax = float(config[self.model]['slopemax'])
@@ -406,7 +505,7 @@ class LogisticModel(object):
             print('could not find slopemin and/or slopemax in config, limits of 0 to 90 degrees will be used')
             self.slopemin = 0.
             self.slopemax = 90.
-
+                
         if self.slopefile is not None:  # Load in slopefile, if it exists, and add areas outside of thresholds to zeros layer
             ftype = getFileType(self.slopefile)
             if 'slope' in self.interpolations:
@@ -421,7 +520,6 @@ class LogisticModel(object):
                                       doPadding=True)
             else:
                 msg = "Slopefile does not appear to be a valid GMT or ESRI file. Won't use slopefile to reduce computational load"
-                continue
             slope1 = slope.getData().astype(float)/self.slopediv
             nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
             nonzero = nonzero[0, :, :]
@@ -432,24 +530,28 @@ class LogisticModel(object):
             del(slope)
         else:
             nonzero = None
-
+    
+        # Make temporary directory for hdf5 pytables file storage
+        self.tempdir = tempfile.mkdtemp() 
         # Apply to shakemap
         #now load the shakemap, resampling and padding if necessary
-        self.shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict, resample=True, doPadding=True,
-                                       adjust='res')
+        temp = ShakeGrid.load(shakefile, samplegeodict=sampledict, resample=True, doPadding=True,
+                              adjust='res')
+        self.shakemap = makehdf(temp, os.path.join(self.tempdir, 'shakemap'))
 
         # take uncertainties into account
         if uncertfile is not None:
             try:
-                self.uncert = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True,
-                                             adjust='res')
+                temp = ShakeGrid.load(uncertfile, samplegeodict=sampledict, resample=True, doPadding=True,
+                                      adjust='res')
+                self.uncert = makehdf(temp, os.path.join(self.tempdir, 'uncert'))
             except:
                 print('Could not read uncertainty file, ignoring uncertainties')
                 self.uncert = None
         else:
             self.uncert = None
 
-        #load the predictor layers into a dictionary
+        #load the predictor layers, save as hdf5 temporary files, put file locations into a dictionary
         self.layerdict = {}  # key = layer name, value = grid object
         for layername, layerfile in self.layers.items():
             if isinstance(layerfile, list):
@@ -460,36 +562,32 @@ class LogisticModel(object):
                             ftype = getFileType(layerfile)
                             interp = self.interpolations[layername]
                             if ftype == 'gmt':
-                                lyr = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
-                                                   doPadding=True)
-                            elif ftype == 'esri':
-                                lyr = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                temp = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
                                                     doPadding=True)
+                            elif ftype == 'esri':
+                                temp = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                                     doPadding=True)
                             else:
                                 msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
                                                                                                               layerfile)
                                 raise Exception(msg)
-                            ## CONVERT SLOPEMINS TO ZEROS
-                            self.layerdict[layername] = sparse.to_bsr(lyr.getData())
-                            del(lyr)
+                            self.layerdict[layername] = makehdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
+                            del(temp)
             else:
                 #first, figure out what kind of file we have (or is it a directory?)
                 ftype = getFileType(layerfile)
                 interp = self.interpolations[layername]
                 if ftype == 'gmt':
-                    lyr = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
+                    temp = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
                                        doPadding=True)
                 elif ftype == 'esri':
-                    lyr = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
+                    temp = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
                                         doPadding=True)
                 else:
                     msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername, layerfile)
                     raise Exception(msg)
-                self.layerdict[layername] = lyr
-
-        shapes = {}
-        for layername, layer in self.layerdict.items():
-            shapes[layername] = layer.getData().shape
+                self.layerdict[layername] = makehdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
+                del(temp)
 
         self.nuggets = [str(self.coeffs['b0'])]
 
@@ -618,12 +716,12 @@ class LogisticModel(object):
                 # Apply slope min/max limits
                 print('applying slope thresholds')
                 P[slope > self.slopemax] = 0.
-                P[slope < self.slopemin] = 0.
+                P[slope <= self.slopemin] = 0.
                 if self.uncert is not None:
                     Pmin[slope > self.slopemax] = 0.
-                    Pmin[slope < self.slopemin] = 0.
+                    Pmin[slope <= self.slopemin] = 0.
                     Pmax[slope > self.slopemax] = 0.
-                    Pmax[slope < self.slopemin] = 0.
+                    Pmax[slope <= self.slopemin] = 0.
             elif ftype == 'esri':
                 if GDALGrid.getFileGeoDict(self.slopefile)[0] == sampledict:
                         slope = GDALGrid.load(self.slopefile).getData()/self.slopediv
@@ -636,9 +734,9 @@ class LogisticModel(object):
                 P[slope < self.slopemin] = 0.
                 if self.uncert is not None:
                     Pmin[slope > self.slopemax] = 0.
-                    Pmin[slope < self.slopemin] = 0.
+                    Pmin[slope <= self.slopemin] = 0.
                     Pmax[slope > self.slopemax] = 0.
-                    Pmax[slope < self.slopemin] = 0.
+                    Pmax[slope <= self.slopemin] = 0.
             else:
                 print('Slope file does not appear to be a valid GMT or ESRI file, not applying any slope thresholds.'
                       % (self.slopefile))
