@@ -226,7 +226,7 @@ def validateLogisticModels(config):
                         for lfile in layerfile:
                             if timeField == 'MONTH':
                                 pass
-            interpolations = validateInterpolations(cmodel, layers)
+            validateInterpolations(cmodel, layers)
             if cmodel['baselayer'] not in layers:
                 raise Exception('Model %s missing baselayer parameter.' % cmodelname)
         except Exception as e:
@@ -451,7 +451,7 @@ class TempHdf(object):
 
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.,
-                 bounds=None, numstd=1, rowmax=200, colmax=None):
+                 bounds=None, numstd=1):
         """Set up the logistic model
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
           model should be described in each config file.
@@ -495,8 +495,6 @@ class LogisticModel(object):
                        value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
         self.numstd = numstd
-        self.rowmax = rowmax
-        self.colmax = colmax
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to one of the files in the layer section.')
         self.saveinputs = saveinputs
@@ -700,7 +698,7 @@ class LogisticModel(object):
         """
         return self.geodict
 
-    def calculate(self, cleanup=True):
+    def calculate(self, cleanup=True, rowmax=300, colmax=None):
         """Calculate the model
         :param cleanup: if True, will delete temporary hdf5 files, if False, files will remain and model can be calculated again
         :returns:
@@ -711,11 +709,10 @@ class LogisticModel(object):
         """
        
         # Figure out what slices to do
-        rowstarts, rowends, colstarts, colends = self.shakemap.getSliceDiv(self.rowmax, self.colmax)  
+        rowstarts, rowends, colstarts, colends = self.shakemap.getSliceDiv(rowmax, colmax)  
         # Make empty matrix to fill
         X = np.empty([self.geodict.ny, self.geodict.nx])
         # Loop through slices, appending output each time
-        import pdb; pdb.set_trace()
         for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
             X[rowstart:rowend, colstart:colend] = eval(self.equation)
         P = 1/(1 + np.exp(-X))
