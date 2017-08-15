@@ -294,7 +294,7 @@ def checkTerm(term, layers):
             term = term.replace(op, 'np.'+op)
 
     for sm_term in SM_GRID_TERMS:
-        term = term.replace(sm_term, "self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer=%s)" % sm_term)
+        term = term.replace(sm_term, "self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='%s')" % sm_term)
 
     #replace the macro MW with the magnitude value from the shakemap
     term = term.replace('MW', "self.edict['magnitude']")
@@ -309,9 +309,9 @@ def checkTerm(term, layers):
 
     for layer in layers:
         if layer == 'friction':
-            term = term.replace(layer, "np.nan_to_num(self.layerdict['%s'].getData())" % layer)
+            term = term.replace(layer, "np.nan_to_num(self.layerdict['%s'].getSlice(rowstart, rowend, colstart, colend, name='%s'))" % (layer, layer))
         else:
-            term = term.replace(layer, "self.layerdict['%s'].getData()" % layer)
+            term = term.replace(layer, "self.layerdict['%s'].getSlice(rowstart, rowend, colstart, colend, name='%s')" % (layer, layer))
     return (term, tterm, timeField)
 
 
@@ -349,11 +349,13 @@ class TempHdf(object):
     
     def getGeoDict(self):
         """
+        return geodictionary
         """
         return self.gdict
         
     def getShakeDict(self):
         """
+        return shake dictionary if it exists
         """
         try:
             return self.shakedict
@@ -364,6 +366,7 @@ class TempHdf(object):
     
     def getEventDict(self):
         """
+        return event dictionary if it exists
         """
         try:
             return self.edict
@@ -372,7 +375,7 @@ class TempHdf(object):
             print('no event dictionary found')
             return None
 
-    def getSlice(self, rowstart=None, rowend=None, colstart=None, colend=None, layer=None):
+    def getSlice(self, rowstart=None, rowend=None, colstart=None, colend=None, name=None):
         """
         return specified slice of data
         :param rowstart: tarting row index (inclusive), if None, will start at 0
@@ -382,6 +385,8 @@ class TempHdf(object):
         :param layer: single string of layer/child name to return. 
         :returns dataslice: numpy array of sliced data
         """
+        if name is None:        
+            name, ext = os.path.splitext(os.path.basename(self.getFilepath()))     
         if rowstart is None:
             rowstart = ''
         else:
@@ -402,12 +407,13 @@ class TempHdf(object):
         indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
         with tables.open_file(self.filename, mode='r') as file1:
             try:
-                dataslice = eval('file1.root.%s[%s]' % (layer, indstr))
+                dataslice = eval('file1.root.%s[%s]' % (name, indstr))
+                return dataslice
             except Exception as e:
-                print(e)
-        return dataslice
+                raise Exception(e)
+        return
  
-    def getSliceDiv(self, rowmax=500, colmax=None):
+    def getSliceDiv(self, rowmax=None, colmax=None):
         """
         Determine how to slice the arrays
         :param rowmax: maximum number of rows in each slice, default None uses entire row
@@ -416,20 +422,26 @@ class TempHdf(object):
         """
         numrows = self.gdict.ny
         numcols = self.gdict.nx
-        if rowmax is None:
+        if rowmax is None or rowmax>numrows:
             rowmax = numrows
-        if colmax is None:
+        if colmax is None or colmax>numcols:
             colmax = numcols
         numrowslice, rmrow = divmod(numrows, rowmax)
-        numcolslice, rmcol = divmod(numrows, rowmax)
+        numcolslice, rmcol = divmod(numcols, colmax)
         rowst = np.arange(0, numrowslice * rowmax, rowmax)
-        rowen = np.arange(rowmax, numrowslice * rowmax, rowmax)
+        rowen = np.arange(rowmax, (numrowslice + 1) * rowmax, rowmax)
         if rmrow > 0:
+            rowst = np.hstack([rowst, numrowslice * rowmax])            
             rowen = np.hstack([rowen, -1])
+        else:
+            rowen[-1] = -1
         colst = np.arange(0, numcolslice * colmax, colmax)
-        colen = np.arange(colmax, numcolslice * colmax, colmax)
+        colen = np.arange(colmax, (numcolslice + 1) * colmax, colmax)
         if rmcol > 0:
+            colst = np.hstack([colst, numcolslice * colmax])
             colen = np.hstack([colen, -1])
+        else:
+            colen[-1] = -1
         rowstarts = np.tile(rowst, len(colst))
         colstarts = np.repeat(colst, len(rowst))
         rowends = np.tile(rowen, len(colen))
@@ -439,7 +451,7 @@ class TempHdf(object):
 
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.,
-                 bounds=None, numstd=1, rowmax=500, colmax=None):
+                 bounds=None, numstd=1, rowmax=200, colmax=None):
         """Set up the logistic model
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
           model should be described in each config file.
@@ -639,26 +651,26 @@ class LogisticModel(object):
             # Find the term with the shakemap input and replace for these nuggets
             for k, nug in enumerate(self.nuggets):
                 if "self.shakemap.getLayer('pga').getData()" in nug:
-                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pga')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pga'))\
-                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, layer=stdpga'))")
-                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pga')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pga'))\
-                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, layer=stdpga'))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga')",
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga'))\
+                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpga'))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga')",
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga'))\
+                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpga'))")
                 elif "self.shakemap.getLayer('pgv').getData()" in nug:
-                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pgv')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pgv'))\
-                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, layer=stdpgv'))")
-                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pgv')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='pgv'))\
-                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, layer=stdpgv'))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv')",
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv'))\
+                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpgv'))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv')",
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv'))\
+                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpgv'))")
                 elif "self.shakemap.getLayer('mmi').getData()" in nug:
-                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='mmi')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='mmi'))\
-                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, layer=stdmmi'))")
-                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='mmi')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, layer='mmi'))\
-                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, layer=stdmmi'))")
+                    self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi')",
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi'))\
+                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdmmi'))")
+                    self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi')",
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi'))\
+                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdmmi'))")
             self.equationmin = ' + '.join(self.nugmin)
             self.equationmax = ' + '.join(self.nugmax)
         else:
@@ -703,6 +715,7 @@ class LogisticModel(object):
         # Make empty matrix to fill
         X = np.empty([self.geodict.ny, self.geodict.nx])
         # Loop through slices, appending output each time
+        import pdb; pdb.set_trace()
         for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
             X[rowstart:rowend, colstart:colend] = eval(self.equation)
         P = 1/(1 + np.exp(-X))
@@ -722,7 +735,6 @@ class LogisticModel(object):
             Xmax = Xmin.copy()
             # Loop through slices, appending output each time
             for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
-                %import pdb; pdb.set_trace()
                 Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
                 Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
             Pmin = 1/(1 + np.exp(-Xmin))
@@ -772,7 +784,7 @@ class LogisticModel(object):
                 units = self.units[layername]
                 if units is None:
                     units = ''
-                rdict[layername] = {'grid': Grid2D(layergrid.getSlice(None, None, None, None, layer=layername), self.geodict),
+                rdict[layername] = {'grid': Grid2D(layergrid.getSlice(None, None, None, None, name=layername), self.geodict),
                                     'label': '%s (%s)' % (layername, units),
                                     'type': 'input',
                                     'description': {'units': units, 'shakemap': shakedetail}}
@@ -791,13 +803,13 @@ class LogisticModel(object):
                     # Layer is derived from several input layers, skip outputting this layer
                 if getkey in rdict:
                     continue
-                layer = self.shakemap.getSlice(None, None, None, None, layer=getkey)
+                layer = self.shakemap.getSlice(None, None, None, None, name=getkey)
                 rdict[getkey] = {'grid': Grid2D(layer, self.geodict),
                                  'label': '%s (%s)' % (getkey.upper(), units),
                                  'type': 'input',
                                  'description': {'units': units, 'shakemap': shakedetail}}
                 if self.uncert is not None:
-                    uncertlayer = self.uncert.getSlice(None, None, None, None, layer='std'+getkey)
+                    uncertlayer = self.uncert.getSlice(None, None, None, None, name='std'+getkey)
                     layer1 = np.exp(np.log(layer) - uncertlayer)
                     rdict[getkey + 'modelmin'] = {'grid': Grid2D(layer1, self.geodict),
                                                   'label': '%s - %0.1f std (%s)' % (getkey.upper(), self.numstd, units),
