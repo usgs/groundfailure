@@ -87,11 +87,9 @@ def test_logisticmodel():
 
     lsu = LM.LogisticModel(shakefile, modelLS, uncertfile=uncertfile, slopefile=slopefile)
     try:
-        lsu.getEquation()
         lsu.getEquations()
-    except Exception as e:
-        print(e)
-        print('LogisticModel.getEquation and/or LogisticModel.getEquations did not work')
+    except:
+        raise Exception('LogisticModel.getEquations did not work')
     LSU = lsu.calculate()
 
     lq = LM.LogisticModel(shakefile, modelLQ, uncertfile=None, saveinputs=True)
@@ -130,11 +128,10 @@ def test_validateLayers():
     layers = LM.validateLayers(cmodel)
     assert(data == layers), 'validateLayers did not return expected result'
 
-
 def test_validateTerms():
-    data = {'b1': "np.nan_to_num(self.layerdict['friction'].getData())", 'b2': "self.layerdict['slope'].getData()/100.",
-            'b3': "np.log(self.layerdict['vs30'].getData())", 'b4': "self.layerdict['cti1'].getData()",
-            'b5': "self.layerdict['precip'].getData()"}
+    data = {'b1': "np.nan_to_num(self.layerdict['friction'].getSlice(rowstart, rowend, colstart, colend, name='friction'))", 'b2': "self.layerdict['slope'].getSlice(rowstart, rowend, colstart, colend, name='slope')/100.",
+            'b3': "np.log(self.layerdict['vs30'].getSlice(rowstart, rowend, colstart, colend, name='vs30'))", 'b4': "self.layerdict['cti1'].getSlice(rowstart, rowend, colstart, colend, name='cti1')",
+            'b5': "self.layerdict['precip'].getSlice(rowstart, rowend, colstart, colend, name='precip')"}
     timeField = 'MONTH'
     coeff = LM.validateCoefficients(cmodel)
     layers = LM.validateLayers(cmodel)
@@ -191,10 +188,10 @@ def test_checkTerm():
     term1 = 'precipMONTH'
     layers = LM.validateLayers(cmodel)
     term, tterm, timeField = LM.checkTerm(term1, layers)
-    assert(term == "self.layerdict['precip'].getData()" and tterm == '' and timeField == 'MONTH'), 'checkTerm did not work properly for precipMonth'
+    assert(term == "self.layerdict['precip'].getSlice(rowstart, rowend, colstart, colend, name='precip')" and tterm == '' and timeField == 'MONTH'), 'checkTerm did not work properly for precipMonth'
     term2 = 'MWextrajunk'
     term, tterm, timeField = LM.checkTerm(term2, layers)
-    assert(term == "self.shakemap.getEventDict()['magnitude']extrajunk" and tterm == 'extrajunk'), 'checkTerm did not identify extrajunk in MWextrajunk term'
+    assert(term == "self.shakemap.edict['magnitude']extrajunk" and tterm == 'extrajunk'), 'checkTerm did not identify extrajunk in MWextrajunk term'
 
 if __name__ == "__main__":
     test_logisticmodel()

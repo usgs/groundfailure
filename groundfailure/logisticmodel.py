@@ -433,16 +433,16 @@ class TempHdf(object):
         rowen = np.arange(rowmax, (numrowslice + 1) * rowmax, rowmax)
         if rmrow > 0:
             rowst = np.hstack([rowst, numrowslice * rowmax])            
-            rowen = np.hstack([rowen, -1])
+            rowen = np.hstack([rowen, None])
         else:
-            rowen[-1] = -1
+            rowen = np.hstack([rowen[:-1], None])
         colst = np.arange(0, numcolslice * colmax, colmax)
         colen = np.arange(colmax, (numcolslice + 1) * colmax, colmax)
         if rmcol > 0:
             colst = np.hstack([colst, numcolslice * colmax])
-            colen = np.hstack([colen, -1])
+            colen = np.hstack([colen, None])
         else:
-            colen[-1] = -1
+            colen = np.hstack([colen[:-1], None])
         rowstarts = np.tile(rowst, len(colst))
         colstarts = np.repeat(colst, len(rowst))
         rowends = np.tile(rowen, len(colen))
@@ -649,27 +649,27 @@ class LogisticModel(object):
             self.nugmax = copy.copy(self.nuggets)
             # Find the term with the shakemap input and replace for these nuggets
             for k, nug in enumerate(self.nuggets):
-                if "self.shakemap.getLayer('pga').getData()" in nug:
+                if "self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga')" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga'))\
-                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpga'))")
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga')) \
+                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpga')))")
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga'))\
-                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpga'))")
-                elif "self.shakemap.getLayer('pgv').getData()" in nug:
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pga')) \
+                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpga')))")
+                elif "self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv')" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv'))\
-                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpgv'))")
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv')) \
+                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpgv')))")
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv'))\
-                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpgv'))")
-                elif "self.shakemap.getLayer('mmi').getData()" in nug:
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='pgv')) \
+                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdpgv')))")
+                elif "self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi')" in nug:
                     self.nugmin[k] = self.nugmin[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi'))\
-                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdmmi'))")
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi')) \
+                                                             - self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdmmi')))")
                     self.nugmax[k] = self.nugmax[k].replace("self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi')",
-                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi'))\
-                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdmmi'))")
+                                                            "(np.exp(np.log(self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='mmi')) \
+                                                             + self.numstd * self.uncert.getSlice(rowstart, rowend, colstart, colend, name='stdmmi')))")
             self.equationmin = ' + '.join(self.nugmin)
             self.equationmax = ' + '.join(self.nugmax)
         else:
@@ -715,14 +715,7 @@ class LogisticModel(object):
         X = np.empty([self.geodict.ny, self.geodict.nx])
         # Loop through slices, appending output each time
         for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
-            if colend == -1 and rowend == -1:
-                X[rowstart:, colstart:] = eval(self.equation)
-            elif colend == -1:
-                X[rowstart:rowend, colstart:] = eval(self.equation)
-            elif rowend == -1:
-                X[rowstart:, colstart:colend] = eval(self.equation)
-            else:
-                X[rowstart:rowend, colstart:colend] = eval(self.equation)
+            X[rowstart:rowend, colstart:colend] = eval(self.equation)
         P = 1/(1 + np.exp(-X))
         if 'vs30max' in self.config[self.model].keys():
             vs30 = self.layerdict['vs30'].getData()
@@ -740,18 +733,8 @@ class LogisticModel(object):
             Xmax = Xmin.copy()
             # Loop through slices, appending output each time
             for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
-                if colend == -1 and rowend == -1:
-                    Xmin[rowstart:, colstart:] = eval(self.equationmin)
-                    Xmax[rowstart:, colstart:] = eval(self.equationmax)
-                elif colend == -1:
-                    Xmin[rowstart:rowend, colstart:] = eval(self.equationmin)
-                    Xmax[rowstart:rowend, colstart:] = eval(self.equationmax)
-                elif rowend == -1:
-                    Xmin[rowstart:, colstart:colend] = eval(self.equationmin)
-                    Xmax[rowstart:, colstart:colend] = eval(self.equationmax)
-                else:
-                    Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
-                    Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
+                Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
+                Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
             Pmin = 1/(1 + np.exp(-Xmin))
             Pmax = 1/(1 + np.exp(-Xmax))
             if 'vs30max' in self.config[self.model].keys():
