@@ -297,7 +297,7 @@ def checkTerm(term, layers):
         term = term.replace(sm_term, "self.shakemap.getSlice(rowstart, rowend, colstart, colend, name='%s')" % sm_term)
 
     #replace the macro MW with the magnitude value from the shakemap
-    term = term.replace('MW', "self.edict['magnitude']")
+    term = term.replace('MW', "self.shakemap.edict['magnitude']")
 
     #term.replace('YEAR',"self.shakemap.getEventDict()['event_time'].year")
     #hasTime = False
