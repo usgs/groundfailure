@@ -405,6 +405,7 @@ class TempHdf(object):
             colend = int(colend)
             
         indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
+        indstr = indstr.replace('-1', '') # so end index will actually be captured
         with tables.open_file(self.filename, mode='r') as file1:
             try:
                 dataslice = eval('file1.root.%s[%s]' % (name, indstr))
@@ -714,7 +715,14 @@ class LogisticModel(object):
         X = np.empty([self.geodict.ny, self.geodict.nx])
         # Loop through slices, appending output each time
         for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
-            X[rowstart:rowend, colstart:colend] = eval(self.equation)
+            if colend == -1 and rowend == -1:
+                X[rowstart:, colstart:] = eval(self.equation)
+            elif colend == -1:
+                X[rowstart:rowend, colstart:] = eval(self.equation)
+            elif rowend == -1:
+                X[rowstart:, colstart:colend] = eval(self.equation)
+            else:
+                X[rowstart:rowend, colstart:colend] = eval(self.equation)
         P = 1/(1 + np.exp(-X))
         if 'vs30max' in self.config[self.model].keys():
             vs30 = self.layerdict['vs30'].getData()
@@ -732,8 +740,18 @@ class LogisticModel(object):
             Xmax = Xmin.copy()
             # Loop through slices, appending output each time
             for rowstart, rowend, colstart, colend in zip(rowstarts, rowends, colstarts, colends):
-                Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
-                Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
+                if colend == -1 and rowend == -1:
+                    Xmin[rowstart:, colstart:] = eval(self.equationmin)
+                    Xmax[rowstart:, colstart:] = eval(self.equationmax)
+                elif colend == -1:
+                    Xmin[rowstart:rowend, colstart:] = eval(self.equationmin)
+                    Xmax[rowstart:rowend, colstart:] = eval(self.equationmax)
+                elif rowend == -1:
+                    Xmin[rowstart:, colstart:colend] = eval(self.equationmin)
+                    Xmax[rowstart:, colstart:colend] = eval(self.equationmax)
+                else:
+                    Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
+                    Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
             Pmin = 1/(1 + np.exp(-Xmin))
             Pmax = 1/(1 + np.exp(-Xmax))
             if 'vs30max' in self.config[self.model].keys():
