@@ -9,7 +9,7 @@ from mpl_toolkits.basemap import maskoceans
 import copy
 import datetime
 import matplotlib as mpl
-mpl.use('Agg')  # so figures will still be created even without disply
+mpl.use('Agg')  # so figures will still be created even without display
 from matplotlib.colors import LightSource, LogNorm
 import re
 #from matplotlib.colorbar import ColorbarBase
