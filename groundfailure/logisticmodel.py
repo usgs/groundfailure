@@ -13,6 +13,7 @@ import copy
 import shutil
 import tempfile
 import tables
+from timeit import default_timer as timer
 
 #third party imports
 from mapio.shake import ShakeGrid
@@ -21,6 +22,7 @@ from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
+from osgeo import gdal
 
 PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'
@@ -328,17 +330,24 @@ class TempHdf(object):
         if file_ext != '.hdf5':
             filename = filename1 + '.hdf5'
             print('Changed extension from %s to .hdf5' % (file_ext,))
+        filters = tables.Filters(complevel=5, complib='blosc')
         with tables.open_file(filename, mode='w') as self.tempfile:
             self.gdict = grid2dfile.getGeoDict()
             if type(grid2dfile) == ShakeGrid:
                 for layer in grid2dfile.getLayerNames():
-                    self.tempfile.create_array(self.tempfile.root, name=layer, obj=grid2dfile.getLayer(layer).getData())
+                    filldat = grid2dfile.getLayer(layer).getData()
+                    self.tempfile.create_carray(self.tempfile.root, name=layer,
+                                                atom=tables.Float64Atom(),
+                                                obj=filldat, filters=filters)
                 self.shakedict = grid2dfile.getShakeDict()
                 self.edict = grid2dfile.getEventDict()
             else:
                 if name is None:
                     name=os.path.basename(filename1)
-                self.tempfile.create_array(self.tempfile.root, name=name, obj=grid2dfile.getData())
+                filldat = grid2dfile.getData()
+                self.tempfile.create_carray(self.tempfile.root, name=name,
+                                           atom=tables.Float64Atom(),
+                                           obj=filldat, filters=filters)
             self.filename = os.path.abspath(filename)
         
     def getFilepath(self):
@@ -548,39 +557,17 @@ class LogisticModel(object):
             self.slopemin = 0.
             self.slopemax = 90.
                 
-        if self.slopefile is not None:  # Load in slopefile, if it exists, and add areas outside of thresholds to zeros layer
-            ftype = getFileType(self.slopefile)
-            if 'slope' in self.interpolations:
-                interp = self.interpolations['slope']
-            else:
-                interp = 'linear'
-            if ftype == 'gmt':
-                slope = GMTGrid.load(self.slopefile, sampledict, resample=True, method=interp,
-                                     doPadding=True)
-            elif ftype == 'esri':
-                slope = GDALGrid.load(self.slopefile, sampledict, resample=True, method=interp,
-                                      doPadding=True)
-            else:
-                msg = "Slopefile does not appear to be a valid GMT or ESRI file. Won't use slopefile to reduce computational load"
-            slope1 = slope.getData().astype(float)/self.slopediv
-            nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
-            self.nonzero = nonzero[0, :, :]
-            #temp = slope1 * nonzero
-            #slope1 = sparse.bsr_matrix(temp)
-            # Clear unneeded variables out of memory
-            del(slope1)
-            del(slope)
-        else:
-            self.nonzero = None
     
         # Make temporary directory for hdf5 pytables file storage
-        self.tempdir = tempfile.mkdtemp() 
+        self.tempdir = tempfile.mkdtemp()
         # Apply to shakemap
         #now load the shakemap, resampling and padding if necessary
+        start = timer()
         temp = ShakeGrid.load(shakefile, samplegeodict=sampledict, resample=True, doPadding=True,
                               adjust='res')
         self.shakemap = TempHdf(temp, os.path.join(self.tempdir, 'shakemap.hdf5'))
         del(temp)
+        print('Shakemap loading: %1.1f sec' % (timer() - start))
 
         # take uncertainties into account
         if uncertfile is not None:
@@ -596,8 +583,11 @@ class LogisticModel(object):
             self.uncert = None
 
         #load the predictor layers, save as hdf5 temporary files, put file locations into a dictionary
+        self.nonzero = None # Will be replaced in the next section if a slopefile was defined        
         self.layerdict = {}  # key = layer name, value = grid object
+
         for layername, layerfile in self.layers.items():
+            start = timer()
             if isinstance(layerfile, list):
                 for lfile in layerfile:
                     if timeField == 'MONTH':
@@ -618,20 +608,47 @@ class LogisticModel(object):
                             self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                             del(temp)
             else:
-                #first, figure out what kind of file we have (or is it a directory?)
-                ftype = getFileType(layerfile)
                 interp = self.interpolations[layername]
-                if ftype == 'gmt':
-                    temp = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
-                                       doPadding=True)
-                elif ftype == 'esri':
-                    temp = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
-                                        doPadding=True)
+                if sampledict.dx < 0.01: 
+                    # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
+                    templyrname = os.path.join(self.tempdir, '%s.tif' % layername)                
+                    ds = gdal.Open(layerfile)
+                    # Cut three pixels further on each edge than needed
+                    ds = gdal.Translate(templyrname, ds, resampleAlg=interp,
+                                        projWin = [sampledict.xmin - 3.* sampledict.dx,
+                                                   sampledict.ymax + 3.* sampledict.dy,
+                                                   sampledict.xmax + 3.* sampledict.dx, 
+                                                   sampledict.ymin - 3.* sampledict.dy])
+                    # Then load it in using mapio
+                    temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                         doPadding=True)
                 else:
+                    ftype = getFileType(layerfile)
+                    if ftype == 'gmt':
+                        temp = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                            doPadding=True)
+                    elif ftype == 'esri':
+                        temp = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
+                                             doPadding=True)
+                    else:
+                        msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
+                                                                                                      layerfile)
+                        raise Exception(msg)
                     msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername, layerfile)
                     raise Exception(msg)
+
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
+                if layerfile == self.slopefile:
+                        slope1 = temp.getData().astype(float)/self.slopediv
+                        nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
+                        self.nonzero = nonzero[0, :, :]
+                        #temp = slope1 * nonzero
+                        #slope1 = sparse.bsr_matrix(temp)
+                        # Clear unneeded variables out of memory
+                        del(slope1)
                 del(temp)
+      
+            print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
 
         self.nuggets = [str(self.coeffs['b0'])]
 
