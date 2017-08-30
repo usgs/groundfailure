@@ -9,6 +9,7 @@ import os.path
 import re
 import collections
 import copy
+import subprocess
 #from scipy import sparse
 import shutil
 import tempfile
@@ -22,7 +23,7 @@ from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
-from osgeo import gdal
+#from osgeo import gdal
 
 PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'
@@ -611,17 +612,22 @@ class LogisticModel(object):
                 interp = self.interpolations[layername]
                 if sampledict.dx < 0.01: 
                     # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
-                    templyrname = os.path.join(self.tempdir, '%s.tif' % layername)                
-                    ds = gdal.Open(layerfile)
-                    # Cut three pixels further on each edge than needed
-                    ds = gdal.Translate(templyrname, ds, resampleAlg=interp,
-                                        projWin = [sampledict.xmin - 3.* sampledict.dx,
-                                                   sampledict.ymax + 3.* sampledict.dy,
-                                                   sampledict.xmax + 3.* sampledict.dx, 
-                                                   sampledict.ymin - 3.* sampledict.dy])
+                    templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
+                    # Cut three pixels further on each edge than needed                    
+                    ulx = sampledict.xmin - 3.* sampledict.dx
+                    uly = sampledict.ymax + 3.* sampledict.dy
+                    lrx = sampledict.xmax + 3.* sampledict.dx
+                    lry = sampledict.ymin - 3.* sampledict.dy
+                    # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
+                    # is created which causes problems in the next steps
+                    if interp == 'linear':
+                        interp1 = 'bilinear'
+                    else:
+                        interp1 = interp
+                    subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True)
+
                     # Then load it in using mapio
-                    temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
-                                         doPadding=True)
+                    temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp, doPadding=True)
                 else:
                     ftype = getFileType(layerfile)
                     if ftype == 'gmt':
