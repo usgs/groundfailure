@@ -338,7 +338,6 @@ class TempHdf(object):
                 for layer in grid2dfile.getLayerNames():
                     filldat = grid2dfile.getLayer(layer).getData()
                     self.tempfile.create_carray(self.tempfile.root, name=layer,
-                                                atom=tables.Float64Atom(),
                                                 obj=filldat, filters=filters)
                 self.shakedict = grid2dfile.getShakeDict()
                 self.edict = grid2dfile.getEventDict()
@@ -347,7 +346,6 @@ class TempHdf(object):
                     name=os.path.basename(filename1)
                 filldat = grid2dfile.getData()
                 self.tempfile.create_carray(self.tempfile.root, name=name,
-                                           atom=tables.Float64Atom(),
                                            obj=filldat, filters=filters)
             self.filename = os.path.abspath(filename)
         
@@ -461,8 +459,8 @@ class TempHdf(object):
 
 
 class LogisticModel(object):
-    def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None, slopediv=1.,
-                 bounds=None, numstd=1):
+    def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None,
+                 bounds=None, numstd=1, slopeeq=None):
         """Set up the logistic model
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
           model should be described in each config file.
@@ -479,13 +477,13 @@ class LogisticModel(object):
         :type slopefile: string
         :param slopediv: number to divide slope by to get to degrees (usually will be default
           of 1.)
-        :type slopediv: float
         :param numstd: number of +/- standard deviations to use if uncertainty is computed (uncertfile is not None)
         :param bounds: dictionary of boundaries to cut to in the form bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
           default of None uses ShakeMap boundaries
         :param numstd: number of standard deviations to run for computing uncertainties (if uncertfile is not None)
         :param rowmax: number of rows to compute at once (in slices) - None does all in one
         :param colmax: number of columns to compute at once (in slices) - None does all in one
+        :param slopeeq: how slope input should be modified to be in degrees as a string: e.g., 'np.arctan(slope) * 180. / np.pi' or 'slope/100.'
         """
         mnames = getLogisticModelNames(config)
         if len(mnames) == 0:
@@ -517,7 +515,7 @@ class LogisticModel(object):
                 self.slopefile = None
         else:
             self.slopefile = slopefile
-        self.slopediv = slopediv
+        self.slopeeq = slopeeq
 
         # get month of event
         griddict, eventdict, specdict, fields, uncertainties = getHeaderData(shakefile)
@@ -624,10 +622,12 @@ class LogisticModel(object):
                         interp1 = 'bilinear'
                     else:
                         interp1 = interp
-                    subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True)
+                    subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' % \
+                                    (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True)
 
                     # Then load it in using mapio
-                    temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp, doPadding=True)
+                    temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                         doPadding=True)
                 else:
                     ftype = getFileType(layerfile)
                     if ftype == 'gmt':
@@ -640,18 +640,25 @@ class LogisticModel(object):
                         msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
                                                                                                       layerfile)
                         raise Exception(msg)
-                    msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername, layerfile)
-                    raise Exception(msg)
 
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 if layerfile == self.slopefile:
-                        slope1 = temp.getData().astype(float)/self.slopediv
+                    flag = 0
+                    if self.slopeeq is None:
+                        slope1 = temp.getData().astype(float)
+                        slope = 0
+                    else:
+                        try:
+                            slope = temp.getData().astype(float)
+                            slope1 = eval(slopeeq)
+                        except:
+                            print('slopeeq not valid, continuing without slope thresholds')
+                            flag = 1
+                    if flag == 0:
                         nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
                         self.nonzero = nonzero[0, :, :]
-                        #temp = slope1 * nonzero
-                        #slope1 = sparse.bsr_matrix(temp)
-                        # Clear unneeded variables out of memory
                         del(slope1)
+                        del(slope)
                 del(temp)
       
             print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
