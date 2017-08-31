@@ -460,7 +460,7 @@ class TempHdf(object):
 
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None,
-                 bounds=None, numstd=1, slopeeq=None):
+                 bounds=None, numstd=1, slopemod=None):
         """Set up the logistic model
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
           model should be described in each config file.
@@ -475,15 +475,15 @@ class LogisticModel(object):
         :param slopefile: optional file path to slopefile that will be resampled to the other input files for applying
           thresholds OVERWRITES VALUE IN CONFIG
         :type slopefile: string
-        :param slopediv: number to divide slope by to get to degrees (usually will be default
-          of 1.)
         :param numstd: number of +/- standard deviations to use if uncertainty is computed (uncertfile is not None)
         :param bounds: dictionary of boundaries to cut to in the form bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
           default of None uses ShakeMap boundaries
         :param numstd: number of standard deviations to run for computing uncertainties (if uncertfile is not None)
         :param rowmax: number of rows to compute at once (in slices) - None does all in one
         :param colmax: number of columns to compute at once (in slices) - None does all in one
-        :param slopeeq: how slope input should be modified to be in degrees as a string: e.g., 'np.arctan(slope) * 180. / np.pi' or 'slope/100.'
+        :param slopemod: how slope input should be modified to be in degrees: e.g., 'np.arctan(slope) * 180. / np.pi' or 'slope/100.'
+                        (note that this may be in the config file already)
+        :type slopemod: string
         """
         mnames = getLogisticModelNames(config)
         if len(mnames) == 0:
@@ -515,7 +515,12 @@ class LogisticModel(object):
                 self.slopefile = None
         else:
             self.slopefile = slopefile
-        self.slopeeq = slopeeq
+        if slopemod is None:
+            try:
+                self.slopemod = cmodel['slopemod']
+            except:
+                print('No slopefile modification found')
+                self.slopemod = None
 
         # get month of event
         griddict, eventdict, specdict, fields, uncertainties = getHeaderData(shakefile)
@@ -644,15 +649,15 @@ class LogisticModel(object):
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 if layerfile == self.slopefile:
                     flag = 0
-                    if self.slopeeq is None:
+                    if self.slopemod is None:
                         slope1 = temp.getData().astype(float)
                         slope = 0
                     else:
                         try:
                             slope = temp.getData().astype(float)
-                            slope1 = eval(slopeeq)
+                            slope1 = eval(self.slopemod)
                         except:
-                            print('slopeeq not valid, continuing without slope thresholds')
+                            print('slopemod provided not valid, continuing without slope thresholds')
                             flag = 1
                     if flag == 0:
                         nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
