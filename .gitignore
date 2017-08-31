@@ -67,4 +67,8 @@ runmodels.py
 #Gfail defaults
 .gfail_defaults
 # Emacs backup files
+
+#Spyder files
+.spyderworkspace
+.spyproject
 *~
