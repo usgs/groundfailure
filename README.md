@@ -178,7 +178,8 @@ The config file format is a modified version of the "INI" format.  It is describ
   # using the slopefile defined
   slopemin = 5. # in degrees
   slopemax = 90. # in degrees
-  slopefile = global_gted_maxslope_30c.flt
+  slopefile = global_Verdin_slopes_resampled_degx100/slope_max.bil
+  slopemod = 'slope/100.' # How slopefile should be modified so that it is in degrees (use np.function for any functions)
 
   # groundfailure function corresponding to this model
   funcname = LogisticModel
