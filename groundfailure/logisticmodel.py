@@ -343,24 +343,24 @@ class TempHdf(object):
                 self.edict = grid2dfile.getEventDict()
             else:
                 if name is None:
-                    name=os.path.basename(filename1)
+                    name = os.path.basename(filename1)
                 filldat = grid2dfile.getData()
                 self.tempfile.create_carray(self.tempfile.root, name=name,
-                                           obj=filldat, filters=filters)
+                                            obj=filldat, filters=filters)
             self.filename = os.path.abspath(filename)
-        
+
     def getFilepath(self):
         """
         return full file path
         """
         return self.filename
-    
+
     def getGeoDict(self):
         """
         return geodictionary
         """
         return self.gdict
-        
+
     def getShakeDict(self):
         """
         return shake dictionary if it exists
@@ -371,7 +371,7 @@ class TempHdf(object):
             print(e)
             print('no shake dictionary found')
             return None
-    
+
     def getEventDict(self):
         """
         return event dictionary if it exists
@@ -390,11 +390,11 @@ class TempHdf(object):
         :param rowend: ending row index (exclusive), if None, will end at last row
         :param colstart: starting column index (inclusive), if None, will start at 0
         :param colend: ending column index (exclusive), if None, will end at last row
-        :param layer: single string of layer/child name to return. 
+        :param layer: single string of layer/child name to return.
         :returns dataslice: numpy array of sliced data
         """
-        if name is None:        
-            name, ext = os.path.splitext(os.path.basename(self.getFilepath()))     
+        if name is None:
+            name, ext = os.path.splitext(os.path.basename(self.getFilepath()))
         if rowstart is None:
             rowstart = ''
         else:
@@ -411,9 +411,9 @@ class TempHdf(object):
             colend = ''
         else:
             colend = int(colend)
-            
+
         indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
-        indstr = indstr.replace('-1', '') # so end index will actually be captured
+        indstr = indstr.replace('-1', '')  # so end index will actually be captured
         with tables.open_file(self.filename, mode='r') as file1:
             try:
                 dataslice = eval('file1.root.%s[%s]' % (name, indstr))
@@ -421,7 +421,7 @@ class TempHdf(object):
             except Exception as e:
                 raise Exception(e)
         return
- 
+
     def getSliceDiv(self, rowmax=None, colmax=None):
         """
         Determine how to slice the arrays
@@ -431,16 +431,16 @@ class TempHdf(object):
         """
         numrows = self.gdict.ny
         numcols = self.gdict.nx
-        if rowmax is None or rowmax>numrows:
+        if rowmax is None or rowmax > numrows:
             rowmax = numrows
-        if colmax is None or colmax>numcols:
+        if colmax is None or colmax > numcols:
             colmax = numcols
         numrowslice, rmrow = divmod(numrows, rowmax)
         numcolslice, rmcol = divmod(numcols, colmax)
         rowst = np.arange(0, numrowslice * rowmax, rowmax)
         rowen = np.arange(rowmax, (numrowslice + 1) * rowmax, rowmax)
         if rmrow > 0:
-            rowst = np.hstack([rowst, numrowslice * rowmax])            
+            rowst = np.hstack([rowst, numrowslice * rowmax])
             rowen = np.hstack([rowen, None])
         else:
             rowen = np.hstack([rowen[:-1], None])
@@ -525,7 +525,7 @@ class LogisticModel(object):
         # get month of event
         griddict, eventdict, specdict, fields, uncertainties = getHeaderData(shakefile)
         MONTH = MONTHS[(eventdict['event_timestamp'].month)-1]
-        
+
         # Figure out how/if need to cut anything
         geodict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
         if bounds is not None:  # Make sure bounds are within ShakeMap Grid
@@ -560,8 +560,7 @@ class LogisticModel(object):
             print('could not find slopemin and/or slopemax in config, limits of 0 to 90 degrees will be used')
             self.slopemin = 0.
             self.slopemax = 90.
-                
-    
+
         # Make temporary directory for hdf5 pytables file storage
         self.tempdir = tempfile.mkdtemp()
         # Apply to shakemap
@@ -587,7 +586,7 @@ class LogisticModel(object):
             self.uncert = None
 
         #load the predictor layers, save as hdf5 temporary files, put file locations into a dictionary
-        self.nonzero = None # Will be replaced in the next section if a slopefile was defined        
+        self.nonzero = None  # Will be replaced in the next section if a slopefile was defined
         self.layerdict = {}  # key = layer name, value = grid object
 
         for layername, layerfile in self.layers.items():
@@ -613,14 +612,14 @@ class LogisticModel(object):
                             del(temp)
             else:
                 interp = self.interpolations[layername]
-                if sampledict.dx < 0.01: 
+                if sampledict.dx < 0.01:
                     # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
                     templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
-                    # Cut three pixels further on each edge than needed                    
-                    ulx = sampledict.xmin - 3.* sampledict.dx
-                    uly = sampledict.ymax + 3.* sampledict.dy
-                    lrx = sampledict.xmax + 3.* sampledict.dx
-                    lry = sampledict.ymin - 3.* sampledict.dy
+                    # Cut three pixels further on each edge than needed
+                    ulx = sampledict.xmin - 3. * sampledict.dx
+                    uly = sampledict.ymax + 3. * sampledict.dy
+                    lrx = sampledict.xmax + 3. * sampledict.dx
+                    lry = sampledict.ymin - 3. * sampledict.dy
                     # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
                     # is created which causes problems in the next steps
                     if interp == 'linear':
@@ -647,8 +646,8 @@ class LogisticModel(object):
                         raise Exception(msg)
 
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
+                import pdb; pdb.set_trace()
                 if layerfile == self.slopefile:
-                    import pdb; pdb.set_trace()
                     flag = 0
                     if self.slopemod is None:
                         slope1 = temp.getData().astype(float)
