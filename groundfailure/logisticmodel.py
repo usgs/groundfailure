@@ -613,38 +613,25 @@ class LogisticModel(object):
                             del(temp)
             else:
                 interp = self.interpolations[layername]
-                if sampledict.dx < 0.007:
-                    # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
-                    templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
-                    # Cut three pixels further on each edge than needed
-                    ulx = sampledict.xmin - 3. * sampledict.dx
-                    uly = sampledict.ymax + 3. * sampledict.dy
-                    lrx = sampledict.xmax + 3. * sampledict.dx
-                    lry = sampledict.ymin - 3. * sampledict.dy
-                    # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
-                    # is created which causes problems in the next steps
-                    if interp == 'linear':
-                        interp1 = 'bilinear'
-                    else:
-                        interp1 = interp
-                    subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' % \
-                                    (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True)
-
-                    # Then load it in using mapio
-                    temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
-                                         doPadding=True)
+                # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
+                templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
+                # Cut three pixels further on each edge than needed
+                ulx = sampledict.xmin - 3. * sampledict.dx
+                uly = sampledict.ymax + 3. * sampledict.dy
+                lrx = sampledict.xmax + 3. * sampledict.dx
+                lry = sampledict.ymin - 3. * sampledict.dy
+                # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
+                # is created which causes problems in the next steps
+                if interp == 'linear':
+                    interp1 = 'bilinear'
                 else:
-                    ftype = getFileType(layerfile)
-                    if ftype == 'gmt':
-                        temp = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
-                                            doPadding=True)
-                    elif ftype == 'esri':
-                        temp = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
-                                             doPadding=True)
-                    else:
-                        msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
-                                                                                                      layerfile)
-                        raise Exception(msg)
+                    interp1 = interp
+                outp = subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
+                                       (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True)
+
+                # Then load it in using mapio
+                temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                     doPadding=True)
 
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
 
@@ -667,36 +654,25 @@ class LogisticModel(object):
                         del(slope)
                     didslope = True  # indicates
                 del(temp)
-            # print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
+
+            print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
 
         if didslope is False:  # slope didn't get read in yet
-            if sampledict.dx < 0.007:
-                # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
-                templyrname = os.path.join(self.tempdir, 'tempslope.tif')
-                # Cut three pixels further on each edge than needed
-                ulx = sampledict.xmin - 3. * sampledict.dx
-                uly = sampledict.ymax + 3. * sampledict.dy
-                lrx = sampledict.xmax + 3. * sampledict.dx
-                lry = sampledict.ymin - 3. * sampledict.dy
-                # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
-                # is created which causes problems in the next steps
-                subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' % \
-                                (ulx, uly, lrx, lry, 'bilinear', self.slopefile, templyrname), shell=True)
+            # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
+            templyrname = os.path.join(self.tempdir, 'tempslope.tif')
+            # Cut three pixels further on each edge than needed
+            ulx = sampledict.xmin - 3. * sampledict.dx
+            uly = sampledict.ymax + 3. * sampledict.dy
+            lrx = sampledict.xmax + 3. * sampledict.dx
+            lry = sampledict.ymin - 3. * sampledict.dy
+            # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
+            # is created which causes problems in the next steps
+            outp = subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
+                                   (ulx, uly, lrx, lry, 'bilinear', self.slopefile, templyrname), shell=True)
 
-                # Then load it in using mapio
-                temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
-                                     doPadding=True)
-            else:
-                ftype = getFileType(self.slopefile)
-                if ftype == 'gmt':
-                    temp = GMTGrid.load(self.slopefile, sampledict, resample=True, method=interp,
-                                        doPadding=True)
-                elif ftype == 'esri':
-                    temp = GDALGrid.load(self.slopefile, sampledict, resample=True, method=interp,
-                                         doPadding=True)
-                else:
-                    msg = 'Slope file: %s does not appear to be a valid GMT or ESRI file.' % (self.slopefile,)
-                    raise Exception(msg)
+            # Then load it in using mapio
+            temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                 doPadding=True)
             flag = 0
             if self.slopemod is None:
                 slope1 = temp.getData().astype(float)
@@ -799,10 +775,10 @@ class LogisticModel(object):
             X[rowstart:rowend, colstart:colend] = eval(self.equation)
         P = 1/(1 + np.exp(-X))
         if 'vs30max' in self.config[self.model].keys():
-            vs30 = self.layerdict['vs30'].getData()
+            vs30 = self.layerdict['vs30'].getSlice(None, None, None, None, name='vs30')
             P[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
         if 'minpgv' in self.config[self.model].keys():
-            pgv = self.shakemap.getLayer('pgv').getData()
+            pgv = self.shakemap.getLayer('pgv').getSlice(None, None, None, None, name='pgv')
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
@@ -819,11 +795,11 @@ class LogisticModel(object):
             Pmin = 1/(1 + np.exp(-Xmin))
             Pmax = 1/(1 + np.exp(-Xmax))
             if 'vs30max' in self.config[self.model].keys():
-                vs30 = self.layerdict['vs30'].getData()
+                vs30 = self.layerdict['vs30'].getSlice(None, None, None, None, name='vs30')
                 Pmin[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
                 Pmax[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
             if 'minpgv' in self.config[self.model].keys():
-                pgv = self.shakemap.getLayer('pgv').getData()
+                pgv = self.shakemap.getLayer('pgv').getSlice(None, None, None, None, name='pgv')
                 Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
                 Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
             if 'coverage' in self.config[self.model].keys():
