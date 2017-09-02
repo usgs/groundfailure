@@ -626,8 +626,9 @@ class LogisticModel(object):
                     interp1 = 'bilinear'
                 else:
                     interp1 = interp
-                outp = subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
-                                       (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True)
+                with open(os.devnull, 'w') as devnull:
+                    subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
+                                    (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True, stdout=devnull)
 
                 # Then load it in using mapio
                 temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
@@ -667,8 +668,9 @@ class LogisticModel(object):
             lry = sampledict.ymin - 3. * sampledict.dy
             # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
             # is created which causes problems in the next steps
-            outp = subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
-                                   (ulx, uly, lrx, lry, 'bilinear', self.slopefile, templyrname), shell=True)
+            with open(os.devnull, 'w') as devnull:
+                subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
+                                (ulx, uly, lrx, lry, 'bilinear', self.slopefile, templyrname), shell=True, stdout=devnull)
 
             # Then load it in using mapio
             temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
@@ -778,7 +780,7 @@ class LogisticModel(object):
             vs30 = self.layerdict['vs30'].getSlice(None, None, None, None, name='vs30')
             P[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
         if 'minpgv' in self.config[self.model].keys():
-            pgv = self.shakemap.getLayer('pgv').getSlice(None, None, None, None, name='pgv')
+            pgv = self.shakemap.getSlice(None, None, None, None, name='pgv')
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
@@ -799,7 +801,7 @@ class LogisticModel(object):
                 Pmin[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
                 Pmax[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
             if 'minpgv' in self.config[self.model].keys():
-                pgv = self.shakemap.getLayer('pgv').getSlice(None, None, None, None, name='pgv')
+                pgv = self.shakemap.getSlice(None, None, None, None, name='pgv')
                 Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
                 Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
             if 'coverage' in self.config[self.model].keys():
