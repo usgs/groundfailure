@@ -519,7 +519,6 @@ class LogisticModel(object):
             try:
                 self.slopemod = cmodel['slopemod']
             except:
-                print('No slopefile modification found')
                 self.slopemod = None
 
         # get month of event
@@ -658,7 +657,7 @@ class LogisticModel(object):
 
             print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
 
-        if didslope is False:  # slope didn't get read in yet
+        if didslope is False and self.slopefile is not None:  # slope didn't get read in yet
             # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
             templyrname = os.path.join(self.tempdir, 'tempslope.tif')
             # Cut three pixels further on each edge than needed
@@ -878,5 +877,5 @@ class LogisticModel(object):
                                                   'type': 'input',
                                                   'description': {'units': units, 'shakemap': shakedetail}}
         if cleanup:
-            shutil.rmtree(self.tempdir)        
+            shutil.rmtree(self.tempdir)
         return rdict
