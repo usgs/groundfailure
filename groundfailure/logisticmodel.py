@@ -589,6 +589,7 @@ class LogisticModel(object):
         self.nonzero = None  # Will be replaced in the next section if a slopefile was defined
         self.layerdict = {}  # key = layer name, value = grid object
 
+        didslope = False
         for layername, layerfile in self.layers.items():
             start = timer()
             if isinstance(layerfile, list):
@@ -612,7 +613,7 @@ class LogisticModel(object):
                             del(temp)
             else:
                 interp = self.interpolations[layername]
-                if sampledict.dx < 0.01:
+                if sampledict.dx < 0.007:
                     # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
                     templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
                     # Cut three pixels further on each edge than needed
@@ -646,7 +647,7 @@ class LogisticModel(object):
                         raise Exception(msg)
 
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
-                import pdb; pdb.set_trace()
+
                 if layerfile == self.slopefile:
                     flag = 0
                     if self.slopemod is None:
@@ -664,9 +665,54 @@ class LogisticModel(object):
                         self.nonzero = nonzero[0, :, :]
                         del(slope1)
                         del(slope)
+                    didslope = True  # indicates
                 del(temp)
+            # print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
 
-            print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
+        if didslope is False:  # slope didn't get read in yet
+            if sampledict.dx < 0.007:
+                # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
+                templyrname = os.path.join(self.tempdir, 'tempslope.tif')
+                # Cut three pixels further on each edge than needed
+                ulx = sampledict.xmin - 3. * sampledict.dx
+                uly = sampledict.ymax + 3. * sampledict.dy
+                lrx = sampledict.xmax + 3. * sampledict.dx
+                lry = sampledict.ymin - 3. * sampledict.dy
+                # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
+                # is created which causes problems in the next steps
+                subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' % \
+                                (ulx, uly, lrx, lry, 'bilinear', self.slopefile, templyrname), shell=True)
+
+                # Then load it in using mapio
+                temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                     doPadding=True)
+            else:
+                ftype = getFileType(self.slopefile)
+                if ftype == 'gmt':
+                    temp = GMTGrid.load(self.slopefile, sampledict, resample=True, method=interp,
+                                        doPadding=True)
+                elif ftype == 'esri':
+                    temp = GDALGrid.load(self.slopefile, sampledict, resample=True, method=interp,
+                                         doPadding=True)
+                else:
+                    msg = 'Slope file: %s does not appear to be a valid GMT or ESRI file.' % (self.slopefile,)
+                    raise Exception(msg)
+            flag = 0
+            if self.slopemod is None:
+                slope1 = temp.getData().astype(float)
+                slope = 0
+            else:
+                try:
+                    slope = temp.getData().astype(float)
+                    slope1 = eval(self.slopemod)
+                except:
+                    print('slopemod provided not valid, continuing without slope thresholds')
+                    flag = 1
+            if flag == 0:
+                nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
+                self.nonzero = nonzero[0, :, :]
+                del(slope1)
+                del(slope)
 
         self.nuggets = [str(self.coeffs['b0'])]
 
