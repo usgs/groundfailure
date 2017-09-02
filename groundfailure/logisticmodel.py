@@ -648,6 +648,7 @@ class LogisticModel(object):
 
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 if layerfile == self.slopefile:
+                    import pdb; pdb.set_trace()
                     flag = 0
                     if self.slopemod is None:
                         slope1 = temp.getData().astype(float)
@@ -665,7 +666,7 @@ class LogisticModel(object):
                         del(slope1)
                         del(slope)
                 del(temp)
-      
+
             print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
 
         self.nuggets = [str(self.coeffs['b0'])]
@@ -743,9 +744,9 @@ class LogisticModel(object):
             description of the structure of this output
 
         """
-       
+
         # Figure out what slices to do
-        rowstarts, rowends, colstarts, colends = self.shakemap.getSliceDiv(rowmax, colmax)  
+        rowstarts, rowends, colstarts, colends = self.shakemap.getSliceDiv(rowmax, colmax)
         # Make empty matrix to fill
         X = np.empty([self.geodict.ny, self.geodict.nx])
         # Loop through slices, appending output each time
@@ -785,7 +786,7 @@ class LogisticModel(object):
                 eqnmax = eqn.replace('P', 'Pmax')
                 Pmin = eval(eqnmin)
                 Pmax = eval(eqnmax)
-        if self.slopefile is not None:
+        if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
