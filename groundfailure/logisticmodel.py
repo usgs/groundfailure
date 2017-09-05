@@ -318,6 +318,41 @@ def checkTerm(term, layers):
     return (term, tterm, timeField)
 
 
+def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
+    """
+    Use gdal to trim a large global file down quickly so mapio can read it efficiently
+    # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
+    # is created which causes problems in the next steps
+    """
+    try:    
+        filegdict = ShakeGrid.getFileGeoDict(filename, adjust='res')
+    except:
+        try:
+            filegdict = GDALGrid.getFileGeoDict(filename)
+        except:
+            try:
+                filegdict = GMTGrid.getFileGeoDict(filename)
+            except:
+                raise Exception('Cannot get geodict for %s' % filename)
+
+    filegdict = filegdict[0]
+    tempgdict = GeoDict.createDictFromBox(gdict.xmin, gdict.xmax, gdict.ymin, gdict.ymax,
+                                          filegdict.dx, filegdict.dy, inside=True)
+    egdict = filegdict.getBoundsWithin(tempgdict)
+
+    ulx = egdict.xmin - extrasamp * egdict.dx
+    uly = egdict.ymax + extrasamp * egdict.dy
+    lrx = egdict.xmax + extrasamp * egdict.dx
+    lry = egdict.ymin - extrasamp * egdict.dy
+
+    with open(os.devnull, 'w') as devnull:
+        subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
+                        (ulx, uly, lrx, lry, method, filename, tempname), shell=True, stdout=devnull)
+    newgdict = GDALGrid.getFileGeoDict(tempname)[0]
+    return newgdict
+    #TODO add error catching for subprocess call
+
+
 class TempHdf(object):
     def __init__(self, grid2dfile, filename, name=None):
         """
@@ -456,6 +491,8 @@ class TempHdf(object):
         rowends = np.tile(rowen, len(colen))
         colends = np.repeat(colen, len(rowen))
         return rowstarts, rowends, colstarts, colends
+        
+
 
 
 class LogisticModel(object):
@@ -614,24 +651,14 @@ class LogisticModel(object):
                 interp = self.interpolations[layername]
                 # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
                 templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
-                # Cut three pixels further on each edge than needed
-                ulx = sampledict.xmin - 3. * sampledict.dx
-                uly = sampledict.ymax + 3. * sampledict.dy
-                lrx = sampledict.xmax + 3. * sampledict.dx
-                lry = sampledict.ymin - 3. * sampledict.dy
-                # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
-                # is created which causes problems in the next steps
-                if interp == 'linear':
-                    interp1 = 'bilinear'
-                else:
-                    interp1 = interp
-                with open(os.devnull, 'w') as devnull:
-                    subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
-                                    (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True, stdout=devnull)
-
+                # cut piece out quickly using gdal
+                newgdict = quickcut(layerfile, templyrname, sampledict, extrasamp=5., method='nearest')
                 # Then load it in using mapio
-                temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
-                                     doPadding=True)
+                if newgdict.isAligned(sampledict):
+                    temp = GDALGrid.load(templyrname, sampledict, resample=False)
+                else:
+                    temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                         doPadding=True)
 
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
 
@@ -660,20 +687,14 @@ class LogisticModel(object):
         if didslope is False and self.slopefile is not None:  # slope didn't get read in yet
             # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
             templyrname = os.path.join(self.tempdir, 'tempslope.tif')
-            # Cut three pixels further on each edge than needed
-            ulx = sampledict.xmin - 3. * sampledict.dx
-            uly = sampledict.ymax + 3. * sampledict.dy
-            lrx = sampledict.xmax + 3. * sampledict.dx
-            lry = sampledict.ymin - 3. * sampledict.dy
-            # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
-            # is created which causes problems in the next steps
-            with open(os.devnull, 'w') as devnull:
-                subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
-                                (ulx, uly, lrx, lry, 'bilinear', self.slopefile, templyrname), shell=True, stdout=devnull)
-
+            # cut piece out quickly using gdal
+            newgdict = quickcut(self.slopefile, templyrname, sampledict, extrasamp=5., method='nearest')
             # Then load it in using mapio
-            temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
-                                 doPadding=True)
+            if newgdict.isAligned(sampledict):
+                temp = GDALGrid.load(templyrname, sampledict, resample=False)
+            else:
+                temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                     doPadding=True)
             flag = 0
             if self.slopemod is None:
                 slope1 = temp.getData().astype(float)
