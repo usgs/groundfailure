@@ -318,6 +318,41 @@ def checkTerm(term, layers):
     return (term, tterm, timeField)
 
 
+def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
+    """
+    Use gdal to trim a large global file down quickly so mapio can read it efficiently
+    # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
+    # is created which causes problems in the next steps
+    """
+    try:    
+        filegdict = ShakeGrid.getFileGeoDict(filename, adjust='res')
+    except:
+        try:
+            filegdict = GDALGrid.getFileGeoDict(filename)
+        except:
+            try:
+                filegdict = GMTGrid.getFileGeoDict(filename)
+            except:
+                raise Exception('Cannot get geodict for %s' % filename)
+
+    filegdict = filegdict[0]
+    tempgdict = GeoDict.createDictFromBox(gdict.xmin, gdict.xmax, gdict.ymin, gdict.ymax,
+                                          filegdict.dx, filegdict.dy, inside=True)
+    egdict = filegdict.getBoundsWithin(tempgdict)
+
+    ulx = egdict.xmin - extrasamp * egdict.dx
+    uly = egdict.ymax + extrasamp * egdict.dy
+    lrx = egdict.xmax + extrasamp * egdict.dx
+    lry = egdict.ymin - extrasamp * egdict.dy
+
+    with open(os.devnull, 'w') as devnull:
+        subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' %
+                        (ulx, uly, lrx, lry, method, filename, tempname), shell=True, stdout=devnull)
+    newgdict = GDALGrid.getFileGeoDict(tempname)[0]
+    return newgdict
+    #TODO add error catching for subprocess call
+
+
 class TempHdf(object):
     def __init__(self, grid2dfile, filename, name=None):
         """
@@ -343,24 +378,24 @@ class TempHdf(object):
                 self.edict = grid2dfile.getEventDict()
             else:
                 if name is None:
-                    name=os.path.basename(filename1)
+                    name = os.path.basename(filename1)
                 filldat = grid2dfile.getData()
                 self.tempfile.create_carray(self.tempfile.root, name=name,
-                                           obj=filldat, filters=filters)
+                                            obj=filldat, filters=filters)
             self.filename = os.path.abspath(filename)
-        
+
     def getFilepath(self):
         """
         return full file path
         """
         return self.filename
-    
+
     def getGeoDict(self):
         """
         return geodictionary
         """
         return self.gdict
-        
+
     def getShakeDict(self):
         """
         return shake dictionary if it exists
@@ -371,7 +406,7 @@ class TempHdf(object):
             print(e)
             print('no shake dictionary found')
             return None
-    
+
     def getEventDict(self):
         """
         return event dictionary if it exists
@@ -390,11 +425,11 @@ class TempHdf(object):
         :param rowend: ending row index (exclusive), if None, will end at last row
         :param colstart: starting column index (inclusive), if None, will start at 0
         :param colend: ending column index (exclusive), if None, will end at last row
-        :param layer: single string of layer/child name to return. 
+        :param layer: single string of layer/child name to return.
         :returns dataslice: numpy array of sliced data
         """
-        if name is None:        
-            name, ext = os.path.splitext(os.path.basename(self.getFilepath()))     
+        if name is None:
+            name, ext = os.path.splitext(os.path.basename(self.getFilepath()))
         if rowstart is None:
             rowstart = ''
         else:
@@ -411,9 +446,9 @@ class TempHdf(object):
             colend = ''
         else:
             colend = int(colend)
-            
+
         indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
-        indstr = indstr.replace('-1', '') # so end index will actually be captured
+        indstr = indstr.replace('-1', '')  # so end index will actually be captured
         with tables.open_file(self.filename, mode='r') as file1:
             try:
                 dataslice = eval('file1.root.%s[%s]' % (name, indstr))
@@ -421,7 +456,7 @@ class TempHdf(object):
             except Exception as e:
                 raise Exception(e)
         return
- 
+
     def getSliceDiv(self, rowmax=None, colmax=None):
         """
         Determine how to slice the arrays
@@ -431,16 +466,16 @@ class TempHdf(object):
         """
         numrows = self.gdict.ny
         numcols = self.gdict.nx
-        if rowmax is None or rowmax>numrows:
+        if rowmax is None or rowmax > numrows:
             rowmax = numrows
-        if colmax is None or colmax>numcols:
+        if colmax is None or colmax > numcols:
             colmax = numcols
         numrowslice, rmrow = divmod(numrows, rowmax)
         numcolslice, rmcol = divmod(numcols, colmax)
         rowst = np.arange(0, numrowslice * rowmax, rowmax)
         rowen = np.arange(rowmax, (numrowslice + 1) * rowmax, rowmax)
         if rmrow > 0:
-            rowst = np.hstack([rowst, numrowslice * rowmax])            
+            rowst = np.hstack([rowst, numrowslice * rowmax])
             rowen = np.hstack([rowen, None])
         else:
             rowen = np.hstack([rowen[:-1], None])
@@ -456,6 +491,8 @@ class TempHdf(object):
         rowends = np.tile(rowen, len(colen))
         colends = np.repeat(colen, len(rowen))
         return rowstarts, rowends, colstarts, colends
+        
+
 
 
 class LogisticModel(object):
@@ -519,13 +556,12 @@ class LogisticModel(object):
             try:
                 self.slopemod = cmodel['slopemod']
             except:
-                print('No slopefile modification found')
                 self.slopemod = None
 
         # get month of event
         griddict, eventdict, specdict, fields, uncertainties = getHeaderData(shakefile)
         MONTH = MONTHS[(eventdict['event_timestamp'].month)-1]
-        
+
         # Figure out how/if need to cut anything
         geodict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
         if bounds is not None:  # Make sure bounds are within ShakeMap Grid
@@ -560,8 +596,7 @@ class LogisticModel(object):
             print('could not find slopemin and/or slopemax in config, limits of 0 to 90 degrees will be used')
             self.slopemin = 0.
             self.slopemax = 90.
-                
-    
+
         # Make temporary directory for hdf5 pytables file storage
         self.tempdir = tempfile.mkdtemp()
         # Apply to shakemap
@@ -587,9 +622,10 @@ class LogisticModel(object):
             self.uncert = None
 
         #load the predictor layers, save as hdf5 temporary files, put file locations into a dictionary
-        self.nonzero = None # Will be replaced in the next section if a slopefile was defined        
+        self.nonzero = None  # Will be replaced in the next section if a slopefile was defined
         self.layerdict = {}  # key = layer name, value = grid object
 
+        didslope = False
         for layername, layerfile in self.layers.items():
             start = timer()
             if isinstance(layerfile, list):
@@ -613,40 +649,19 @@ class LogisticModel(object):
                             del(temp)
             else:
                 interp = self.interpolations[layername]
-                if sampledict.dx < 0.01: 
-                    # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
-                    templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
-                    # Cut three pixels further on each edge than needed                    
-                    ulx = sampledict.xmin - 3.* sampledict.dx
-                    uly = sampledict.ymax + 3.* sampledict.dy
-                    lrx = sampledict.xmax + 3.* sampledict.dx
-                    lry = sampledict.ymin - 3.* sampledict.dy
-                    # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
-                    # is created which causes problems in the next steps
-                    if interp == 'linear':
-                        interp1 = 'bilinear'
-                    else:
-                        interp1 = interp
-                    subprocess.call('gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f -r %s %s %s' % \
-                                    (ulx, uly, lrx, lry, interp1, layerfile, templyrname), shell=True)
-
-                    # Then load it in using mapio
+                # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
+                templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
+                # cut piece out quickly using gdal
+                newgdict = quickcut(layerfile, templyrname, sampledict, extrasamp=5., method='nearest')
+                # Then load it in using mapio
+                if newgdict.isAligned(sampledict):
+                    temp = GDALGrid.load(templyrname, sampledict, resample=False)
+                else:
                     temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
                                          doPadding=True)
-                else:
-                    ftype = getFileType(layerfile)
-                    if ftype == 'gmt':
-                        temp = GMTGrid.load(layerfile, sampledict, resample=True, method=interp,
-                                            doPadding=True)
-                    elif ftype == 'esri':
-                        temp = GDALGrid.load(layerfile, sampledict, resample=True, method=interp,
-                                             doPadding=True)
-                    else:
-                        msg = 'Layer %s (file %s) does not appear to be a valid GMT or ESRI file.' % (layername,
-                                                                                                      layerfile)
-                        raise Exception(msg)
 
                 self.layerdict[layername] = TempHdf(temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
+
                 if layerfile == self.slopefile:
                     flag = 0
                     if self.slopemod is None:
@@ -664,9 +679,38 @@ class LogisticModel(object):
                         self.nonzero = nonzero[0, :, :]
                         del(slope1)
                         del(slope)
+                    didslope = True  # indicates
                 del(temp)
-      
+
             print('Loading of layer %s: %1.1f sec' % (layername, timer() - start))
+
+        if didslope is False and self.slopefile is not None:  # slope didn't get read in yet
+            # If resolution is too high, first create temporary geotiff snippet using gdal because mapio can't handle cutting high res files
+            templyrname = os.path.join(self.tempdir, 'tempslope.tif')
+            # cut piece out quickly using gdal
+            newgdict = quickcut(self.slopefile, templyrname, sampledict, extrasamp=5., method='nearest')
+            # Then load it in using mapio
+            if newgdict.isAligned(sampledict):
+                temp = GDALGrid.load(templyrname, sampledict, resample=False)
+            else:
+                temp = GDALGrid.load(templyrname, sampledict, resample=True, method=interp,
+                                     doPadding=True)
+            flag = 0
+            if self.slopemod is None:
+                slope1 = temp.getData().astype(float)
+                slope = 0
+            else:
+                try:
+                    slope = temp.getData().astype(float)
+                    slope1 = eval(self.slopemod)
+                except:
+                    print('slopemod provided not valid, continuing without slope thresholds')
+                    flag = 1
+            if flag == 0:
+                nonzero = np.array([(slope1 > self.slopemin) & (slope1 <= self.slopemax)])
+                self.nonzero = nonzero[0, :, :]
+                del(slope1)
+                del(slope)
 
         self.nuggets = [str(self.coeffs['b0'])]
 
@@ -743,9 +787,9 @@ class LogisticModel(object):
             description of the structure of this output
 
         """
-       
+
         # Figure out what slices to do
-        rowstarts, rowends, colstarts, colends = self.shakemap.getSliceDiv(rowmax, colmax)  
+        rowstarts, rowends, colstarts, colends = self.shakemap.getSliceDiv(rowmax, colmax)
         # Make empty matrix to fill
         X = np.empty([self.geodict.ny, self.geodict.nx])
         # Loop through slices, appending output each time
@@ -753,10 +797,10 @@ class LogisticModel(object):
             X[rowstart:rowend, colstart:colend] = eval(self.equation)
         P = 1/(1 + np.exp(-X))
         if 'vs30max' in self.config[self.model].keys():
-            vs30 = self.layerdict['vs30'].getData()
+            vs30 = self.layerdict['vs30'].getSlice(None, None, None, None, name='vs30')
             P[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
         if 'minpgv' in self.config[self.model].keys():
-            pgv = self.shakemap.getLayer('pgv').getData()
+            pgv = self.shakemap.getSlice(None, None, None, None, name='pgv')
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
@@ -773,11 +817,11 @@ class LogisticModel(object):
             Pmin = 1/(1 + np.exp(-Xmin))
             Pmax = 1/(1 + np.exp(-Xmax))
             if 'vs30max' in self.config[self.model].keys():
-                vs30 = self.layerdict['vs30'].getData()
+                vs30 = self.layerdict['vs30'].getSlice(None, None, None, None, name='vs30')
                 Pmin[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
                 Pmax[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
             if 'minpgv' in self.config[self.model].keys():
-                pgv = self.shakemap.getLayer('pgv').getData()
+                pgv = self.shakemap.getSlice(None, None, None, None, name='pgv')
                 Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
                 Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
             if 'coverage' in self.config[self.model].keys():
@@ -785,7 +829,7 @@ class LogisticModel(object):
                 eqnmax = eqn.replace('P', 'Pmax')
                 Pmin = eval(eqnmin)
                 Pmax = eval(eqnmax)
-        if self.slopefile is not None:
+        if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
@@ -854,5 +898,5 @@ class LogisticModel(object):
                                                   'type': 'input',
                                                   'description': {'units': units, 'shakemap': shakedetail}}
         if cleanup:
-            shutil.rmtree(self.tempdir)        
+            shutil.rmtree(self.tempdir)
         return rdict
