@@ -836,23 +836,27 @@ class LogisticModel(object):
         else:
             print('No slope file provided, slope thresholds not applied')
         # Stuff into Grid2D object
+        if 'jessee' in self.modelrefs['shortref']:
+            units5 = 'relative hazard'
+        else:
+            units5 = 'probability'
         temp = self.shakemap.getShakeDict()
         shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
-        description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': 'probability',
+        description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': units5,
                        'shakemap': shakedetail, 'parameters': {'slopemin': self.slopemin, 'slopemax': self.slopemax}}
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {'grid': Pgrid,
-                          'label': ('%s Probability') % (self.modeltype.capitalize()),
+                          'label': ('%s %s') % (self.modeltype.capitalize(), units5.capitalize()),
                           'type': 'output',
                           'description': description}
         if self.uncert is not None:
             rdict['modelmin'] = {'grid': Grid2D(Pmin, self.geodict),
-                                 'label': ('%s Probability (-%0.1f std ground motion)') % (self.modeltype.capitalize(), self.numstd),
+                                 'label': ('%s %s (-%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.capitalize(), self.numstd),
                                  'type': 'output',
                                  'description': description}
             rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
-                                 'label': ('%s Probability (+%0.1f std ground motion)') % (self.modeltype.capitalize(), self.numstd),
+                                 'label': ('%s %s (+%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.capitalize(), self.numstd),
                                  'type': 'output',
                                  'description': description}
         # This step might swamp memory for higher resolution runs
