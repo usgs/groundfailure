@@ -155,7 +155,10 @@ def main(args):
                 continue
             #time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
             #filename = ('%s_%s_%s' % (eventid, modelname, time1))
-            filename = ('%s_%s' % (eventid, modelname))
+            if args.appendname is not None:
+                filename = ('%s_%s_%s' % (eventid, modelname, args.appendname))
+            else:
+                filename = ('%s_%s' % (eventid, modelname))
             if args.hdf5:
                 filenameh = filename + '.hdf5'
                 savelayers(maplayers, os.path.join(outdir, filenameh))
@@ -444,7 +447,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?',
                         default=config_filepath, help='Filepath where config files are located, \
                         default is defaultconfigfiles folder of groundfailure repository')
-    parser.add_argument('-b', '--set-bounds', type=str, metavar=('lonmin, lonmax, latmin latmax'),
+    parser.add_argument('-b', '--set-bounds', type=str, metavar=('latmin, latmax, lonmin, lonmax'),
                         nargs='?', help="Set bounds of model run using four floats in this format, \
                         including quotes: 'latmin, latmax, lonmin, lonmax', default uses shakemap \
                         bounds, 'zoom, parameter, threshold' in single quotes uses a shakemap threshold\
@@ -457,6 +460,8 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--std', metavar='numstd', nargs='?',
                         help='Number of ground motion standard deviations to use (only used if \
                         uncertainty file used)', default=1.)
+    parser.add_argument('-a', '--appendname', metavar='appendname', nargs='?',
+                        help='append word to file names to describe current run', default=None)
 
     # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,

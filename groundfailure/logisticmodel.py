@@ -324,7 +324,7 @@ def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
     # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
     # is created which causes problems in the next steps
     """
-    try:    
+    try:
         filegdict = ShakeGrid.getFileGeoDict(filename, adjust='res')
     except:
         try:
@@ -491,8 +491,6 @@ class TempHdf(object):
         rowends = np.tile(rowen, len(colen))
         colends = np.repeat(colen, len(rowen))
         return rowstarts, rowends, colstarts, colends
-        
-
 
 
 class LogisticModel(object):
@@ -833,26 +831,36 @@ class LogisticModel(object):
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
+            P[np.isnan(P)] = 0.0
+            if self.uncert is not None:
+                Pmin = Pmin * self.nonzero
+                Pmax = Pmax * self.nonzero
+                Pmin[np.isnan(Pmin)] = 0.0
+                Pmax[np.isnan(Pmax)] = 0.0
         else:
             print('No slope file provided, slope thresholds not applied')
         # Stuff into Grid2D object
+        if 'Jessee' in self.modelrefs['shortref']:
+            units5 = 'relative hazard'
+        else:
+            units5 = 'probability'
         temp = self.shakemap.getShakeDict()
         shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
-        description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': 'probability',
+        description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': units5,
                        'shakemap': shakedetail, 'parameters': {'slopemin': self.slopemin, 'slopemax': self.slopemax}}
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {'grid': Pgrid,
-                          'label': ('%s Probability') % (self.modeltype.capitalize()),
+                          'label': ('%s %s') % (self.modeltype.capitalize(), units5.title()),
                           'type': 'output',
                           'description': description}
         if self.uncert is not None:
             rdict['modelmin'] = {'grid': Grid2D(Pmin, self.geodict),
-                                 'label': ('%s Probability (-%0.1f std ground motion)') % (self.modeltype.capitalize(), self.numstd),
+                                 'label': ('%s %s (-%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.title(), self.numstd),
                                  'type': 'output',
                                  'description': description}
             rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
-                                 'label': ('%s Probability (+%0.1f std ground motion)') % (self.modeltype.capitalize(), self.numstd),
+                                 'label': ('%s %s (+%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.title(), self.numstd),
                                  'type': 'output',
                                  'description': description}
         # This step might swamp memory for higher resolution runs

@@ -762,6 +762,11 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         dnthresh = float(config['godt_2008']['parameters']['dnthresh'])
         fsthresh = float(config['godt_2008']['parameters']['fsthresh'])
         acthresh = float(config['godt_2008']['parameters']['acthresh'])
+        try:
+            slopemin = float(config['godt_2008']['parameters']['slopemin'])
+        except:
+            slopemin = 0.01
+            print('No slopemin found in config file, using 0.01 deg for slope minimum')
     except Exception as e:
         raise NameError('Could not parse configfile, %s' % e)
         #return
@@ -917,6 +922,13 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         PROBmax[PROBmax == 6.] = 0.90
         PROBmax[PROBmax == 7.] = 0.99
 
+    if slopemin is not None:
+        PROB[slopestack[:, :, 6] <= slopemin] = 0.
+        #uncert too
+        if uncertfile is not None:
+            PROBmin[slopestack[:, :, 6] <= slopemin] = 0.
+            PROBmax[slopestack[:, :, 6] <= slopemin] = 0.
+
     # Turn output and inputs into into grids and put in mapLayers dictionary
     maplayers = collections.OrderedDict()
 
@@ -954,15 +966,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
                                        'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
         if uncertfile is not None:
             maplayers['pgamin'] = {'grid': GDALGrid(PGAmin[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA - 1std (g)',
-                                    'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
+                                   'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
             maplayers['pgamax'] = {'grid': GDALGrid(PGAmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA + 1std (g)',
-                                    'type': 'input','description': {'units': 'g', 'shakemap': shakedetail}}
+                                   'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'PGV' in displmodel:
             if uncertfile is not None:
-                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin[:, :, 0], shakemap.getGeoDict()),'label': 'PGV - 1std (cm/s)',
-                                        'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV - 1std (cm/s)',
+                                       'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
                 maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV + 1std (cm/s)',
-                                        'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
+                                       'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
 
     return maplayers
 
