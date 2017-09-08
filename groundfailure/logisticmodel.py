@@ -324,7 +324,7 @@ def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
     # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
     # is created which causes problems in the next steps
     """
-    try:    
+    try:
         filegdict = ShakeGrid.getFileGeoDict(filename, adjust='res')
     except:
         try:
@@ -491,8 +491,6 @@ class TempHdf(object):
         rowends = np.tile(rowen, len(colen))
         colends = np.repeat(colen, len(rowen))
         return rowstarts, rowends, colstarts, colends
-        
-
 
 
 class LogisticModel(object):
@@ -833,6 +831,12 @@ class LogisticModel(object):
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
+            P[np.isnan(P)] = 0.0
+            if self.uncert is not None:
+                Pmin = Pmin * self.nonzero
+                Pmax = Pmax * self.nonzero
+                Pmin[np.isnan(Pmin)] = 0.0
+                Pmax[np.isnan(Pmax)] = 0.0
         else:
             print('No slope file provided, slope thresholds not applied')
         # Stuff into Grid2D object
@@ -847,16 +851,16 @@ class LogisticModel(object):
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {'grid': Pgrid,
-                          'label': ('%s %s') % (self.modeltype.capitalize(), units5.capitalize()),
+                          'label': ('%s %s') % (self.modeltype.capitalize(), units5.title()),
                           'type': 'output',
                           'description': description}
         if self.uncert is not None:
             rdict['modelmin'] = {'grid': Grid2D(Pmin, self.geodict),
-                                 'label': ('%s %s (-%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.capitalize(), self.numstd),
+                                 'label': ('%s %s (-%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.title(), self.numstd),
                                  'type': 'output',
                                  'description': description}
             rdict['modelmax'] = {'grid': Grid2D(Pmax, self.geodict),
-                                 'label': ('%s %s (+%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.capitalize(), self.numstd),
+                                 'label': ('%s %s (+%0.1f std ground motion)') % (self.modeltype.capitalize(), units5.title(), self.numstd),
                                  'type': 'output',
                                  'description': description}
         # This step might swamp memory for higher resolution runs

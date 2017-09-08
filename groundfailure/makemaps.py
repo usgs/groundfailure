@@ -746,10 +746,10 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         if k == 0:
             wid, ht = axsize.width, axsize.height
         default1 = True
-        if len(colormaps) == 1 and len(newgrids) == 1:
+        if len(colormaps) == 1 and len(plotorder) == 1:
             palette = colormaps
             default1 = False
-        if colormaps is not None and len(colormaps) == len(newgrids) and colormaps[k] is not None:
+        if colormaps is not None and len(colormaps) == len(plotorder) and colormaps[k] is not None:
             palette = colormaps[k]
             default1 = False
         if default1:  # Find preferred default color map for each type of layer if no colormaps found
@@ -789,13 +789,13 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 
         # mask out anything below any specified thresholds
 
-        # if logscale is not False and len(logscale) == len(newgrids):
+        # if logscale is not False and len(logscale) == len(plotorder):
         #     if logscale[k] is True:
         #         dat = np.log10(dat)
         #         label1 = r'$log_{10}$(' + label1 + ')'
 
         if scaletype.lower() == 'binned':
-            if logscale is not False and len(logscale) == len(newgrids):
+            if logscale is not False and len(logscale) == len(plotorder):
                 if logscale[k] is True:
                     clev = 10.**(np.arange(np.floor(np.log10(np.nanmin(dat))), np.ceil(np.log10(np.nanmax(dat))), 0.25))
                 else:
@@ -806,7 +806,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                     else:
                         scal = 1.
 
-                    if lims is None or len(lims) != len(newgrids):
+                    if lims is None or len(lims) != len(plotorder):
                         clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
                     else:
                         if lims[k] is None:
@@ -820,8 +820,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                     scal = 10**-order
                 else:
                     scal = 1.
-
-                if lims is None or len(lims) != len(newgrids):
+                if lims is None or len(lims) != len(plotorder):
                     clev = (np.linspace(np.floor(scal*np.nanmin(dat)), np.ceil(scal*np.nanmax(dat)), 10))/scal
                 else:
                     if lims[k] is None:
@@ -843,7 +842,8 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             if isinstance(logscale, (bool)):
                 # Put it in a list so it won't break things later
                 logscale = [logscale]
-            if lims is not None and len(lims) == len(newgrids):
+
+            if lims is not None and len(lims) == len(plotorder):
                 if lims[k] is None:
                     vmin = np.nanmin(dat)
                     vmax = np.nanmax(dat)
@@ -855,7 +855,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
                 vmax = np.nanmax(dat)
 
         # Might need to move this up to before downsampling...might give illusion of no hazard in places where there is some that just got averaged out
-        if maskthreshes is not None and len(maskthreshes) == len(newgrids):
+        if maskthreshes is not None and len(maskthreshes) == len(plotorder):
             if maskthreshes[k] is not None:
                 dat[dat <= maskthreshes[k]] = float('NaN')
                 dat = np.ma.array(dat, mask=np.isnan(dat))
@@ -925,7 +925,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
         # add colorbar
         cbfmt = '%1.2f'
         if vmax is not None and vmin is not None:
-            if logscale is not False and len(logscale) == len(newgrids):
+            if logscale is not False and len(logscale) == len(plotorder):
                 if logscale[k] is True:
                     cbfmt = None
             elif (vmax - vmin) < 1.:
@@ -1253,6 +1253,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         palette.set_bad(clear_color, alpha=0.0)
 
         dat = grid.getData().copy()
+        dat[dat == 0.] = float('nan')  # Makes zero probability areas clear
 
         if scaletype.lower() == 'binned':
             if logscale is not False and len(logscale) == len(plotorder):
