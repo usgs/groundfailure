@@ -680,7 +680,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
             mycity = BasemapCities.loadFromGeoNames(cityfile=cityfile)
             bcities = mycity.limitByBounds((bxmin, bxmax, bymin, bymax))
             #bcities = bcities.limitByPopulation(40000)
-            bcities = bcities.limitByGrid(nx=4, ny=4, cities_per_grid=2)
+            bcities = bcities.limitByGrid(nx=3, ny=3, cities_per_grid=1)
         except:
             print('Could not read in cityfile, not plotting cities')
             mapcities = False

@@ -444,7 +444,7 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--config-filepath', metavar='configfilepath', nargs='?',
                         default=config_filepath, help='Filepath where config files are located, \
                         default is defaultconfigfiles folder of groundfailure repository')
-    parser.add_argument('-b', '--set-bounds', type=str, metavar=('lonmin, lonmax, latmin latmax'),
+    parser.add_argument('-b', '--set-bounds', type=str, metavar=('latmin, latmax, lonmin, lonmax'),
                         nargs='?', help="Set bounds of model run using four floats in this format, \
                         including quotes: 'latmin, latmax, lonmin, lonmax', default uses shakemap \
                         bounds, 'zoom, parameter, threshold' in single quotes uses a shakemap threshold\

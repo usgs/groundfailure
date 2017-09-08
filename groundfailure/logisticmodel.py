@@ -836,7 +836,7 @@ class LogisticModel(object):
         else:
             print('No slope file provided, slope thresholds not applied')
         # Stuff into Grid2D object
-        if 'jessee' in self.modelrefs['shortref']:
+        if 'Jessee' in self.modelrefs['shortref']:
             units5 = 'relative hazard'
         else:
             units5 = 'probability'

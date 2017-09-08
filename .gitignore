@@ -70,5 +70,6 @@ runmodels.py
 
 #Spyder files
 .spyderworkspace
+.spyderproject
 .spyproject
 *~
