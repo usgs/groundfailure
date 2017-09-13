@@ -35,32 +35,28 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
       (one layer)
     :type saveinputs: boolean
     :param modeltype: OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
-        * 'coverage' (default) if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of
-          landsliding for that cell.
+        * 'coverage' (default) if critical acceleration is exceeded by pga, this gives the  estimated areal coverage of landsliding for that cell.
         * 'dn_hazus' - Outputs Newmark displacement using HAZUS methods without relating to probability of failure.
         * 'dn_prob' - Estimates Newmark displacement using HAZUS methods and relates to probability of failure using param probtype.
-        * 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined
-           by displmodel param to get Newmark displacement without relating to probability of failure.
-        * 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model
-          defined by displmodel param to get Newmark displacement and probability defined by probtype method.
+        * 'ac_classic_dn' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by displmodel param to get Newmark displacement without relating to probability of failure.
+        * 'ac_classic_prob' - Uses the critical acceleration defined by HAZUS methodology and uses regression model defined by displmodel param to get Newmark displacement and probability defined by probtype method.
     :type modeltype: string
-    :param displmodel: Newmark displacement regression model to use OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
+    :param displmodel: Newmark displacement regression model to use OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED\n
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type displmodel: string
-    :param probtype: Method used to estimate probability. OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED
+    :param probtype: Method used to estimate probability. OVERWRITES VALUE IN CONFIG FILE IF SPECIFIED\n
         * 'jibson2000' (default) uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
-        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
-          greater than this threshold fails
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greater than this threshold fails
     :type probtype: string
     :param bounds: Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin',
       'xmax', 'ymin', 'ymax'
     :type bounds: dictionary
     :returns:
-        maplayers(OrderedDict):
-        Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like
+        maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like:
+
         maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle',
         'type': 'output or input to model', 'description': 'detailed description of layer for subtitle,
         potentially including source information'}
@@ -413,13 +409,13 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
         if this is not None, it will compute the model for +-std in addition to the best estimate
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param displmodel: Newmark displacement regression model to use OVERWRITES CONFIG FILE CHOICES
+    :param displmodel: Newmark displacement regression model to use OVERWRITES CONFIG FILE CHOICES\n
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type displmodel: string
-    :param probtype: Method used to estimate probability. OVERWRITES CONFIG FILE CHOICES
+    :param probtype: Method used to estimate probability. OVERWRITES CONFIG FILE CHOICES\n
         * 'jibson2000' (default) uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
         * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes
             anything greather than this threshold fails
@@ -432,7 +428,9 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
 
     :returns:
         maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata
-        formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line
+        formatted like:\n
+
+        maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line
         of subtitle', 'type': 'output or input to model', 'description': 'detailed description of layer for subtitle,
         potentially including source information'}
 
@@ -708,16 +706,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
     :type config: ConfigObj
     :param saveinputs: Whether or not to return the model input layers, False (defeault) returns only the model output (one layer)
     :type saveinputs: boolean
-    :param displmodel: Newmark displacement regression model to use
+    :param displmodel: Newmark displacement regression model to use\n
         * 'J_PGA' (default) - PGA-based model from Jibson (2007) - equation 6.
         * 'J_PGA_M' - PGA and M-based model from Jibson (2007) - equation 7.
         * 'RS_PGA_M' - PGA and M-based model from from Rathje and Saygili (2009).
         * 'RS_PGA_PGV' - PGA and PGV-based model from Saygili and Rathje (2008) - equation 6.
     :type displmodel: string
-    :param probtype: Method used to estimate probability.
+    :param probtype: Method used to estimate probability.\n
         * 'jibson2000' uses equation 5 from Jibson et al. (2000) to estimate probability from Newmark displacement.
-        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything
-            greather than this threshold fails
+        * 'threshold' uses a specified threshold of Newmark displacement (defined in config file) and assumes anything greater than this threshold fails
     :type probtype: string
     :param slopediv: Divide slope by this number to get slope in degrees (Verdin datasets need to be divided by 100)
     :type slopediv: float
@@ -725,10 +722,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
                   because that is how it was calibrated, but values are reasonable without multiplying for regular
                   analysis)
     :type codiv: float
-    :returns: maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata
-                        formatted like maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for
-                        colorbar and top line of subtitle', 'type': 'output or input to model',
-                        'description': 'detailed description of layer for subtitle, potentially including source information'}
+    :returns: maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like:\n
+                maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for
+                colorbar and top line of subtitle', 'type': 'output or input to model',
+                'description': 'detailed description of layer for subtitle, potentially including source information'}
 
     :raises:
          NameError: when unable to parse the config correctly (probably a formatting issue in the configfile) or when
@@ -988,7 +985,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
     :param PGA: NxM Array of PGA values in units of g
     :type PGA: numpy Array
 
-    :param model:
+    :param model:\n
       *'J_PGA' - PGA only model from Jibson (2007), equation 6 Applicable for Magnitude range of dataset (5.3-7.6)
       *'J_PGA_M' - PGA-and M- based Newmark Displacement model from Jibson (2007), equation 7 Applicable for Magnitude range of dataset (5.3-7.6)
       *'RS_PGA_M' - PGA and M-based Newmark displacement model from Rathje and Saygili (2009)
@@ -1003,7 +1000,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
     :type PGV: numpy array or float
 
     :returns:
-        Dn(array): NxM array of Newmark displacements in cm
+        Dn(array): NxM array of Newmark displacements in cm\n
         logDnstd(array): NxM array of sigma Dn in log units
     """
     # Deal with non-array inputs

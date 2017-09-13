@@ -162,12 +162,9 @@ def validateTerms(cmodel, coeffs, layers):
     :param layers: a dictionary of file names for all input layers (e.g. {'slope': 'slopefile.bil', 'vs30': 'vs30.grd'})
     :type layers: dictionary
     :returns:
-        tuple (terms, timeField)
-        terms: dictionary of terms that form the model equation (e.g. 'b1': "self.layerdict['friction'].getData()",
-            'b2': "self.layerdict['slope'].getData()/100.")
-        timeField: Field that indicates time that is used to know which input file to read in (e.g. for monthly average
-            precipitation, 'MONTH')
-
+        tuple (terms, timeField)\n
+        terms: dictionary of terms that form the model equation (e.g. 'b1': "self.layerdict['friction'].getData()",'b2': "self.layerdict['slope'].getData()/100.")\n
+        timeField: Field that indicates time that is used to know which input file to read in (e.g. for monthly average precipitation, 'MONTH')
     """
     terms = {}
     timeField = None
@@ -323,6 +320,13 @@ def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
     Use gdal to trim a large global file down quickly so mapio can read it efficiently
     # Using subprocess approach because gdal.Translate doesn't hang on the command until the file
     # is created which causes problems in the next steps
+    :param filename: file path to original input file (raster)
+    :param tempname: file path to desired location of clipped part of filename
+    :param gdict: geodictionary to cut around & align with
+    :param extrasamp: number of extra cells to cut around each edge of geodict to have resampling buffer for future steps
+    :param method: if resampling is necessary, method to use
+    :returns: newgdict: geodict for new file that was cut
+            and also creates the file in the tempname location
     """
     try:
         filegdict = ShakeGrid.getFileGeoDict(filename, adjust='res')
@@ -357,10 +361,10 @@ class TempHdf(object):
     def __init__(self, grid2dfile, filename, name=None):
         """
         Convert grid2d file into a temporary hdf5 file for reducing memory load
+
         :param grid2dfile: grid2d file object to save
         :param filename: full file path to where file should be saved (recommended it be a temporary dir)
-        :param name: name of layer, if None, will use filename minus the extension, or if a multihazard grid2d object,
-            each layer will have its own name
+        :param name: name of layer, if None, will use filename minus the extension, or if a multihazard grid2d object, each layer will have its own name
         """
         filename1, file_ext = os.path.splitext(filename)
         if file_ext != '.hdf5':
@@ -421,6 +425,7 @@ class TempHdf(object):
     def getSlice(self, rowstart=None, rowend=None, colstart=None, colend=None, name=None):
         """
         return specified slice of data
+
         :param rowstart: tarting row index (inclusive), if None, will start at 0
         :param rowend: ending row index (exclusive), if None, will end at last row
         :param colstart: starting column index (inclusive), if None, will start at 0
@@ -460,6 +465,7 @@ class TempHdf(object):
     def getSliceDiv(self, rowmax=None, colmax=None):
         """
         Determine how to slice the arrays
+
         :param rowmax: maximum number of rows in each slice, default None uses entire row
         :param colmax: maximum number of columns in each slice, default None uses entire column
         :returns rowstarts, rowends, colstarts, colends:
@@ -497,6 +503,7 @@ class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False, slopefile=None,
                  bounds=None, numstd=1, slopemod=None):
         """Set up the logistic model
+
         :param config: configobj (config .ini file read in using configobj) defining the model and its inputs. Only one
           model should be described in each config file.
         :type config: dictionary
@@ -514,8 +521,6 @@ class LogisticModel(object):
         :param bounds: dictionary of boundaries to cut to in the form bounds = {'xmin': lonmin, 'xmax': lonmax, 'ymin': latmin, 'ymax': latmax}
           default of None uses ShakeMap boundaries
         :param numstd: number of standard deviations to run for computing uncertainties (if uncertfile is not None)
-        :param rowmax: number of rows to compute at once (in slices) - None does all in one
-        :param colmax: number of columns to compute at once (in slices) - None does all in one
         :param slopemod: how slope input should be modified to be in degrees: e.g., 'np.arctan(slope) * 180. / np.pi' or 'slope/100.'
                         (note that this may be in the config file already)
         :type slopemod: string
@@ -778,7 +783,10 @@ class LogisticModel(object):
 
     def calculate(self, cleanup=True, rowmax=300, colmax=None):
         """Calculate the model
+
         :param cleanup: if True, will delete temporary hdf5 files, if False, files will remain and model can be calculated again
+        :param rowmax: number of rows to compute at once (in slices) - None does all in one
+        :param colmax: number of columns to compute at once (in slices) - None does all in one
         :returns:
             a dictionary containing the model results and model inputs if saveinputs was set to
             True when class was set up, see <https://github.com/usgs/groundfailure#api-for-model-output> for a

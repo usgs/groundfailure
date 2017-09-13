@@ -51,9 +51,12 @@ mpl.rcParams['font.sans-serif'] = ['Helvetica', 'Arial', 'Bitstream Vera Serif',
 
 
 def parseMapConfig(config, fileext=None):
-    # Parse config object
-    # fileext will be prepended to any file paths in config
-    # ADD PLOTORDER TO CONFIG? OTHER THINGS LIKE COLORMAPS?
+    """Parse config for mapping options
+
+    :param config: configfile object
+    :param fileext: file extension to add to relative filepaths, will be prepended to any file paths in config.
+    :returns: dictionary of map options pulled from config file
+    """
     topofile = None
     roadfolder = None
     cityfile = None
@@ -134,7 +137,17 @@ def parseConfigLayers(maplayers, config, keys=None):
     Parse things that need to coodinate with each layer (like lims, logscale,
     colormaps etc.) from config file, in right order - takes orders from
     maplayers
-    # TO DO, ADD ABILITY TO INTERPRET CUSTOM COLOR MAPS
+
+    :param maplayers: dictionary containing model output
+    :param config: config object describing options for specific model
+    :param keys: list of keys of maplayers to process, e.g. ['model']
+    :returns: plotorder: list of maplayers keys in order of plotting\n
+        logscale: list of logscale options from config corresponding to keys in plotorder (same order)
+        lims: list of colorbar limits from config corresponding to keys in plotorder (same order)
+        colormaps: list of colormaps from config corresponding to keys in plotorder (same order)
+        maskthreshes: list of mask thresholds from config corresponding to keys in plotorder (same order)
+
+    TO DO, ADD ABILITY TO INTERPRET CUSTOM COLOR MAPS
     """
     # get all key names, create a plotorder list in case maplayers is not an
     # ordered dict, making sure that anything called 'model' is first
@@ -267,11 +280,13 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     PNG aren't output, opens plot on screen using plt.show()
 
     :param grids: Dictionary of N layers and metadata formatted like:
+
         maplayers['layer name']={
         'grid': mapio grid2D object,
         'label': 'label for colorbar and top line of subtitle',
         'type': 'output or input to model',
         'description': 'detailed description of layer for subtitle'}.
+
       Layer names must be unique.
     :type name: Dictionary or Ordered dictionary - import collections;
       grids = collections.OrderedDict()
@@ -359,9 +374,7 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 
     :returns:
         * PDF and/or PNG of map
-        * Downsampled and trimmed version of input grids. If no
-        modification was needed for plotting, this will be identical to grids but
-        without the metadata
+        * Downsampled and trimmed version of input grids. If no modification was needed for plotting, this will be identical to grids but without the metadata
         * list of output filenames
 
     """
@@ -1109,11 +1122,13 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
     landslide models with their input layers)
 
     :param grids: Dictionary of N layers and metadata formatted like:
+
         maplayers['layer name']={
         'grid': mapio grid2D object,
         'label': 'label for colorbar and top line of subtitle',
         'type': 'output or input to model',
         'description': 'detailed description of layer for subtitle'}.
+
       Layer names must be unique.
     :type name: Dictionary or Ordered dictionary - import collections;
       grids = collections.OrderedDict()
@@ -1465,7 +1480,7 @@ def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,
                     zthresh=0, scaletype='continuous', lims=None, logscale=False,
                     ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
                     printparam=False, ds=True, dstype='mean'):
-    """embed multiple interactive plots in one page
+    """NOT IMPLEMENTED embed multiple interactive plots in one page
     """
     pass
 

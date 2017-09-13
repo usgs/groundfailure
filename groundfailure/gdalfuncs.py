@@ -18,8 +18,8 @@ def getfilesfromfolders(folderwildcard, filewildcard):
 
     :param folderwildcard: wild card indicating how the folders are named that
       contain the SRTM .bil files
-    :returns:
-        filenames: a list of files
+    :param filewildcard: wild card indicating how desired files are named inside folderwildcard
+    :returns: filenames: a list of file names
 
     """
     foldernames = glob.glob(folderwildcard)
@@ -52,7 +52,7 @@ def srtm2slope(filenames, finaloutfile, fmt='EHdr', cleanup=True):
     :param cleanup: Whether to delete intermediate files or not
     :type cleanup: Boolean
     :returns:
-        a geospatial file (format fmt) named finaloutfile defining slope for the area corresponding to the input filenames
+        creates a geospatial file (format fmt) named finaloutfile defining slope for the area corresponding to the input filenames
     """
 
     if '*' in filenames:
@@ -100,8 +100,6 @@ def merge(filenames, outfile, fmt='EHdr'):
 def warp(infile, outfile, s_srs, t_srs, method='bilinear', fmt='EHdr'):
     """
     Calls gdalwarp to reproject a raster
-    USAGE s_srs, t_srs = warp(infile, outfile, s_srs, t_srs, method='bilinear',
-    fmt='EHdr')
 
     :param infile: Single input file
     :param outfile: Single output file with extension
@@ -113,9 +111,9 @@ def warp(infile, outfile, s_srs, t_srs, method='bilinear', fmt='EHdr'):
       'bilinear', 'nearest' etc., bilinear should be used for slopes to avoid
       weird artifacts
     :param fmt: Format of output, 'EHdr' or 'GMT'
-    :returns:
-       s_srs: s_srs that was used
-       t_srs: t_srs that was used
+    :returns: outputs warped file to specified outfile\n
+        s_srs: s_srs that was used\n
+        t_srs: t_srs that was used
     """
     if s_srs is None or t_srs is None:
         temp, first_column_duplicated = GDALGrid.getFileGeoDict(infile)
