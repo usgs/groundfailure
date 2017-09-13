@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 #stdlib imports
-import os.path
-import warnings
+#import os.path
+#import warnings
 import collections
 
 #local imports
@@ -10,37 +10,50 @@ from mapio.shake import ShakeGrid
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
 from mapio.gmt import GMTGrid
-from mapio.grid2d import Grid2D
-from mapio.geodict import GeoDict
+#from mapio.grid2d import Grid2D
+#from mapio.geodict import GeoDict
 
 #third party imports
 import numpy as np
 
 
-def holzer_liq(shakefile, config, uncertfile=None, saveinputs=False,
-               modeltype=None, displmodel=None,
-               probtype=None, bounds=None):
+def holzer_liq(shakefile, config, uncertfile=None, saveinputs=False, bounds=None):
     """
     Method for computing the probability of liquefaction using the Holzer method
     using the Wills et al. (2015) Vs30 map of California to define the
-    susceptibility classes and the Fan et al. global water table model. 
+    susceptibility classes and the Fan et al. global water table model.
+
+    :param shakefile: complete file path to the location of the Shakemap xml file to use as input
+    :param config: Model configuration file object containing locations of input files and other input values config =
+      ConfigObj(configfilepath)
+    :type config: ConfigObj
+    :param uncertfile: NOT IMPLEMENTED YET Full file path to the location of the uncertainty xml file (optional)
+    :param saveinputs: boolean, whether or not to also output the input layers used in the model
+    :param bounds: NOT IMPLEMENTED YET Boundaries to compute over if different from ShakeMap boundaries as dictionary with keys 'xmin',
+      'xmax', 'ymin', 'ymax'
+    :type bounds: dictionary
+
+    :returns:
+        maplayers(OrderedDict):
+        Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like
+        maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for colorbar and top line of subtitle',
+        'type': 'output or input to model', 'description': 'detailed description of layer for subtitle,
+        potentially including source information'}
     """
     layers = config['holzer_liq_cal']['layers']
     vs30_file = layers['vs30']['file']
     wtd_file = layers['watertable']['file']
-    shkgdict = ShakeGrid.getFileGeoDict(shakefile)
+    #shkgdict = ShakeGrid.getFileGeoDict(shakefile)
     fgeodict = GMTGrid.getFileGeoDict(vs30_file)[0]
 
-    
     #---------------------------------------------------------------------------
     # Loading info
     #---------------------------------------------------------------------------
     shakemap = ShakeGrid.load(shakefile, fgeodict, resample=True,
                               method='linear', doPadding=True)
-    PGA = shakemap.getLayer('pga').getData()/100 # convert to g
-    griddict,eventdict,specdict,fields,uncertainties = getHeaderData(shakefile)
+    PGA = shakemap.getLayer('pga').getData()/100  # convert to g
+    griddict, eventdict, specdict, fields, uncertainties = getHeaderData(shakefile)
     mag = eventdict['magnitude']
-
 
     #---------------------------------------------------------------------------
     # Logistic funciton parameters from Vs30
@@ -54,7 +67,7 @@ def holzer_liq(shakefile, config, uncertfile=None, saveinputs=False,
     a1 = np.zeros_like(vs30)
     b1 = np.zeros_like(vs30)
     c1 = np.zeros_like(vs30)
-    for k,v in config['holzer_liq_cal']['parameters'].items():
+    for k, v in config['holzer_liq_cal']['parameters'].items():
         ind = np.where(vs30 == float(v[0]))
         a0[ind] = v[1]
         b0[ind] = v[2]
@@ -63,19 +76,18 @@ def holzer_liq(shakefile, config, uncertfile=None, saveinputs=False,
         b1[ind] = v[5]
         c1[ind] = v[6]
 
-
     #---------------------------------------------------------------------------
     # Water table
     #---------------------------------------------------------------------------
-    wtd_grid = GMTGrid.load(wtd_file, fgeodict, resample=True, 
-                            method=layers['watertable']['interpolation'], 
-                            doPadding = True)
+    wtd_grid = GMTGrid.load(wtd_file, fgeodict, resample=True,
+                            method=layers['watertable']['interpolation'],
+                            doPadding=True)
     tmp = wtd_grid._data
     tmp = np.nan_to_num(tmp)
 
     # Compute water weights
     w0, w1 = get_water_weights(tmp)
-    
+
     #---------------------------------------------------------------------------
     # Compute probability of liquefaction
     #---------------------------------------------------------------------------
@@ -87,42 +99,42 @@ def holzer_liq(shakefile, config, uncertfile=None, saveinputs=False,
     # Turn output and inputs into into grids and put in maplayers dictionary
     #---------------------------------------------------------------------------
     maplayers = collections.OrderedDict()
-    
+
     temp = shakemap.getShakeDict()
     shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
     modelsref = config['holzer_liq_cal']['shortref']
     modellref = config['holzer_liq_cal']['longref']
     modeltype = 'Holzer/Wills'
-    maplayers['model'] = {'grid': GDALGrid(prob, fgeodict), 
-                          'label': 'Probability', 
+    maplayers['model'] = {'grid': GDALGrid(prob, fgeodict),
+                          'label': 'Probability',
                           'type': 'output',
-                          'description': {'name': modelsref, 
-                                          'longref': modellref, 
+                          'description': {'name': modelsref,
+                                          'longref': modellref,
                                           'units': 'coverage',
-                                          'shakemap': shakedetail, 
+                                          'shakemap': shakedetail,
                                           'parameters': {'modeltype': modeltype}
                                           }
                           }
 
     if saveinputs is True:
-        maplayers['pga'] = {'grid': GDALGrid(PGA, fgeodict), 
-                            'label': 'PGA (g)', 
+        maplayers['pga'] = {'grid': GDALGrid(PGA, fgeodict),
+                            'label': 'PGA (g)',
                             'type': 'input',
                             'description': {'units': 'g', 'shakemap': shakedetail}}
         maplayers['vs30'] = {'grid': GDALGrid(vs30, fgeodict),
-                             'label': 'Vs30 (m/s)', 
+                             'label': 'Vs30 (m/s)',
                              'type': 'input',
                              'description': {'units': 'm/s'}}
         maplayers['wtd'] = {'grid': GDALGrid(wtd_grid._data, fgeodict),
-                            'label': 'wtd (m)', 
+                            'label': 'wtd (m)',
                             'type': 'input',
                             'description': {'units': 'm'}}
     return maplayers
 
 
 def get_prob(pga, a, b, c, M):
-    """Compute probability of liquefaction from logistic function and 
-    magnitude scaling factor. 
+    """Compute probability of liquefaction from logistic function and
+    magnitude scaling factor.
     """
     msf = 10**2.24/(M**2.56)
     prob = np.nan_to_num(a/(1 + ((pga/msf)/b)**c))
@@ -131,7 +143,7 @@ def get_prob(pga, a, b, c, M):
 
 def get_water_weights(z):
     """Compute weights for the two different water table depths
-    for an arbitrary depth z. 
+    for an arbitrary depth z.
     """
     w0 = np.ones_like(z)
     w0[(z > 1.5) & (z <= 5)] = 1 + 1.5/3.5 - z[(z > 1.5) & (z <= 5)]/3.5
