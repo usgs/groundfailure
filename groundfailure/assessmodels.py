@@ -361,21 +361,25 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethresh
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the probability * area of grid cell
     For models that compute areal coverage, this is equivalant to the total predicted area affected in km2
-    
+
     :param model: grid2D object of model output
     :param proj: projection to use to obtain equal area, 'moll' (default) mollweide or 'laea' lambert equal area
     :param probthresh: Probability threshold, any values less than this will not be included in aggregate hazard estimation
     :param shakefile: Optional, path to shakemap file to use for ground motion threshold
     :param shakethreshtype: Optional, Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'
-    :param shakethresh: Optional, Shaking threshold in %g for pga, cm/s for pgv, float for mmi.
+    :param shakethresh: Optional, Float or list of shaking thresholds in %g for pga, cm/s for pgv, float for mmi.
+    :returns Hagg: Single float if no shakethresh defined or only one shakethresh defined, otherwise, a list of aggregate hazard for all shakethresh values
     """
+    Hagg = []
     bounds = grid2D.getBounds()
     lat0 = np.mean((bounds[2], bounds[3]))
     lon0 = np.mean((bounds[0], bounds[1]))
     projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
     geodict = grid2D.getGeoDict()
 
-    if shakefile is not None and shakethresh > 0.:
+    if shakefile is not None:
+        if shakethresh.type() is float:
+            shakethresh = [shakethresh]
         # resample shakemap to grid2D
         temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True, doPadding=True,
                               adjust='res')
@@ -391,13 +395,19 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethresh
     geodictRS = grid.getGeoDict()
     cell_area_km2 = geodictRS.dx * geodictRS.dy
     model = grid.getData()
-    if shakefile is not None and shakethresh > 0.:
-        shkgrid = shk.project(projection=projs)
-        shkdat = shkgrid.getData()
-        shkdat[np.isnan(shkdat)] = -1.  #use -1 to avoid nan errors and warnings, will always be thrown out because default is 0.
-        model[shkdat < shakethresh] = -1.
     model[np.isnan(model)] = -1.
-    Hagg = np.sum(model[model >= probthresh] * cell_area_km2)
+    if shakefile is not None:
+        for shaket in shakethresh:
+            modcop = model.copy()
+            shkgrid = shk.project(projection=projs)
+            shkdat = shkgrid.getData()
+            shkdat[np.isnan(shkdat)] = -1.  # use -1 to avoid nan errors and warnings, will always be thrown out because default is 0.
+            modcop[shkdat < shaket] = -1.
+            Hagg.append(np.sum(modcop[modcop >= probthresh] * cell_area_km2))
+    else:
+        Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+    if len(Hagg) == 1:
+        Hagg = Hagg[0]
     return Hagg
 
 
