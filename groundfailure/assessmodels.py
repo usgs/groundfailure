@@ -357,13 +357,13 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
     return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
 
 
-def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
+def computeHagg(grid2D, proj='tmerc', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the probability * area of grid cell
     For models that compute areal coverage, this is equivalant to the total predicted area affected in km2
 
     :param model: grid2D object of model output
-    :param proj: projection to use to obtain equal area, 'moll' (default) mollweide or 'laea' lambert equal area
+    :param proj: projection to use to obtain equal area, 'tmerc' transverse mercator centered on lat/lon specified (default), 'moll'  mollweide, or 'laea' lambert equal area
     :param probthresh: Probability threshold, any values less than this will not be included in aggregate hazard estimation
     :param shakefile: Optional, path to shakemap file to use for ground motion threshold
     :param shakethreshtype: Optional, Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'
@@ -374,11 +374,12 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethresh
     bounds = grid2D.getBounds()
     lat0 = np.mean((bounds[2], bounds[3]))
     lon0 = np.mean((bounds[0], bounds[1]))
+    #projs = '+proj=%s +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=km +no_defs' % (proj)
     projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
     geodict = grid2D.getGeoDict()
 
     if shakefile is not None:
-        if shakethresh.type() is float:
+        if type(shakethresh) is float or type(shakethresh) is int:
             shakethresh = [shakethresh]
         # resample shakemap to grid2D
         temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True, doPadding=True,
@@ -388,8 +389,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethresh
             raise Exception('shakemap was not resampled to exactly the same geodict as the model')
     if probthresh < 0.:
         raise Exception('probability threshold must be equal or greater than zero')
-    if shakethresh < 0.:
-        raise Exception('shaking threshold must be equal or greater than zero')
+    for shaket in shakethresh:
+        if shaket < 0.:
+            raise Exception('shaking threshold must be equal or greater than zero')
 
     grid = grid2D.project(projection=projs)
     geodictRS = grid.getGeoDict()
@@ -443,7 +445,7 @@ def getQuakeInfo(id):
     return title, time, magnitude
 
 
-def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
+def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='tmerc'):
     """Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
 
     :param gdict: geodict, likely taken from model to compare inventory against
@@ -452,7 +454,7 @@ def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'
     :param numdiv: Approximate amount to subdivide each cell of geodict by to compute areas (higher number slower but more accurate)
     :return inventorygrid: Grid2D object reporting proportional area of landsliding inside each cell defined by geodict
     :param method: method for resampling when projecting back to geographic coordinates, nearest recommended but not perfect. Cubic not recommended.
-    :param proj: projection to use to obtain equal area, 'moll' (default) mollweide or 'laea' lambert equal area
+    :param proj: projection to use to obtain equal area,  'tmerc' transverse mercator centered on lat/lon specified (default), 'moll'  mollweide, or 'laea' lambert equal area
     :returns: Grid2D object reporting approximate areal coverage of input inventory corresponding to geodict
     """
 
@@ -472,6 +474,7 @@ def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'
     rast = Grid2D.rasterizeFromGeometry(shapes, subgd, fillValue=0., burnValue=1.0, mustContainCenter=True)
 
     # Transform to equal area projection
+    #projs = '+proj=%s +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=meters +no_defs' % (proj)
     projs = '+proj=%s +datum=WGS84 +lat_0=%0.5f +lon_0=%0.5F +units=meters +x_0=0 +y_0=0' % (proj, lat0, lon0)
     equal_area = rast.project(projection=projs)
     egdict = equal_area.getGeoDict()
@@ -813,7 +816,7 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
 
 def normXcorr(model, inventory):
     """Perform normalized cross correlation (no shifts) to assess how well the spatial extent was predicted, regardless of overall values
-    
+
     :param model: Grid2D file of model
     :param inventory: Grid 2D file of inventory processed to simulate what model is supposed to predict (using convert2Prob or convert2Coverage)
     :returns: normalized cross correlation coefficient (between 0 and 1)
@@ -822,7 +825,7 @@ def normXcorr(model, inventory):
 
     if model.getGeoDict() != inventory.getGeoDict():
         raise Exception('model and inventory files are not identical')
-    
+
     modat = model.getData()
     invdat = inventory.getData()
     modat[np.isnan(modat)] = 0.
@@ -830,7 +833,7 @@ def normXcorr(model, inventory):
     result = match_template(modat, invdat)
     xcorrcoeff = result[0, 0]
     return xcorrcoeff
-    
+
 
 #def block_mean(ar, fact):
 #    """
