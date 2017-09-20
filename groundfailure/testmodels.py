@@ -23,6 +23,7 @@ from groundfailure.sample import pointsFromShapes
 from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
+from mapio.shake import ShakeGrid
 
 # Make fonts readable and recognizable by illustrator
 import matplotlib as mpl
@@ -143,7 +144,7 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
         grid = model1[keylist[k]]['grid'].getData()
         allvals = grid[~np.isnan(grid)]
         # compute area
-        totareas.append(computeArea(model1[keylist[k]]['grid'], thresh=thresh))
+        totareas.append(computeHagg(model1[keylist[k]]['grid'], probthresh=thresh))
         total = len(allvals)
         totalnonz = len(allvals[allvals > float(thresh)])
         allvals = allvals[allvals > float(thresh)]
@@ -155,7 +156,7 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
             gridmin = model1[keylist[k] + '_min']['grid'].getData()
             allvalsmin = gridmin[~np.isnan(gridmin)]
             # compute area
-            totareas_min.append(computeArea(model1[keylist[k] + '_min']['grid'], thresh=thresh))
+            totareas_min.append(computeHagg(model1[keylist[k] + '_min']['grid'], probthresh=thresh))
             #totalmin = len(allvalsmin)
             #totalnonzmin = len(allvalsmin[allvalsmin > float(thresh)])
             allvalsmin = allvalsmin[allvalsmin > float(thresh)]
@@ -166,7 +167,7 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
             gridmax = model1[keylist[k] + '_max']['grid'].getData()
             allvalsmax = gridmax[~np.isnan(gridmax)]
             # compute area
-            totareas_max.append(computeArea(model1[keylist[k] + '_max']['grid'], thresh=thresh))
+            totareas_max.append(computeHagg(model1[keylist[k] + '_max']['grid'], probthresh=thresh))
             #totalmax = len(allvalsmax)
             #totalnonzmax = len(allvalsmax[allvalsmax > float(thresh)])
             allvalsmax = allvalsmax[allvalsmax > float(thresh)]
@@ -356,23 +357,48 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
     return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
 
 
-def computeArea(grid2D, proj='moll', thresh=0.0):
+def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
     """
-    Computes the probability * area of grid cell = total area affected in km2
-    model = grid2D object of model output
-    proj = 'moll' mollweide or 'laea' lambert equal area
+    Computes the Aggregate Hazard (Hagg) which is equal to the probability * area of grid cell
+    For models that compute areal coverage, this is equivalant to the total predicted area affected in km2
+    
+    :param model: grid2D object of model output
+    :param proj: projection to use to obtain equal area, 'moll' (default) mollweide or 'laea' lambert equal area
+    :param probthresh: Probability threshold, any values less than this will not be included in aggregate hazard estimation
+    :param shakefile: Optional, path to shakemap file to use for ground motion threshold
+    :param shakethreshtype: Optional, Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'
+    :param shakethresh: Optional, Shaking threshold in %g for pga, cm/s for pgv, float for mmi.
     """
     bounds = grid2D.getBounds()
     lat0 = np.mean((bounds[2], bounds[3]))
     lon0 = np.mean((bounds[0], bounds[1]))
     projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
+    geodict = grid2D.getGeoDict()
+
+    if shakefile is not None and shakethresh > 0.:
+        # resample shakemap to grid2D
+        temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True, doPadding=True,
+                              adjust='res')
+        shk = temp.getLayer(shakethreshtype)
+        if shk.getGeoDict() != geodict:
+            raise Exception('shakemap was not resampled to exactly the same geodict as the model')
+    if probthresh < 0.:
+        raise Exception('probability threshold must be equal or greater than zero')
+    if shakethresh < 0.:
+        raise Exception('shaking threshold must be equal or greater than zero')
+
     grid = grid2D.project(projection=projs)
-    geodict = grid.getGeoDict()
-    cell_area_km2 = geodict.dx * geodict.dy
-    temp = grid.getData()
-    temp[np.isnan(temp)] = -1.
-    totarea = np.nansum(temp[temp >= thresh] * cell_area_km2)
-    return totarea
+    geodictRS = grid.getGeoDict()
+    cell_area_km2 = geodictRS.dx * geodictRS.dy
+    model = grid.getData()
+    if shakefile is not None and shakethresh > 0.:
+        shkgrid = shk.project(projection=projs)
+        shkdat = shkgrid.getData()
+        shkdat[np.isnan(shkdat)] = -1.  #use -1 to avoid nan errors and warnings, will always be thrown out because default is 0.
+        model[shkdat < shakethresh] = -1.
+    model[np.isnan(model)] = -1.
+    Hagg = np.sum(model[model >= probthresh] * cell_area_km2)
+    return Hagg
 
 
 def getQuakeInfo(id):
@@ -407,7 +433,7 @@ def getQuakeInfo(id):
     return title, time, magnitude
 
 
-def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
+def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
     """Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
 
     :param gdict: geodict, likely taken from model to compare inventory against
@@ -416,7 +442,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll')
     :param numdiv: Approximate amount to subdivide each cell of geodict by to compute areas (higher number slower but more accurate)
     :return inventorygrid: Grid2D object reporting proportional area of landsliding inside each cell defined by geodict
     :param method: method for resampling when projecting back to geographic coordinates, nearest recommended but not perfect. Cubic not recommended.
-
+    :param proj: projection to use to obtain equal area, 'moll' (default) mollweide or 'laea' lambert equal area
     :returns: Grid2D object reporting approximate areal coverage of input inventory corresponding to geodict
     """
 
@@ -444,7 +470,7 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll')
             'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv}
     dsgd = GeoDict(gdds, adjust='res')
 
-    # NEED METHOD THAT WILL USE BLOCK MEAN OR SUM
+    # Use block mean to get %coverage of larger grid
     eabig = equal_area.interpolateToGrid(dsgd, method='block_mean')
 
     # Project back
@@ -456,12 +482,30 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll')
     return inventorygrid
 
 
+def convert2Prob(gdict, inventory):
+    """Convert inventory shapefile to binary grid (with geodict of gdict) with 1 if any part of landslide was in a cell, 0 if not
+
+    :param gdict: geodict, likely taken from model to compare inventory against
+    :param inventory: full file path to shapefile of inventory, must be in geographic coordinates, WGS84
+    :type inventory: string
+    :returns rast: Grid2D object containing rasterized version of inventory where cell is 1. if any part of a landslide was in the cell
+    """
+    with fiona.open(inventory) as f:
+        invshp = list(f.items())
+
+    shapes = [shape(inv[1]['geometry']) for inv in invshp]
+
+    # Rasterize with allTouch
+    rast = Grid2D.rasterizeFromGeometry(shapes, gdict, fillValue=0., burnValue=1.0, mustContainCenter=False)
+    return rast
+
+
 def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots=False, filepath=None):
     """TO DO - FIND MORE TESTS THAT ARE EASY TO COMPARE WITH EACH OTHER
     Compute stats and make comparison plots specific to models that output areal coverage like Godt et al 2008
 
     :param modelgrid: Grid2D object of model results
-    :param inventorygrid: Grid2D object of areal coverage of inventory computed on same grid as modelgrid using, for example, computeCoverage
+    :param inventorygrid: Grid2D object of areal coverage of inventory computed on same grid as modelgrid using, for example, convert2Coverage
     :param bins: bin edges to use for various binning and threshold statistical calculations. if None bins = np.linspace(0, np.max((inv.max(), model.max())), 11)
     :param showplots: if True, will display the plots
     :param saveplots: if True, will save the plots
@@ -507,6 +551,7 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots
         areatot.append(np.mean(areain))
     areatot = np.nan_to_num(areatot)
 
+    # get centerpoint of bins
     binvec = []
     for i in range(len(bins[:-1])):
         binvec.append(bins[i]+(bins[i+1]-bins[i])/2)
