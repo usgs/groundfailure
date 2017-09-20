@@ -482,7 +482,7 @@ def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'
     return inventorygrid
 
 
-def convert2Prob(gdict, inventory):
+def convert2Prob(gdict, inventory, mustContainCenter=False):
     """Convert inventory shapefile to binary grid (with geodict of gdict) with 1 if any part of landslide was in a cell, 0 if not
 
     :param gdict: geodict, likely taken from model to compare inventory against
@@ -496,7 +496,8 @@ def convert2Prob(gdict, inventory):
     shapes = [shape(inv[1]['geometry']) for inv in invshp]
 
     # Rasterize with allTouch
-    rast = Grid2D.rasterizeFromGeometry(shapes, gdict, fillValue=0., burnValue=1.0, mustContainCenter=False)
+    rast = Grid2D.rasterizeFromGeometry(shapes, gdict, fillValue=0., burnValue=1.0, mustContainCenter=mustContainCenter)
+
     return rast
 
 
@@ -800,48 +801,69 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
     return yespoints, nopoints, modelvalyes, modelvalno, results
 
 
-def block_mean(ar, fact):
+def normXcorr(model, inventory):
+    """Perform normalized cross correlation (no shifts) to assess how well the spatial extent was predicted, regardless of overall values
+    
+    :param model: Grid2D file of model
+    :param inventory: Grid 2D file of inventory processed to simulate what model is supposed to predict (using convert2Prob or convert2Coverage)
+    :returns: normalized cross correlation coefficient (between 0 and 1)
     """
-    Block mean for downsampling 2d array
-    From here http://stackoverflow.com/questions/18666014/downsample-array-in-python
-    """
-    from scipy import ndimage
-    sx, sy = ar.shape
-    newx = int(np.floor(sx/float(fact)))
-    newy = int(np.floor(sy/float(fact)))
-    vec = np.reshape(np.arange(newx*newy), (newx, newy))
-    regions = vec.repeat(fact, 0).repeat(fact, 1)
-    # Patch on edges (just expand existing cells on the edges a little)
-    xdiff = ar.shape[0] - regions.shape[0]
-    if xdiff != 0:
-        row = regions[-1, :]
-        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))
-    ydiff = ar.shape[1] - regions.shape[1]
-    if ydiff != 0:
-        col = regions[:, -1]
-        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))
-    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
-    res = res.reshape(newx, newy)
-    return res
+    from skimage.feature import match_template
 
+    if model.getGeoDict() != inventory.getGeoDict():
+        raise Exception('model and inventory files are not identical')
+    
+    modat = model.getData()
+    invdat = inventory.getData()
+    modat[np.isnan(modat)] = 0.
+    invdat[np.isnan(invdat)] = 0.
+    result = match_template(modat, invdat)
+    xcorrcoeff = result[0, 0]
+    return xcorrcoeff
+    
 
-def line_mean(ar, fact):
-    """
-    Same as block_mean but for 1d array
-    """
-    from scipy import ndimage
-    sx = len(ar)
-    newx = int(np.floor(sx/float(fact)))
-    vec = np.arange(newx)
-    regions = vec.repeat(fact)
-    # Patch on edges (just expand existing cells on the edges a little)
-    xdiff = ar.shape[0] - regions.shape[0]
-    if xdiff != 0:
-        row = regions[-1]
-        regions = np.concatenate((regions, np.repeat(row, xdiff)))
-    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
-    return res
-
+#def block_mean(ar, fact):
+#    """
+#    Block mean for downsampling 2d array
+#    From here http://stackoverflow.com/questions/18666014/downsample-array-in-python
+#    """
+#    from scipy import ndimage
+#    sx, sy = ar.shape
+#    newx = int(np.floor(sx/float(fact)))
+#    newy = int(np.floor(sy/float(fact)))
+#    vec = np.reshape(np.arange(newx*newy), (newx, newy))
+#    regions = vec.repeat(fact, 0).repeat(fact, 1)
+#    # Patch on edges (just expand existing cells on the edges a little)
+#    xdiff = ar.shape[0] - regions.shape[0]
+#    if xdiff != 0:
+#        row = regions[-1, :]
+#        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))
+#    ydiff = ar.shape[1] - regions.shape[1]
+#    if ydiff != 0:
+#        col = regions[:, -1]
+#        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))
+#    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
+#    res = res.reshape(newx, newy)
+#    return res
+#
+#
+#def line_mean(ar, fact):
+#    """
+#    Same as block_mean but for 1d array
+#    """
+#    from scipy import ndimage
+#    sx = len(ar)
+#    newx = int(np.floor(sx/float(fact)))
+#    vec = np.arange(newx)
+#    regions = vec.repeat(fact)
+#    # Patch on edges (just expand existing cells on the edges a little)
+#    xdiff = ar.shape[0] - regions.shape[0]
+#    if xdiff != 0:
+#        row = regions[-1]
+#        regions = np.concatenate((regions, np.repeat(row, xdiff)))
+#    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
+#    return res
+#
 
 # def computeCoverage_accurate(gdict, inventory, numdiv=10.):
 #     """
