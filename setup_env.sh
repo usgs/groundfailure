@@ -59,7 +59,7 @@ rm impact.zip
 
 # do pip installs of those things that are not available via conda.
 pip install sphinx_rtd_theme
-pip install git+git://github.com/python-visualization/folium.git
+pip install folium
 
 
 # tell the user they have to activate this environment
