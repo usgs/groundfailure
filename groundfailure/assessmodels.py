@@ -357,13 +357,13 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
     return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
 
 
-def computeHagg(grid2D, proj='tmerc', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
+def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the probability * area of grid cell
     For models that compute areal coverage, this is equivalant to the total predicted area affected in km2
 
     :param model: grid2D object of model output
-    :param proj: projection to use to obtain equal area, 'tmerc' transverse mercator centered on lat/lon specified (default), 'moll'  mollweide, or 'laea' lambert equal area
+    :param proj: projection to use to obtain equal area, 'moll'  mollweide, or 'laea' lambert equal area
     :param probthresh: Probability threshold, any values less than this will not be included in aggregate hazard estimation
     :param shakefile: Optional, path to shakemap file to use for ground motion threshold
     :param shakethreshtype: Optional, Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'
@@ -374,24 +374,28 @@ def computeHagg(grid2D, proj='tmerc', probthresh=0.0, shakefile=None, shakethres
     bounds = grid2D.getBounds()
     lat0 = np.mean((bounds[2], bounds[3]))
     lon0 = np.mean((bounds[0], bounds[1]))
-    #projs = '+proj=%s +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=km +no_defs' % (proj)
-    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
+    #projs = '+proj=merc +a=6378137 +b=6378137 +lat_ts=%1.5f +lon_0=%1.5f +x_0=0.0 +y_0=0 +k=1.0 +units=km +nadgrids=@null +wktext  +no_defs' % (lat0, lon0)
+    #projs = '+proj=nzmg +lat_0=-41 +lon_0=173 +x_0=2510000 +y_0=6023150 +ellps=intl +towgs84=59.47,-5.04,187.44,0.47,-0.1,1.024,-4.5993 +units=km +no_defs'
+    #projs = '+proj=tmerc +lat_0=0 +lon_0=173 +k=0.9996 +x_0=1600000 +y_0=10000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=km +no_defs'
+    #projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
+    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 +units=km +no_defs' % (proj, lat0, lon0)
     geodict = grid2D.getGeoDict()
 
     if shakefile is not None:
         if type(shakethresh) is float or type(shakethresh) is int:
             shakethresh = [shakethresh]
+        for shaket in shakethresh:
+            if shaket < 0.:
+                raise Exception('shaking threshold must be equal or greater than zero')
         # resample shakemap to grid2D
         temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True, doPadding=True,
                               adjust='res')
         shk = temp.getLayer(shakethreshtype)
         if shk.getGeoDict() != geodict:
             raise Exception('shakemap was not resampled to exactly the same geodict as the model')
+
     if probthresh < 0.:
         raise Exception('probability threshold must be equal or greater than zero')
-    for shaket in shakethresh:
-        if shaket < 0.:
-            raise Exception('shaking threshold must be equal or greater than zero')
 
     grid = grid2D.project(projection=projs)
     geodictRS = grid.getGeoDict()
@@ -445,7 +449,7 @@ def getQuakeInfo(id):
     return title, time, magnitude
 
 
-def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='tmerc'):
+def convert2Coverage(gdict, inventory, numdiv=15., method='nearest', proj='moll'):
     """Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
 
     :param gdict: geodict, likely taken from model to compare inventory against
@@ -454,37 +458,47 @@ def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='tmerc
     :param numdiv: Approximate amount to subdivide each cell of geodict by to compute areas (higher number slower but more accurate)
     :return inventorygrid: Grid2D object reporting proportional area of landsliding inside each cell defined by geodict
     :param method: method for resampling when projecting back to geographic coordinates, nearest recommended but not perfect. Cubic not recommended.
-    :param proj: projection to use to obtain equal area,  'tmerc' transverse mercator centered on lat/lon specified (default), 'moll'  mollweide, or 'laea' lambert equal area
+    :param proj: projection to use to obtain equal area,  'moll'  mollweide, or 'laea' lambert equal area
     :returns: Grid2D object reporting approximate areal coverage of input inventory corresponding to geodict
     """
 
     lat0 = np.mean((gdict.ymin, gdict.ymax))
     lon0 = np.mean((gdict.xmin, gdict.xmax))
-    gdsubdiv = {'xmin': gdict.xmin, 'xmax': gdict.xmax, 'ymin': gdict.ymin, 'ymax': gdict.ymax, 'dx': gdict.dx/numdiv,
+    gdsubdiv = {'xmin': gdict.xmin - gdict.dx, 'xmax': gdict.xmax + gdict.dx, 'ymin': gdict.ymin - gdict.dy, 'ymax': gdict.ymax + gdict.dy, 'dx': gdict.dx/numdiv,
                 'dy': gdict.dy/numdiv, 'ny': gdict.ny*numdiv, 'nx': gdict.nx*numdiv}
     subgd = GeoDict(gdsubdiv, adjust='res')
+    #subgd = Grid2D.bufferBounds(gdict, subgd, doPadding=True, buffer_pixels=2)
 
-    f = fiona.open(inventory)
-
-    invshp = list(f.items())
-    f.close()
+    with fiona.open(inventory) as f:
+        invshp = list(f.items())
     shapes = [shape(inv[1]['geometry']) for inv in invshp]
 
     # Rasterize with oversampled area
     rast = Grid2D.rasterizeFromGeometry(shapes, subgd, fillValue=0., burnValue=1.0, mustContainCenter=True)
 
     # Transform to equal area projection
-    #projs = '+proj=%s +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=meters +no_defs' % (proj)
-    projs = '+proj=%s +datum=WGS84 +lat_0=%0.5f +lon_0=%0.5F +units=meters +x_0=0 +y_0=0' % (proj, lat0, lon0)
-    equal_area = rast.project(projection=projs)
+    #projs = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
+    #projs = '+proj=%s +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs' % (proj)
+    #projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs' % (proj, lat0, lon0)
+    #projs = '+proj=%s +datum=WGS84 +lat_0=%0.5f +lon_0=%0.5F +units=m +x_0=0 +y_0=0' % (proj, lat0, lon0)
+    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs' % (proj, lat0, lon0)
+    equal_area = rast.project(projection=projs, method='nearest')
     egdict = equal_area.getGeoDict()
 
-    gdds = {'xmin': egdict.xmin, 'xmax': egdict.xmax, 'ymin': egdict.ymin, 'ymax': egdict.ymax, 'dx': egdict.dx*numdiv,
-            'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv}
-    dsgd = GeoDict(gdds, adjust='res')
-
     # Use block mean to get %coverage of larger grid
-    eabig = equal_area.interpolateToGrid(dsgd, method='block_mean')
+    bm = block_mean(equal_area.getData(), factor=numdiv)
+
+    gdds = {'xmin': egdict.xmin, 'xmax': egdict.xmax, 'ymin': egdict.ymin, 'ymax': egdict.ymax, 'dx': egdict.dx*numdiv,
+            'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv, 'projection': projs}
+    dsgd = GeoDict(gdds, adjust='res')
+    dsgd.setProjection(projs)
+    eabig = Grid2D(data=bm, geodict=dsgd)
+
+    #gdds = {'xmin': egdict.xmin, 'xmax': egdict.xmax, 'ymin': egdict.ymin, 'ymax': egdict.ymax, 'dx': egdict.dx*numdiv,
+    #       'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv}
+    #dsgd = GeoDict(gdds, adjust='res')
+
+    #eabig = equal_area.interpolateToGrid(dsgd, method='block_mean')
 
     # Project back
     eabigproj = eabig.project(projection=gdict.projection)
@@ -835,29 +849,33 @@ def normXcorr(model, inventory):
     return xcorrcoeff
 
 
-#def block_mean(ar, fact):
-#    """
-#    Block mean for downsampling 2d array
-#    From here http://stackoverflow.com/questions/18666014/downsample-array-in-python
-#    """
-#    from scipy import ndimage
-#    sx, sy = ar.shape
-#    newx = int(np.floor(sx/float(fact)))
-#    newy = int(np.floor(sy/float(fact)))
-#    vec = np.reshape(np.arange(newx*newy), (newx, newy))
-#    regions = vec.repeat(fact, 0).repeat(fact, 1)
-#    # Patch on edges (just expand existing cells on the edges a little)
-#    xdiff = ar.shape[0] - regions.shape[0]
-#    if xdiff != 0:
-#        row = regions[-1, :]
-#        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))
-#    ydiff = ar.shape[1] - regions.shape[1]
-#    if ydiff != 0:
-#        col = regions[:, -1]
-#        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))
-#    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
-#    res = res.reshape(newx, newy)
-#    return res
+def block_mean(ar, factor):
+    """
+    Block mean for downsampling 2d array
+    From here http://stackoverflow.com/questions/18666014/downsample-array-in-python
+
+    :param ar: 2D array to downsample using a block mean
+    :param factor: factor by which to downsample
+    :returns res: downsampled array
+    """
+    from scipy import ndimage
+    sx, sy = ar.shape
+    newx = int(np.floor(sx/float(factor)))
+    newy = int(np.floor(sy/float(factor)))
+    vec = np.reshape(np.arange(newx*newy), (newx, newy))
+    regions = vec.repeat(factor, 0).repeat(factor, 1)
+    # Patch on edges (just expand existing cells on the edges a little)
+    xdiff = ar.shape[0] - regions.shape[0]
+    if xdiff != 0:
+        row = regions[-1, :]
+        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))
+    ydiff = ar.shape[1] - regions.shape[1]
+    if ydiff != 0:
+        col = regions[:, -1]
+        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))
+    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
+    res = res.reshape(newx, newy)
+    return res
 #
 #
 #def line_mean(ar, fact):
