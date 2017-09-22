@@ -17,6 +17,7 @@ import copy
 import collections
 import urllib
 import json
+from skimage.measure import block_reduce
 
 #local imports
 from groundfailure.sample import pointsFromShapes
@@ -449,7 +450,7 @@ def getQuakeInfo(id):
     return title, time, magnitude
 
 
-def convert2Coverage(gdict, inventory, numdiv=15., method='nearest', proj='moll'):
+def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
     """Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
 
     :param gdict: geodict, likely taken from model to compare inventory against
@@ -464,7 +465,7 @@ def convert2Coverage(gdict, inventory, numdiv=15., method='nearest', proj='moll'
 
     lat0 = np.mean((gdict.ymin, gdict.ymax))
     lon0 = np.mean((gdict.xmin, gdict.xmax))
-    gdsubdiv = {'xmin': gdict.xmin - gdict.dx, 'xmax': gdict.xmax + gdict.dx, 'ymin': gdict.ymin - gdict.dy, 'ymax': gdict.ymax + gdict.dy, 'dx': gdict.dx/numdiv,
+    gdsubdiv = {'xmin': gdict.xmin - 3*gdict.dx, 'xmax': gdict.xmax + 3*gdict.dx, 'ymin': gdict.ymin - 3*gdict.dy, 'ymax': gdict.ymax + 3*gdict.dy, 'dx': gdict.dx/numdiv,
                 'dy': gdict.dy/numdiv, 'ny': gdict.ny*numdiv, 'nx': gdict.nx*numdiv}
     subgd = GeoDict(gdsubdiv, adjust='res')
     #subgd = Grid2D.bufferBounds(gdict, subgd, doPadding=True, buffer_pixels=2)
@@ -475,6 +476,8 @@ def convert2Coverage(gdict, inventory, numdiv=15., method='nearest', proj='moll'
 
     # Rasterize with oversampled area
     rast = Grid2D.rasterizeFromGeometry(shapes, subgd, fillValue=0., burnValue=1.0, mustContainCenter=True)
+    #rast = GDALGrid.copyFromGrid(rast)
+    #rast.save('test7.tif')
 
     # Transform to equal area projection
     #projs = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
@@ -486,18 +489,20 @@ def convert2Coverage(gdict, inventory, numdiv=15., method='nearest', proj='moll'
     egdict = equal_area.getGeoDict()
 
     # Use block mean to get %coverage of larger grid
-    bm = block_mean(equal_area.getData(), factor=numdiv)
+    bm, xdiff, ydiff = block_mean(equal_area.getData(), factor=numdiv, replacenan=0.0)
+    #dat = equal_area.getData()
+    #dat[np.isnan(dat)] = 0.0
+    #bm1 = block_reduce(dat, block_size=(numdiv, numdiv), func=np.mean, cval=0.0)
 
-    gdds = {'xmin': egdict.xmin, 'xmax': egdict.xmax, 'ymin': egdict.ymin, 'ymax': egdict.ymax, 'dx': egdict.dx*numdiv,
-            'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv, 'projection': projs}
+    # complicated adjustment to get the alignment right
+    gdds = {'xmin': egdict.xmin + 0.5 * egdict.dx * (numdiv - 1), 'xmax': egdict.xmax - egdict.dx*(xdiff-0.5+numdiv) + (numdiv * egdict.dx)/2., 'ymin': egdict.ymin + egdict.dy*(ydiff-0.5+numdiv) - (egdict.dy*numdiv)/2., 'ymax': egdict.ymax + 0.5*egdict.dy - 0.5*numdiv*egdict.dy/2, 'dx': egdict.dx*numdiv,
+            'dy': egdict.dy*numdiv, 'ny': np.floor(egdict.ny/numdiv), 'nx': np.floor(egdict.nx/numdiv), 'projection': projs}
     dsgd = GeoDict(gdds, adjust='res')
     dsgd.setProjection(projs)
     eabig = Grid2D(data=bm, geodict=dsgd)
+    eabig = GDALGrid.copyFromGrid(eabig)
 
-    #gdds = {'xmin': egdict.xmin, 'xmax': egdict.xmax, 'ymin': egdict.ymin, 'ymax': egdict.ymax, 'dx': egdict.dx*numdiv,
-    #       'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv}
-    #dsgd = GeoDict(gdds, adjust='res')
-
+    #TODO add block-mean to mapio as an interpolation method so it can be called like this
     #eabig = equal_area.interpolateToGrid(dsgd, method='block_mean')
 
     # Project back
@@ -849,33 +854,40 @@ def normXcorr(model, inventory):
     return xcorrcoeff
 
 
-def block_mean(ar, factor):
+def block_mean(ar, factor, replacenan=None):
     """
     Block mean for downsampling 2d array
     From here http://stackoverflow.com/questions/18666014/downsample-array-in-python
 
     :param ar: 2D array to downsample using a block mean
     :param factor: factor by which to downsample
-    :returns res: downsampled array
+    :returns: res: downsampled array
+    xdiff: number of cells added to right edge
+    ydiff: number of cells added to bottom edge
     """
     from scipy import ndimage
+    if replacenan is not None:
+        ar[np.isnan(ar)] = replacenan
     sx, sy = ar.shape
+    # get new dimensions (cutting off extra on edges)
     newx = int(np.floor(sx/float(factor)))
     newy = int(np.floor(sy/float(factor)))
+    # build regions over which to average
     vec = np.reshape(np.arange(newx*newy), (newx, newy))
     regions = vec.repeat(factor, 0).repeat(factor, 1)
-    # Patch on edges (just expand existing cells on the edges a little)
+    # Patch on edges (just expand existing cells on the edges a little) - to account for rounding down earlier
     xdiff = ar.shape[0] - regions.shape[0]
     if xdiff != 0:
         row = regions[-1, :]
-        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))
+        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))  # add onto the bottom
     ydiff = ar.shape[1] - regions.shape[1]
     if ydiff != 0:
         col = regions[:, -1]
-        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))
+        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))  # add onto the right side
     res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
     res = res.reshape(newx, newy)
-    return res
+    return res, xdiff, ydiff
+
 #
 #
 #def line_mean(ar, fact):
