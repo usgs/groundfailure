@@ -17,12 +17,14 @@ import copy
 import collections
 import urllib
 import json
+from skimage.measure import block_reduce
 
 #local imports
 from groundfailure.sample import pointsFromShapes
 from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
+from mapio.shake import ShakeGrid
 
 # Make fonts readable and recognizable by illustrator
 import matplotlib as mpl
@@ -143,7 +145,7 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
         grid = model1[keylist[k]]['grid'].getData()
         allvals = grid[~np.isnan(grid)]
         # compute area
-        totareas.append(computeArea(model1[keylist[k]]['grid'], thresh=thresh))
+        totareas.append(computeHagg(model1[keylist[k]]['grid'], probthresh=thresh))
         total = len(allvals)
         totalnonz = len(allvals[allvals > float(thresh)])
         allvals = allvals[allvals > float(thresh)]
@@ -155,7 +157,7 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
             gridmin = model1[keylist[k] + '_min']['grid'].getData()
             allvalsmin = gridmin[~np.isnan(gridmin)]
             # compute area
-            totareas_min.append(computeArea(model1[keylist[k] + '_min']['grid'], thresh=thresh))
+            totareas_min.append(computeHagg(model1[keylist[k] + '_min']['grid'], probthresh=thresh))
             #totalmin = len(allvalsmin)
             #totalnonzmin = len(allvalsmin[allvalsmin > float(thresh)])
             allvalsmin = allvalsmin[allvalsmin > float(thresh)]
@@ -166,7 +168,7 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
             gridmax = model1[keylist[k] + '_max']['grid'].getData()
             allvalsmax = gridmax[~np.isnan(gridmax)]
             # compute area
-            totareas_max.append(computeArea(model1[keylist[k] + '_max']['grid'], thresh=thresh))
+            totareas_max.append(computeHagg(model1[keylist[k] + '_max']['grid'], probthresh=thresh))
             #totalmax = len(allvalsmax)
             #totalnonzmax = len(allvalsmax[allvalsmax > float(thresh)])
             allvalsmax = allvalsmax[allvalsmax > float(thresh)]
@@ -356,23 +358,64 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
     return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
 
 
-def computeArea(grid2D, proj='moll', thresh=0.0):
+def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
     """
-    Computes the probability * area of grid cell = total area affected in km2
-    model = grid2D object of model output
-    proj = 'moll' mollweide or 'laea' lambert equal area
+    Computes the Aggregate Hazard (Hagg) which is equal to the probability * area of grid cell
+    For models that compute areal coverage, this is equivalant to the total predicted area affected in km2
+
+    :param model: grid2D object of model output
+    :param proj: projection to use to obtain equal area, 'moll'  mollweide, or 'laea' lambert equal area
+    :param probthresh: Probability threshold, any values less than this will not be included in aggregate hazard estimation
+    :param shakefile: Optional, path to shakemap file to use for ground motion threshold
+    :param shakethreshtype: Optional, Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'
+    :param shakethresh: Optional, Float or list of shaking thresholds in %g for pga, cm/s for pgv, float for mmi.
+    :returns Hagg: Single float if no shakethresh defined or only one shakethresh defined, otherwise, a list of aggregate hazard for all shakethresh values
     """
+    Hagg = []
     bounds = grid2D.getBounds()
     lat0 = np.mean((bounds[2], bounds[3]))
     lon0 = np.mean((bounds[0], bounds[1]))
-    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
+    #projs = '+proj=merc +a=6378137 +b=6378137 +lat_ts=%1.5f +lon_0=%1.5f +x_0=0.0 +y_0=0 +k=1.0 +units=km +nadgrids=@null +wktext  +no_defs' % (lat0, lon0)
+    #projs = '+proj=nzmg +lat_0=-41 +lon_0=173 +x_0=2510000 +y_0=6023150 +ellps=intl +towgs84=59.47,-5.04,187.44,0.47,-0.1,1.024,-4.5993 +units=km +no_defs'
+    #projs = '+proj=tmerc +lat_0=0 +lon_0=173 +k=0.9996 +x_0=1600000 +y_0=10000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=km +no_defs'
+    #projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
+    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 +units=km +no_defs' % (proj, lat0, lon0)
+    geodict = grid2D.getGeoDict()
+
+    if shakefile is not None:
+        if type(shakethresh) is float or type(shakethresh) is int:
+            shakethresh = [shakethresh]
+        for shaket in shakethresh:
+            if shaket < 0.:
+                raise Exception('shaking threshold must be equal or greater than zero')
+        # resample shakemap to grid2D
+        temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True, doPadding=True,
+                              adjust='res')
+        shk = temp.getLayer(shakethreshtype)
+        if shk.getGeoDict() != geodict:
+            raise Exception('shakemap was not resampled to exactly the same geodict as the model')
+
+    if probthresh < 0.:
+        raise Exception('probability threshold must be equal or greater than zero')
+
     grid = grid2D.project(projection=projs)
-    geodict = grid.getGeoDict()
-    cell_area_km2 = geodict.dx * geodict.dy
-    temp = grid.getData()
-    temp[np.isnan(temp)] = -1.
-    totarea = np.nansum(temp[temp >= thresh] * cell_area_km2)
-    return totarea
+    geodictRS = grid.getGeoDict()
+    cell_area_km2 = geodictRS.dx * geodictRS.dy
+    model = grid.getData()
+    model[np.isnan(model)] = -1.
+    if shakefile is not None:
+        for shaket in shakethresh:
+            modcop = model.copy()
+            shkgrid = shk.project(projection=projs)
+            shkdat = shkgrid.getData()
+            shkdat[np.isnan(shkdat)] = -1.  # use -1 to avoid nan errors and warnings, will always be thrown out because default is 0.
+            modcop[shkdat < shaket] = -1.
+            Hagg.append(np.sum(modcop[modcop >= probthresh] * cell_area_km2))
+    else:
+        Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+    if len(Hagg) == 1:
+        Hagg = Hagg[0]
+    return Hagg
 
 
 def getQuakeInfo(id):
@@ -407,7 +450,7 @@ def getQuakeInfo(id):
     return title, time, magnitude
 
 
-def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
+def convert2Coverage(gdict, inventory, numdiv=30., method='nearest', proj='moll'):
     """Fast method to produce grid of area actually affected by landsliding in each cell defined by geodict
 
     :param gdict: geodict, likely taken from model to compare inventory against
@@ -416,36 +459,51 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll')
     :param numdiv: Approximate amount to subdivide each cell of geodict by to compute areas (higher number slower but more accurate)
     :return inventorygrid: Grid2D object reporting proportional area of landsliding inside each cell defined by geodict
     :param method: method for resampling when projecting back to geographic coordinates, nearest recommended but not perfect. Cubic not recommended.
-
+    :param proj: projection to use to obtain equal area,  'moll'  mollweide, or 'laea' lambert equal area
     :returns: Grid2D object reporting approximate areal coverage of input inventory corresponding to geodict
     """
 
     lat0 = np.mean((gdict.ymin, gdict.ymax))
     lon0 = np.mean((gdict.xmin, gdict.xmax))
-    gdsubdiv = {'xmin': gdict.xmin, 'xmax': gdict.xmax, 'ymin': gdict.ymin, 'ymax': gdict.ymax, 'dx': gdict.dx/numdiv,
+    gdsubdiv = {'xmin': gdict.xmin - 3*gdict.dx, 'xmax': gdict.xmax + 3*gdict.dx, 'ymin': gdict.ymin - 3*gdict.dy, 'ymax': gdict.ymax + 3*gdict.dy, 'dx': gdict.dx/numdiv,
                 'dy': gdict.dy/numdiv, 'ny': gdict.ny*numdiv, 'nx': gdict.nx*numdiv}
     subgd = GeoDict(gdsubdiv, adjust='res')
+    #subgd = Grid2D.bufferBounds(gdict, subgd, doPadding=True, buffer_pixels=2)
 
-    f = fiona.open(inventory)
-
-    invshp = list(f.items())
-    f.close()
+    with fiona.open(inventory) as f:
+        invshp = list(f.items())
     shapes = [shape(inv[1]['geometry']) for inv in invshp]
 
     # Rasterize with oversampled area
     rast = Grid2D.rasterizeFromGeometry(shapes, subgd, fillValue=0., burnValue=1.0, mustContainCenter=True)
+    #rast = GDALGrid.copyFromGrid(rast)
+    #rast.save('test7.tif')
 
     # Transform to equal area projection
-    projs = '+proj=%s +datum=WGS84 +lat_0=%0.5f +lon_0=%0.5F +units=meters +x_0=0 +y_0=0' % (proj, lat0, lon0)
-    equal_area = rast.project(projection=projs)
+    #projs = '+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext  +no_defs'
+    #projs = '+proj=%s +lon_0=0 +x_0=0 +y_0=0 +ellps=WGS84 +datum=WGS84 +units=m +no_defs' % (proj)
+    #projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=m +no_defs' % (proj, lat0, lon0)
+    #projs = '+proj=%s +datum=WGS84 +lat_0=%0.5f +lon_0=%0.5F +units=m +x_0=0 +y_0=0' % (proj, lat0, lon0)
+    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 +units=m +no_defs' % (proj, lat0, lon0)
+    equal_area = rast.project(projection=projs, method='nearest')
     egdict = equal_area.getGeoDict()
 
-    gdds = {'xmin': egdict.xmin, 'xmax': egdict.xmax, 'ymin': egdict.ymin, 'ymax': egdict.ymax, 'dx': egdict.dx*numdiv,
-            'dy': egdict.dy*numdiv, 'ny': egdict.ny/numdiv, 'nx': egdict.nx/numdiv}
-    dsgd = GeoDict(gdds, adjust='res')
+    # Use block mean to get %coverage of larger grid
+    bm, xdiff, ydiff = block_mean(equal_area.getData(), factor=numdiv, replacenan=0.0)
+    #dat = equal_area.getData()
+    #dat[np.isnan(dat)] = 0.0
+    #bm1 = block_reduce(dat, block_size=(numdiv, numdiv), func=np.mean, cval=0.0)
 
-    # NEED METHOD THAT WILL USE BLOCK MEAN OR SUM
-    eabig = equal_area.interpolateToGrid(dsgd, method='block_mean')
+    # complicated adjustment to get the alignment right
+    gdds = {'xmin': egdict.xmin + 0.5 * egdict.dx * (numdiv - 1), 'xmax': egdict.xmax - egdict.dx*(xdiff-0.5+numdiv) + (numdiv * egdict.dx)/2., 'ymin': egdict.ymin + egdict.dy*(ydiff-0.5+numdiv) - (egdict.dy*numdiv)/2., 'ymax': egdict.ymax + 0.5*egdict.dy - 0.5*numdiv*egdict.dy/2, 'dx': egdict.dx*numdiv,
+            'dy': egdict.dy*numdiv, 'ny': np.floor(egdict.ny/numdiv), 'nx': np.floor(egdict.nx/numdiv), 'projection': projs}
+    dsgd = GeoDict(gdds, adjust='res')
+    dsgd.setProjection(projs)
+    eabig = Grid2D(data=bm, geodict=dsgd)
+    eabig = GDALGrid.copyFromGrid(eabig)
+
+    #TODO add block-mean to mapio as an interpolation method so it can be called like this
+    #eabig = equal_area.interpolateToGrid(dsgd, method='block_mean')
 
     # Project back
     eabigproj = eabig.project(projection=gdict.projection)
@@ -456,12 +514,31 @@ def computeCoverage(gdict, inventory, numdiv=30., method='nearest', proj='moll')
     return inventorygrid
 
 
+def convert2Prob(gdict, inventory, mustContainCenter=False):
+    """Convert inventory shapefile to binary grid (with geodict of gdict) with 1 if any part of landslide was in a cell, 0 if not
+
+    :param gdict: geodict, likely taken from model to compare inventory against
+    :param inventory: full file path to shapefile of inventory, must be in geographic coordinates, WGS84
+    :type inventory: string
+    :returns rast: Grid2D object containing rasterized version of inventory where cell is 1. if any part of a landslide was in the cell
+    """
+    with fiona.open(inventory) as f:
+        invshp = list(f.items())
+
+    shapes = [shape(inv[1]['geometry']) for inv in invshp]
+
+    # Rasterize with allTouch
+    rast = Grid2D.rasterizeFromGeometry(shapes, gdict, fillValue=0., burnValue=1.0, mustContainCenter=mustContainCenter)
+
+    return rast
+
+
 def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots=False, filepath=None):
     """TO DO - FIND MORE TESTS THAT ARE EASY TO COMPARE WITH EACH OTHER
     Compute stats and make comparison plots specific to models that output areal coverage like Godt et al 2008
 
     :param modelgrid: Grid2D object of model results
-    :param inventorygrid: Grid2D object of areal coverage of inventory computed on same grid as modelgrid using, for example, computeCoverage
+    :param inventorygrid: Grid2D object of areal coverage of inventory computed on same grid as modelgrid using, for example, convert2Coverage
     :param bins: bin edges to use for various binning and threshold statistical calculations. if None bins = np.linspace(0, np.max((inv.max(), model.max())), 11)
     :param showplots: if True, will display the plots
     :param saveplots: if True, will save the plots
@@ -507,6 +584,7 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True, saveplots
         areatot.append(np.mean(areain))
     areatot = np.nan_to_num(areatot)
 
+    # get centerpoint of bins
     binvec = []
     for i in range(len(bins[:-1])):
         binvec.append(bins[i]+(bins[i+1]-bins[i])/2)
@@ -755,48 +833,80 @@ def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest', extent='i
     return yespoints, nopoints, modelvalyes, modelvalno, results
 
 
-def block_mean(ar, fact):
+def normXcorr(model, inventory):
+    """Perform normalized cross correlation (no shifts) to assess how well the spatial extent was predicted, regardless of overall values
+
+    :param model: Grid2D file of model
+    :param inventory: Grid 2D file of inventory processed to simulate what model is supposed to predict (using convert2Prob or convert2Coverage)
+    :returns: normalized cross correlation coefficient (between 0 and 1)
+    """
+    from skimage.feature import match_template
+
+    if model.getGeoDict() != inventory.getGeoDict():
+        raise Exception('model and inventory files are not identical')
+
+    modat = model.getData()
+    invdat = inventory.getData()
+    modat[np.isnan(modat)] = 0.
+    invdat[np.isnan(invdat)] = 0.
+    result = match_template(modat, invdat)
+    xcorrcoeff = result[0, 0]
+    return xcorrcoeff
+
+
+def block_mean(ar, factor, replacenan=None):
     """
     Block mean for downsampling 2d array
     From here http://stackoverflow.com/questions/18666014/downsample-array-in-python
+
+    :param ar: 2D array to downsample using a block mean
+    :param factor: factor by which to downsample
+    :returns: res: downsampled array
+    xdiff: number of cells added to right edge
+    ydiff: number of cells added to bottom edge
     """
     from scipy import ndimage
+    if replacenan is not None:
+        ar[np.isnan(ar)] = replacenan
     sx, sy = ar.shape
-    newx = int(np.floor(sx/float(fact)))
-    newy = int(np.floor(sy/float(fact)))
+    # get new dimensions (cutting off extra on edges)
+    newx = int(np.floor(sx/float(factor)))
+    newy = int(np.floor(sy/float(factor)))
+    # build regions over which to average
     vec = np.reshape(np.arange(newx*newy), (newx, newy))
-    regions = vec.repeat(fact, 0).repeat(fact, 1)
-    # Patch on edges (just expand existing cells on the edges a little)
+    regions = vec.repeat(factor, 0).repeat(factor, 1)
+    # Patch on edges (just expand existing cells on the edges a little) - to account for rounding down earlier
     xdiff = ar.shape[0] - regions.shape[0]
     if xdiff != 0:
         row = regions[-1, :]
-        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))
+        regions = np.row_stack((regions, np.repeat(np.reshape(row, (1, len(row))), xdiff, axis=0)))  # add onto the bottom
     ydiff = ar.shape[1] - regions.shape[1]
     if ydiff != 0:
         col = regions[:, -1]
-        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))
+        regions = np.column_stack((regions, np.repeat(np.reshape(col, (len(col), 1)), ydiff, axis=1)))  # add onto the right side
     res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
     res = res.reshape(newx, newy)
-    return res
+    return res, xdiff, ydiff
 
-
-def line_mean(ar, fact):
-    """
-    Same as block_mean but for 1d array
-    """
-    from scipy import ndimage
-    sx = len(ar)
-    newx = int(np.floor(sx/float(fact)))
-    vec = np.arange(newx)
-    regions = vec.repeat(fact)
-    # Patch on edges (just expand existing cells on the edges a little)
-    xdiff = ar.shape[0] - regions.shape[0]
-    if xdiff != 0:
-        row = regions[-1]
-        regions = np.concatenate((regions, np.repeat(row, xdiff)))
-    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
-    return res
-
+#
+#
+#def line_mean(ar, fact):
+#    """
+#    Same as block_mean but for 1d array
+#    """
+#    from scipy import ndimage
+#    sx = len(ar)
+#    newx = int(np.floor(sx/float(fact)))
+#    vec = np.arange(newx)
+#    regions = vec.repeat(fact)
+#    # Patch on edges (just expand existing cells on the edges a little)
+#    xdiff = ar.shape[0] - regions.shape[0]
+#    if xdiff != 0:
+#        row = regions[-1]
+#        regions = np.concatenate((regions, np.repeat(row, xdiff)))
+#    res = ndimage.mean(ar, labels=regions, index=np.arange(regions.max() + 1))
+#    return res
+#
 
 # def computeCoverage_accurate(gdict, inventory, numdiv=10.):
 #     """

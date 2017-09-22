@@ -25,10 +25,10 @@ text = {'config_filepath': os.path.join(upone, 'defaultconfigfiles/models'),
         'mapconfig': os.path.join(upone, 'defaultconfigfiles/mapconfig.ini')}
 if not os.path.exists(os.path.join(datadir, 'test_outputs')):
     os.makedirs(os.path.join(datadir, 'test_outputs'))
-f = open(gfaildefaults, 'w')
-for key in text:
-    f.write('%s = %s\n' % (key, text[key]))
-f.close()
+with open(gfaildefaults, 'w') as f:
+    for key, tx in text.items():
+        f.write('%s = %s\n' % (key, tx))
+        print('%s = %s\n' % (key, tx))
 
 # temporarily switch out .gfail_defaults file
 defaultfilepath = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
@@ -42,6 +42,7 @@ def tes_list_default_paths():
     cmd = 'gfail --list-default-paths'
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
+    print(stderr)
     assert('Default paths currently set:' in temp), 'list_default_paths did not return expected output'
     temp2 = temp.split('Default paths currently set:')
     assert('/defaultconfigfiles/models' in temp2[1]), 'list_default_paths did not return expected output'
