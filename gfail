@@ -144,7 +144,7 @@ def main(args):
                                     bounds=bounds)
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(shakefile, conf, uncertfile=args.uncertfile, saveinputs=args.save_inputs,
-                                     bounds=bounds)
+                                     bounds=bounds, numstd=float(args.std))
             elif modelfunc == 'hazus_liq':
                 maplayers = hazus_liq(shakefile, conf)
             elif modelfunc == 'holzer_liq':

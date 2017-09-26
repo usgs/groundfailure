@@ -26,6 +26,7 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
     """This function runs the HAZUS landslide procedure (FEMA, 2003, Chapter 4) using susceptiblity categories (I-X)
     defined by the HAZUS manual.
 
+    TODO add numstd
     :param shakefile: complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
     :param config: Model configuration file object containing locations of input files and other input values config =
@@ -400,6 +401,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
     from Shakemap with regression equations from Jibson (2007), Rathje and Saygili (2008) and
     Saygili and Rathje (2009)
 
+    TODO add numstd
     :param shakefile: complete file path to the location of the Shakemap to use as input
     :type shakefile: string:
     :param config: Model configuration file object containing locations of input files and other input values
@@ -693,7 +695,7 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
 
 
 def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=None, bounds=None, slopediv=100.,
-             codiv=10.):
+             codiv=10., numstd=None):
     """ This function runs the Godt et al. (2008) global method for a given ShakeMap. The Factor of Safety
     is calculated using infinite slope analysis assumuing dry conditions. The method uses threshold newmark
     displacement and estimates areal coverage by doing the calculations for each slope quantile
@@ -722,6 +724,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
                   because that is how it was calibrated, but values are reasonable without multiplying for regular
                   analysis)
     :type codiv: float
+    :param numstd: number of +/- standard deviations to use if uncertainty is computed (uncertfile is not None)
     :returns: maplayers(OrderedDict): Dictionary containing output and input layers (if saveinputs=True) along with metadata formatted like:\n
                 maplayers['layer name']={'grid': mapio grid2D object, 'label': 'label for
                 colorbar and top line of subtitle', 'type': 'output or input to model',
@@ -813,6 +816,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         except:
             print('Could not read uncertainty file, ignoring uncertainties')
             uncertfile = None
+        if numstd is None:
+            numstd = 1.
 
     # Read in all the slope files, divide all by 100 to get to slope in degrees (because input files are multiplied by 100.)
     slopes = []
@@ -866,11 +871,11 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
         stdpga = np.repeat(uncert.getLayer('stdpga').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
         stdpgv = np.repeat(uncert.getLayer('stdpgv').getData()[:, :, np.newaxis], 7, axis=2).astype(float)
         # estimate PGA +- 1std
-        PGAmin = np.exp(np.log(PGA*100) - stdpga)/100
-        PGAmax = np.exp(np.log(PGA*100) + stdpga)/100
+        PGAmin = np.exp(np.log(PGA*100) - numstd*stdpga)/100
+        PGAmax = np.exp(np.log(PGA*100) + numstd*stdpga)/100
         if 'PGV' in displmodel:
-            PGVmin = np.exp(np.log(PGV) - stdpgv)
-            PGVmax = np.exp(np.log(PGV) + stdpgv)
+            PGVmin = np.exp(np.log(PGV) - numstd*stdpgv)
+            PGVmax = np.exp(np.log(PGV) + numstd*stdpgv)
         else:
             PGVmin = None
             PGVmax = None
@@ -939,9 +944,9 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
     maplayers['model'] = {'grid': GDALGrid(PROB, shakemap.getGeoDict()), 'label': 'Areal coverage', 'type': 'output',
                           'description': description}
     if uncertfile is not None:
-        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, shkgdict), 'label': 'Probability-1std', 'type': 'output',
+        maplayers['modelmin'] = {'grid': GDALGrid(PROBmin, shkgdict), 'label': 'Probability-%1.2fstd' % numstd, 'type': 'output',
                                  'description': {}}
-        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, shkgdict), 'label': 'Probability+1std', 'type': 'output',
+        maplayers['modelmax'] = {'grid': GDALGrid(PROBmax, shkgdict), 'label': 'Probability+%1.2fstd' % numstd, 'type': 'output',
                                  'description': {}}
 
     if saveinputs is True:
@@ -962,15 +967,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
                                        'label': 'Friction angle ($^\circ$)', 'type': 'input',
                                        'description': {'units': 'degrees', 'name': frictionsref, 'longref': frictionlref}}
         if uncertfile is not None:
-            maplayers['pgamin'] = {'grid': GDALGrid(PGAmin[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA - 1std (g)',
+            maplayers['pgamin'] = {'grid': GDALGrid(PGAmin[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA - %1.2fstd (g)' % numstd,
                                    'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
-            maplayers['pgamax'] = {'grid': GDALGrid(PGAmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA + 1std (g)',
+            maplayers['pgamax'] = {'grid': GDALGrid(PGAmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGA + %1.2fstd (g)' % numstd,
                                    'type': 'input', 'description': {'units': 'g', 'shakemap': shakedetail}}
         if 'PGV' in displmodel:
             if uncertfile is not None:
-                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV - 1std (cm/s)',
+                maplayers['pgvmin'] = {'grid': GDALGrid(PGVmin[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV - %1.2fstd (cm/s)' % numstd,
                                        'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
-                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV + 1std (cm/s)',
+                maplayers['pgvmax'] = {'grid': GDALGrid(PGVmax[:, :, 0], shakemap.getGeoDict()), 'label': 'PGV + %1.2fstd (cm/s)' % numstd,
                                        'type': 'input', 'description': {'units': 'cm/s', 'shakemap': shakedetail}}
 
     return maplayers
