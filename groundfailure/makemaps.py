@@ -311,8 +311,8 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     :param boundaries: None to show entire study area, 'zoom' to zoom in on the
       area of action (only works if there is a probability layer) using zthresh
       as a threshold, or a dictionary defining lats and lons in the form of
-      boundaries.xmin = minlon, boundaries.xmax = maxlon, boundaries.ymin =
-      min lat, boundaries.ymax = max lat
+      boundaries[xmin] = minlon, boundaries[xmax] = maxlon, boundaries[ymin] =
+      min lat, boundaries[ymax] = max lat
     :param zthresh: threshold for computing zooming bounds, only used if
       boundaries = 'zoom'
     :type zthresh: float
@@ -1116,11 +1116,12 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=None,
                    maskthreshes=None, colormaps=None, scaletype='continuous', lims=None, logscale=False,
                    ALPHA=0.7, isScenario=False, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
-                   printparam=False, ds=True, dstype='mean', smcontourfile=None):
+                   smcontourfile=None, faultfile=None,
+                   sepcolorbar=False):
     """
     This function creates interactive html plots of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers)
-
+    TODO add printparam option
     :param grids: Dictionary of N layers and metadata formatted like:
 
         maplayers['layer name']={
@@ -1180,12 +1181,16 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         - "Cloudmade" (Must pass API key)
         - "Mapbox" (Must pass API key)
         - "CartoDB" (positron and dark_matter)
-    :param printparam: True prints model parameters on figure - NOT IMPLEMENTED YET
-    :param ds: True to allow downsampling for display (necessary when arrays
+
+    :param faultfile: file extension to geojson file containing finite fault polygons
+    :param sepcolorbar: if True, will make separate colorbar figure, if False, will embed less fancy colorbar
+
+    TODO:param printparam: True prints model parameters on figure - NOT IMPLEMENTED YET
+    TODO:param ds: True to allow downsampling for display (necessary when arrays
       are quite large, False to not allow) NOT IMPLEMENTED YET
-    :param dstype: What function to use in downsampling, options are 'min',
-      'max', 'median', or 'mean' NOT IMPLEMENTED YET
-    :param smcontourfile: file extension to shakemap contour file to plot
+    TODO:param dstype: What function to use in downsampling, options are 'min',
+        'max', 'median', or 'mean' NOT IMPLEMENTED YET
+    TODO:param smcontourfile: file extension to shakemap contour file to plot
      NOT FUNCTIONAL YET
 
     :returns:
@@ -1196,7 +1201,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
     clear_color = [0, 0, 0, 0.0]
     if plotorder is None:
         plotorder = grids.keys()
-
+    cbarfilenames = []
     defaultcolormap = cm.CMRmap_r
 
     if shakefile is not None:
@@ -1248,6 +1253,15 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         except:
             sref = ''
 
+        sref_fix = sref
+        if sref != '':
+            sref_fix = sref_fix.replace(' (', '_')
+            sref_fix = sref_fix.replace(')', '')
+            sref_fix = sref_fix.replace(' ', '_')
+
+        if outfilename is None:
+            outfilename = '%s_%s' % (edict['event_id'], sref_fix)
+
         if colormaps is not None and len(colormaps) == len(plotorder):
             if colormaps[k] is not None:
                 palette = colormaps[k]
@@ -1268,7 +1282,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         palette.set_bad(clear_color, alpha=0.0)
 
         dat = grid.getData().copy()
-        dat[dat == 0.] = float('nan')  # Makes zero probability areas clear
+        dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
 
         if scaletype.lower() == 'binned':
             if logscale is not False and len(logscale) == len(plotorder):
@@ -1347,41 +1361,45 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         maxlat = gd.ymax + gd.dy/2.
         maxlon = gd.xmax + gd.dx/2.
 
-        # if logscale is not False and len(logscale) == len(plotorder):
-        #     logsc = None
-        #     if logscale[k] is True:
-        #         logsc = LogNorm(vmin=vmin, vmax=vmax)
-        # else:
-        #     logsc = None
+        if logscale is not False and len(logscale) == len(plotorder):
+            logsc = None
+            if logscale[k] is True:
+                logsc = LogNorm(vmin=vmin, vmax=vmax)
+        else:
+            logsc = None
 
-        # # Make colorbar figure
+        # Make colorbar figure
 
-        # # This is just a dummy layer that will be deleted to make the colorbar look right
-        # panelhandle = plt.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
+        if sepcolorbar:
+            # This is just a dummy layer that will be deleted to make the colorbar look right
+            panelhandle = plt.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
 
-        # cbfmt = '%1.1f'
-        # if vmax is not None and vmin is not None:
-        #     if logscale is not False and len(logscale) == len(plotorder):
-        #         if logscale[k] is True:
-        #             cbfmt = '%1.0e'
-        #     elif (vmax - vmin) < 1.:
-        #         cbfmt = '%1.2f'
-        #     elif vmax > 5.:  # (vmax - vmin) > len(clev):
-        #         cbfmt = '%1.0f'
+            cbfmt = '%1.1f'
+            if vmax is not None and vmin is not None:
+                if logscale is not False and len(logscale) == len(plotorder):
+                    if logscale[k] is True:
+                        cbfmt = '%1.0e'
+                elif (vmax - vmin) < 1.:
+                    cbfmt = '%1.2f'
+                elif vmax > 5.:  # (vmax - vmin) > len(clev):
+                    cbfmt = '%1.0f'
 
-        # fig = plt.figure(figsize=(8., 2.5))
+            fig = plt.figure(figsize=(4., 1.0))
 
-        # if scaletype.lower() == 'binned':
-        #     cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
-        #                         extend='both', format=cbfmt, spacing='proportional',
-        #                         ticks=clev, boundaries=clev)
-        # else:
-        #     cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
-        #                         extend='both', format=cbfmt)
-        # cbar.set_label(label1, fontsize=14)
-        # cbar.ax.tick_params(labelsize=14)
-        # plt.axis('off')
-        # panelhandle.remove()
+            if scaletype.lower() == 'binned':
+                cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+                                    extend='both', format=cbfmt, spacing='proportional',
+                                    ticks=clev, boundaries=clev)
+            else:
+                cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
+                                    extend='both', format=cbfmt)
+            cbar.set_label(label1, fontsize=10)
+            cbar.ax.tick_params(labelsize=10)
+            plt.axis('off')
+            panelhandle.remove()
+            plt.tight_layout()
+            ctemp = '%s_%s_colorbar.png' % (outfilename, keyS)
+            fig.savefig(os.path.join(outfolder, ctemp), transparent=True)  # This file has to move with the html files
 
         # if edict is not None:
         #     if isScenario:
@@ -1392,18 +1410,6 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         #     plt.suptitle(title+'\n'+sref, fontsize=16)
         # else:
         #     plt.suptitle(sref, fontsize=16)
-
-        sref_fix = sref
-        if sref != '':
-            sref_fix = sref_fix.replace(' (', '_')
-            sref_fix = sref_fix.replace(')', '')
-            sref_fix = sref_fix.replace(' ', '_')
-
-        if outfilename is None:
-            outfilename = '%s_%s' % (edict['event_id'], sref_fix)
-
-        # plt.tight_layout()
-        # fig.savefig(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), transparent=True)  # This file has to move with the html files
 
         if inventory_shapefile is not None:
             reader = shapefile.Reader(inventory_shapefile)
@@ -1420,28 +1426,26 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             invt = GeoJson({"type": "FeatureCollection", "features": buffer1}, style_function=style_function)
 
         map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                          tiles=tiletype, zoom_start=9, max_zoom=14, min_lat=minlat, max_lat=maxlat,
+                          tiles=tiletype, zoom_start=5, max_zoom=14, min_lat=minlat, max_lat=maxlat,
                           min_lon=minlon, max_lon=maxlon, prefer_canvas=True)
 
-        #map1.add_children(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
+        #map1.add_child(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
         img = plugins.ImageOverlay(rgba_img, opacity=ALPHA, bounds=[[minlat, minlon],
                                    [maxlat, maxlon]], mercator_project=True)
         img.layer_name = label1
-        map1.add_children(img)
+        map1.add_child(img)
 
-        # plugins.FloatImage(os.path.join(cbfolder, ('%s_%s_colorbar.png' % (outfilename, keyS))), bottom=0, left=1).add_to(map1)
-        if scaletype.lower() == 'binned':
-            color1 = palette(clev/clev.max())
-            cbar = cmb.StepColormap(color1, vmin=vmin, vmax=vmax, index=clev, caption=label1)
+        if sepcolorbar:
+            plugins.FloatImage(os.path.join(outfolder, ctemp), bottom=0, left=1).add_to(map1)
         else:
-            color1 = [tuple(p) for p in palette._lut]
-            cbar = cmb.LinearColormap(color1, vmin=vmin, vmax=vmax, caption=label1)
-        map1.add_child(cbar)
+            if scaletype.lower() == 'binned':
+                color1 = palette(clev/clev.max())
+                cbar = cmb.StepColormap(color1, vmin=vmin, vmax=vmax, index=clev, caption=label1)
+            else:
+                color1 = [tuple(p) for p in palette._lut]
+                cbar = cmb.LinearColormap(color1, vmin=vmin, vmax=vmax, caption=label1)
+            map1.add_child(cbar)
 
-        # map1.choropleth(threshold_scale=clev,
-        #                 fill_color=color1, fill_opacity=0.7, line_opacity=0.5,
-        #                 legend_name=label1,
-        #                 reset=True)
         map1.add_child(folium.LatLngPopup())
         map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
                        weight=2, fill_color='none'))
@@ -1462,6 +1466,12 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             #    plugins.PolyLineTextPath(feature['geometry']['coordinates'], label,
             #                             center=True, attributes={'fill': 'white', 'font-size': '14'}).add_to(map1)
 
+        if faultfile is not None:
+            style_function = lambda x: {'fillColor': 'none', 'color': 'blue', 'weight': 0.7}
+            smc = GeoJson(open(faultfile), style_function=style_function)
+            smc.layer_name = 'Finite fault'
+            map1.add_child(smc)
+
         #draw star at epicenter
         if edict is not None:
             folium.RegularPolygonMarker(location=[edict['lat'], edict['lon']], popup='Epicenter',
@@ -1473,16 +1483,6 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         plt.close('all')
 
     return map1, filenames
-
-
-def InteractivePage(grids, keys=None, shakefile=None, inventory_shapefile=None,
-                    maskthreshes=None, colormaps=None, isScenario=False,
-                    zthresh=0, scaletype='continuous', lims=None, logscale=False,
-                    ALPHA=0.7, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
-                    printparam=False, ds=True, dstype='mean'):
-    """NOT IMPLEMENTED embed multiple interactive plots in one page
-    """
-    pass
 
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):

@@ -60,6 +60,7 @@ rm impact.zip
 # do pip installs of those things that are not available via conda.
 pip install sphinx_rtd_theme
 pip install folium
+pip install pelican markdown
 
 
 # tell the user they have to activate this environment

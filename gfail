@@ -362,6 +362,7 @@ def reset_default_paths():
 
 def get_bounds(shakefile, parameter='pga', threshold=2):
     """
+    TODO move this to another module so it can be used by other codes
     Get the boundaries of the shakemap that include all areas with shaking above the defined threshold
     :param shakefile: full shakemap file path
     :param parameter: pga or pgv
