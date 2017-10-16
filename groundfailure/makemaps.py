@@ -1436,7 +1436,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         map1.add_child(img)
 
         if sepcolorbar:
-            plugins.FloatImage(os.path.join(outfolder, ctemp), bottom=0, left=1).add_to(map1)
+            plugins.FloatImage(ctemp, bottom=0, left=1).add_to(map1)
         else:
             if scaletype.lower() == 'binned':
                 color1 = palette(clev/clev.max())
