@@ -858,7 +858,7 @@ class LogisticModel(object):
         temp = self.shakemap.getShakeDict()
         shakedetail = '%s_ver%s' % (temp['shakemap_id'], temp['shakemap_version'])
         description = {'name': self.modelrefs['shortref'], 'longref': self.modelrefs['longref'], 'units': units5,
-                       'shakemap': shakedetail, 'parameters': {'slopemin': self.slopemin, 'slopemax': self.slopemax}}
+                       'shakemap': shakedetail, 'parameters': {'slopemin': self.slopemin, 'slopemax': self.slopemax, 'modeltype': self.modeltype}}
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {'grid': Pgrid,

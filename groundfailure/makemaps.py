@@ -15,6 +15,8 @@ import re
 #from matplotlib.colorbar import ColorbarBase
 
 #third party imports
+from branca.element import MacroElement
+from jinja2 import Template
 import matplotlib.cm as cm
 import branca.colormap as cmb
 import numpy as np
@@ -1116,8 +1118,8 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=None,
                    maskthreshes=None, colormaps=None, scaletype='continuous', lims=None, logscale=False,
                    ALPHA=0.7, isScenario=False, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
-                   smcontourfile=None, faultfile=None,
-                   sepcolorbar=False):
+                   smcontourfile=None, faultfile=None, onkey=None,
+                   separate=True, sepcolorbar=False, savefiles=True):
     """
     This function creates interactive html plots of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers)
@@ -1130,7 +1132,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         'type': 'output or input to model',
         'description': 'detailed description of layer for subtitle'}.
 
-      Layer names must be unique.
+    Layer names must be unique.
     :type name: Dictionary or Ordered dictionary - import collections;
       grids = collections.OrderedDict()
     :param shakefile: optional ShakeMap file (url or full file path) to extract information for labels and folder names
@@ -1181,10 +1183,11 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         - "Cloudmade" (Must pass API key)
         - "Mapbox" (Must pass API key)
         - "CartoDB" (positron and dark_matter)
-
     :param faultfile: file extension to geojson file containing finite fault polygons
-    :param sepcolorbar: if True, will make separate colorbar figure, if False, will embed less fancy colorbar
-
+    :param onkey: key of layer to have active initially. If None, the first will be on by default
+    :param separate: if True, will make a separate html file for each map, if False will combine them
+    :param sepcolorbar: if True, will make separate colorbar figure, if False, will embed less fancy colorbar - only works if separate=True
+    :param savefiles: if true, will save html file, otherwise will just return map object
     TODO:param printparam: True prints model parameters on figure - NOT IMPLEMENTED YET
     TODO:param ds: True to allow downsampling for display (necessary when arrays
       are quite large, False to not allow) NOT IMPLEMENTED YET
@@ -1197,11 +1200,15 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         * Interactive plot (html file) of all grids listed in plotorder
 
     """
+    if separate and sepcolorbar:
+        sepcolorbar = False
+    if onkey is None:
+        onkey = plotorder[0]
+
     plt.ioff()
     clear_color = [0, 0, 0, 0.0]
     if plotorder is None:
         plotorder = grids.keys()
-    cbarfilenames = []
     defaultcolormap = cm.CMRmap_r
 
     if shakefile is not None:
@@ -1222,12 +1229,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         outfolder = outputdir
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
-    # cbfolder = os.path.join(outfolder, 'cbfolder')
-    # if not os.path.isdir(cbfolder):
-    #     os.makedirs(cbfolder)
 
     # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE
     filenames = []
+
     for k, key in enumerate(plotorder):
 
         # Get simplified name of key for file naming
@@ -1268,15 +1273,6 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             else:
                 palette = defaultcolormap
         else:  # Find preferred default color map for each type of layer
-            if 'prob' in key.lower() or 'pga' in key.lower() or \
-               'pgv' in key.lower() or 'cohesion' in key.lower() or \
-               'friction' in key.lower() or 'fs' in key.lower():
-                palette = cm.inferno
-            elif 'slope' in key.lower():
-                palette = cm.gnuplot2
-            elif 'precip' in key.lower():
-                palette = cm2.s3pcpn
-            else:
                 palette = defaultcolormap
 
         palette.set_bad(clear_color, alpha=0.0)
@@ -1343,8 +1339,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
 
         if maskthreshes is not None and len(maskthreshes) == len(plotorder):
             if maskthreshes[k] is not None:
-                dat[dat <= maskthreshes[k]] = float('NaN')
-                dat = np.ma.array(dat, mask=np.isnan(dat))
+                dat[dat <= maskthreshes[k]] = float('nan')
+
+        dat = np.ma.array(dat, mask=np.isnan(dat))
 
         #turn data into an RGBA image
         #adjust data so scaled between vmin and vmax and between 0 and 1
@@ -1425,15 +1422,16 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             # create geojson object
             invt = GeoJson({"type": "FeatureCollection", "features": buffer1}, style_function=style_function)
 
-        map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                          tiles=tiletype, zoom_start=5, max_zoom=14, min_lat=minlat, max_lat=maxlat,
-                          min_lon=minlon, max_lon=maxlon, prefer_canvas=True)
-
-        #map1.add_child(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
         img = plugins.ImageOverlay(rgba_img, opacity=ALPHA, bounds=[[minlat, minlon],
                                    [maxlat, maxlon]], mercator_project=True)
         img.layer_name = label1
-        map1.add_child(img)
+
+        if separate or key == onkey:
+            map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
+                              tiles=tiletype, zoom_start=5, max_zoom=14, min_lat=minlat, max_lat=maxlat,
+                              min_lon=minlon, max_lon=maxlon, prefer_canvas=True).add_child(img)
+
+        #map1.add_child(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
 
         if sepcolorbar:
             plugins.FloatImage(ctemp, bottom=0, left=1).add_to(map1)
@@ -1444,11 +1442,13 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             else:
                 color1 = [tuple(p) for p in palette._lut]
                 cbar = cmb.LinearColormap(color1, vmin=vmin, vmax=vmax, caption=label1)
-            map1.add_child(cbar)
+            if separate or key == onkey:
+                map1.add_child(cbar)
+            BindColormap(img, cbar)
 
-        map1.add_child(folium.LatLngPopup())
+        #map1.add_child(folium.LatLngPopup())
         map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
-                       weight=2, fill_color='none'))
+                       weight=1, fill_color='none'))
 
         if inventory_shapefile is not None:
             map1.add_child(invt)
@@ -1472,17 +1472,19 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             smc.layer_name = 'Finite fault'
             map1.add_child(smc)
 
-        #draw star at epicenter
+        #draw epicenter
         if edict is not None:
             folium.RegularPolygonMarker(location=[edict['lat'], edict['lon']], popup='Epicenter',
                                         fill_color='#769d96', number_of_sides=4, radius=6).add_to(map1)
 
-        filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
-        map1.save(filen)
-        filenames.append(filen)
-        plt.close('all')
-
-    return map1, filenames
+        if savefiles:
+            filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
+            map1.save(filen)
+            filenames.append(filen)
+            plt.close('all')
+            return map1, filenames
+        else:
+            return map1
 
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
@@ -1615,6 +1617,34 @@ def ceilToNearest(value, ceilValue=1000):
     else:
         value = int(np.ceil(float(value)/ceilValue)*ceilValue)
     return value
+
+
+class BindColormap(MacroElement):
+    """Binds a colormap to a given layer.
+    from: http://nbviewer.jupyter.org/gist/BibMartin/f153aa957ddc5fadc64929abdee9ff2e, doesn't seem
+    to be added to folium yet
+    Parameters
+    ----------
+    colormap : branca.colormap.ColorMap
+        The colormap to bind.
+    """
+    def __init__(self, layer, colormap):
+        super(BindColormap, self).__init__()
+        self.layer = layer
+        self.colormap = colormap
+        self._template = Template(u"""
+        {% macro script(this, kwargs) %}
+            {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+            {{this._parent.get_name()}}.on('overlayadd', function (eventLayer) {
+                if (eventLayer.layer == {{this.layer.get_name()}}) {
+                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+                }});
+            {{this._parent.get_name()}}.on('overlayremove', function (eventLayer) {
+                if (eventLayer.layer == {{this.layer.get_name()}}) {
+                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'none';
+                }});
+        {% endmacro %}
+        """)  # noqa
 
 
 if __name__ == '__main__':

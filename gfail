@@ -9,6 +9,7 @@ import urllib.error
 import urllib.parse
 import tempfile
 import re
+import shutil
 
 #third party imports
 from mapio.shake import getHeaderData
@@ -23,11 +24,11 @@ from groundfailure.hazus import hazus_liq
 from groundfailure.holzer import holzer_liq
 from groundfailure.savelayers import savelayers
 from groundfailure.makemaps import parseConfigLayers, parseMapConfig, modelMap, interactiveMap
-from mapio.shake import ShakeGrid
+from groundfailure.webpage import makeWebpage
 
 
 def main(args):
-    # NEED TO ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
+    #TODO ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
     if args.set_default_paths:
         set_default_paths(args)
         print('default paths set, continuing...\n')
@@ -43,31 +44,33 @@ def main(args):
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
         shakefile = args.shakefile
+        # make output location for things
+        if args.output_filepath is None:
+            outdir = os.getcwd()
+        else:
+            outdir = args.output_filepath
+        if args.hdf5 or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots or args.gis:
+            if not os.path.exists(outdir):
+                os.makedirs(outdir)
+
         # download if is url
+        cleanup = False
         if not os.path.isfile(shakefile):
             if isURL(shakefile):
-                shakefile = getGridURL(shakefile)  # returns a file object
+                shakefile = getGridURL(shakefile)  # returns a  named temporary file object
+                cleanup = True  # Be sure to delete it after
             else:
                 raise NameError('Could not find "%s" as a file or a valid url' % (shakefile))
                 return
-
-        try:
-            edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
-            temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
-            edict['eventid'] = temp['shakemap_id']
-            edict['version'] = temp['shakemap_version']
-        except:
-            print('failed to get edict')
-            edict = None
-
-        # Make folder in outfolder for all results, if it doesn't already exist
         eventid = getHeaderData(shakefile)[0]['event_id']
-        if args.hdf5 or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots or args.gis:
-            if args.output_filepath is None:
-                outdir = os.getcwd()
-            outdir = args.output_filepath
-            if not os.path.exists(outdir):
-                os.makedirs(outdir)
+
+        if args.nest_folder:
+            outfolder = os.path.join(outdir, eventid)
+            if not os.path.exists(outfolder):
+                os.makedirs(outfolder)
+        else:
+            outfolder = outdir
+
         config = args.config
         if args.config_filepath is not None:
             # only add config_filepath if full filepath not given and file ext is .ini
@@ -127,6 +130,9 @@ def main(args):
         else:
             bounds = None
         filenames = []
+        if args.make_webpage:
+            results = []
+
         # Loop over config files
         for conf in configs:
             modelname = conf.keys()[0]
@@ -161,17 +167,19 @@ def main(args):
                 filename = ('%s_%s' % (eventid, modelname))
             if args.hdf5:
                 filenameh = filename + '.hdf5'
-                savelayers(maplayers, os.path.join(outdir, filenameh))
+                savelayers(maplayers, os.path.join(outfolder, filenameh))
 
             if args.make_static_pdfs or args.make_static_pngs:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
                 mapconfig = ConfigObj(args.mapconfig)
                 kwargs = parseMapConfig(mapconfig, fileext=args.mapdata_filepath)
-                junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=None,
-                                            zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                                            mapcities=True, colormaps=colormaps, savepdf=args.make_static_pdfs,
+                junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'],
+                                            boundaries=None, zthresh=0., lims=lims, plotorder=plotorder,
+                                            maskthreshes=maskthreshes, maproads=False, mapcities=True,
+                                            colormaps=colormaps, savepdf=args.make_static_pdfs,
                                             savepng=args.make_static_pngs, printparam=True,
-                                            inventory_shapefile=None, outputdir=outdir, outfilename=filename, scaletype='continuous',
+                                            inventory_shapefile=None, outputdir=outfolder,
+                                            outfilename=filename, scaletype='continuous',
                                             logscale=logscale, **kwargs)
                 for filen in filenames1:
                     filenames.append(filen)
@@ -179,31 +187,29 @@ def main(args):
                 # make model only plots too
                 if len(maplayers) > 1:
                     plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf, keys=['model'])
-                    junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'], boundaries=None,
-                                                zthresh=0., lims=lims, plotorder=plotorder, maskthreshes=maskthreshes, maproads=False,
-                                                mapcities=True, savepdf=args.make_static_pdfs, savepng=args.make_static_pngs, printparam=True,
-                                                inventory_shapefile=None, outputdir=outdir, outfilename=filename + '-just_model',
-                                                colormaps=colormaps, scaletype='continuous', logscale=logscale, **kwargs)
+                    junk, filenames1 = modelMap(maplayers, shakefile, suptitle=conf[modelname]['shortref'],
+                                                boundaries=None, zthresh=0., lims=lims, plotorder=plotorder,
+                                                maskthreshes=maskthreshes, maproads=False, mapcities=True,
+                                                savepdf=args.make_static_pdfs, savepng=args.make_static_pngs,
+                                                printparam=True, inventory_shapefile=None,
+                                                outputdir=outfolder, outfilename=filename + '-just_model',
+                                                colormaps=colormaps, scaletype='continuous',
+                                                logscale=logscale, **kwargs)
                     for filen in filenames1:
                         filenames.append(filen)
             if args.make_interactive_plots:
                 plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(maplayers, conf)
-                junk, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=shakefile, inventory_shapefile=None,
-                                                  maskthreshes=maskthreshes, colormaps=colormaps, isScenario=False,
+                junk, filenames1 = interactiveMap(maplayers, plotorder=plotorder, shakefile=shakefile,
+                                                  inventory_shapefile=None, maskthreshes=maskthreshes,
+                                                  colormaps=colormaps, isScenario=False,
                                                   scaletype='continuous', lims=lims, logscale=logscale,
-                                                  ALPHA=0.7, outputdir=outdir, outfilename=filename, tiletype='Stamen Terrain')
+                                                  ALPHA=0.7, outputdir=outfolder, outfilename=filename,
+                                                  tiletype='Stamen Terrain', separate=True)
                 for filen in filenames1:
                     filenames.append(filen)
+            if args.make_webpage:
+                results.append(maplayers)
             if args.gis:
-                if outdir is None:
-                    print('No output location given, using current directory for outputs\n')
-                    outdir = os.getcwd()
-                if edict is not None:
-                    outfolder = os.path.join(outdir, edict['event_id'])
-                else:
-                    outfolder = outdir
-                if not os.path.isdir(outfolder):
-                    os.makedirs(outfolder)
                 for key in maplayers:
                     # Get simplified name of key for file naming
                     RIDOF = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
@@ -219,13 +225,23 @@ def main(args):
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     filenames.append(filen)
 
+        if args.make_webpage:
+
+            webloc = makeWebpage(maplayers, configs, args.web_template, shakefile, outfolder=outfolder)
+
+            filenames.append(webloc)
+
         print('\nFiles created:\n')
         for filen in filenames:
             print('%s' % filen)
 
+        if cleanup:
+            shutil.rm(shakefile)
+
 
 def getGridURL(gridurl):
     """getGridURL downloads the url of a shakemap xml file and returns the corresponding file object
+    Must delete afterwards because some systems won't purge temporary files
 
     :param gridurl: string defining a url
     :type gridurl: string
@@ -234,19 +250,17 @@ def getGridURL(gridurl):
         gridfile: file object corresponding to the url
     """
 
-    gridfile = None
+    f = None
     try:
         fh = urllib.request.urlopen(gridurl)
         data = fh.read().decode('utf-8')
-        fd, gridfile = tempfile.mkstemp()
-        os.close(fd)
-        f = open(gridfile, 'wt')
+        f = tempfile.NamedTemporaryFile(delete=False)
         f.write(data)
         f.close()
         fh.close()
     except:
         raise IOError('Could not retrieve data from %s' % gridurl)
-    return gridfile
+    return f.name
 
 
 def isURL(gridurl):
@@ -324,14 +338,23 @@ def set_default_paths(args):
                 D.update({'mapdata_filepath': args.mapdata_filepath})
             else:
                 print('Path given for mapdata_filepath does not exist: %s' % args.mapdata_filepath)
-
+    if args.web_template is not None:
+        if args.web_template == 'reset':
+            D.pop('web_template')
+        else:
+            #check that it's a valid path
+            if os.path.exists(args.web_template):
+                D.update({'web_template': args.web_template})
+            else:
+                print('Path given for webpage templates does not exist: %s' % args.web_template)
+    print('New default paths set.\n')
     if D:
         C = ConfigObj(D)
         C.filename = filename
         C.write()
         list_default_paths()
     else:
-        print('no defaults set because no paths were input')
+        print('no defaults set because no paths were input\n')
 
 
 def list_default_paths():
@@ -341,7 +364,7 @@ def list_default_paths():
     filename = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
     if os.path.exists(filename):
         D = ConfigObj(filename)
-        print('Default paths currently set:')
+        print('Default paths currently set to:\n')
         for key in D:
             print('\t%s = %s' % (key, D[key]))
     else:
@@ -463,7 +486,8 @@ if __name__ == '__main__':
                         uncertainty file used)', default=1.)
     parser.add_argument('-a', '--appendname', metavar='appendname', nargs='?',
                         help='append word to file names to describe current run', default=None)
-
+    parser.add_argument('-t', '--web-template', metavar='template', nargs='?',
+                        help='location of directory containing pelican files and templates')
     # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,
                         help='Save input layer grids with model output')
@@ -477,12 +501,14 @@ if __name__ == '__main__':
                         help='Make static plots for each model')
     parser.add_argument('-pi', '--make-interactive-plots', action='store_true', default=False,
                         help='Make interactive html plots for each model')
-    parser.add_argument('--list-default-paths', action='store_true', default=False,
+    parser.add_argument('-l', '--list-default-paths', action='store_true', default=False,
                         help='See listing of currently set default paths')
-    parser.add_argument('--set-default-paths', action='store_true', default=False,
+    parser.add_argument('-set', '--set-default-paths', action='store_true', default=False,
                         help='Sets paths given as inputs as defaults (overwrites existing values)')
-    parser.add_argument('--reset-default-paths', action='store_true', default=False,
+    parser.add_argument('-reset', '--reset-default-paths', action='store_true', default=False,
                         help='Clears all existing default paths')
+    parser.add_argument('-w', '--make-webpage', action='store_true', default=False)
+    parser.add_argument('-n', '--nest-folder', action='store_true', default=True)  # nest in folder with eventid as name
     #parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 

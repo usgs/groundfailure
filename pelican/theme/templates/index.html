@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+
+{% if pages %}
+{% for page in pages %}
+    <div class="uk-container uk-container-center">
+        {{ page.content}}
+    </div>
+{% endfor %}
+{% endif %}
+
+{% if articles %}
+{% for article in articles %}
+    <div class="uk-width-medium-1-2">
+        <div class="uk-panel uk-panel-box">
+            {{ article.content}}
+        </div>
+    </div>
+{% endfor %}
+{% endif %}
+
+{% if hidden_pages %}
+{% for hpage in hidden_pages %}
+    <div class="uk-container uk-container-center">
+        {{ hpage.content}}
+    </div>
+{% endfor %}
+{% endif %}
+
+{% endblock %}
