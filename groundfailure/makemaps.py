@@ -1437,14 +1437,14 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             onkey = key
         if separate or key == onkey:
             map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                              tiles=None, min_lat=minlat, max_lat=maxlat, max_zoom=14, 
-                              min_lon=minlon, max_lon=maxlon, prefer_canvas=True)
+                              tiles=None, min_lat=minlat, max_lat=maxlat, zoom_start=6, max_zoom=14,
+                              min_lon=minlon, max_lon=maxlon, prefer_canvas=True, control_scale=True)
             folium.TileLayer(tiles=tiletype, control=False, overlay=not overlay).add_to(map1)
-        images.append(plugins.ImageOverlay(rgba_img, opacity=ALPHA, 
-                                           bounds=[[minlat, minlon],[maxlat, maxlon]],
+        images.append(plugins.ImageOverlay(rgba_img, opacity=ALPHA,
+                                           bounds=[[minlat, minlon], [maxlat, maxlon]],
                                            mercator_project=True, name=sref,
                                            overlay=overlay, zIndex=k))
-       
+
         images[k].add_to(map1)
         # Save list of layers that should not be visible initially but should be in legend
         if key != onkey and separate is False and savefiles:
@@ -1466,7 +1466,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             #BindColormap(images[k], cbars[k])
 
         if separate or k == len(plotorder)-1:
-            folium.LayerControl(collapsed=False).add_to(map1)
+            folium.LayerControl(collapsed=False, position='bottomleft').add_to(map1)
             map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
                            weight=1, fill_color='none'))
             map1.add_child(folium.LatLngPopup())

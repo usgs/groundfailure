@@ -454,6 +454,8 @@ if __name__ == '__main__':
                 mapconfig = D[key]
             elif key == 'mapdata_filepath':
                 mapdata_filepath = D[key]
+            elif key == 'web_template':
+                web_template = D[key]
 
     parser = argparse.ArgumentParser(description='Run ground failure models on input ShakeMap grid.')
     parser.add_argument('config', metavar='config', nargs='?',
@@ -486,7 +488,7 @@ if __name__ == '__main__':
                         uncertainty file used)', default=1.)
     parser.add_argument('-a', '--appendname', metavar='appendname', nargs='?',
                         help='append word to file names to describe current run', default=None)
-    parser.add_argument('-t', '--web-template', metavar='template', nargs='?',
+    parser.add_argument('-t', '--web-template', metavar='template', nargs='?', default=web_template,
                         help='location of directory containing pelican files and templates')
     # Binary
     parser.add_argument('-i', '--save-inputs', action='store_true', default=False,

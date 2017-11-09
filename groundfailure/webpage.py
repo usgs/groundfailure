@@ -118,9 +118,9 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
             maskLQ.append(maskthreshes[0])
             namesLQ.append(L['model']['description']['name'])
         mapLQ, filenameLQ = makemaps.interactiveMap(concM(LQ, astitle='model', includeunc=includeunc),
-                                                   maskthreshes=maskLQ, colormaps=colLQ, lims=limLQ,
-                                                   logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
-                                                   savefiles=True, mapid='LQ', outputdir=images)
+                                                    maskthreshes=maskLQ, colormaps=colLQ, lims=limLQ,
+                                                    logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
+                                                    savefiles=True, mapid='LQ', outputdir=images)
 
         write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction', interactivehtml=filenameLQ[0])
 
@@ -140,6 +140,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
 
     return fullout
 
+
 def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                      topimage=None, staticmap=None, map1=None, interactivehtml=None):
     """
@@ -154,21 +155,9 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
     with open(os.path.join(outputdir, modeltype + '.md'), 'w') as file1:
         file1.write('title: %s\n' % modeltype.title())
         file1.write('date: %s\n' % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('''
-            <center>
-            <h2>%s</h2>
-            </center>''' % modeltype.title())
-
+        file1.write('<center><h2>%s</h2></center>' % modeltype.title())
         if topimage is not None:
             file1.write('  <img src="/images/%s" width="300" />\n' % topimage)
-        file1.write('<center>')
-        file1.write('''
-            Model | Aggregate Hazard | Maximum Probability\n
-            :---: | :---: | :---:\n''')
-        for H, m, n in zip(Hagg, maxprobs, modelnames):
-            file1.write('%s | %0.2f km<sup>2</sup> | %0.2f\n' % (n.title(), H, m))
-        file1.write('</center>\n<hr>\n')
-
         if interactivehtml is not None:
             #file1.write('<center><div class="folium-map" id="map%s"></div></center>' % modeltype)
             file1.write('    <center><object type="text/html" data=images%s height=500 width=500></object></center>\n'
@@ -179,6 +168,12 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
             #file1.write('<center> <h2>Static Map<h2> </center>\n')
             file1.write('    <center><img src="images%s" width="450" href="images%s"/></center>\n' %
                         (staticmap.split('images')[-1], staticmap.split('images')[-1]))
+        #file1.write('<center>\n')
+        file1.write('| Model | Aggregate Hazard | Maximum Probability |\n')
+        file1.write('| ---------- | ---------------- | ----------------- |\n')
+        for H, m, n in zip(Hagg, maxprobs, modelnames):
+            file1.write('| %s | %0.2f km<sup>2</sup> | %0.2f |\n' % (n.title(), H, m))
+        #file1.write('</center>\n<hr>\n')
 
 
 def write_static_map(filenameLS, filenameLQ, static):
@@ -203,7 +198,7 @@ def write_scibackground(configLS, configLQ):
         file1.write('<p float="center">\n')
 
         if interactivehtml is not None:
-            file1.write('<center><object type="text/html" data=images%s height=450 width=450></object></center>\n' % interactivehtml.split('images')[-1])
+            file1.write('<center><object type="text/html" data=images%s height=500 width=500></object></center>\n' % interactivehtml.split('images')[-1])
             file1.write('<center><a href="images%s">Click here for full interactive map</a></center>' % interactivehtml.split('images')[-1])
             #cbar = interactivehtml.split('images')[-1].split('.html')[0] + '_colorbar.png'
             #file1.write('  <center><img src="images%s" width="400" href="images%s"/></center>\n' % (cbar, cbar))
