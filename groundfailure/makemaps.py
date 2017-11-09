@@ -15,8 +15,8 @@ import re
 #from matplotlib.colorbar import ColorbarBase
 
 #third party imports
-from branca.element import MacroElement
-from jinja2 import Template
+#from branca.element import MacroElement
+#from jinja2 import Template
 import matplotlib.cm as cm
 import branca.colormap as cmb
 import numpy as np
@@ -1116,10 +1116,11 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
 
 
 def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=None,
-                   maskthreshes=None, colormaps=None, scaletype='continuous', lims=None, logscale=False,
-                   ALPHA=0.7, isScenario=False, outputdir=None, outfilename=None, tiletype='Stamen Terrain',
+                   maskthreshes=None, colormaps=None, scaletype='continuous',
+                   lims=None, logscale=False, ALPHA=0.7, isScenario=False,
+                   outputdir=None, outfilename=None, tiletype='Stamen Terrain',
                    smcontourfile=None, faultfile=None, onkey=None,
-                   separate=True, sepcolorbar=False, savefiles=True):
+                   separate=True, sepcolorbar=False, savefiles=True, mapid=None):
     """
     This function creates interactive html plots of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers)
@@ -1197,18 +1198,20 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
      NOT FUNCTIONAL YET
 
     :returns:
-        * Interactive plot (html file) of all grids listed in plotorder
+        * Interactive plot (html file) of all grids listed in plotorder, single or list
+          of map handles and list of filenames that were created, if any
 
     """
     if separate and sepcolorbar:
         sepcolorbar = False
-    if onkey is None:
-        onkey = plotorder[0]
 
     plt.ioff()
     clear_color = [0, 0, 0, 0.0]
     if plotorder is None:
-        plotorder = grids.keys()
+        if type(grids) == list:
+            plotorder = [m.keys() for m in grids]
+        else:
+            plotorder = grids.keys()
     defaultcolormap = cm.CMRmap_r
 
     if shakefile is not None:
@@ -1230,8 +1233,12 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
 
-    # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE
+    # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE - OR CREATE TILES?
     filenames = []
+    maps = []
+    images = []
+    cbars = []
+    removelater = []
 
     for k, key in enumerate(plotorder):
 
@@ -1422,69 +1429,91 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             # create geojson object
             invt = GeoJson({"type": "FeatureCollection", "features": buffer1}, style_function=style_function)
 
-        img = plugins.ImageOverlay(rgba_img, opacity=ALPHA, bounds=[[minlat, minlon],
-                                   [maxlat, maxlon]], mercator_project=True)
-        img.layer_name = label1
-
+        if separate:
+            overlay = True
+        else:
+            overlay = False
+        if onkey is None and k == 0:
+            onkey = key
         if separate or key == onkey:
             map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                              tiles=tiletype, zoom_start=5, max_zoom=14, min_lat=minlat, max_lat=maxlat,
-                              min_lon=minlon, max_lon=maxlon, prefer_canvas=True).add_child(img)
-
-        #map1.add_child(plugins.HeatMap(zip(lats, lons, dat1), radius=gd.dx))
+                              tiles=None, min_lat=minlat, max_lat=maxlat, max_zoom=14, 
+                              min_lon=minlon, max_lon=maxlon, prefer_canvas=True)
+            folium.TileLayer(tiles=tiletype, control=False, overlay=not overlay).add_to(map1)
+        images.append(plugins.ImageOverlay(rgba_img, opacity=ALPHA, 
+                                           bounds=[[minlat, minlon],[maxlat, maxlon]],
+                                           mercator_project=True, name=sref,
+                                           overlay=overlay, zIndex=k))
+       
+        images[k].add_to(map1)
+        # Save list of layers that should not be visible initially but should be in legend
+        if key != onkey and separate is False and savefiles:
+            removelater.append(images[k].get_name())
 
         if sepcolorbar:
             plugins.FloatImage(ctemp, bottom=0, left=1).add_to(map1)
         else:
             if scaletype.lower() == 'binned':
                 color1 = palette(clev/clev.max())
-                cbar = cmb.StepColormap(color1, vmin=vmin, vmax=vmax, index=clev, caption=label1)
+                cbars.append(cmb.StepColormap(color1, vmin=vmin, vmax=vmax, index=clev,
+                                              caption='%s - %s' % (label1, sref)))
             else:
                 color1 = [tuple(p) for p in palette._lut]
-                cbar = cmb.LinearColormap(color1, vmin=vmin, vmax=vmax, caption=label1)
-            if separate or key == onkey:
-                map1.add_child(cbar)
-            BindColormap(img, cbar)
+                cbars.append(cmb.LinearColormap(color1, vmin=vmin, vmax=vmax,
+                                                caption='%s - %s' % (label1, sref)))
+            if True: #separate or key == onkey:
+                map1.add_child(cbars[k])
+            #BindColormap(images[k], cbars[k])
 
-        #map1.add_child(folium.LatLngPopup())
-        map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
-                       weight=1, fill_color='none'))
+        if separate or k == len(plotorder)-1:
+            folium.LayerControl(collapsed=False).add_to(map1)
+            map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
+                           weight=1, fill_color='none'))
+            map1.add_child(folium.LatLngPopup())
+    
+            if inventory_shapefile is not None:
+                map1.add_child(invt)
+                invt.layer_name = 'Inventory'
+    
+            if smcontourfile is not None:
+                style_function = lambda x: {'fillColor': 'none', 'color': 'white', 'weight': 0.7}
+                smc = GeoJson(open(smcontourfile))
+                #smc.layer_name = 'ShakeMap Contours'
+                map1.add_child(smc)
+                #for feature in smc.data['features']:
+                #    label = ('%s (%s)') % (feature['properties']['value'], feature['properties']['units'].replace('pct', '%'))
+                #    plugins.PolyLineTextPath(feature['geometry']['coordinates'], label,
+                #                             center=True, attributes={'fill': 'white', 'font-size': '14'}).add_to(map1)
+    
+            if faultfile is not None:
+                style_function = lambda x: {'fillColor': 'none', 'color': 'blue', 'weight': 0.7}
+                smc = GeoJson(open(faultfile), style_function=style_function)
+                smc.layer_name = 'Finite fault'
+                map1.add_child(smc)
+            
+            #draw epicenter
+            if edict is not None:
+                folium.RegularPolygonMarker(location=[edict['lat'], edict['lon']], popup='Epicenter',
+                                            fill_color='#769d96', number_of_sides=4, radius=6).add_to(map1)
+            if savefiles:
+                if separate:
+                    filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
+                else:
+                    filen = os.path.join(outfolder, '%s.html' % outfilename)
+                    if mapid is not None:
+                        map1._id = mapid
+                map1.save(filen)
+                filenames.append(filen)
+                plt.close('all')
+                if len(removelater) > 0: # Make only one layer show up initially
+                    removeVis(filen, removelater, map1.get_name())
+        if separate and len(plotorder) > 1:
+            maps.append(map1)
+    
+    if not separate or len(plotorder) == 1:
+        maps = map1
 
-        if inventory_shapefile is not None:
-            map1.add_child(invt)
-            invt.layer_name = 'Inventory'
-
-        folium.LayerControl().add_to(map1)
-
-        if smcontourfile is not None:
-            style_function = lambda x: {'fillColor': 'none', 'color': 'white', 'weight': 0.7}
-            smc = GeoJson(open(smcontourfile))
-            #smc.layer_name = 'ShakeMap Contours'
-            map1.add_child(smc)
-            #for feature in smc.data['features']:
-            #    label = ('%s (%s)') % (feature['properties']['value'], feature['properties']['units'].replace('pct', '%'))
-            #    plugins.PolyLineTextPath(feature['geometry']['coordinates'], label,
-            #                             center=True, attributes={'fill': 'white', 'font-size': '14'}).add_to(map1)
-
-        if faultfile is not None:
-            style_function = lambda x: {'fillColor': 'none', 'color': 'blue', 'weight': 0.7}
-            smc = GeoJson(open(faultfile), style_function=style_function)
-            smc.layer_name = 'Finite fault'
-            map1.add_child(smc)
-
-        #draw epicenter
-        if edict is not None:
-            folium.RegularPolygonMarker(location=[edict['lat'], edict['lon']], popup='Epicenter',
-                                        fill_color='#769d96', number_of_sides=4, radius=6).add_to(map1)
-
-        if savefiles:
-            filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
-            map1.save(filen)
-            filenames.append(filen)
-            plt.close('all')
-            return map1, filenames
-        else:
-            return map1
+    return maps, filenames
 
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
@@ -1619,32 +1648,59 @@ def ceilToNearest(value, ceilValue=1000):
     return value
 
 
-class BindColormap(MacroElement):
-    """Binds a colormap to a given layer.
-    from: http://nbviewer.jupyter.org/gist/BibMartin/f153aa957ddc5fadc64929abdee9ff2e, doesn't seem
-    to be added to folium yet
-    Parameters
-    ----------
-    colormap : branca.colormap.ColorMap
-        The colormap to bind.
+def removeVis(filename, removelater, mapname):
     """
-    def __init__(self, layer, colormap):
-        super(BindColormap, self).__init__()
-        self.layer = layer
-        self.colormap = colormap
-        self._template = Template(u"""
-        {% macro script(this, kwargs) %}
-            {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
-            {{this._parent.get_name()}}.on('overlayadd', function (eventLayer) {
-                if (eventLayer.layer == {{this.layer.get_name()}}) {
-                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
-                }});
-            {{this._parent.get_name()}}.on('overlayremove', function (eventLayer) {
-                if (eventLayer.layer == {{this.layer.get_name()}}) {
-                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'none';
-                }});
-        {% endmacro %}
-        """)  # noqa
+    Remove some baselayers from being initially visible - this is to fix a minor bug in 
+    folim where all baselayers are active initially because you have to add a layer
+    to the map for it to show up at all in folium, but for it to start invisible, you have to
+    add it only to layer control, not to the map, but in folium, layer control
+    inherits directly from the layers added to map.
+    :param filename: Name of html file to remove layer visibility
+    :param removelater: List of element names to remove visibility from initial plot
+    """
+    with open(filename, 'r') as f:
+        replacetext = '.addTo(%s)' % mapname
+        lines = f.readlines()
+        newlines = []
+        for remove in removelater:
+            r1 = False
+            for line in lines:
+                newline = line
+                if 'var %s' % remove in line:
+                    r1 = True
+                if r1 and replacetext in line:
+                    newline = line.replace(replacetext, '')
+                    r1 = False
+                newlines.append(newline)
+    with open(filename,'w') as f:
+        f.writelines(newlines)
+    
+#class BindColormap(MacroElement):
+#    """Binds a colormap to a given layer.
+#    from: http://nbviewer.jupyter.org/gist/BibMartin/f153aa957ddc5fadc64929abdee9ff2e, doesn't seem
+#    to be added to folium yet
+#    Parameters
+#    ----------
+#    colormap : branca.colormap.ColorMap
+#        The colormap to bind.
+#    """
+#    def __init__(self, layer, colormap):
+#        super(BindColormap, self).__init__()
+#        self.layer = layer
+#        self.colormap = colormap
+#        self._template = Template(u"""
+#        {% macro script(this, kwargs) %}
+#            {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+#            {{this._parent.get_name()}}.on('overlayadd', function (eventLayer) {
+#                if (eventLayer.layer == {{this.layer.get_name()}}) {
+#                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'block';
+#                }});
+#            {{this._parent.get_name()}}.on('overlayremove', function (eventLayer) {
+#                if (eventLayer.layer == {{this.layer.get_name()}}) {
+#                    {{this.colormap.get_name()}}.svg[0][0].style.display = 'none';
+#                }});
+#        {% endmacro %}
+#        """)  # noqa
 
 
 if __name__ == '__main__':

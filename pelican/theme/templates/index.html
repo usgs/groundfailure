@@ -17,6 +17,10 @@
         </div>
     </div>
 {% endfor %}
+    <script>
+        map_LS.sync(map_LQ);
+        map_LQ.sync(map_LS);
+    </script>
 {% endif %}
 
 {% if hidden_pages %}

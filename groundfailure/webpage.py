@@ -18,6 +18,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
                 cleanup=False):
     """
     :param maplayers: list of maplayer outputs from multiple models
+    TODO add in logic to deal with when one of the model types is missing
     """
     # get ShakeMap id
     sm_id = maplayerlist[0]['model']['description']['shakemap']
@@ -32,7 +33,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
     images = os.path.join(content, 'images')
     #images1 = os.path.join(images, sm_id)
     theme = os.path.join(web_template, 'theme')
-    static = os.path.join(fullout, 'output', 'static')
+    #static = os.path.join(fullout, 'output', 'static')
     try:
         os.mkdir(fullout)
     except Exception as e:
@@ -63,10 +64,10 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
     confLS = []
     confLQ = []
     for conf, maplayer in zip(configs, maplayerlist):
-        if 'landslide' in maplayer['model']['parameters']['modeltype'].lower():
+        if 'landslide' in maplayer['model']['description']['parameters']['modeltype'].lower():
             LS.append(maplayer)
             confLS.append(conf)
-        elif 'liquefaction' in maplayer['model']['parameters']['modeltype'].lower():
+        elif 'liquefaction' in maplayer['model']['description']['parameters']['modeltype'].lower():
             LQ.append(maplayer)
             confLQ.append(conf)
         else:
@@ -86,17 +87,17 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
             HaggLS.append(computeHagg(L['model']['grid']))
             maxLS.append(np.nanmax(L['model']['grid'].getData()))
             plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(L, conf, keys=['model'])
-            logLS.append(logscale)
-            limLS.append(lims)
-            colLS.append(colormaps)
-            maskLS.append(maskthreshes)
-            namesLS = L['model']['description']['name']
+            logLS.append(logscale[0])
+            limLS.append(lims[0])
+            colLS.append(colormaps[0])
+            maskLS.append(maskthreshes[0])
+            namesLS.append(L['model']['description']['name'])
 
-        # TURN INTO JSON AND INJECT THAT INTO TEMPLATE .JS INSTEAD OF MAKING HTML FILE
-        map1, filenameLS = makemaps.interactiveMap(concM(LS, astitle='model', includeunc=includeunc),
-                                                   maskthreshes=maskLS, colormaps=colLS, lims=limLS,
-                                                   logscale=logLS)
-        write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides', interactivehtml=filenameLS)
+        mapLS, filenameLS = makemaps.interactiveMap(concM(LS, astitle='model', includeunc=includeunc),
+                                                    maskthreshes=maskLS, colormaps=colLS, lims=limLS,
+                                                    logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
+                                                    mapid='LS', savefiles=True, outputdir=images)
+        write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides', interactivehtml=filenameLS[0])
 
     if len(LQ) > 0:
         HaggLQ = []
@@ -111,31 +112,33 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
             HaggLQ.append(computeHagg(L['model']['grid']))
             maxLQ.append(np.nanmax(L['model']['grid'].getData()))
             plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(L, conf, keys=['model'])
-            logLQ.append(logscale)
-            limLQ.append(lims)
-            colLQ.append(colormaps)
-            maskLQ.append(maskthreshes)
-            namesLQ = L['model']['description']['name']
-        map2, filenameLQ = makemaps.interactiveMap(concM(LQ, astitle='model', includeunc=includeunc),
+            logLQ.append(logscale[0])
+            limLQ.append(lims[0])
+            colLQ.append(colormaps[0])
+            maskLQ.append(maskthreshes[0])
+            namesLQ.append(L['model']['description']['name'])
+        mapLQ, filenameLQ = makemaps.interactiveMap(concM(LQ, astitle='model', includeunc=includeunc),
                                                    maskthreshes=maskLQ, colormaps=colLQ, lims=limLQ,
-                                                   logscale=logLQ)
+                                                   logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
+                                                   savefiles=True, mapid='LQ', outputdir=images)
 
-        write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction', interactivehtml=filenameLQ)
+        write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction', interactivehtml=filenameLQ[0])
 
-    write_scibackground(LS, LQ)
-    #statement = get_statement(HaggLS, HaggLQ)
-    write_summary(shakemap, pages, statement=None)
+    #write_scibackground(LS, LQ)
+    statement = get_statement(HaggLS, HaggLQ)
+    write_summary(shakemap, pages, statement=statement)
 
     # run website
     retcode, stdout, stderr = get_command_output(('pelican -s %s -o %s -t %s') %
                                                 (peliconf, os.path.join(fullout, 'output'), theme))
     print(stderr)
-    write_static_map(filenameLS, filenameLQ, static)
+    #write_static_map(filenameLS, filenameLQ, static)
 
     if cleanup:
         #delete the content folder
         pass
 
+    return fullout
 
 def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                      topimage=None, staticmap=None, map1=None, interactivehtml=None):
@@ -153,22 +156,23 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         file1.write('date: %s\n' % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('''
             <center>
-            <h2 class="uk-panel-title">%s</h2>
+            <h2>%s</h2>
             </center>''' % modeltype.title())
 
         if topimage is not None:
             file1.write('  <img src="/images/%s" width="300" />\n' % topimage)
-        file1.write('''<center>
-            Model | Aggregate Hazard | Maximum Probability
+        file1.write('<center>')
+        file1.write('''
+            Model | Aggregate Hazard | Maximum Probability\n
             :---: | :---: | :---:\n''')
         for H, m, n in zip(Hagg, maxprobs, modelnames):
             file1.write('%s | %0.2f km<sup>2</sup> | %0.2f\n' % (n.title(), H, m))
         file1.write('</center>\n<hr>\n')
 
         if interactivehtml is not None:
-            file1.write('<center><div class="folium-map" id="map%s"></div></center>' % modeltype)
-                #file1.write('    <center><object type="text/html" data=images%s height=450 width=450></object></center>\n'
-                #            % interactivehtml.split('images')[-1])
+            #file1.write('<center><div class="folium-map" id="map%s"></div></center>' % modeltype)
+            file1.write('    <center><object type="text/html" data=images%s height=500 width=500></object></center>\n'
+                        % interactivehtml.split('images')[-1])
             file1.write('    <center><a href="images%s">Click here for full interactive map</a></center>'
                         % interactivehtml.split('images')[-1])
         if staticmap is not None:
@@ -178,11 +182,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
 
 
 def write_static_map(filenameLS, filenameLQ, static):
-    # assign 'map%s' % modeltype to id
-    # css between <style> markers
-    # js between <script> markers (exclude if src)
     pass
-
 
 
 def write_scibackground(configLS, configLQ):
@@ -239,41 +239,4 @@ def get_statement(HaggLS=None, HaggLQ=None):
     """
     get standardized statement based on Hagg of landslides and liquefaction
     """
-    return 'Some automatically produced statement about the levels of landslide and liquefaction hazard'
-
-
-def runmodels(shakemap, configLS, configLQ, fileloc, mapconfig=None, mapdatadir=None, pgalim=None):
-    """
-    """
-    plotorder, logscale, limsLS, colormapsLS, maskthreshesLS = parseConfigLayers(LS, configLS)
-    HaggLS = computeHagg(LS['model']['grid'])
-    maxLS = np.nanmax(LS['model']['grid'].getData())
-    map1 = makemaps.interactiveMap(LS, shakefile=shakemap, maskthreshes=maskthreshesLS,
-                                   colormaps=colormapsLS, lims=limsLS,
-                                   outputdir=fileloc, outfilename='Landslides', sepcolorbar=True)
-    if pgalim is not None:
-        bounds = get_bounds(shakemap, parameter='pga', threshold=pgalim)
-    else:
-        bounds = None
-    if mapconfig is not None and mapdatadir is not None:
-        makemaps.modelMap(LS, maskthreshes=maskthreshesLS, colormaps=colormapsLS, lims=limsLS,
-                          outputdir=fileloc, outfilename='Landslides', savepng=True,
-                          savepdf=False, boundaries=bounds, maproads=False, **kwargs)
-    configLQ = ConfigObj(configLQ)
-    configLQ = correct_config_filepaths(datadir, configLQ)
-    lmn = LogisticModel(shakemap, configLQ, saveinputs=False)
-    LQ = lmn.calculate()
-    plotorder, logscale, limsLQ, colormapsLQ, maskthreshesLQ = parseConfigLayers(LQ, configLQ)
-    HaggLQ = computeHagg(LQ['model']['grid'])
-    maxLQ = np.nanmax(LQ['model']['grid'].getData())
-    map2 = makemaps.interactiveMap(LQ, shakefile=shakemap, maskthreshes=maskthreshesLQ,
-                                   colormaps=colormapsLQ, lims=limsLQ,
-                                   outputdir=fileloc, outfilename='Liquefaction', sepcolorbar=True)
-    if mapconfig is not None and mapdatadir is not None:
-        makemaps.modelMap(LQ, maskthreshes=maskthreshesLQ, colormaps=colormapsLQ, lims=limsLQ,
-                          outputdir=fileloc, outfilename='Liquefaction', savepng=True,
-                          savepdf=False, boundaries=bounds, maproads=False, **kwargs)
-    return HaggLS, HaggLQ, maxLS, maxLQ
-
-
-
+    return 'Some automatically produced statement about the levels of landslide and liquefaction hazard relative to other historical events'

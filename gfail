@@ -227,8 +227,8 @@ def main(args):
 
         if args.make_webpage:
 
-            webloc = makeWebpage(maplayers, configs, args.web_template, shakefile, outfolder=outfolder)
-
+            webloc = makeWebpage(results, configs, args.web_template, shakefile,
+                                 outfolder=outfolder, cleanup=True)
             filenames.append(webloc)
 
         print('\nFiles created:\n')

@@ -261,58 +261,58 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
     if modeltype == 'coverage':
         maplayers['model'] = {'grid': GDALGrid(areal, gdict), 'label': 'Areal coverage', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage',
-                                              'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
+                                              'shakemap': shakedetail, 'parameters': {'modeltype': 'Landslide - ' + modeltype}}}
         if uncertfile is not None:
             maplayers['modelmin'] = {'grid': GDALGrid(arealmin, gdict), 'label': 'Areal coverage', 'type': 'output',
                                      'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage',
-                                                     'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
+                                                     'shakemap': shakedetail, 'parameters': {'modeltype': 'Landslide - ' + modeltype}}}
             maplayers['modelmax'] = {'grid': GDALGrid(arealmax, gdict), 'label': 'Areal coverage', 'type': 'output',
                                      'description': {'name': modelsref, 'longref': modellref, 'units': 'coverage',
-                                                     'shakemap': shakedetail, 'parameters': {'modeltype': modeltype}}}
+                                                     'shakemap': shakedetail, 'parameters': {'modeltype': 'Landslide - ' + modeltype}}}
     elif modeltype == 'dn_hazus':
         maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
                                               'shakemap': shakedetail,
-                                              'parameters': {'displmodel': displmodel, 'modeltype': modeltype}}}
+                                              'parameters': {'displmodel': displmodel, 'modeltype': 'Landslide - ' + modeltype}}}
         if uncertfile is not None:
             maplayers['modelmin'] = {'grid': GDALGrid(Dnmin, gdict), 'label': 'Dn (cm)', 'type': 'output',
                                      'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
                                                      'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
-                                                                                             'modeltype': modeltype}}}
+                                                                                             'modeltype': 'Landslide - ' + modeltype}}}
             maplayers['modelmax'] = {'grid': GDALGrid(Dnmax, gdict), 'label': 'Dn (cm)', 'type': 'output',
                                      'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
                                                      'shakemap': shakedetail,
-                                                     'parameters': {'displmodel': displmodel, 'modeltype': modeltype}}}
+                                                     'parameters': {'displmodel': displmodel, 'modeltype': 'Landslide - ' + modeltype}}}
     elif modeltype == 'dn_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
                                               'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
                                                                                       'dnthresh_cm': dnthresh,
-                                                                                      'modeltype': modeltype,
+                                                                                      'modeltype': 'Landslide - ' + modeltype,
                                                                                       'probtype': probtype}}}
     elif modeltype == 'ac_classic_prob':
         maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': 'Landslide Probability', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
                                               'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
                                                                                       'dnthresh_cm': dnthresh,
-                                                                                      'modeltype': modeltype,
+                                                                                      'modeltype': 'Landslide - ' + modeltype,
                                                                                       'probtype': probtype}}}
     elif modeltype == 'ac_classic_dn':
         maplayers['model'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Landslide Probability', 'type': 'output',
                               'description': {'name': modelsref, 'longref': modellref, 'units': 'probability',
                                               'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
                                                                                       'dnthresh_cm': dnthresh,
-                                                                                      'modeltype': modeltype,
+                                                                                      'modeltype': 'Landslide - ' + modeltype,
                                                                                       'probtype': probtype}}}
         if uncertfile is not None:
             maplayers['modelmin'] = {'grid': GDALGrid(Dnmin, gdict), 'label': 'Dn (cm)', 'type': 'output',
                                      'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
                                                      'shakemap': shakedetail, 'parameters': {'displmodel': displmodel,
-                                                                                             'modeltype': modeltype}}}
+                                                                                             'modeltype': 'Landslide - ' + modeltype}}}
             maplayers['modelmax'] = {'grid': GDALGrid(Dnmax, gdict), 'label': 'Dn (cm)', 'type': 'output',
                                      'description': {'name': modelsref, 'longref': modellref, 'units': 'displacement',
                                                      'shakemap': shakedetail,
-                                                     'parameters': {'displmodel': displmodel, 'modeltype': modeltype}}}
+                                                     'parameters': {'displmodel': displmodel, 'modeltype': 'Landslide - ' + modeltype}}}
 
     label = 'Probability'
     if modeltype != 'coverage' and modeltype != 'dn_hazus' and modeltype != 'ac_classic_dn':
@@ -336,7 +336,7 @@ def hazus(shakefile, config, uncertfile=None, saveinputs=False, modeltype=None, 
             maplayers['dn'] = {'grid': GDALGrid(Dn, gdict), 'label': 'Dn (cm)', 'type': 'output',
                                'description': {'units': 'displacement', 'shakemap': shakedetail,
                                                'parameters': {'displmodel': displmodel,
-                                                              'modeltype': modeltype}}}
+                                                              'modeltype': 'Landslide - ' + modeltype}}}
 
     return maplayers
 
@@ -650,7 +650,8 @@ def classic(shakefile, config, uncertfile=None, saveinputs=False, displmodel=Non
     description = {'name': modelsref, 'longref': modellref, 'units': units, 'shakemap': shakedetail,
                    'parameters': {'displmodel': displmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
                                   'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh,
-                                  'slopethresh': slopethresh, 'sat_proportion': des}}
+                                  'slopethresh': slopethresh, 'sat_proportion': des,
+                                  'modeltype': 'Landslide'}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, gdict), 'label': label, 'type': 'output', 'description': description}
     if uncertfile is not None:
@@ -939,7 +940,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False, displmodel=No
 
     description = {'name': modelsref, 'longref': modellref, 'units': 'coverage', 'shakemap': shakedetail,
                    'parameters': {'displmodel': displmodel, 'thickness_m': thick, 'unitwt_kNm3': uwt,
-                                  'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh}}
+                                  'dnthresh_cm': dnthresh, 'acthresh_g': acthresh, 'fsthresh': fsthresh,
+                                  'modeltype': 'Landslide'}}
 
     maplayers['model'] = {'grid': GDALGrid(PROB, shakemap.getGeoDict()), 'label': 'Areal coverage', 'type': 'output',
                           'description': description}
