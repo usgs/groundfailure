@@ -12,7 +12,8 @@ import numpy as np
 from impactutils.io.cmd import get_command_output
 from shutil import copy
 from datetime import datetime
-
+import re
+import html
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, includeunc=False,
                 cleanup=False):
@@ -90,14 +91,16 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
             logLS.append(logscale[0])
             limLS.append(lims[0])
             colLS.append(colormaps[0])
-            maskLS.append(maskthreshes[0])
+            #maskLS.append(maskthreshes[0])
             namesLS.append(L['model']['description']['name'])
 
         mapLS, filenameLS = makemaps.interactiveMap(concM(LS, astitle='model', includeunc=includeunc),
-                                                    maskthreshes=maskLS, colormaps=colLS, lims=limLS,
+                                                    colormaps=colLS, lims=limLS, clear_zero=False,
                                                     logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
-                                                    mapid='LS', savefiles=True, outputdir=images)
-        write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides', interactivehtml=filenameLS[0])
+                                                    mapid='LS', savefiles=True, outputdir=images,
+                                                    sepcolorbar=True, floatcb=False)
+        write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
+                         interactivehtml=filenameLS[0], map1=mapLS)
 
     if len(LQ) > 0:
         HaggLQ = []
@@ -105,7 +108,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
         logLQ = []
         limLQ = []
         colLQ = []
-        maskLQ = []
+        #maskLQ = []
         namesLQ = []
 
         for conf, L in zip(confLQ, LQ):
@@ -115,14 +118,16 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
             logLQ.append(logscale[0])
             limLQ.append(lims[0])
             colLQ.append(colormaps[0])
-            maskLQ.append(maskthreshes[0])
+            #maskLQ.append(maskthreshes[0])
             namesLQ.append(L['model']['description']['name'])
         mapLQ, filenameLQ = makemaps.interactiveMap(concM(LQ, astitle='model', includeunc=includeunc),
-                                                    maskthreshes=maskLQ, colormaps=colLQ, lims=limLQ,
+                                                    colormaps=colLQ, lims=limLQ, clear_zero=False,
                                                     logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
-                                                    savefiles=True, mapid='LQ', outputdir=images)
+                                                    savefiles=True, mapid='LQ', outputdir=images,
+                                                    sepcolorbar=True, floatcb=False)
 
-        write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction', interactivehtml=filenameLQ[0])
+        write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
+                         interactivehtml=filenameLQ[0], map1=mapLQ)
 
     #write_scibackground(LS, LQ)
     statement = get_statement(HaggLS, HaggLQ)
@@ -146,6 +151,10 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
     """
     write markdown file for landslides or liquefaction
     """
+    if modeltype == 'Landslides':
+        id1= 'LS'
+    else:
+        id1 = 'LQ'
     # If single model and not in list form, turn into lists
     if type(Hagg) is float:
         Hagg = [Hagg]
@@ -159,21 +168,37 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         if topimage is not None:
             file1.write('  <img src="/images/%s" width="300" />\n' % topimage)
         if interactivehtml is not None:
-            #file1.write('<center><div class="folium-map" id="map%s"></div></center>' % modeltype)
-            file1.write('    <center><object type="text/html" data=images%s height=500 width=500></object></center>\n'
-                        % interactivehtml.split('images')[-1])
-            file1.write('    <center><a href="images%s">Click here for full interactive map</a></center>'
-                        % interactivehtml.split('images')[-1])
+            fileloc = interactivehtml.split('images')[-1]
+            file1.write('    <center><a href="images%s">Click here for full interactive map</a></center>\n'
+                        % fileloc)
+            #if map1 is not None:
+            #    with open(interactivehtml) as f:                
+            #        js = re.findall('(?si)<script>(.*?)</script>', f.read())
+            #    file1.write('<script>\n')
+            #    #for line in js:
+            #    file1.write(html.unescape(js[-1]))
+            #    file1.write('\n</script>\n')
+            #    file1.write('<center><div class="folium-map" id="map_%s"></div></center>' % map1._id)
+            #else:
+            file1.write('    <center><object id=%s, type="text/html" data=images%s height=500 width=500></object></center>\n'
+                        % (modeltype, fileloc))
+            
+            cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
+            file1.write('    <center><img src="images%s" width="300" href="images%s"/></center>\n' %
+                        (cbname, cbname))
         if staticmap is not None:
             #file1.write('<center> <h2>Static Map<h2> </center>\n')
             file1.write('    <center><img src="images%s" width="450" href="images%s"/></center>\n' %
                         (staticmap.split('images')[-1], staticmap.split('images')[-1]))
-        #file1.write('<center>\n')
-        file1.write('| Model | Aggregate Hazard | Maximum Probability |\n')
-        file1.write('| ---------- | ---------------- | ----------------- |\n')
+                        
+        file1.write('<hr>\n')
+        file1.write('<center><h3>Summary</h3></center>')
+        file1.write('<table style="width:100%">')
+        file1.write('<tr><th>Model</th><th>Aggregate Hazard</th><th>Max. Probability</th></tr>\n')
         for H, m, n in zip(Hagg, maxprobs, modelnames):
-            file1.write('| %s | %0.2f km<sup>2</sup> | %0.2f |\n' % (n.title(), H, m))
-        #file1.write('</center>\n<hr>\n')
+            file1.write('<tr><td>%s</td><td>%0.2f km<sup>2</sup></td><td>%0.2f</td></tr>\n' % (n.title(), H, m))
+        file1.write('</table>')
+
 
 
 def write_static_map(filenameLS, filenameLQ, static):
@@ -184,28 +209,7 @@ def write_scibackground(configLS, configLQ):
     """
     write markdown file describing model background and references
     """
-    if modelname is None:
-        modelname = 'unspecified'
-    with open(os.path.join(outputdir, modeltype + '.md'), 'w') as file1:
-        file1.write('title: %s\n' % modeltype)
-        file1.write('date: %s\n' % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('<center> <h2>%s</h2> </center>\n' % modeltype.title())
-        file1.write('<center> <h3>Model: %s<h3> </center>\n' % modelname)
-        if topimage is not None:
-            file1.write('  <img src="/images/%s" width="300" />\n' % topimage)
-        file1.write('<center> Aggregate Hazard: %0.2f km<sup>2</sup> </center>\n' % Hagg)
-        file1.write('<center> Maximum probability: %0.2f </center>\n' % max1)
-        file1.write('<p float="center">\n')
-
-        if interactivehtml is not None:
-            file1.write('<center><object type="text/html" data=images%s height=500 width=500></object></center>\n' % interactivehtml.split('images')[-1])
-            file1.write('<center><a href="images%s">Click here for full interactive map</a></center>' % interactivehtml.split('images')[-1])
-            #cbar = interactivehtml.split('images')[-1].split('.html')[0] + '_colorbar.png'
-            #file1.write('  <center><img src="images%s" width="400" href="images%s"/></center>\n' % (cbar, cbar))
-        if staticmap is not None:
-            #file1.write('<center> <h2>Static Map<h2> </center>\n')
-            file1.write('  <center><img src="images%s" width="450" href="images%s"/></center>\n' % (staticmap.split('images')[-1], staticmap.split('images')[-1]))
-        file1.write('</p>')
+    pass
 
 
 def write_summary(shakemap, outputdir, statement):
@@ -228,6 +232,7 @@ def write_summary(shakemap, outputdir, statement):
 
         file1.write('### Summary\n')
         file1.write(statement)
+        file1.write('<hr>')
 
 
 def get_statement(HaggLS=None, HaggLQ=None):

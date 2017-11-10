@@ -10,9 +10,9 @@ import copy
 import datetime
 import matplotlib as mpl
 mpl.use('Agg')  # so figures will still be created even without display
-from matplotlib.colors import LightSource, LogNorm
+from matplotlib.colors import LightSource, LogNorm, Normalize
 import re
-#from matplotlib.colorbar import ColorbarBase
+from matplotlib.colorbar import ColorbarBase
 
 #third party imports
 #from branca.element import MacroElement
@@ -1115,12 +1115,13 @@ def modelMap(grids, shakefile=None, suptitle=None, inventory_shapefile=None,
     return newgrids, filenames
 
 
-def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=None,
-                   maskthreshes=None, colormaps=None, scaletype='continuous',
-                   lims=None, logscale=False, ALPHA=0.7, isScenario=False,
-                   outputdir=None, outfilename=None, tiletype='Stamen Terrain',
-                   smcontourfile=None, faultfile=None, onkey=None,
-                   separate=True, sepcolorbar=False, savefiles=True, mapid=None):
+def interactiveMap(grids, shakefile=None, plotorder=None,
+                   inventory_shapefile=None, maskthreshes=None, colormaps=None,
+                   scaletype='continuous', lims=None, logscale=False, ALPHA=0.6,
+                   clear_zero=False, isScenario=False, outputdir=None, 
+                   outfilename=None, tiletype='Stamen Terrain',
+                   smcontourfile=None, faultfile=None, onkey=None, separate=True,
+                   sepcolorbar=False, floatcb=True, savefiles=True, mapid=None):
     """
     This function creates interactive html plots of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers)
@@ -1169,6 +1170,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
     :param ALPHA: Transparency for mapping, if there is a hillshade that will
       plot below each layer, it is recommended to set this to at least 0.7
     :type ALPHA: float
+    :param clear_zero: if True, makes zero values transparent.
     :param isScenario: Whether this is a scenario (True) or a real event (False)
       (default False)
     :type isScenario: boolean
@@ -1188,6 +1190,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
     :param onkey: key of layer to have active initially. If None, the first will be on by default
     :param separate: if True, will make a separate html file for each map, if False will combine them
     :param sepcolorbar: if True, will make separate colorbar figure, if False, will embed less fancy colorbar - only works if separate=True
+    :param floatcb: if True and sepcolobar is True, will float the colobar on the map 
     :param savefiles: if true, will save html file, otherwise will just return map object
     TODO:param printparam: True prints model parameters on figure - NOT IMPLEMENTED YET
     TODO:param ds: True to allow downsampling for display (necessary when arrays
@@ -1285,7 +1288,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         palette.set_bad(clear_color, alpha=0.0)
 
         dat = grid.getData().copy()
-        dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
+        if clear_zero:
+            dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
 
         if scaletype.lower() == 'binned':
             if logscale is not False and len(logscale) == len(plotorder):
@@ -1348,7 +1352,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             if maskthreshes[k] is not None:
                 dat[dat <= maskthreshes[k]] = float('nan')
 
-        dat = np.ma.array(dat, mask=np.isnan(dat))
+        if maskthreshes is not None or clear_zero:        
+            dat = np.ma.array(dat, mask=np.isnan(dat))
+        else:
+            dat[np.isnan(dat)] = 0.
 
         #turn data into an RGBA image
         #adjust data so scaled between vmin and vmax and between 0 and 1
@@ -1366,18 +1373,15 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         maxlon = gd.xmax + gd.dx/2.
 
         if logscale is not False and len(logscale) == len(plotorder):
-            logsc = None
+            norm = Normalize(vmin=vmin, vmax=vmax)
             if logscale[k] is True:
-                logsc = LogNorm(vmin=vmin, vmax=vmax)
+                norm = LogNorm(vmin=vmin, vmax=vmax)
         else:
-            logsc = None
+            norm = Normalize(vmin=vmin, vmax=vmax)
 
         # Make colorbar figure
 
         if sepcolorbar:
-            # This is just a dummy layer that will be deleted to make the colorbar look right
-            panelhandle = plt.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
-
             cbfmt = '%1.1f'
             if vmax is not None and vmin is not None:
                 if logscale is not False and len(logscale) == len(plotorder):
@@ -1388,23 +1392,41 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
                 elif vmax > 5.:  # (vmax - vmin) > len(clev):
                     cbfmt = '%1.0f'
 
-            fig = plt.figure(figsize=(4., 1.0))
-
-            if scaletype.lower() == 'binned':
-                cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
-                                    extend='both', format=cbfmt, spacing='proportional',
-                                    ticks=clev, boundaries=clev)
+            if separate:
+                fig = plt.figure(figsize=(4., 1.0))
+                ax=plt.gca()
             else:
-                cbar = fig.colorbar(panelhandle, fraction=0.8, pad=0., orientation='horizontal',
-                                    extend='both', format=cbfmt)
-            cbar.set_label(label1, fontsize=10)
-            cbar.ax.tick_params(labelsize=10)
-            plt.axis('off')
-            panelhandle.remove()
+                if k==0:
+                    fig, axes = plt.subplots(len(plotorder), 1,
+                                             figsize=(4., 0.8*len(plotorder)))
+                ax = axes[k]
+            # This is just a dummy layer that will be deleted to make the colorbar look right
+            #panelhandle = ax.imshow(dat1, cmap=palette, vmin=vmin, vmax=vmax, norm=logsc)
+            if scaletype.lower() == 'binned':
+                cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
+                             orientation='horizontal', extend='both',
+                             format=cbfmt, spacing='proportional',
+                             ticks=clev, boundaries=clev))
+            else:
+                cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
+                             orientation='horizontal', extend='both',
+                             format=cbfmt))
+            
+            cbars[k].set_label('%s - %s' % (label1, sref), fontsize=10)
+            cbars[k].ax.tick_params(labelsize=10)
+            #ax.axis('tight')            
+            #plt.axis('off')
+            #panelhandle.remove()
             plt.tight_layout()
-            ctemp = '%s_%s_colorbar.png' % (outfilename, keyS)
-            fig.savefig(os.path.join(outfolder, ctemp), transparent=True)  # This file has to move with the html files
-
+            if separate:
+                ctemp = '%s_%s_colorbar.png' % (outfilename, keyS)
+                fig.savefig(os.path.join(outfolder, ctemp), transparent=True)  # This file has to move with the html files
+            elif k == len(plotorder)-1:
+                #plt.subplots_adjust(wspace=None, hspace=0.1)
+                plt.subplots_adjust(left=0.02, right=0.98)                
+                ctemp = '%s_colorbar.png' % outfilename
+                fig.savefig(os.path.join(outfolder, ctemp), transparent=True, bbox_inches='tight')
+                    
         # if edict is not None:
         #     if isScenario:
         #         title = edict['event_description']
@@ -1429,6 +1451,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             # create geojson object
             invt = GeoJson({"type": "FeatureCollection", "features": buffer1}, style_function=style_function)
 
+        zoom_start = getZoom(minlon, maxlon) + 2.
+        
         if separate:
             overlay = True
         else:
@@ -1437,8 +1461,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             onkey = key
         if separate or key == onkey:
             map1 = folium.Map(location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                              tiles=None, min_lat=minlat, max_lat=maxlat, zoom_start=6, max_zoom=14,
-                              min_lon=minlon, max_lon=maxlon, prefer_canvas=True, control_scale=True)
+                              tiles=None, min_lat=minlat, max_lat=maxlat,
+                              min_lon=minlon, max_lon=maxlon, zoom_start=zoom_start,
+                              max_zoom=14, prefer_canvas=True, control_scale=True)
             folium.TileLayer(tiles=tiletype, control=False, overlay=not overlay).add_to(map1)
         images.append(plugins.ImageOverlay(rgba_img, opacity=ALPHA,
                                            bounds=[[minlat, minlon], [maxlat, maxlon]],
@@ -1450,9 +1475,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
         if key != onkey and separate is False and savefiles:
             removelater.append(images[k].get_name())
 
-        if sepcolorbar:
+        if sepcolorbar and floatcb:
             plugins.FloatImage(ctemp, bottom=0, left=1).add_to(map1)
-        else:
+        elif not sepcolorbar:
             if scaletype.lower() == 'binned':
                 color1 = palette(clev/clev.max())
                 cbars.append(cmb.StepColormap(color1, vmin=vmin, vmax=vmax, index=clev,
@@ -1466,7 +1491,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None, inventory_shapefile=No
             #BindColormap(images[k], cbars[k])
 
         if separate or k == len(plotorder)-1:
-            folium.LayerControl(collapsed=False, position='bottomleft').add_to(map1)
+            folium.LayerControl(collapsed=False, position='bottomright').add_to(map1)
             map1.add_child(RectangleMarker(bounds=[[minlat, minlon], [maxlat, maxlon]], fill_opacity=0.5,
                            weight=1, fill_color='none'))
             map1.add_child(folium.LatLngPopup())
@@ -1675,6 +1700,17 @@ def removeVis(filename, removelater, mapname):
     with open(filename,'w') as f:
         f.writelines(newlines)
     
+
+def getZoom(minlon, maxlon):
+    """
+    Get the best starting zoom level based on span of coordinates
+    """
+    angle = maxlon - minlon
+    if angle < 0:
+        angle += 360
+    zoom =  np.ceil(np.log(500 * 360/angle/256/0.693))
+    return zoom
+
 #class BindColormap(MacroElement):
 #    """Binds a colormap to a given layer.
 #    from: http://nbviewer.jupyter.org/gist/BibMartin/f153aa957ddc5fadc64929abdee9ff2e, doesn't seem
