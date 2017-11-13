@@ -1,5 +1,5 @@
-data_path = /home/travis/groundfailure/tests/data/loma_prieta/model_inputs
-config_filepath = /home/travis/groundfailure/defaultconfigfiles/models
+data_path = /home/travis/build/usgs/groundfailure/tests/data/loma_prieta/model_inputs
+config_filepath = /home/travis/build/usgs/groundfailure/defaultconfigfiles/models
 output_filepath = /home/travis/
-mapconfig = /home/travis/groundfailure/defaultconfigfiles/mapconfig.ini
-mapdata_filepath = /home/travis/groundfailure/tests/data/loma_prieta/mapping_inputs
+mapconfig = /home/travis/build/usgs/groundfailure/defaultconfigfiles/mapconfig.ini
+mapdata_filepath = /home/travis/build/usgs/groundfailure/tests/data/loma_prieta/mapping_inputs
