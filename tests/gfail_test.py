@@ -22,7 +22,7 @@ def test_zhu2015(tmpdir):
         -d %s/loma_prieta/model_inputs \
         -o [TMPOUT] \
         -c %s/defaultconfigfiles/models \
-        -m %sdefaultconfigfiles/mapconfig.ini \
+        -m %s/defaultconfigfiles/mapconfig.ini \
         -md %s/loma_prieta/mapping_inputs
     """ % (datadir, upone, upone, datadir)
 
