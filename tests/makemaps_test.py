@@ -6,16 +6,13 @@ would take just way to long to do with real data.
 """
 import os.path
 import os
-import collections
 from configobj import ConfigObj
-import numpy as np
 import gfail.logisticmodel as LM
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
 
-#homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
-homedir = '/Users/emthompson/src/python/groundfailure-prod/tests/'
+homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 upone = os.path.join(homedir, os.pardir)
 
