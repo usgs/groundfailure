@@ -80,7 +80,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
         logLS = []
         limLS = []
         colLS = []
-        maskLS = []
+        #maskLS = []
         namesLS = []
 
         for conf, L in zip(confLS, LS):
@@ -100,7 +100,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
                                                     mapid='LS', savefiles=True, outputdir=images,
                                                     sepcolorbar=True, floatcb=False)
         write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
-                         interactivehtml=filenameLS[0], map1=mapLS)
+                         interactivehtml=filenameLS[0])
 
     if len(LQ) > 0:
         HaggLQ = []
@@ -127,7 +127,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
                                                     sepcolorbar=True, floatcb=False)
 
         write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
-                         interactivehtml=filenameLQ[0], map1=mapLQ)
+                         interactivehtml=filenameLQ[0])
 
     #write_scibackground(LS, LQ)
     statement = get_statement(HaggLS, HaggLQ)
@@ -147,12 +147,12 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
 
 
 def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
-                     topimage=None, staticmap=None, map1=None, interactivehtml=None):
+                     topimage=None, staticmap=None, interactivehtml=None):
     """
     write markdown file for landslides or liquefaction
     """
     if modeltype == 'Landslides':
-        id1= 'LS'
+        id1 = 'LS'
     else:
         id1 = 'LQ'
     # If single model and not in list form, turn into lists
@@ -172,7 +172,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
             file1.write('    <center><a href="images%s">Click here for full interactive map</a></center>\n'
                         % fileloc)
             #if map1 is not None:
-            #    with open(interactivehtml) as f:                
+            #    with open(interactivehtml) as f:
             #        js = re.findall('(?si)<script>(.*?)</script>', f.read())
             #    file1.write('<script>\n')
             #    #for line in js:
@@ -180,9 +180,9 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
             #    file1.write('\n</script>\n')
             #    file1.write('<center><div class="folium-map" id="map_%s"></div></center>' % map1._id)
             #else:
-            file1.write('    <center><object id=%s, type="text/html" data=images%s height=500 width=500></object></center>\n'
-                        % (modeltype, fileloc))
-            
+            file1.write('    <center><object id=map_%s, type="text/html" data=images%s height=500 width=500></object></center>\n'
+                        % (id1, fileloc))
+
             cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
             file1.write('    <center><img src="images%s" width="300" href="images%s"/></center>\n' %
                         (cbname, cbname))
@@ -190,7 +190,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
             #file1.write('<center> <h2>Static Map<h2> </center>\n')
             file1.write('    <center><img src="images%s" width="450" href="images%s"/></center>\n' %
                         (staticmap.split('images')[-1], staticmap.split('images')[-1]))
-                        
+
         file1.write('<hr>\n')
         file1.write('<center><h3>Summary</h3></center>')
         file1.write('<table style="width:100%">')
@@ -198,7 +198,6 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         for H, m, n in zip(Hagg, maxprobs, modelnames):
             file1.write('<tr><td>%s</td><td>%0.2f km<sup>2</sup></td><td>%0.2f</td></tr>\n' % (n.title(), H, m))
         file1.write('</table>')
-
 
 
 def write_static_map(filenameLS, filenameLQ, static):
