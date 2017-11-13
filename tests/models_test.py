@@ -12,7 +12,7 @@ from gfail.godt import godt2008
 
 # where is this script?
 homedir = os.path.dirname(os.path.abspath(__file__))
-upone = os.path.dirname(homedir)
+upone = os.path.join(homedir, os.pardir)
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
 
