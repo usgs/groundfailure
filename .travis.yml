@@ -11,14 +11,6 @@ install:
     - source activate gf
     - pwd
     - cp .gfail_defaults_travis /home/travis/.gfail_defaults
-    - ls /home/travis/
-    - ls /home/travis/build/
-    - ls /home/travis/build/usgs/
-    - ls /home/travis/build/usgs/groundfailure/
-    - ls /home/travis/build/usgs/groundfailure/tests/
-    - ls /home/travis/build/usgs/groundfailure/tests/data/
-    - ls /home/travis/build/usgs/groundfailure/tests/data/loma_prieta/
-    - ls /home/travis/build/usgs/groundfailure/tests/data/loma_prieta/model_inputs/
 before_script:
     # This is to take care of Invalid DISPLAY variable
     - "export DISPLAY=:99.0"
