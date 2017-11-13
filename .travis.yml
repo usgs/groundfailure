@@ -1,30 +1,14 @@
 language: python
 sudo: false
-#cache:
-#  directories:
-#  - /home/travis/miniconda/envs/
-#  - /home/travis/virtualenv/python3.5.2/lib/python3.5/site-packages
 python:
     - "3.5"
     
 install:
-    #------------------
-    # Base requirements
-    #------------------
-    #- sudo apt-get update
-    - wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    - bash miniconda.sh -f -b -p $HOME/miniconda
+    # Install gf-p and requirements
+    - bash install.sh -t
     - export PATH="$HOME/miniconda/bin:$PATH"
     - export PATH="$HOME/miniconda/lib:$PATH"
-    - conda config --set always_yes yes --set changeps1 no
-    - conda update -q conda
-    - conda info -a
-    - bash setup_env.sh
-    - source activate gf
-    #---------------------
-    # Install shakemap
-    #---------------------
-    - python setup.py install
+    - source activate gfp
 before_script:
     # This is to take care of Invalid DISPLAY variable
     - "export DISPLAY=:99.0"
@@ -32,8 +16,7 @@ before_script:
     - sleep 3 # give xvfb some time to start
 script:
     - export PYTHONPATH="."
-    - py.test --mpl --cov=groundfailure
-    - echo `sphinx-build --version`
+    - py.test --cov=.
 after_success:
     - pip install codecov codacy-coverage
     - codecov
