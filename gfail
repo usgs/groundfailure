@@ -440,6 +440,7 @@ if __name__ == '__main__':
     config_filepath = None
     mapconfig = None
     mapdata_filepath = None
+    web_template = None
 
     if os.path.exists(defaults):
         D = ConfigObj(defaults)

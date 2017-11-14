@@ -1,9 +1,6 @@
 import os
 from mapio.shake import ShakeGrid
-from configobj import ConfigObj
-from groundfailure.logisticmodel import LogisticModel
-from groundfailure.conf import correct_config_filepaths
-from groundfailure.makemaps import parseConfigLayers, parseMapConfig
+from groundfailure.makemaps import parseConfigLayers
 from groundfailure import makemaps
 from groundfailure.assessmodels import concatenateModels as concM
 from groundfailure.assessmodels import computeHagg
@@ -12,11 +9,12 @@ import numpy as np
 from impactutils.io.cmd import get_command_output
 from shutil import copy
 from datetime import datetime
-import re
-import html
+from bs4 import BeautifulSoup
+import shutil
+import glob
 
-def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, includeunc=False,
-                cleanup=False):
+def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
+                includeunc=False, cleanup=False):
     """
     :param maplayers: list of maplayer outputs from multiple models
     TODO add in logic to deal with when one of the model types is missing
@@ -24,17 +22,16 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
     # get ShakeMap id
     sm_id = maplayerlist[0]['model']['description']['shakemap']
     if outfolder is None:
-        outfolder = os.getcwd()
-
-    fullout = os.path.join(outfolder, sm_id)
+        outfolder = os.path.join(os.getcwd(), sm_id)
+    fullout = os.path.join(outfolder, 'webpage')
     content = os.path.join(fullout, 'content')
     articles = os.path.join(content, 'articles')
-    hidden_pages = os.path.join(content, 'hidden_pages')
+    #hidden_pages = os.path.join(content, 'hidden_pages')
     pages = os.path.join(content, 'pages')
     images = os.path.join(content, 'images')
     #images1 = os.path.join(images, sm_id)
-    theme = os.path.join(web_template, 'theme')
-    #static = os.path.join(fullout, 'output', 'static')
+    theme = web_template
+    static = os.path.join(theme, 'static')
     try:
         os.mkdir(fullout)
     except Exception as e:
@@ -57,7 +54,13 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
         print(e)
 
     peliconf = os.path.join(fullout, 'pelicanconf.py')
-    copy(os.path.join(web_template, 'pelicanconf.py'), peliconf)
+    copy(os.path.join(os.path.dirname(web_template), 'pelicanconf.py'), peliconf)
+    outjsfileLS = os.path.join(static, 'js', 'mapLS.js')
+    with open(outjsfileLS, 'w') as f:
+        f.write('\n')
+    outjsfileLQ = os.path.join(static, 'js', 'mapLQ.js')
+    with open(outjsfileLQ, 'w') as f:
+        f.write('\n')
 
     # Separate the LS and LQ models
     LS = []
@@ -100,7 +103,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
                                                     mapid='LS', savefiles=True, outputdir=images,
                                                     sepcolorbar=True, floatcb=False)
         write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
-                         interactivehtml=filenameLS[0])
+                         interactivehtml=filenameLS[0], outjsfile=outjsfileLS)
 
     if len(LQ) > 0:
         HaggLQ = []
@@ -127,11 +130,11 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
                                                     sepcolorbar=True, floatcb=False)
 
         write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
-                         interactivehtml=filenameLQ[0])
+                         interactivehtml=filenameLQ[0], outjsfile=outjsfileLQ)
 
     #write_scibackground(LS, LQ)
-    statement = get_statement(HaggLS, HaggLQ)
-    write_summary(shakemap, pages, statement=statement)
+    write_summary(shakemap, pages, images, HaggLS=HaggLS[namesLS=='Nowicki and others (2014)'],
+                  HaggLQ=HaggLQ[namesLQ=='Zhu and others (2016)'])
 
     # run website
     retcode, stdout, stderr = get_command_output(('pelican -s %s -o %s -t %s') %
@@ -139,15 +142,29 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None, i
     print(stderr)
     #write_static_map(filenameLS, filenameLQ, static)
 
-    if cleanup:
-        #delete the content folder
-        pass
+    if cleanup: # delete everything except what is needed to make website
+        files = glob.glob(os.path.join(fullout, '*'))
+        for filen in files:
+            if os.path.basename(filen) not in 'output':
+                if os.path.isdir(filen):
+                    shutil.rmtree(filen)
+                else:
+                    os.remove(filen)
+            else:
+                ofiles = glob.glob(os.path.join(fullout, 'output', '*'))
+                for ofilen in ofiles:
+                    if os.path.basename(ofilen) not in "index.htmlimagestheme":
+                        if os.path.isdir(ofilen):
+                            shutil.rmtree(ofilen)
+                        else:
+                            os.remove(ofilen)
 
-    return fullout
+    return os.path.join(fullout, 'output')
 
 
 def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
-                     topimage=None, staticmap=None, interactivehtml=None):
+                     topimage=None, staticmap=None, interactivehtml=None,
+                     outjsfile=None):
     """
     write markdown file for landslides or liquefaction
     """
@@ -160,6 +177,9 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         Hagg = [Hagg]
         maxprobs = [maxprobs]
         modelnames = [modelnames]
+        
+    if outjsfile is None:
+        outjsfile = 'map.js'
 
     with open(os.path.join(outputdir, modeltype + '.md'), 'w') as file1:
         file1.write('title: %s\n' % modeltype.title())
@@ -168,27 +188,31 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         if topimage is not None:
             file1.write('  <img src="/images/%s" width="300" />\n' % topimage)
         if interactivehtml is not None:
+            # Extract js and move to map.js
+            with open(interactivehtml) as f:
+                soup = BeautifulSoup(f, 'html.parser')
+                soup.prettify(encoding='utf-8')
+                scs = soup.find_all('script')
+                if scs is not None:
+                    for sc in scs:
+                        if 'var' in str(sc):
+                            temp= str(sc)
+                            temp = temp.strip('<script>').strip('</script>')
+                            with open(outjsfile, 'a') as f2:
+                                f2.write(temp)
+            # Embed and link to fullscreen
             fileloc = interactivehtml.split('images')[-1]
-            file1.write('    <center><a href="images%s">Click here for full interactive map</a></center>\n'
+            file1.write('<center><a href="images%s">Click here for full interactive map</a></center>\n'
                         % fileloc)
-            #if map1 is not None:
-            #    with open(interactivehtml) as f:
-            #        js = re.findall('(?si)<script>(.*?)</script>', f.read())
-            #    file1.write('<script>\n')
-            #    #for line in js:
-            #    file1.write(html.unescape(js[-1]))
-            #    file1.write('\n</script>\n')
-            #    file1.write('<center><div class="folium-map" id="map_%s"></div></center>' % map1._id)
-            #else:
-            file1.write('    <center><object id=map_%s, type="text/html" data=images%s height=500 width=500></object></center>\n'
-                        % (id1, fileloc))
+
+            file1.write('<center><div class="folium-map" id="map_%s"></div></center>\n' % id1)
 
             cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
-            file1.write('    <center><img src="images%s" width="300" href="images%s"/></center>\n' %
+            file1.write('<center><img src="images%s" width="300" href="images%s"/></center>\n' %
                         (cbname, cbname))
         if staticmap is not None:
             #file1.write('<center> <h2>Static Map<h2> </center>\n')
-            file1.write('    <center><img src="images%s" width="450" href="images%s"/></center>\n' %
+            file1.write('<center><img src="images%s" width="450" href="images%s"/></center>\n' %
                         (staticmap.split('images')[-1], staticmap.split('images')[-1]))
 
         file1.write('<hr>\n')
@@ -200,10 +224,6 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         file1.write('</table>')
 
 
-def write_static_map(filenameLS, filenameLQ, static):
-    pass
-
-
 def write_scibackground(configLS, configLQ):
     """
     write markdown file describing model background and references
@@ -211,12 +231,14 @@ def write_scibackground(configLS, configLQ):
     pass
 
 
-def write_summary(shakemap, outputdir, statement):
+def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
     edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
     temp = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
     edict['eventid'] = temp['shakemap_id']
     edict['version'] = temp['shakemap_version']
-
+    alertLS, alertLQ, statement = get_alert(HaggLS, HaggLQ)
+    #TODO Make images for alerts
+    
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
@@ -230,12 +252,69 @@ def write_summary(shakemap, outputdir, statement):
                      edict['lon'], edict['depth']))
 
         file1.write('### Summary\n')
+        
         file1.write(statement)
         file1.write('<hr>')
 
 
-def get_statement(HaggLS=None, HaggLQ=None):
+def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.], binLQ=[70., 120., 1000.]):
     """
-    get standardized statement based on Hagg of landslides and liquefaction
-    """
-    return 'Some automatically produced statement about the levels of landslide and liquefaction hazard relative to other historical events'
+    Bin edges (3 values) between Green and Yellow, Yellow and Orange, and Orange and Red
+    LS based on Nowicki et al 2014 model results
+    Red >4000
+    Orange 850-4000
+    Yellow 100-850
+    Green <100
+    LQ
+    
+    Based on Zhu et al 2017 general model results
+    red = ~Loma Prieta >1000
+    orange = Christchurch >120 <1000
+    yellow = Greece >70 <120
+    green = Northern Italy <70
+    """    
+    if HaggLS is None:
+        alertLS = None
+    elif HaggLS < binLS[0]:
+        alertLS = 'green'
+    elif HaggLS >= binLS[0] and HaggLS < binLS[1]:
+        alertLS = 'yellow'
+    elif HaggLS >= binLS[1] and HaggLS < binLS[2]:
+        alertLS = 'orange'
+    elif HaggLS > binLS[2]:
+        alertLS = 'red'
+    else:
+        alertLS = None
+        
+    if HaggLQ is None:
+        alertLQ = None
+    elif HaggLQ < binLQ[0]:
+        alertLQ = 'green'
+    elif HaggLQ >= binLQ[0] and HaggLQ < binLQ[1]:
+        alertLQ = 'yellow'
+    elif HaggLQ >= binLQ[1] and HaggLQ < binLQ[2]:
+        alertLQ = 'orange'
+    elif HaggLQ > binLQ[2]:
+        alertLQ = 'red'
+    else:
+        alertLQ = None
+    
+    statement = 'This earthquake likely returned %s liquefaction and %s landsliding' % (get_word(alertLQ), get_word(alertLS))
+
+    return alertLS, alertLQ, statement
+
+
+def get_word(color):
+    if color is None:
+        word = 'unknown levels of'
+    if color in 'green':
+        word = 'little to no'
+    elif color in 'yellow':
+        word = 'localized'
+    elif color in 'orange':
+        word = 'substantial'
+    elif color in 'red':
+        word = 'extensive'
+    else:
+        word = 'unknown levels of'
+    return word

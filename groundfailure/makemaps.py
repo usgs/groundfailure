@@ -1387,7 +1387,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 if logscale is not False and len(logscale) == len(plotorder):
                     if logscale[k] is True:
                         cbfmt = '%1.0e'
-                elif (vmax - vmin) < 1.:
+                elif vmax < 1.:
                     cbfmt = '%1.2f'
                 elif vmax > 5.:  # (vmax - vmin) > len(clev):
                     cbfmt = '%1.0f'

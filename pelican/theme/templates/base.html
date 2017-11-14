@@ -30,14 +30,13 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
     <link rel="stylesheet" href="https://rawgit.com/python-visualization/folium/master/folium/templates/leaflet.awesome.rotate.css" />
-    
+    <link rel="stylesheet" href="theme/css/map.css">
     <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.2/html5shiv.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet-src.js" crossorigin=""></script>
-    <script src="https://raw.githubusercontent.com/jieter/Leaflet.Sync/0.2.1/L.Map.Sync.js"></script>
-    <link rel="stylesheet" href="theme/css/map.css">
-    <script src="theme/js/map.js"></script>
+    <script src="https://cdn.rawgit.com/jieter/Leaflet.Sync/0.2.1/L.Map.Sync.js" content-type="application/javascript" charset="utf-8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-dvf/0.3.0/leaflet-dvf.markers.min.js"></script>
+
 </head>
 
 <body>
@@ -57,6 +56,9 @@
 
             <div class="uk-grid" data-uk-grid-margin>
                 {% block content %} {% endblock %}
+                <script src="theme/js/mapLS.js"></script>
+                <script src="theme/js/mapLQ.js"></script>
+                <script src="theme/js/mapsync.js"></script>
             </div>
 
         </div>
