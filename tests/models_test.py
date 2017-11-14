@@ -152,7 +152,8 @@ def test_jessee_2017():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data,
+                               rtol=1e-6)
 
 
 def test_godt_2008():
