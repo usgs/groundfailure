@@ -1,0 +1,4 @@
+data_path = /Users/emthompson/src/python/groundfailure-prod/tests/data
+config_filepath = defaultconfigfiles/models
+output_filepath = /Users/emthompson/src/python/groundfailure-prod/tests/data/test_outputs
+mapconfig = defaultconfigfiles/mapconfig.ini

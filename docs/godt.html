@@ -1,0 +1,210 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>godt &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-godt">
+<span id="godt"></span><h1>godt<a class="headerlink" href="#module-godt" title="Permalink to this headline">¶</a></h1>
+<p>This module contains functions that can be used to run Newmark-based
+mechanistic landslide models.</p>
+<dl class="function">
+<dt id="godt.godt2008">
+<code class="descclassname">godt.</code><code class="descname">godt2008</code><span class="sig-paren">(</span><em>shakefile</em>, <em>config</em>, <em>uncertfile=None</em>, <em>saveinputs=False</em>, <em>displmodel=None</em>, <em>bounds=None</em>, <em>slopediv=100.0</em>, <em>codiv=10.0</em>, <em>numstd=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/godt.html#godt2008"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#godt.godt2008" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function runs the Godt et al. (2008) global method for a given
+ShakeMap. The Factor of Safety is calculated using infinite slope analysis
+assumuing dry conditions. The method uses threshold newmark displacement
+and estimates areal coverage by doing the calculations for each slope
+quantile.</p>
+<p>TO DO: add ‘all’ – averages Dn from all four equations, add term to
+convert PGA and PGV to Ia and use other equations, add Ambraseys and
+Menu (1988) option.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>shakefile</strong> (<em>str</em>) – Path to shakemap xml file.</li>
+<li><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj of config file containing inputs required
+for running the model</li>
+<li><strong>uncertfile</strong> (<em>str</em>) – Path to shakemap uncertainty xml file.</li>
+<li><strong>saveinputs</strong> (<em>bool</em>) – Whether or not to return the model input layers,
+False (defeault) returns only the model output (one layer).</li>
+<li><strong>displmodel</strong> (<em>str</em>) – <p>Newmark displacement regression model to use</p>
+<ul>
+<li><code class="docutils literal"><span class="pre">'J_PGA'</span></code> (default) – PGA-based model, equation 6 from
+Jibson (2007).</li>
+<li><code class="docutils literal"><span class="pre">'J_PGA_M'</span></code> – PGA and M-based model, equation 7 from
+Jibson (2007).</li>
+<li><code class="docutils literal"><span class="pre">'RS_PGA_M'</span></code> – PGA and M-based model from from Rathje and
+Saygili (2009).</li>
+<li><code class="docutils literal"><span class="pre">'RS_PGA_PGV'</span></code> – PGA and PGV-based model, equation 6
+from Saygili and Rathje (2008).</li>
+</ul>
+</li>
+<li><strong>probtype</strong> (<em>str</em>) – <p>Method used to estimate probability.</p>
+<ul>
+<li><code class="docutils literal"><span class="pre">'jibson2000'</span></code> uses equation 5 from Jibson et al. (2000) to
+estimate probability from Newmark displacement.</li>
+<li><code class="docutils literal"><span class="pre">'threshold'</span></code> uses a specified threshold of Newmark displacement
+(defined in config file) and assumes anything greater than this
+threshold fails.</li>
+</ul>
+</li>
+<li><strong>slopediv</strong> (<em>float</em>) – Divide slope by this number to get slope in degrees
+(Verdin datasets need to be divided by 100).</li>
+<li><strong>codiv</strong> (<em>float</em>) – Divide cohesion by this number to get reasonable numbers
+(For Godt method, need to divide by 10 because that is how it was
+calibrated, but values are reasonable without multiplying for
+regular analysis).</li>
+<li><strong>numstd</strong> (<em>float</em>) – Number of +/- standard deviations to use if uncertainty
+is computed (uncertfile is not None).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>Dictionary containing output and input layers (if
+saveinputs=True) along with metadata formatted like:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">mapio</span> <span class="n">grid2D</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="s1">&#39;label for colorbar and top line of subtitle&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output or input to model&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;detailed description&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal"><span class="pre">NameError</span></code> – when unable to parse the config correctly (probably a
+formatting issue in the configfile) or when unable to find the
+shakefile (Shakemap filepath) – these cause program to end.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="godt.NMdisp">
+<code class="descclassname">godt.</code><code class="descname">NMdisp</code><span class="sig-paren">(</span><em>Ac</em>, <em>PGA</em>, <em>model='J_PGA'</em>, <em>M=None</em>, <em>PGV=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/godt.html#NMdisp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#godt.NMdisp" title="Permalink to this definition">¶</a></dt>
+<dd><p>PGA-based Newmark Displacement model</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>Ac</strong> (<em>array</em>) – NxM array of critical accelerations in units of g.</li>
+<li><strong>PGA</strong> (<em>array</em>) – NxM Array of PGA values in units of g.</li>
+<li><strong>model</strong> (<em>str</em>) – <ul>
+<li><code class="docutils literal"><span class="pre">'J_PGA'</span></code> – PGA only model from Jibson (2007), equation 6.
+Applicable for Magnitude range of dataset (5.3-7.6).</li>
+<li><code class="docutils literal"><span class="pre">'J_PGA_M'</span></code> – PGA-and M- based Newmark Displacement model
+from Jibson(2007), equation 7. Applicable for Magnitude range
+of dataset (5.3-7.6).</li>
+<li><code class="docutils literal"><span class="pre">'RS_PGA_M'</span></code> – PGA and M-based Newmark displacement model
+from Rathje and Saygili (2009).</li>
+<li><code class="docutils literal"><span class="pre">'RS_PGA_PGV'</span></code> – PGA and PGV-based model from Saygili and
+Rathje (2008) – eq 6.</li>
+<li><code class="docutils literal"><span class="pre">'BT_PGA_M'</span></code> – PGA and M-based model from Bray and
+Travasarou (2007) assuming natural fundamental period of
+sliding mass Ts = 0 (eq 6).</li>
+</ul>
+</li>
+<li><strong>M</strong> (<em>float</em>) – Magnitude – only needed for models with M in the name.</li>
+<li><strong>PGV</strong> (<em>float</em>) – NxM Array of PGV values in units of cm/sec – only needed
+for models with PGV in the name.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Tuple of Dn, logDnstd, and logtype.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gfail.html">gfail</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
