@@ -1,21 +1,22 @@
 #!/usr/bin/env python
 
-#stdlib imports
+# stdlib imports
 import os.path
 import tempfile
 import textwrap
 import sys
 import shutil
 
-#third party libraries
+# third party libraries
 from configobj import ConfigObj
-from validate import Validator, VdtTypeError, VdtParamError
+from validate import Validator, VdtTypeError
 
 
 def __getCustomValidator():
-    '''Return a Validator object with the custom types we have defined here.
+    '''
+    Return a Validator object with the custom types we have defined here.
 
-    :returns:
+    Returns:
       Validator object with custom types embedded.
     '''
     fdict = {
@@ -28,15 +29,16 @@ def __getCustomValidator():
 
 
 def __file_type(value):
-    '''Describes a file_type from the ShakeMap config spec.
-    A file_type object is simply a string that must be a valid file on the system.
+    '''
+    Describes a file_type from the ShakeMap config spec.
+    A file_type object is simply a string that must be a valid file on the
+    system.
 
-    :param value:
-      String representing valid path to a file on the local system.
-    :return:
-      Input string, if a valid file name.
-    :raises VdtTypeError:
-      When path is invalid.
+    Args:
+        value (str): Path to a file on the local system.
+
+    Returns:
+        Input string, if a valid file name.
     '''
     if not os.path.isfile(value):
         raise VdtTypeError(value)
@@ -44,16 +46,16 @@ def __file_type(value):
 
 
 def __path_type(value):
-    '''Describes a path_type from the groundfailure config spec.
+    '''
+    Describes a path_type from the groundfailure config spec.
     A path_type object is simply a string that must be a valid file OR
     directory on the system.
 
-    :param value:
-      String representing valid path to a file or directory on the local system.
-    :return:
+    Args:
+        value (str): Path to a file or directory on the local system.
+
+    Returns:
       Input string, if a valid file/directory name.
-    :raises VdtTypeError:
-      When path is invalid.
     '''
     if not os.path.isfile(value) and not os.path.isdir(value):
         raise VdtTypeError(value)
@@ -61,7 +63,8 @@ def __path_type(value):
 
 
 def filterResults(result):
-    #TODO: this function has a problem where some error messages are duplicated...?
+    # TODO: this function has a problem where some error messages are
+    # duplicated...?
     errormsg = ''
     for key, value in result.items():
         if isinstance(value, dict):
@@ -69,25 +72,30 @@ def filterResults(result):
             errormsg += tmpmsg
         else:
             if not isinstance(value, bool):
-                errormsg += "Parameter %s failed with error '%s'\n" % (key, value.args)
+                errormsg += ("Parameter %s failed with error '%s'\n"
+                             % (key, value.args))
             else:
                 if not value:
-                    errormsg += "Parameter %s was not specified correctly.\n" % (key)
+                    errormsg += ("Parameter %s was not specified correctly.\n"
+                                 % (key))
 
     return errormsg
 
 
 def correct_config_filepaths(input_path, config):
-    """Takes an input filepath name and pre-pends it to all file locations within the config file.
-    Individual locations are put into the config.  Don't have to put entire filepath location for each layer.
-    Works by looping over config dictionary and subdictionary to fine locations named 'file'.
+    """
+    Takes an input filepath name and pre-pends it to all file locations within
+    the config file. Individual locations are put into the config.  Don't have
+    to put entire filepath location for each layer. Works by looping over
+    config dictionary and subdictionary to fine locations named 'file'.
 
-    :param input_path: full file path that needs to be appended to the front of all the file names/paths in config
-    :type input_path: string
-    :param config: configobj (config .ini file read in using configobj) defining the model and its inputs
-    :type config: dictionary
-    :returns:
-        config dictionary with complete file paths
+    Args:
+        input_path (str): Path that needs to be appended to the front of all
+            the file names/paths in config.
+        config: configobj object defining the model and its inputs.
+
+    Returns:
+        config dictionary with complete file paths.
 
     """
 
@@ -98,15 +106,19 @@ def correct_config_filepaths(input_path, config):
             second_loop = keys
             if hasattr(config[outer_loop][second_loop], 'keys') is False:
                 if second_loop == 'slopefile' or second_loop == 'file':
-                            path_to_correct = config[outer_loop][second_loop]
-                            config[outer_loop][second_loop] = os.path.join(input_path, path_to_correct)
+                    path_to_correct = config[outer_loop][second_loop]
+                    config[outer_loop][second_loop] = \
+                        os.path.join(input_path, path_to_correct)
             else:
                 for keys in config[outer_loop][second_loop].keys():
                     third_loop = keys
-                    if hasattr(config[outer_loop][second_loop][third_loop], 'keys') is False:
+                    if hasattr(config[outer_loop][second_loop][third_loop],
+                               'keys') is False:
                         if third_loop == 'file' or third_loop == 'filepath':
-                            path_to_correct = config[outer_loop][second_loop][third_loop]
-                            config[outer_loop][second_loop][third_loop] = os.path.join(input_path, path_to_correct)
+                            path_to_correct = \
+                                config[outer_loop][second_loop][third_loop]
+                            config[outer_loop][second_loop][third_loop] = \
+                                os.path.join(input_path, path_to_correct)
                     else:
                         for keys in config[outer_loop][second_loop][third_loop].keys():
                             fourth_loop = keys
@@ -125,14 +137,16 @@ def correct_config_filepaths(input_path, config):
 
 
 def validate(configfile, inputfilepath=None):
-    '''Return a validated config object.
+    '''
+    Return a validated config object.
 
-    :param configspec: Path to config spec file, used to define the valid configuration
-      parameters for the system.
-    :param configfile: Config file to validate.
-    :returns:
-      A validated ConfigObj object or a dictionary of which section/parameters
-      failed validation.
+    Args:
+        configfile (str): Config file to validate.
+        inputfilepath (str): Path to input file.
+
+    Returns:
+        A validated ConfigObj object or a dictionary of which
+        section/parameters failed validation.
     '''
     thispath = os.path.dirname(os.path.abspath(__file__))
     configspec = os.path.join(thispath, 'configspec.ini')
@@ -300,10 +314,10 @@ def _failValidate():
     [[[colormaps]]]
       slope = jet_r
     ''' % ('foo', 'bar')
-    #the above config text should fail validate in three places: b1, cohesion, and slope.
+    # the above config text should fail validate in three places: b1, cohesion, and slope.
     configfile = None
     try:
-        #write the sample config file
+        # write the sample config file
         tmp, configfile = tempfile.mkstemp()
         os.close(tmp)
         f = open(configfile, 'wt')

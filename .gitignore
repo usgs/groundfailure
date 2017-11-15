@@ -60,8 +60,7 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
-*.grd
-runmodels.py
+
 *DS_store*
 
 #Gfail defaults
@@ -73,3 +72,4 @@ runmodels.py
 .spyderproject
 .spyproject
 *~
+

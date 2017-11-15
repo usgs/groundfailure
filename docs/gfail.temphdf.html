@@ -1,0 +1,201 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.temphdf &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="gfail.savelayers" href="gfail.savelayers.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.temphdf">
+<span id="gfail-temphdf"></span><h1>gfail.temphdf<a class="headerlink" href="#module-gfail.temphdf" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="gfail.temphdf.TempHdf">
+<em class="property">class </em><code class="descclassname">gfail.temphdf.</code><code class="descname">TempHdf</code><span class="sig-paren">(</span><em>grid2dfile</em>, <em>filename</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Convert grid2d file into a temporary hdf5 file for reducing memory
+load.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>grid2dfile</strong> – grid2d file object to save</li>
+<li><strong>filename</strong> (<em>str</em>) – Path to where file should be saved (recommended
+it be a temporary dir).</li>
+<li><strong>name</strong> (<em>str</em>) – Name of layer, if None, will use filename minus the
+extension, or if a multihazard grid2d object, each layer will
+have its own name.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<dl class="method">
+<dt id="gfail.temphdf.TempHdf.getFilepath">
+<code class="descname">getFilepath</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getFilepath"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getFilepath" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return file path.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gfail.temphdf.TempHdf.getGeoDict">
+<code class="descname">getGeoDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getGeoDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getGeoDict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return geodictionary.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gfail.temphdf.TempHdf.getShakeDict">
+<code class="descname">getShakeDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getShakeDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getShakeDict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return shake dictionary if it exists.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gfail.temphdf.TempHdf.getEventDict">
+<code class="descname">getEventDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getEventDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getEventDict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return event dictionary if it exists.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="gfail.temphdf.TempHdf.getSlice">
+<code class="descname">getSlice</code><span class="sig-paren">(</span><em>rowstart=None</em>, <em>rowend=None</em>, <em>colstart=None</em>, <em>colend=None</em>, <em>name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getSlice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getSlice" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return specified slice of data.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>rowstart</strong> (<em>int</em>) – Starting row index (inclusive), if None, will
+start at 0.</li>
+<li><strong>rowend</strong> (<em>int</em>) – Ending row index (exclusive), if None, will end at
+last row.</li>
+<li><strong>colstart</strong> (<em>int</em>) – Starting column index (inclusive), if None, will
+start at 0.</li>
+<li><strong>colend</strong> (<em>int</em>) – Ending column index (exclusive), if None, will end
+at last row.</li>
+<li><strong>name</strong> (<em>str</em>) – Name of layer/child name to return.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">numpy array of data.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="gfail.temphdf.TempHdf.getSliceDiv">
+<code class="descname">getSliceDiv</code><span class="sig-paren">(</span><em>rowmax=None</em>, <em>colmax=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getSliceDiv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getSliceDiv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine how to slice the arrays.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>rowmax</strong> (<em>int</em>) – Maximum number of rows in each slice; default None
+uses entire row.</li>
+<li><strong>colmax</strong> (<em>int</em>) – Maximum number of columns in each slice; default
+None uses entire column.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">rowstarts, rowends, colstarts, colends.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.temphdf</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

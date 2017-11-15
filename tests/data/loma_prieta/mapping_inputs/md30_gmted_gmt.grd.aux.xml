@@ -1,0 +1,25 @@
+<PAMDataset>
+  <Metadata>
+    <MDI key="NC_GLOBAL#Conventions">COARDS/CF-1.0</MDI>
+    <MDI key="NC_GLOBAL#GMT_version">4.5.11 [64-bit]</MDI>
+    <MDI key="NC_GLOBAL#history">grdreformat md30_gmted.grd md30_gmted_gmt.grd</MDI>
+    <MDI key="NC_GLOBAL#node_offset">1</MDI>
+    <MDI key="NC_GLOBAL#title">md30_gmted_gmt.grd</MDI>
+    <MDI key="x#actual_range">{-180.0001388888889,179.9998611111127}</MDI>
+    <MDI key="x#long_name">meters</MDI>
+    <MDI key="y#actual_range">{-56.00013888888891,83.99986111111168}</MDI>
+    <MDI key="y#long_name">meters</MDI>
+    <MDI key="z#actual_range">{-430,8642}</MDI>
+    <MDI key="z#long_name">meters</MDI>
+    <MDI key="z#_FillValue">nan</MDI>
+  </Metadata>
+  <PAMRasterBand band="1">
+    <NoDataValue le_hex_equiv="000000E0FFFFFFFF">nan</NoDataValue>
+    <Metadata>
+      <MDI key="actual_range">{-430,8642}</MDI>
+      <MDI key="long_name">meters</MDI>
+      <MDI key="NETCDF_VARNAME">z</MDI>
+      <MDI key="_FillValue">nan</MDI>
+    </Metadata>
+  </PAMRasterBand>
+</PAMDataset>

@@ -1,0 +1,256 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.temphdf &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gfail.temphdf</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tables</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
+
+
+<div class="viewcode-block" id="TempHdf"><a class="viewcode-back" href="../../gfail.temphdf.html#gfail.temphdf.TempHdf">[docs]</a><span class="k">class</span> <span class="nc">TempHdf</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">grid2dfile</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert grid2d file into a temporary hdf5 file for reducing memory</span>
+<span class="sd">        load.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            grid2dfile: grid2d file object to save</span>
+<span class="sd">            filename (str): Path to where file should be saved (recommended</span>
+<span class="sd">                it be a temporary dir).</span>
+<span class="sd">            name (str): Name of layer, if None, will use filename minus the</span>
+<span class="sd">                extension, or if a multihazard grid2d object, each layer will</span>
+<span class="sd">                have its own name.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">filename1</span><span class="p">,</span> <span class="n">file_ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">file_ext</span> <span class="o">!=</span> <span class="s1">&#39;.hdf5&#39;</span><span class="p">:</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">filename1</span> <span class="o">+</span> <span class="s1">&#39;.hdf5&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Changed extension from </span><span class="si">%s</span><span class="s1"> to .hdf5&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">file_ext</span><span class="p">,))</span>
+        <span class="n">filters</span> <span class="o">=</span> <span class="n">tables</span><span class="o">.</span><span class="n">Filters</span><span class="p">(</span><span class="n">complevel</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">complib</span><span class="o">=</span><span class="s1">&#39;blosc&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">tables</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="bp">self</span><span class="o">.</span><span class="n">tempfile</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gdict</span> <span class="o">=</span> <span class="n">grid2dfile</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">grid2dfile</span><span class="p">)</span> <span class="o">==</span> <span class="n">ShakeGrid</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">grid2dfile</span><span class="o">.</span><span class="n">getLayerNames</span><span class="p">():</span>
+                    <span class="n">filldat</span> <span class="o">=</span> <span class="n">grid2dfile</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tempfile</span><span class="o">.</span><span class="n">create_carray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempfile</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">layer</span><span class="p">,</span>
+                                                <span class="n">obj</span><span class="o">=</span><span class="n">filldat</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">shakedict</span> <span class="o">=</span> <span class="n">grid2dfile</span><span class="o">.</span><span class="n">getShakeDict</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">edict</span> <span class="o">=</span> <span class="n">grid2dfile</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">name</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">filename1</span><span class="p">)</span>
+                <span class="n">filldat</span> <span class="o">=</span> <span class="n">grid2dfile</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">tempfile</span><span class="o">.</span><span class="n">create_carray</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempfile</span><span class="o">.</span><span class="n">root</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                                            <span class="n">obj</span><span class="o">=</span><span class="n">filldat</span><span class="p">,</span> <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TempHdf.getFilepath"><a class="viewcode-back" href="../../gfail.temphdf.html#gfail.temphdf.TempHdf.getFilepath">[docs]</a>    <span class="k">def</span> <span class="nf">getFilepath</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return file path.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span></div>
+
+<div class="viewcode-block" id="TempHdf.getGeoDict"><a class="viewcode-back" href="../../gfail.temphdf.html#gfail.temphdf.TempHdf.getGeoDict">[docs]</a>    <span class="k">def</span> <span class="nf">getGeoDict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return geodictionary.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">gdict</span></div>
+
+<div class="viewcode-block" id="TempHdf.getShakeDict"><a class="viewcode-back" href="../../gfail.temphdf.html#gfail.temphdf.TempHdf.getShakeDict">[docs]</a>    <span class="k">def</span> <span class="nf">getShakeDict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return shake dictionary if it exists.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakedict</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no shake dictionary found&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="TempHdf.getEventDict"><a class="viewcode-back" href="../../gfail.temphdf.html#gfail.temphdf.TempHdf.getEventDict">[docs]</a>    <span class="k">def</span> <span class="nf">getEventDict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return event dictionary if it exists.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">edict</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no event dictionary found&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="TempHdf.getSlice"><a class="viewcode-back" href="../../gfail.temphdf.html#gfail.temphdf.TempHdf.getSlice">[docs]</a>    <span class="k">def</span> <span class="nf">getSlice</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rowstart</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rowend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colstart</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colend</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return specified slice of data.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rowstart (int): Starting row index (inclusive), if None, will</span>
+<span class="sd">                start at 0.</span>
+<span class="sd">            rowend (int): Ending row index (exclusive), if None, will end at</span>
+<span class="sd">                last row.</span>
+<span class="sd">            colstart (int): Starting column index (inclusive), if None, will</span>
+<span class="sd">                start at 0.</span>
+<span class="sd">            colend (int): Ending column index (exclusive), if None, will end</span>
+<span class="sd">                at last row.</span>
+<span class="sd">            name (str): Name of layer/child name to return.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            numpy array of data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">getFilepath</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="n">rowstart</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rowstart</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rowstart</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">rowstart</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rowend</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rowend</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rowend</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">rowend</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">colstart</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">colstart</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">colstart</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">colstart</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">colend</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">colend</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">colend</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">colend</span><span class="p">)</span>
+
+        <span class="n">indstr</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">:</span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">:</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">rowstart</span><span class="p">,</span> <span class="n">rowend</span><span class="p">,</span> <span class="n">colstart</span><span class="p">,</span> <span class="n">colend</span><span class="p">)</span>
+        <span class="c1"># So end index will actually be captured:</span>
+        <span class="n">indstr</span> <span class="o">=</span> <span class="n">indstr</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;-1&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">tables</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file1</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">dataslice</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="s1">&#39;file1.root.</span><span class="si">%s</span><span class="s1">[</span><span class="si">%s</span><span class="s1">]&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">indstr</span><span class="p">))</span>
+                <span class="k">return</span> <span class="n">dataslice</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">return</span></div>
+
+<div class="viewcode-block" id="TempHdf.getSliceDiv"><a class="viewcode-back" href="../../gfail.temphdf.html#gfail.temphdf.TempHdf.getSliceDiv">[docs]</a>    <span class="k">def</span> <span class="nf">getSliceDiv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rowmax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colmax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Determine how to slice the arrays.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            rowmax (int): Maximum number of rows in each slice; default None</span>
+<span class="sd">                uses entire row.</span>
+<span class="sd">            colmax (int): Maximum number of columns in each slice; default</span>
+<span class="sd">                None uses entire column.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: rowstarts, rowends, colstarts, colends.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">numrows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gdict</span><span class="o">.</span><span class="n">ny</span>
+        <span class="n">numcols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gdict</span><span class="o">.</span><span class="n">nx</span>
+        <span class="k">if</span> <span class="n">rowmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">rowmax</span> <span class="o">&gt;</span> <span class="n">numrows</span><span class="p">:</span>
+            <span class="n">rowmax</span> <span class="o">=</span> <span class="n">numrows</span>
+        <span class="k">if</span> <span class="n">colmax</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">colmax</span> <span class="o">&gt;</span> <span class="n">numcols</span><span class="p">:</span>
+            <span class="n">colmax</span> <span class="o">=</span> <span class="n">numcols</span>
+        <span class="n">numrowslice</span><span class="p">,</span> <span class="n">rmrow</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">numrows</span><span class="p">,</span> <span class="n">rowmax</span><span class="p">)</span>
+        <span class="n">numcolslice</span><span class="p">,</span> <span class="n">rmcol</span> <span class="o">=</span> <span class="nb">divmod</span><span class="p">(</span><span class="n">numcols</span><span class="p">,</span> <span class="n">colmax</span><span class="p">)</span>
+        <span class="n">rowst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">numrowslice</span> <span class="o">*</span> <span class="n">rowmax</span><span class="p">,</span> <span class="n">rowmax</span><span class="p">)</span>
+        <span class="n">rowen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">rowmax</span><span class="p">,</span> <span class="p">(</span><span class="n">numrowslice</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">rowmax</span><span class="p">,</span> <span class="n">rowmax</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rmrow</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">rowst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">rowst</span><span class="p">,</span> <span class="n">numrowslice</span> <span class="o">*</span> <span class="n">rowmax</span><span class="p">])</span>
+            <span class="n">rowen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">rowen</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">rowen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">rowen</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span>
+        <span class="n">colst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">numcolslice</span> <span class="o">*</span> <span class="n">colmax</span><span class="p">,</span> <span class="n">colmax</span><span class="p">)</span>
+        <span class="n">colen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">colmax</span><span class="p">,</span> <span class="p">(</span><span class="n">numcolslice</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">colmax</span><span class="p">,</span> <span class="n">colmax</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">rmcol</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">colst</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">colst</span><span class="p">,</span> <span class="n">numcolslice</span> <span class="o">*</span> <span class="n">colmax</span><span class="p">])</span>
+            <span class="n">colen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">colen</span><span class="p">,</span> <span class="kc">None</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">colen</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">colen</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="kc">None</span><span class="p">])</span>
+        <span class="n">rowstarts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">rowst</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">colst</span><span class="p">))</span>
+        <span class="n">colstarts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">colst</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">rowst</span><span class="p">))</span>
+        <span class="n">rowends</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">rowen</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">colen</span><span class="p">))</span>
+        <span class="n">colends</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">colen</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">rowen</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">rowstarts</span><span class="p">,</span> <span class="n">rowends</span><span class="p">,</span> <span class="n">colstarts</span><span class="p">,</span> <span class="n">colends</span></div></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gfail.html">gfail</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
