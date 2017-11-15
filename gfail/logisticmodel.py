@@ -1,27 +1,28 @@
 #!/usr/bin/env python
 """
-This module contains functions and class definitions for running forward
-models of models based on logistic regression.
+This module contains functions and class definitions for running forward models of models based on logistic regression.
 """
 
-# stdlib imports
+#stdlib imports
 import numpy as np
 import os.path
 import re
 import collections
 import copy
 import subprocess
+#from scipy import sparse
 import shutil
 import tempfile
 from timeit import default_timer as timer
 
-# third party imports
+#third party imports
 from mapio.shake import ShakeGrid
 from mapio.shake import getHeaderData
 from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
+#from osgeo import gdal
 
 from gfail.temphdf import TempHdf
 
@@ -31,9 +32,7 @@ TERM_PATTERN = 'term'
 
 SM_TERMS = ['MW', 'YEAR', 'MONTH', 'DAY', 'HOUR', 'pga', 'pgv', 'mmi']
 SM_GRID_TERMS = ['pga', 'pgv', 'mmi']
-
-# these will get np. prepended
-OPERATORS = ['log', 'log10', 'arctan', 'power', 'sqrt', 'minimum', 'pi']
+OPERATORS = ['log', 'log10', 'arctan', 'power', 'sqrt', 'minimum', 'pi']  # these will get np. prepended
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
 INTPAT = '[0-9]+'
 OPERATORPAT = '[\+\-\*\/]*'
@@ -46,7 +45,6 @@ class LogisticModel(object):
                  slopefile=None, bounds=None, numstd=1, slopemod=None):
         """
         Set up the logistic model
-
         Args:
             shakefile (str): Path to shakemap grid.xml file for the event.
             config: configobj object defining the model and its inputs. Only
@@ -60,14 +58,11 @@ class LogisticModel(object):
                 VALUE IN CONFIG.
             bounds (dict): Default of None uses ShakeMap boundaries, otherwise
                 a dictionary of boundaries to cut to like
-
                 .. code-block:: python
-
                     bounds = {
                         'xmin': lonmin, 'xmax': lonmax,
                         'ymin': latmin, 'ymax': latmax
                     }
-
             numstd (float): Number of +/- standard deviations to use if
                 uncertainty is computed.
             slopemod (str): How slope input should be modified to be in
@@ -402,15 +397,12 @@ class LogisticModel(object):
         Method for LogisticModel class to extract strings defining the
         equations for the model for median ground motions and +/- one standard
         deviation (3 total).
-
         Returns:
             tuple: Three equations: equation, equationmin, equationmax, where
-
                 * equation is the equation for median ground motions,
                 * equationmin is the equation for the same model but with
                   median ground motions minus 1 standard deviation, and
                 * equationmax is the same but for plus 1 standard deviation.
-
         """
         return self.equation, self.equationmin, self.equationmax
 
@@ -418,30 +410,25 @@ class LogisticModel(object):
         """
         Returns the geodictionary of the LogisticModel class defining bounds
         and resolution of model inputs and outputs.
-
         Returns:
             geodict: mapio geodict object.
-
         """
         return self.geodict
 
     def calculate(self, cleanup=True, rowmax=300, colmax=None):
         """
         Calculate the model.
-
         Args:
             cleanup (bool): Delete temporary hdf5 files?
             rowmax (int): Number of rows to compute at once; None does all at
                 once.
             colmax (int): Number of columns to compute at once; None does all
                 at once.
-
         Returns:
             dict: Dictionary containing the model results (and model inputs if
             saveinputs was set to True). See
             `the description <https://github.com/usgs/groundfailure#api-for-model-output>`_
             of the structure.
-
         """
 
         # Figure out what slices to do
@@ -534,7 +521,8 @@ class LogisticModel(object):
             'units': units5,
             'shakemap': shakedetail,
             'parameters': {'slopemin': self.slopemin,
-                           'slopemax': self.slopemax}}
+                           'slopemax': self.slopemax,
+                           'modeltype': self.modeltype}}
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {
@@ -643,13 +631,10 @@ class LogisticModel(object):
 def getLogisticModelNames(config):
     """
     Get the names of the models present in the configobj
-
     Args:
         config: configobj object defining the model and its inputs.
-
     Returns:
         list: list of model names.
-
     """
     names = []
     lmodel_space = config
@@ -665,13 +650,10 @@ def getFileType(filename):
     """
     Determine whether input file is a shapefile or a grid (ESRI or GMT).
     EVENTUALLY WILL BE MOVED TO MAPIO.
-
     Args:
         filename (str): Path to candidate filename.
-
     Returns:
         str: 'shapefile', 'grid', or 'unknown'.
-
     """
     if os.path.isdir(filename):
         return 'dir'
@@ -693,13 +675,10 @@ def getAllGridFiles(indir):
     """
     Get list of all gmt or esri (.grd, .bil) files in a directory.
     EVENTUALLY WILL BE MOVED TO MAPIO
-
     Args:
         indir (str): Directory to search.
-
     Returns:
         list: List of file names.
-
     """
     tflist = os.listdir(indir)
     flist = []
@@ -715,18 +694,13 @@ def validateCoefficients(cmodel):
     """
     Ensures coefficients provided in model description are valid and outputs
     a dictionary of the coefficients.
-
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.
-
             .. code-block:: python
-
                 cmodel = config['test_model']
-
     Returns:
         dict: a dictionary of model coefficients named b0, b1, b2...
-
     """
     coeffs = {}
     for key, value in cmodel['coefficients'].items():
@@ -743,25 +717,18 @@ def validateLayers(cmodel):
     """
     Ensures all input files required to run the model exist and are valid
     file types.
-
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.
-
             .. code-block:: python
-
                 cmodel = config['test_model']
-
     Returns:
         dict: a dictionary of file names, e.g.
-
         .. code-block:: python
-
             {
                 'slope': 'slopefile.bil',
                 'vs30': 'vs30.grd'
             }
-
     """
     layers = {}
     for key in cmodel['layers'].keys():
@@ -783,42 +750,27 @@ def validateTerms(cmodel, coeffs, layers):
     functions, inserting code for extracting data from each layer (required
     to run eval in the calculate step), addressing any time variables, and
     checks that term names match coefficient names.
-
     TODO: return a time field for every term, not just one global one.
-
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.
-
             .. code-block:: python
-
                 cmodel = config['test_model']
-
         coeffs (dict): Dictionary of model coefficients, e.g.
-
             .. code-block:: python
-
                 {'b0': 3.5, 'b1': -0.01}
-
         layers (dict): Dictionary of file names for all input layers, e.g.
-
             .. code-block:: python
-
                 {'slope': 'slopefile.bil', 'vs30': 'vs30.grd'}
-
     Returns:
         tuple: (terms, timeField), where
-
             - 'terms' is a dictionary of terms that form the model equation,
               e.g.
-
             .. code-block:: python
-
                 {
                     'b1': "self.layerdict['friction'].getData()",
                     'b2': "self.layerdict['slope'].getData()/100."
                 }
-
             - 'timeField' indicates the time that is used to know which input
               file to read in, e.g. for monthly average precipitation, 'MONTH'.
     """
@@ -845,10 +797,8 @@ def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
     """
     Use gdal to trim a large global file down quickly so mapio can read it
     efficiently.
-
     Using subprocess approach because ``gdal.Translate`` doesn't hang on the
     command until the file is created which causes problems in the next steps.
-
     Args:
         filename (str): File path to original input file (raster).
         tempname (str): File path to desired location of clipped part of
@@ -857,7 +807,6 @@ def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
         extrasamp (int): Number of extra cells to cut around each edge of
             geodict to have resampling buffer for future steps.
         method (str): If resampling is necessary, method to use.
-
     Returns:
         dict: Geodict for new file that was cut and also creates the file in
         the tempname location.

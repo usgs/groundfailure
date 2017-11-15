@@ -40,7 +40,8 @@ DEPARRAY=(pytables \
           scikit-learn=0.18.2 \
     	  scikit-image=0.13.0 \
           branca=0.2.0 \
-    	  paramiko=2.1.2)
+    	  paramiko=2.1.2 \
+        beautifulsoup4=4.6.0)
 
 # Is the Travis flag set?
 travis=0
@@ -96,6 +97,7 @@ rm openquake.zip
 
 pip install sphinx_rtd_theme
 pip install folium
+pip install pelican markdown
 
 # This package
 echo "Installing groundfailure-prod..."

@@ -37,20 +37,19 @@ def concatenateModels(modellist, astitle='id', includeunc=False):
     Put several models together into dictionary in format for modelSummary
     :param astitle: 'id' to use shakemap id or 'model' to use model name
     :param includeunc: include modelmin and modelmax if present, will include in same dictionary as model
+    :returns: dictionary containing all models combined into a single dictionary
     """
-    models = []
+    newdict = collections.OrderedDict()
     for model in modellist:
-            newdict = collections.OrderedDict()
-            if astitle == 'id':
-                title = model['model']['description']['shakemap']
-            else:
-                title = model['model']['description']['name']
-            newdict[title] = model['model']
-            if len(model) == 3 and includeunc:
-                newdict[title + '_min'] = model['modelmin']
-                newdict[title + '_max'] = model['modelmax']
-            models.append(newdict)
-    return models
+        if astitle == 'id':
+            title = model['model']['description']['shakemap']
+        else:
+            title = model['model']['description']['name']
+        newdict[title] = model['model']
+        if len(model) == 3 and includeunc:
+            newdict[title + '_min'] = model['modelmin']
+            newdict[title + '_max'] = model['modelmax']
+    return newdict
 
 
 def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulative=False, histtype='bar', bounds=None, bins=25,

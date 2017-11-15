@@ -367,7 +367,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             'unitwt_kNm3': uwt,
             'dnthresh_cm': dnthresh,
             'acthresh_g': acthresh,
-            'fsthresh': fsthresh
+            'fsthresh': fsthresh,
+            'modeltype': 'Landslide'
         }
     }
 

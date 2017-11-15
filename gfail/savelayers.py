@@ -11,7 +11,6 @@ def savelayers(grids, filename):
     """
     Save ground failure layers object as a MultiHazard HDF file, preserving
     metadata structures. Must all have the same geodict.
-
     Args:
         grids: Ground failure layers object.
         filename (str): Path to where you want to save this file.
@@ -38,7 +37,6 @@ def loadlayers(filename):
     """
     Load a MultiHazard HDF file back in as a ground failure layers object in
     active memory (must have been saved for this purpose).
-
     Args:
         filename (str): Path to layers file.
     """
