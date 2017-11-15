@@ -205,7 +205,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         file1.write('date: %s\n' % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('<center><h2>%s</h2></center>' % modeltype.title())
         if topimage is not None:
-            file1.write('<center><img src="/images%s" width="250"></center>\n' % topimage.split('images')[-1])
+            file1.write('<center><img src="images%s" width="250" href="images%s"/></center>\n' % (topimage.split('images')[-1], topimage.split('images')[-1]))
         if interactivehtml is not None:
             # Extract js and move to map.js
             with open(interactivehtml) as f:

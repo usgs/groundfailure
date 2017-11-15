@@ -13,6 +13,7 @@ mpl.use('Agg')  # so figures will still be created even without display
 from matplotlib.colors import LightSource, LogNorm, Normalize
 import re
 from matplotlib.colorbar import ColorbarBase
+from matplotlib.ticker import FormatStrFormatter
 
 #third party imports
 #from branca.element import MacroElement
@@ -1416,6 +1417,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             
             cbars[k].set_label('%s - %s' % (label1, sref), fontsize=10)
             cbars[k].ax.tick_params(labelsize=10)
+            cbars[k].ax.yaxis.set_major_formatter(FormatStrFormatter(cbfmt))
             #ax.axis('tight')            
             #plt.axis('off')
             #panelhandle.remove()
