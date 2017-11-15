@@ -23,7 +23,7 @@ from gfail.godt import godt2008
 from gfail.savelayers import savelayers
 from gfail.makemaps import (parseConfigLayers, parseMapConfig,
                             modelMap, interactiveMap)
-from groundfailure.webpage import makeWebpage
+from gfail.webpage import makeWebpage
 from mapio.shake import ShakeGrid
 
 

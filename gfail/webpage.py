@@ -1,8 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 from mapio.shake import ShakeGrid
-from groundfailure.makemaps import parseConfigLayers
-from groundfailure import makemaps
+from gfail import makemaps
 from groundfailure.assessmodels import concatenateModels as concM
 from groundfailure.assessmodels import computeHagg
 #from groundfailure.newmark import godt2008
@@ -13,6 +12,7 @@ from datetime import datetime
 from bs4 import BeautifulSoup
 import shutil
 import glob
+
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=False):
@@ -98,7 +98,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             #TODO add threshold option for Hagg
             HaggLS.append(computeHagg(L['model']['grid']))
             maxLS.append(np.nanmax(L['model']['grid'].getData()))
-            plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(L, conf, keys=['model'])
+            plotorder, logscale, lims, colormaps, maskthreshes = makemaps.parseConfigLayers(L, conf, keys=['model'])
             logLS.append(logscale[0])
             limLS.append(lims[0])
             colLS.append(colormaps[0])
@@ -123,7 +123,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         for conf, L in zip(confLQ, LQ):
             HaggLQ.append(computeHagg(L['model']['grid']))
             maxLQ.append(np.nanmax(L['model']['grid'].getData()))
-            plotorder, logscale, lims, colormaps, maskthreshes = parseConfigLayers(L, conf, keys=['model'])
+            plotorder, logscale, lims, colormaps, maskthreshes = makemaps.parseConfigLayers(L, conf, keys=['model'])
             logLQ.append(logscale[0])
             limLQ.append(lims[0])
             colLQ.append(colormaps[0])
@@ -135,20 +135,16 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                                                     savefiles=True, mapid='LQ', outputdir=images,
                                                     sepcolorbar=True, floatcb=False)
 
-
-                         
-        
-
     #write_scibackground(LS, LQ)
     write_summary(shakemap, pages, images, HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
                   HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
     alertLS, alertLQ, statement = get_alert(HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
-                                            HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])              
+                                            HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
     topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
     topfileLS = make_alert_img(alertLS, 'landslide', images)
     write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
                      interactivehtml=filenameLQ[0], outjsfile=outjsfileLQ,
-                    topimage=topfileLQ)
+                     topimage=topfileLQ)
     write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
                      interactivehtml=filenameLS[0], outjsfile=outjsfileLS,
                      topimage=topfileLS)
@@ -159,7 +155,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     print(stderr)
     #write_static_map(filenameLS, filenameLQ, static)
 
-    if cleanup: # delete everything except what is needed to make website
+    if cleanup:  # delete everything except what is needed to make website
         files = glob.glob(os.path.join(fullout, '*'))
         for filen in files:
             if os.path.basename(filen) not in 'output':
@@ -196,7 +192,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         Hagg = [Hagg]
         maxprobs = [maxprobs]
         modelnames = [modelnames]
-        
+
     if outjsfile is None:
         outjsfile = 'map.js'
 
@@ -215,7 +211,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                 if scs is not None:
                     for sc in scs:
                         if 'var' in str(sc):
-                            temp= str(sc)
+                            temp = str(sc)
                             temp = temp.strip('<script>').strip('</script>')
                             with open(outjsfile, 'a') as f2:
                                 f2.write(temp)
@@ -256,8 +252,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
     edict['eventid'] = temp['shakemap_id']
     edict['version'] = temp['shakemap_version']
     alertLS, alertLQ, statement = get_alert(HaggLS, HaggLQ)
-    #TODO Make images for alerts
-    
+
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
@@ -271,7 +266,6 @@ def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
                      edict['lon'], edict['depth']))
 
         file1.write('### Summary\n')
-        
         file1.write(statement)
         file1.write('<hr>')
 
@@ -285,13 +279,13 @@ def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.], binLQ=[70., 500., 1200.
     Yellow 100-850
     Green <100
     LQ
-    
+
     Based on Zhu et al 2017 general model results
     red = ~Loma Prieta >1000
     orange = Christchurch >120 <1000
     yellow = Greece >70 <120
     green = Northern Italy <70
-    """    
+    """
     if HaggLS is None:
         alertLS = None
     elif HaggLS < binLS[0]:
@@ -304,7 +298,7 @@ def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.], binLQ=[70., 500., 1200.
         alertLS = 'red'
     else:
         alertLS = None
-        
+
     if HaggLQ is None:
         alertLQ = None
     elif HaggLQ < binLQ[0]:
@@ -317,7 +311,7 @@ def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.], binLQ=[70., 500., 1200.
         alertLQ = 'red'
     else:
         alertLQ = None
-    
+
     statement = 'Global ground failure models estimate that this earthquake likely triggered %s liquefaction and %s landsliding' % (get_word(alertLQ), get_word(alertLS))
 
     return alertLS, alertLQ, statement

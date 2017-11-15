@@ -13,7 +13,6 @@ import subprocess
 #from scipy import sparse
 import shutil
 import tempfile
-import tables
 from timeit import default_timer as timer
 
 #third party imports
@@ -24,6 +23,8 @@ from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
 #from osgeo import gdal
+
+from gfail.temphdf import TempHdf
 
 PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'
@@ -989,4 +990,4 @@ def checkTerm(term, layers):
                 layer,
                 "self.layerdict['%s'].getSlice(rowstart, rowend, colstart, "
                 "colend, name='%s')" % (layer, layer))
-return (term, tterm, timeField)
+    return (term, tterm, timeField)

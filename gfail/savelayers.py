@@ -50,4 +50,4 @@ def loadlayers(filename):
             'label': mgrid.getMetadata()[key]['label']
         }
 
-return grids
+    return grids
