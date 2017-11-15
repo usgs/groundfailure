@@ -1,4 +1,5 @@
 import os
+import matplotlib.pyplot as plt
 from mapio.shake import ShakeGrid
 from groundfailure.makemaps import parseConfigLayers
 from groundfailure import makemaps
@@ -23,7 +24,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     sm_id = maplayerlist[0]['model']['description']['shakemap']
     if outfolder is None:
         outfolder = os.path.join(os.getcwd(), sm_id)
-    fullout = os.path.join(outfolder, 'webpage')
+    fullout = os.path.join(outfolder, 'temp')
+    finalout = os.path.join(outfolder, 'webpage')
     content = os.path.join(fullout, 'content')
     articles = os.path.join(content, 'articles')
     #hidden_pages = os.path.join(content, 'hidden_pages')
@@ -32,6 +34,10 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     #images1 = os.path.join(images, sm_id)
     theme = web_template
     static = os.path.join(theme, 'static')
+    try:
+        os.mkdir(outfolder)
+    except Exception as e:
+        print(e)
     try:
         os.mkdir(fullout)
     except Exception as e:
@@ -52,6 +58,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         os.mkdir(articles)
     except Exception as e:
         print(e)
+    if os.path.exists(finalout):
+        shutil.rmtree(finalout)
 
     peliconf = os.path.join(fullout, 'pelicanconf.py')
     copy(os.path.join(os.path.dirname(web_template), 'pelicanconf.py'), peliconf)
@@ -102,8 +110,6 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                                                     logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
                                                     mapid='LS', savefiles=True, outputdir=images,
                                                     sepcolorbar=True, floatcb=False)
-        write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
-                         interactivehtml=filenameLS[0], outjsfile=outjsfileLS)
 
     if len(LQ) > 0:
         HaggLQ = []
@@ -129,12 +135,23 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                                                     savefiles=True, mapid='LQ', outputdir=images,
                                                     sepcolorbar=True, floatcb=False)
 
-        write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
-                         interactivehtml=filenameLQ[0], outjsfile=outjsfileLQ)
+
+                         
+        
 
     #write_scibackground(LS, LQ)
-    write_summary(shakemap, pages, images, HaggLS=HaggLS[namesLS=='Nowicki and others (2014)'],
-                  HaggLQ=HaggLQ[namesLQ=='Zhu and others (2016)'])
+    write_summary(shakemap, pages, images, HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
+                  HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
+    alertLS, alertLQ, statement = get_alert(HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
+                                            HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])              
+    topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
+    topfileLS = make_alert_img(alertLS, 'landslide', images)
+    write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
+                     interactivehtml=filenameLQ[0], outjsfile=outjsfileLQ,
+                    topimage=topfileLQ)
+    write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
+                     interactivehtml=filenameLS[0], outjsfile=outjsfileLS,
+                     topimage=topfileLS)
 
     # run website
     retcode, stdout, stderr = get_command_output(('pelican -s %s -o %s -t %s') %
@@ -158,8 +175,10 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                             shutil.rmtree(ofilen)
                         else:
                             os.remove(ofilen)
+        shutil.copytree(os.path.join(fullout, 'output'), finalout)
+        shutil.rmtree(fullout)
 
-    return os.path.join(fullout, 'output')
+    return finalout
 
 
 def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
@@ -186,7 +205,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         file1.write('date: %s\n' % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('<center><h2>%s</h2></center>' % modeltype.title())
         if topimage is not None:
-            file1.write('  <img src="/images/%s" width="300" />\n' % topimage)
+            file1.write('<center><img src="/images%s" width="250"></center>\n' % topimage.split('images')[-1])
         if interactivehtml is not None:
             # Extract js and move to map.js
             with open(interactivehtml) as f:
@@ -257,7 +276,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
         file1.write('<hr>')
 
 
-def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.], binLQ=[70., 120., 1000.]):
+def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.], binLQ=[70., 500., 1200.]):
     """
     Bin edges (3 values) between Green and Yellow, Yellow and Orange, and Orange and Red
     LS based on Nowicki et al 2014 model results
@@ -299,7 +318,7 @@ def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.], binLQ=[70., 120., 1000.
     else:
         alertLQ = None
     
-    statement = 'This earthquake likely returned %s liquefaction and %s landsliding' % (get_word(alertLQ), get_word(alertLS))
+    statement = 'Global ground failure models estimate that this earthquake likely triggered %s liquefaction and %s landsliding' % (get_word(alertLQ), get_word(alertLS))
 
     return alertLS, alertLQ, statement
 
@@ -318,3 +337,18 @@ def get_word(color):
     else:
         word = 'unknown levels of'
     return word
+
+
+def make_alert_img(color, type1, outfolder):
+    fig = plt.figure(figsize=(6, 1.8))
+    ax = fig.add_subplot(111)
+    ax.add_artist(plt.Circle((0.4, 0.3), 0.15, facecolor=color, edgecolor='black', lw=1))
+    ax.text(0.7, 0.25, '%s alert %s' % (type1.title(), color), fontsize=25)
+    ax.axis('off')
+    ax.set_xlim([0, 2.0])
+    ax.set_ylim([0., 0.6])
+    plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
+    outfilename = os.path.join(outfolder, '%s_alert.png' % type1)
+    fig.savefig(outfilename, transparent=True)
+    plt.close()
+    return outfilename

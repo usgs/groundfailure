@@ -1389,7 +1389,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                         cbfmt = '%1.0e'
                 elif vmax < 1.:
                     cbfmt = '%1.2f'
-                elif vmax > 5.:  # (vmax - vmin) > len(clev):
+                if vmax >= 1. and vmax < 5.:
+                    cbfmt = '%1.1f'
+                elif vmax >= 5.:  # (vmax - vmin) > len(clev):
                     cbfmt = '%1.0f'
 
             if separate:
@@ -1697,8 +1699,10 @@ def removeVis(filename, removelater, mapname):
                     newline = line.replace(replacetext, '')
                     r1 = False
                 newlines.append(newline)
+            lines = newlines.copy()
+            newlines = []
     with open(filename,'w') as f:
-        f.writelines(newlines)
+        f.writelines(lines)
     
 
 def getZoom(minlon, maxlon):
