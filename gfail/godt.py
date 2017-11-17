@@ -31,9 +31,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     and estimates areal coverage by doing the calculations for each slope
     quantile.
 
-    TO DO: add 'all' -- averages Dn from all four equations, add term to
-    convert PGA and PGV to Ia and use other equations, add Ambraseys and
-    Menu (1988) option.
+    TODO:
+        - Add 'all' -- averages Dn from all four equations, add term to
+          convert PGA and PGV to Ia and use other equations, add Ambraseys and
+          Menu (1988) option.
 
     Args:
         shakefile (str): Path to shakemap xml file.

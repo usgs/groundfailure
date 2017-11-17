@@ -1,28 +1,29 @@
 #!/usr/bin/env python
 """
-This module contains functions and class definitions for running forward models of models based on logistic regression.
+This module contains functions and class definitions for running forward
+models of models based on logistic regression.
 """
 
-#stdlib imports
+# stdlib imports
 import numpy as np
 import os.path
 import re
 import collections
 import copy
 import subprocess
-#from scipy import sparse
+# from scipy import sparse
 import shutil
 import tempfile
 from timeit import default_timer as timer
 
-#third party imports
+# third party imports
 from mapio.shake import ShakeGrid
 from mapio.shake import getHeaderData
 from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
-#from osgeo import gdal
+# from osgeo import gdal
 
 from gfail.temphdf import TempHdf
 
@@ -32,7 +33,8 @@ TERM_PATTERN = 'term'
 
 SM_TERMS = ['MW', 'YEAR', 'MONTH', 'DAY', 'HOUR', 'pga', 'pgv', 'mmi']
 SM_GRID_TERMS = ['pga', 'pgv', 'mmi']
-OPERATORS = ['log', 'log10', 'arctan', 'power', 'sqrt', 'minimum', 'pi']  # these will get np. prepended
+# these will get np. prepended
+OPERATORS = ['log', 'log10', 'arctan', 'power', 'sqrt', 'minimum', 'pi']
 FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
 INTPAT = '[0-9]+'
 OPERATORPAT = '[\+\-\*\/]*'
@@ -750,7 +752,10 @@ def validateTerms(cmodel, coeffs, layers):
     functions, inserting code for extracting data from each layer (required
     to run eval in the calculate step), addressing any time variables, and
     checks that term names match coefficient names.
-    TODO: return a time field for every term, not just one global one.
+
+    TODO:
+        - Return a time field for every term, not just one global one.
+
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.

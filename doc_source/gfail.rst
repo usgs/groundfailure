@@ -9,8 +9,10 @@ Submodules
    gfail.godt
    gfail.logisticmodel
    gfail.makemaps
+   gfail.pdl
    gfail.savelayers
    gfail.temphdf
+   gfail.webpage
 
 Module contents
 

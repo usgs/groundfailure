@@ -1,0 +1,178 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.pdl &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gfail.savelayers" href="gfail.savelayers.html" />
+    <link rel="prev" title="gfail.makemaps" href="gfail.makemaps.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.pdl">
+<span id="gfail-pdl"></span><h1>gfail.pdl<a class="headerlink" href="#module-gfail.pdl" title="Permalink to this headline">¶</a></h1>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<ul class="last simple">
+<li>Add max probability to product properties</li>
+<li>Add support to specify location of PDL key</li>
+<li>Potentially add more files (e.g., png, pdf)</li>
+<li>Improve evensourcecode issue, although this can probably only happen
+once is it fixed in shakemap’s grid.xml.</li>
+</ul>
+</div>
+<dl class="function">
+<dt id="gfail.pdl.transfer">
+<code class="descclassname">gfail.pdl.</code><code class="descname">transfer</code><span class="sig-paren">(</span><em>eventid</em>, <em>pdl_conf</em>, <em>pdl_bin=None</em>, <em>source='us'</em>, <em>dryrun=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#transfer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.transfer" title="Permalink to this definition">¶</a></dt>
+<dd><p>This is to transfer the event’s ‘pdl_directory’ to comcat.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>eventid</strong> (<em>str</em>) – Event id.</li>
+<li><strong>pdl_conf</strong> (<em>str</em>) – Path to PDL conf file.</li>
+<li><strong>pdl_bin</strong> (<em>str</em>) – Path to ‘ProductClient.jar’. If None it guesses that it
+is installed in the user’s home directory:
+<code class="docutils literal"><span class="pre">~/ProductClient/ProductClient.jar</span></code>.</li>
+<li><strong>source</strong> (<em>str</em>) – PDL ‘source’. This is ‘us’ for products coming from NEIC,
+and is tied to the authentication key but this only matters once
+we start sending to production servers rather than dev servers, at
+which point we’ll need to add a configuration option for the key.</li>
+<li><strong>dryrun</strong> (<em>bool</em>) – If True, the PDL command is constructed and printed but
+not executed.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary of pdl return code, standard out, and standard
+error for dryrun=False; PDL command for dryrun=True.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict or str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.pdl.prepare_pdl_directory">
+<code class="descclassname">gfail.pdl.</code><code class="descname">prepare_pdl_directory</code><span class="sig-paren">(</span><em>eventid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#prepare_pdl_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.prepare_pdl_directory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make director for transferring to comcat.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>eventid</strong> (<em>str</em>) – Event id.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.pdl.bil_to_geotiff">
+<code class="descclassname">gfail.pdl.</code><code class="descname">bil_to_geotiff</code><span class="sig-paren">(</span><em>file</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#bil_to_geotiff"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.bil_to_geotiff" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert bil file to geodiff.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>file</strong> (<em>str</em>) – Input file path; must have extension ‘.bil’.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Output file path.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

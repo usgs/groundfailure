@@ -14,7 +14,7 @@ import re
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.ticker import FormatStrFormatter
 
-#third party imports
+# third party imports
 import matplotlib.cm as cm
 import branca.colormap as cmb
 import numpy as np
@@ -68,9 +68,10 @@ def modelMap(grids, shakefile=None,
 
     All grids must use the same bounds.
 
-    TO DO: change so that all input layers do not have to have the same bounds,
-    test plotting multiple probability layers, and add option so that if PDF
-    and PNG aren't output, opens plot on screen using plt.show()
+    TODO:
+        - Change so that all input layers do not have to have the same bounds,
+          test plotting multiple probability layers, and add option so that if
+          PDF and PNG aren't output, opens plot on screen using plt.show().
 
     Args:
         grids (dict): Dictionary of N layers and metadata formatted like:
@@ -1305,11 +1306,13 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             plt.tight_layout()
             if separate:
                 ctemp = '%s_%s_colorbar.png' % (outfilename, keyS)
-                fig.savefig(os.path.join(outfolder, ctemp), transparent=True)  # This file has to move with the html files
+                # This file has to move with the html files
+                fig.savefig(os.path.join(outfolder, ctemp), transparent=True)
             elif k == len(plotorder)-1:
                 plt.subplots_adjust(left=0.02, right=0.98)
                 ctemp = '%s_colorbar.png' % outfilename
-                fig.savefig(os.path.join(outfolder, ctemp), transparent=True, bbox_inches='tight')
+                fig.savefig(os.path.join(outfolder, ctemp),
+                            transparent=True, bbox_inches='tight')
 
         # if edict is not None:
         #     if isScenario:
@@ -1544,6 +1547,9 @@ def parseMapConfig(config, fileext=None):
 
 def parseConfigLayers(maplayers, config, keys=None):
     """
+    TODO:
+        - Add ability to interpret custom color maps.
+
     Parse things that need to coodinate with each layer (like lims, logscale,
     colormaps etc.) from config file, in right order, where the order is from
     maplayers.
@@ -1566,7 +1572,6 @@ def parseConfigLayers(maplayers, config, keys=None):
             * maskthreshes: list of mask thresholds from config corresponding
               to keys in plotorder (same order).
 
-    TO DO: ADD ABILITY TO INTERPRET CUSTOM COLOR MAPS.
     """
     # get all key names, create a plotorder list in case maplayers is not an
     # ordered dict, making sure that anything called 'model' is first

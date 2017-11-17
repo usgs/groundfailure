@@ -1,0 +1,251 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.webpage &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="gfail.temphdf" href="gfail.temphdf.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.webpage">
+<span id="gfail-webpage"></span><h1>gfail.webpage<a class="headerlink" href="#module-gfail.webpage" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="gfail.webpage.makeWebpage">
+<code class="descclassname">gfail.webpage.</code><code class="descname">makeWebpage</code><span class="sig-paren">(</span><em>maplayerlist</em>, <em>configs</em>, <em>web_template</em>, <em>shakemap</em>, <em>outfolder=None</em>, <em>includeunc=False</em>, <em>cleanup=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#makeWebpage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.makeWebpage" title="Permalink to this definition">¶</a></dt>
+<dd><div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<ul class="last simple">
+<li>Add in logic to deal with when one of the model types is missing.</li>
+</ul>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>maplayers</strong> (<em>list</em>) – List of maplayer outputs from multiple models.</li>
+<li><strong>config</strong> (<em>ConfigObj</em>) – Config object.</li>
+<li><strong>web_template</strong> (<em>str</em>) – Path to web template.</li>
+<li><strong>shakemap</strong> (<em>str</em>) – Path to shakemap grid.xml file.</li>
+<li><strong>outfolder</strong> (<em>str</em>) – Path for output. If None, then a new directory is
+used in the current directory.</li>
+<li><strong>includeunc</strong> (<em>bool</em>) – Should uncertainty be used?</li>
+<li><strong>cleanup</strong> (<em>bool</em>) – Delete everything except files needed for website?</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Path to directory of web page.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.write_individual">
+<code class="descclassname">gfail.webpage.</code><code class="descname">write_individual</code><span class="sig-paren">(</span><em>Hagg</em>, <em>maxprobs</em>, <em>modelnames</em>, <em>outputdir</em>, <em>modeltype</em>, <em>topimage=None</em>, <em>staticmap=None</em>, <em>interactivehtml=None</em>, <em>outjsfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#write_individual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.write_individual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write markdown file for landslides or liquefaction.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>Hagg</strong> (<em>float</em><em> or </em><em>list</em>) – Aggregate hazard.</li>
+<li><strong>maxprobs</strong> (<em>float</em><em> or </em><em>list</em>) – Maximum probability.</li>
+<li><strong>modelnames</strong> (<em>str</em><em> or </em><em>list</em>) – Model name.</li>
+<li><strong>outputdir</strong> (<em>str</em>) – Path to output directory.</li>
+<li><strong>modeltype</strong> (<em>str</em>) – ‘Landslides’ for landslide model, otherwise it is
+a liquefaction model.</li>
+<li><strong>topimage</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to image for top of page.</li>
+<li><strong>staticmap</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to static map.</li>
+<li><strong>interactivehtml</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to interactive map file.</li>
+<li><strong>outjsfile</strong> (<em>str</em><em>, </em><em>optional</em>) – Path for output javascript file.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.write_scibackground">
+<code class="descclassname">gfail.webpage.</code><code class="descname">write_scibackground</code><span class="sig-paren">(</span><em>configLS</em>, <em>configLQ</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#write_scibackground"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.write_scibackground" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write markdown file describing model background and references.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.write_summary">
+<code class="descclassname">gfail.webpage.</code><code class="descname">write_summary</code><span class="sig-paren">(</span><em>shakemap</em>, <em>outputdir</em>, <em>imgoutputdir</em>, <em>HaggLS=None</em>, <em>HaggLQ=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#write_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.write_summary" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.get_alert">
+<code class="descclassname">gfail.webpage.</code><code class="descname">get_alert</code><span class="sig-paren">(</span><em>HaggLS, HaggLQ, binLS=[100.0, 850.0, 4000.0], binLQ=[70.0, 500.0, 1200.0]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#get_alert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.get_alert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bin edges (3 values) between Green and Yellow, Yellow and Orange, and
+Orange and Red.</p>
+<p>LS based on Nowicki et al. (2014) model results:</p>
+<ul class="simple">
+<li>Red &gt;4000</li>
+<li>Orange 850–4000</li>
+<li>Yellow 100–850</li>
+<li>Green &lt;100</li>
+</ul>
+<p>LQ ased on Zhu et al. (2017) general model results:</p>
+<ul class="simple">
+<li>Red &gt;1000</li>
+<li>Orange 120–1000</li>
+<li>Yellow 70–120</li>
+<li>Green &lt;70</li>
+</ul>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>HaggLS</strong> (<em>float</em>) – Aggregate landslide hazard.</li>
+<li><strong>HaggLQ</strong> (<em>float</em>) – Aggregate liquefaction hazard.</li>
+<li><strong>binLS</strong> (<em>list</em>) – List of alert cutoffs for landsliding.</li>
+<li><strong>binLQ</strong> (<em>list</em>) – List of alert cutoffs for liquefaction.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.get_word">
+<code class="descclassname">gfail.webpage.</code><code class="descname">get_word</code><span class="sig-paren">(</span><em>color</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#get_word"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.get_word" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the alert-based word describing the hazard level.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>color</strong> (<em>str</em>) – Alert level; either ‘green’, ‘yellow’, ‘orange’, or ‘red’.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Phrase or word desribing hazard level.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.make_alert_img">
+<code class="descclassname">gfail.webpage.</code><code class="descname">make_alert_img</code><span class="sig-paren">(</span><em>color</em>, <em>type1</em>, <em>outfolder</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#make_alert_img"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.make_alert_img" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct alert image.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>color</strong> (<em>str</em>) – Alert color.</li>
+<li><strong>type1</strong> (<em>str</em>) – Alert type, indicating landslide vs liquefaction.</li>
+<li><strong>outfolder</strong> (<em>str</em>) – Path for output file.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Output file name.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">str</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.webpage</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
