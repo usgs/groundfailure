@@ -23,25 +23,26 @@ DEPARRAY=(pytables \
           numpy==1.13 \
           scipy=0.19.1 \
           pip \
-    	  matplotlib=2.0.2 \
+          matplotlib=2.0.2 \
           rasterio=1.0 \
-    	  fiona=1.7.8 \
-    	  basemap=1.1.0 \
-    	  basemap-data-hires=1.1.0 \
+          fiona=1.7.8 \
+          basemap=1.1.0 \
+          basemap-data-hires=1.1.0 \
           shapely=1.5.17 \
-    	  h5py=2.7.0 \
-    	  gdal=2.1.4 \
-    	  descartes=1.1.0 \
-    	  pytest=3.2.0 \
-    	  pytest-cov=2.5.1 \
+          h5py=2.7.0 \
+          gdal=2.1.4 \
+          descartes=1.1.0 \
+          pytest=3.2.0 \
+          pytest-cov=2.5.1 \
           pytest-mpl=0.7 \
-    	  configobj=5.0.6 \
-    	  pandas=0.20.3 \
+          configobj=5.0.6 \
+          pandas=0.20.3 \
           scikit-learn=0.18.2 \
-    	  scikit-image=0.13.0 \
+          scikit-image=0.13.0 \
           branca=0.2.0 \
-    	  paramiko=2.1.2 \
-        beautifulsoup4=4.6.0)
+          paramiko=2.1.2 \
+          beautifulsoup4=4.6.0\
+          lxml=4.1.1)
 
 # Is the Travis flag set?
 travis=0
@@ -81,6 +82,10 @@ source activate $VENV
 # psutil
 conda install -y psutil=5.2.1
 
+# Sphinx extensions
+pip install sphinxcontrib-napoleon
+pip install sphinx-argparse
+
 # MapIO and impact-utils
 echo "Installing MapIO..."
 pip -q install https://github.com/usgs/MapIO/archive/master.zip
@@ -100,7 +105,7 @@ pip install folium
 pip install pelican markdown
 
 # This package
-echo "Installing groundfailure-prod..."
+echo "Installing groundfailure..."
 pip install -e .
 
 

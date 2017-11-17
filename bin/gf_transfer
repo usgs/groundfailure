@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+
+import argparse
+import gfail.pdl as pdl
+
+
+def main(args):
+    # Make PDL direcotry
+    print('Preparing directory to transfer %s...'
+          % args.eventid)
+    pdl.prepare_pdl_directory(args.eventid)
+
+    # Transfer
+    print('Transferring...')
+    log = pdl.transfer(args.eventid, args.pdl_config)
+    print('done.')
+    print(log['rc'])
+    print(log['so'].decode())
+    print(log['se'].decode())
+
+
+if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser(
+        description='Transfer ground failure results to comcat.')
+
+    parser.add_argument('eventid', help='Event id.')
+    parser.add_argument('pdl_config', help='Path to PDL config.')
+
+    args = parser.parse_args()
+    main(args)

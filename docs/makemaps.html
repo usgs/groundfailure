@@ -46,9 +46,14 @@
 <dd><p>This function creates maps of mapio grid layers (e.g. liquefaction or
 landslide models with their input layers).</p>
 <p>All grids must use the same bounds.</p>
-<p>TO DO: change so that all input layers do not have to have the same bounds,
-test plotting multiple probability layers, and add option so that if PDF
-and PNG aren’t output, opens plot on screen using plt.show()</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<ul class="last simple">
+<li>Change so that all input layers do not have to have the same bounds,
+test plotting multiple probability layers, and add option so that if
+PDF and PNG aren’t output, opens plot on screen using plt.show().</li>
+</ul>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -165,7 +170,7 @@ but without the metadata.</p>
 
 <dl class="function">
 <dt id="makemaps.interactiveMap">
-<code class="descclassname">makemaps.</code><code class="descname">interactiveMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>plotorder=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.7</em>, <em>isScenario=False</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>printparam=False</em>, <em>ds=True</em>, <em>dstype='mean'</em>, <em>smcontourfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#interactiveMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.interactiveMap" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">makemaps.</code><code class="descname">interactiveMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>plotorder=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.6</em>, <em>isScenario=False</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>smcontourfile=None</em>, <em>faultfile=None</em>, <em>separate=True</em>, <em>onkey=None</em>, <em>sepcolorbar=False</em>, <em>floatcb=True</em>, <em>savefiles=True</em>, <em>mapid=None</em>, <em>clear_zero=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#interactiveMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.interactiveMap" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates interactive html plots of mapio grid layers
 (e.g. liquefaction or landslide models with their input layers).</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -231,6 +236,19 @@ If None, will use current directory.</li>
 - “Cloudmade” (Must pass API key)
 - “Mapbox” (Must pass API key)
 - “CartoDB” (positron and dark_matter)</li>
+<li><strong>separate</strong> (<em>bool</em>) – If True, will make a separate html file for each map
+(default), if False, all layers will be on same map.</li>
+<li><strong>onkey</strong> (<em>str</em>) – If separate=False, key of model layer that should be the
+active layer initially. If None (default), the first model will be
+on by default.</li>
+<li><strong>sepcolorbar</strong> (<em>bool</em>) – If True, will make separate colorbar figure,
+if False (default), will embed simple colorbar</li>
+<li><strong>floatcb</strong> (<em>bool</em>) – If True (default) and sepcolobar is True, will float
+the colorbar on the map.</li>
+<li><strong>savefiles</strong> (<em>bool</em>) – If True (default), will save map as html file,
+otherwise will just return map object</li>
+<li><strong>clear_zero</strong> (<em>bool</em>) – If True, will make all zero values clear.
+default is False.</li>
 <li><strong>printparam</strong> (<em>bool</em>) – Print model parameters on figure? NOT IMPLEMENTED
 YET.</li>
 <li><strong>ds</strong> (<em>bool</em>) – Allow downsampling for display? NOT IMPLEMENTED YET.</li>
@@ -279,7 +297,13 @@ prepended to any file paths in config.</li>
 <dl class="function">
 <dt id="makemaps.parseConfigLayers">
 <code class="descclassname">makemaps.</code><code class="descname">parseConfigLayers</code><span class="sig-paren">(</span><em>maplayers</em>, <em>config</em>, <em>keys=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse things that need to coodinate with each layer (like lims, logscale,
+<dd><div class="admonition-todo admonition" id="index-1">
+<p class="first admonition-title">Todo</p>
+<ul class="last simple">
+<li>Add ability to interpret custom color maps.</li>
+</ul>
+</div>
+<p>Parse things that need to coodinate with each layer (like lims, logscale,
 colormaps etc.) from config file, in right order, where the order is from
 maplayers.</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -317,13 +341,6 @@ to keys in plotorder (same order).</li>
 </tr>
 </tbody>
 </table>
-<p>TO DO: ADD ABILITY TO INTERPRET CUSTOM COLOR MAPS.</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="makemaps.InteractivePage">
-<code class="descclassname">makemaps.</code><code class="descname">InteractivePage</code><span class="sig-paren">(</span><em>grids</em>, <em>keys=None</em>, <em>shakefile=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>isScenario=False</em>, <em>zthresh=0</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.7</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>printparam=False</em>, <em>ds=True</em>, <em>dstype='mean'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#InteractivePage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.InteractivePage" title="Permalink to this definition">¶</a></dt>
-<dd><p>NOT IMPLEMENTED embed multiple interactive plots in one page</p>
 </dd></dl>
 
 <dl class="function">
@@ -429,6 +446,44 @@ last accessed 9/2/2015</p>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="function">
+<dt id="makemaps.removeVis">
+<code class="descclassname">makemaps.</code><code class="descname">removeVis</code><span class="sig-paren">(</span><em>filename</em>, <em>removelater</em>, <em>mapname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#removeVis"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.removeVis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes some baselayers from initial visibility in Leaflet map.
+This fixes a minor bug in folium where all baselayers are active
+initially because you have to add a layer to the map for it to
+show up at all in folium, but for it to start as invisible in
+Leaflet, you have to add it only to layer control, not to the map.
+In folium, layer control inherits directly from the layers added to map.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filename</strong> (<em>text</em>) – Name of html file to remove layer visibility</li>
+<li><strong>removelater</strong> (<em>list</em>) – List of element names to remove visibility
+from initial plot</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
+<dt>filename modified so that removelater layers will be invisible</dt>
+<dd><p class="first last">initially</p>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="makemaps.getZoom">
+<code class="descclassname">makemaps.</code><code class="descname">getZoom</code><span class="sig-paren">(</span><em>minlon</em>, <em>maxlon</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#getZoom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.getZoom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the best starting zoom level based on span of coordinates</p>
 </dd></dl>
 
 </div>

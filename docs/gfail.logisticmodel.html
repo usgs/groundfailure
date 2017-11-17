@@ -48,15 +48,17 @@ models of models based on logistic regression.</p>
 <dt id="gfail.logisticmodel.LogisticModel">
 <em class="property">class </em><code class="descclassname">gfail.logisticmodel.</code><code class="descname">LogisticModel</code><span class="sig-paren">(</span><em>shakefile</em>, <em>config</em>, <em>uncertfile=None</em>, <em>saveinputs=False</em>, <em>slopefile=None</em>, <em>bounds=None</em>, <em>numstd=1</em>, <em>slopemod=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
-<p>Set up the logistic model</p>
+<p>Set up the logistic model
+:param shakefile: Path to shakemap grid.xml file for the event.
+:type shakefile: str
+:param config: configobj object defining the model and its inputs. Only</p>
+<blockquote>
+<div>one model should be described in each config file.</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>shakefile</strong> (<em>str</em>) – Path to shakemap grid.xml file for the event.</li>
-<li><strong>config</strong> – configobj object defining the model and its inputs. Only
-one model should be described in each config file.</li>
 <li><strong>uncertfile</strong> (<em>str</em>) – Path to uncertainty.xml file.</li>
 <li><strong>saveinputs</strong> (<em>bool</em>) – Save input layers as Grid2D objects in addition
 to the model? If false (the default), it will just output the
@@ -65,13 +67,16 @@ model.</li>
 to the other input files for applying thresholds. OVERWRITES
 VALUE IN CONFIG.</li>
 <li><strong>bounds</strong> (<em>dict</em>) – <p>Default of None uses ShakeMap boundaries, otherwise
-a dictionary of boundaries to cut to like</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span>
-    <span class="s1">&#39;xmin&#39;</span><span class="p">:</span> <span class="n">lonmin</span><span class="p">,</span> <span class="s1">&#39;xmax&#39;</span><span class="p">:</span> <span class="n">lonmax</span><span class="p">,</span>
-    <span class="s1">&#39;ymin&#39;</span><span class="p">:</span> <span class="n">latmin</span><span class="p">,</span> <span class="s1">&#39;ymax&#39;</span><span class="p">:</span> <span class="n">latmax</span>
-<span class="p">}</span>
-</pre></div>
-</div>
+a dictionary of boundaries to cut to like
+.. code-block:: python</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>bounds = {</dt>
+<dd>‘xmin’: lonmin, ‘xmax’: lonmax,
+‘ymin’: latmin, ‘ymax’: latmax</dd>
+</dl>
+<p>}</p>
+</div></blockquote>
 </li>
 <li><strong>numstd</strong> (<em>float</em>) – Number of +/- standard deviations to use if
 uncertainty is computed.</li>
@@ -89,22 +94,25 @@ already).</li>
 <code class="descname">getEquations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.getEquations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.getEquations" title="Permalink to this definition">¶</a></dt>
 <dd><p>Method for LogisticModel class to extract strings defining the
 equations for the model for median ground motions and +/- one standard
-deviation (3 total).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Three equations: equation, equationmin, equationmax, where<blockquote>
-<div><ul class="simple">
+deviation (3 total).
+:returns:</p>
+<blockquote>
+<div><dl class="docutils">
+<dt>Three equations: equation, equationmin, equationmax, where</dt>
+<dd><ul class="first last simple">
 <li>equation is the equation for median ground motions,</li>
 <li>equationmin is the equation for the same model but with
 median ground motions minus 1 standard deviation, and</li>
 <li>equationmax is the same but for plus 1 standard deviation.</li>
 </ul>
+</dd>
+</dl>
 </div></blockquote>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">tuple</td>
 </tr>
 </tbody>
 </table>
@@ -114,44 +122,33 @@ median ground motions minus 1 standard deviation, and</li>
 <dt id="gfail.logisticmodel.LogisticModel.getGeoDict">
 <code class="descname">getGeoDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.getGeoDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.getGeoDict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the geodictionary of the LogisticModel class defining bounds
-and resolution of model inputs and outputs.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">mapio geodict object.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">geodict</td>
-</tr>
-</tbody>
-</table>
+and resolution of model inputs and outputs.
+:returns: mapio geodict object.
+:rtype: geodict</p>
 </dd></dl>
 
 <dl class="method">
 <dt id="gfail.logisticmodel.LogisticModel.calculate">
 <code class="descname">calculate</code><span class="sig-paren">(</span><em>cleanup=True</em>, <em>rowmax=300</em>, <em>colmax=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.calculate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.calculate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Calculate the model.</p>
+<dd><p>Calculate the model.
+:param cleanup: Delete temporary hdf5 files?
+:type cleanup: bool
+:param rowmax: Number of rows to compute at once; None does all at</p>
+<blockquote>
+<div>once.</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>cleanup</strong> (<em>bool</em>) – Delete temporary hdf5 files?</li>
-<li><strong>rowmax</strong> (<em>int</em>) – Number of rows to compute at once; None does all at
-once.</li>
-<li><strong>colmax</strong> (<em>int</em>) – Number of columns to compute at once; None does all
-at once.</li>
-</ul>
-</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>colmax</strong> (<em>int</em>) – Number of columns to compute at once; None does all
+at once.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary containing the model results (and model inputs if
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Dictionary containing the model results (and model inputs if
 saveinputs was set to True). See
 <a class="reference external" href="https://github.com/usgs/groundfailure#api-for-model-output">the description</a>
-of the structure.</p>
-</td>
+of the structure.</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
-</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
 </tr>
 </tbody>
 </table>
@@ -162,16 +159,15 @@ of the structure.</p>
 <dl class="function">
 <dt id="gfail.logisticmodel.getLogisticModelNames">
 <code class="descclassname">gfail.logisticmodel.</code><code class="descname">getLogisticModelNames</code><span class="sig-paren">(</span><em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getLogisticModelNames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getLogisticModelNames" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the names of the models present in the configobj</p>
+<dd><p>Get the names of the models present in the configobj
+:param config: configobj object defining the model and its inputs.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>config</strong> – configobj object defining the model and its inputs.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">list of model names.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">list of model names.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
 </tr>
 </tbody>
 </table>
@@ -181,16 +177,16 @@ of the structure.</p>
 <dt id="gfail.logisticmodel.getFileType">
 <code class="descclassname">gfail.logisticmodel.</code><code class="descname">getFileType</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getFileType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getFileType" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine whether input file is a shapefile or a grid (ESRI or GMT).
-EVENTUALLY WILL BE MOVED TO MAPIO.</p>
+EVENTUALLY WILL BE MOVED TO MAPIO.
+:param filename: Path to candidate filename.
+:type filename: str</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> (<em>str</em>) – Path to candidate filename.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">‘shapefile’, ‘grid’, or ‘unknown’.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">‘shapefile’, ‘grid’, or ‘unknown’.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">str</td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">str</td>
 </tr>
 </tbody>
 </table>
@@ -200,16 +196,16 @@ EVENTUALLY WILL BE MOVED TO MAPIO.</p>
 <dt id="gfail.logisticmodel.getAllGridFiles">
 <code class="descclassname">gfail.logisticmodel.</code><code class="descname">getAllGridFiles</code><span class="sig-paren">(</span><em>indir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getAllGridFiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getAllGridFiles" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get list of all gmt or esri (.grd, .bil) files in a directory.
-EVENTUALLY WILL BE MOVED TO MAPIO</p>
+EVENTUALLY WILL BE MOVED TO MAPIO
+:param indir: Directory to search.
+:type indir: str</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>indir</strong> (<em>str</em>) – Directory to search.</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">List of file names.</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">List of file names.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">list</td>
 </tr>
 </tbody>
 </table>
@@ -219,21 +215,21 @@ EVENTUALLY WILL BE MOVED TO MAPIO</p>
 <dt id="gfail.logisticmodel.validateCoefficients">
 <code class="descclassname">gfail.logisticmodel.</code><code class="descname">validateCoefficients</code><span class="sig-paren">(</span><em>cmodel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateCoefficients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateCoefficients" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensures coefficients provided in model description are valid and outputs
-a dictionary of the coefficients.</p>
+a dictionary of the coefficients.
+:param cmodel: Sub-dictionary from config for specific model,</p>
+<blockquote>
+<div><p>e.g.
+.. code-block:: python</p>
+<blockquote>
+<div>cmodel = config[‘test_model’]</div></blockquote>
+</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cmodel</strong> (<em>dict</em>) – <p>Sub-dictionary from config for specific model,
-e.g.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cmodel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;test_model&#39;</span><span class="p">]</span>
-</pre></div>
-</div>
-</td>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a dictionary of model coefficients named b0, b1, b2…</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a dictionary of model coefficients named b0, b1, b2…</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
 </tr>
 </tbody>
 </table>
@@ -243,27 +239,30 @@ e.g.</p>
 <dt id="gfail.logisticmodel.validateLayers">
 <code class="descclassname">gfail.logisticmodel.</code><code class="descname">validateLayers</code><span class="sig-paren">(</span><em>cmodel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateLayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensures all input files required to run the model exist and are valid
-file types.</p>
+file types.
+:param cmodel: Sub-dictionary from config for specific model,</p>
+<blockquote>
+<div><p>e.g.
+.. code-block:: python</p>
+<blockquote>
+<div>cmodel = config[‘test_model’]</div></blockquote>
+</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>cmodel</strong> (<em>dict</em>) – <p>Sub-dictionary from config for specific model,
-e.g.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cmodel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;test_model&#39;</span><span class="p">]</span>
-</pre></div>
-</div>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a dictionary of file names, e.g.
+.. code-block:: python<blockquote>
+<div><dl class="docutils">
+<dt>{</dt>
+<dd>‘slope’: ‘slopefile.bil’,
+‘vs30’: ‘vs30.grd’</dd>
+</dl>
+<p>}</p>
+</div></blockquote>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a dictionary of file names, e.g.<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s1">&#39;slope&#39;</span><span class="p">:</span> <span class="s1">&#39;slopefile.bil&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;vs30&#39;</span><span class="p">:</span> <span class="s1">&#39;vs30.grd&#39;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
+<tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
 </tr>
 </tbody>
 </table>
@@ -276,48 +275,48 @@ e.g.</p>
 functions, inserting code for extracting data from each layer (required
 to run eval in the calculate step), addressing any time variables, and
 checks that term names match coefficient names.</p>
-<p>TODO: return a time field for every term, not just one global one.</p>
+<div class="admonition-todo admonition" id="index-0">
+<p class="first admonition-title">Todo</p>
+<ul class="last simple">
+<li>Return a time field for every term, not just one global one.</li>
+</ul>
+</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>cmodel</strong> (<em>dict</em>) – <p>Sub-dictionary from config for specific model,
-e.g.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cmodel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;test_model&#39;</span><span class="p">]</span>
-</pre></div>
-</div>
+e.g.
+.. code-block:: python</p>
+<blockquote>
+<div>cmodel = config[‘test_model’]</div></blockquote>
 </li>
-<li><strong>coeffs</strong> (<em>dict</em>) – <p>Dictionary of model coefficients, e.g.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s1">&#39;b0&#39;</span><span class="p">:</span> <span class="mf">3.5</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">}</span>
-</pre></div>
-</div>
+<li><strong>coeffs</strong> (<em>dict</em>) – <p>Dictionary of model coefficients, e.g.
+.. code-block:: python</p>
+<blockquote>
+<div>{‘b0’: 3.5, ‘b1’: -0.01}</div></blockquote>
 </li>
-<li><strong>layers</strong> (<em>dict</em>) – <p>Dictionary of file names for all input layers, e.g.</p>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s1">&#39;slope&#39;</span><span class="p">:</span> <span class="s1">&#39;slopefile.bil&#39;</span><span class="p">,</span> <span class="s1">&#39;vs30&#39;</span><span class="p">:</span> <span class="s1">&#39;vs30.grd&#39;</span><span class="p">}</span>
-</pre></div>
-</div>
+<li><strong>layers</strong> (<em>dict</em>) – <p>Dictionary of file names for all input layers, e.g.
+.. code-block:: python</p>
+<blockquote>
+<div>{‘slope’: ‘slopefile.bil’, ‘vs30’: ‘vs30.grd’}</div></blockquote>
 </li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>(terms, timeField), where</p>
-<blockquote>
-<div><ul class="simple">
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>(terms, timeField), where</dt>
+<dd><ul class="first simple">
 <li>’terms’ is a dictionary of terms that form the model equation,
 e.g.</li>
 </ul>
-<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
-    <span class="s1">&#39;b1&#39;</span><span class="p">:</span> <span class="s2">&quot;self.layerdict[&#39;friction&#39;].getData()&quot;</span><span class="p">,</span>
-    <span class="s1">&#39;b2&#39;</span><span class="p">:</span> <span class="s2">&quot;self.layerdict[&#39;slope&#39;].getData()/100.&quot;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<ul class="simple">
+<ul class="last simple">
 <li>’timeField’ indicates the time that is used to know which input
 file to read in, e.g. for monthly average precipitation, ‘MONTH’.</li>
 </ul>
-</div></blockquote>
+</dd>
+</dl>
 </p>
 </td>
 </tr>
@@ -332,17 +331,19 @@ file to read in, e.g. for monthly average precipitation, ‘MONTH’.</li>
 <dt id="gfail.logisticmodel.quickcut">
 <code class="descclassname">gfail.logisticmodel.</code><code class="descname">quickcut</code><span class="sig-paren">(</span><em>filename</em>, <em>tempname</em>, <em>gdict</em>, <em>extrasamp=5</em>, <em>method='nearest'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#quickcut"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.quickcut" title="Permalink to this definition">¶</a></dt>
 <dd><p>Use gdal to trim a large global file down quickly so mapio can read it
-efficiently.</p>
-<p>Using subprocess approach because <code class="docutils literal"><span class="pre">gdal.Translate</span></code> doesn’t hang on the
-command until the file is created which causes problems in the next steps.</p>
+efficiently.
+Using subprocess approach because <code class="docutils literal"><span class="pre">gdal.Translate</span></code> doesn’t hang on the
+command until the file is created which causes problems in the next steps.
+:param filename: File path to original input file (raster).
+:type filename: str
+:param tempname: File path to desired location of clipped part of</p>
+<blockquote>
+<div>filename.</div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filename</strong> (<em>str</em>) – File path to original input file (raster).</li>
-<li><strong>tempname</strong> (<em>str</em>) – File path to desired location of clipped part of
-filename.</li>
 <li><strong>gdict</strong> (<em>geodict</em>) – Geodictionary to cut around and align with.</li>
 <li><strong>extrasamp</strong> (<em>int</em>) – Number of extra cells to cut around each edge of
 geodict to have resampling buffer for future steps.</li>
@@ -411,8 +412,10 @@ the tempname location.</p>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
 </ul>
 </li>
 </ul>

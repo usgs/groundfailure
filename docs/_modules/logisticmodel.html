@@ -52,6 +52,7 @@
 <span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">copy</span>
 <span class="kn">import</span> <span class="nn">subprocess</span>
+<span class="c1"># from scipy import sparse</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
 <span class="kn">from</span> <span class="nn">timeit</span> <span class="k">import</span> <span class="n">default_timer</span> <span class="k">as</span> <span class="n">timer</span>
@@ -63,6 +64,7 @@
 <span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="k">import</span> <span class="n">GDALGrid</span>
 <span class="kn">from</span> <span class="nn">mapio.grid2d</span> <span class="k">import</span> <span class="n">Grid2D</span>
 <span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="k">import</span> <span class="n">GeoDict</span>
+<span class="c1"># from osgeo import gdal</span>
 
 <span class="kn">from</span> <span class="nn">gfail.temphdf</span> <span class="k">import</span> <span class="n">TempHdf</span>
 
@@ -72,7 +74,6 @@
 
 <span class="n">SM_TERMS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;MW&#39;</span><span class="p">,</span> <span class="s1">&#39;YEAR&#39;</span><span class="p">,</span> <span class="s1">&#39;MONTH&#39;</span><span class="p">,</span> <span class="s1">&#39;DAY&#39;</span><span class="p">,</span> <span class="s1">&#39;HOUR&#39;</span><span class="p">,</span> <span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="s1">&#39;pgv&#39;</span><span class="p">,</span> <span class="s1">&#39;mmi&#39;</span><span class="p">]</span>
 <span class="n">SM_GRID_TERMS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="s1">&#39;pgv&#39;</span><span class="p">,</span> <span class="s1">&#39;mmi&#39;</span><span class="p">]</span>
-
 <span class="c1"># these will get np. prepended</span>
 <span class="n">OPERATORS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="s1">&#39;log10&#39;</span><span class="p">,</span> <span class="s1">&#39;arctan&#39;</span><span class="p">,</span> <span class="s1">&#39;power&#39;</span><span class="p">,</span> <span class="s1">&#39;sqrt&#39;</span><span class="p">,</span> <span class="s1">&#39;minimum&#39;</span><span class="p">,</span> <span class="s1">&#39;pi&#39;</span><span class="p">]</span>
 <span class="n">FLOATPAT</span> <span class="o">=</span> <span class="s1">&#39;[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?&#39;</span>
@@ -87,7 +88,6 @@
                  <span class="n">slopefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">numstd</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">slopemod</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Set up the logistic model</span>
-
 <span class="sd">        Args:</span>
 <span class="sd">            shakefile (str): Path to shakemap grid.xml file for the event.</span>
 <span class="sd">            config: configobj object defining the model and its inputs. Only</span>
@@ -101,14 +101,11 @@
 <span class="sd">                VALUE IN CONFIG.</span>
 <span class="sd">            bounds (dict): Default of None uses ShakeMap boundaries, otherwise</span>
 <span class="sd">                a dictionary of boundaries to cut to like</span>
-
 <span class="sd">                .. code-block:: python</span>
-
 <span class="sd">                    bounds = {</span>
 <span class="sd">                        &#39;xmin&#39;: lonmin, &#39;xmax&#39;: lonmax,</span>
 <span class="sd">                        &#39;ymin&#39;: latmin, &#39;ymax&#39;: latmax</span>
 <span class="sd">                    }</span>
-
 <span class="sd">            numstd (float): Number of +/- standard deviations to use if</span>
 <span class="sd">                uncertainty is computed.</span>
 <span class="sd">            slopemod (str): How slope input should be modified to be in</span>
@@ -443,15 +440,12 @@
 <span class="sd">        Method for LogisticModel class to extract strings defining the</span>
 <span class="sd">        equations for the model for median ground motions and +/- one standard</span>
 <span class="sd">        deviation (3 total).</span>
-
 <span class="sd">        Returns:</span>
 <span class="sd">            tuple: Three equations: equation, equationmin, equationmax, where</span>
-
 <span class="sd">                * equation is the equation for median ground motions,</span>
 <span class="sd">                * equationmin is the equation for the same model but with</span>
 <span class="sd">                  median ground motions minus 1 standard deviation, and</span>
 <span class="sd">                * equationmax is the same but for plus 1 standard deviation.</span>
-
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">equation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span></div>
 
@@ -459,30 +453,25 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the geodictionary of the LogisticModel class defining bounds</span>
 <span class="sd">        and resolution of model inputs and outputs.</span>
-
 <span class="sd">        Returns:</span>
 <span class="sd">            geodict: mapio geodict object.</span>
-
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span></div>
 
 <div class="viewcode-block" id="LogisticModel.calculate"><a class="viewcode-back" href="../logisticmodel.html#logisticmodel.LogisticModel.calculate">[docs]</a>    <span class="k">def</span> <span class="nf">calculate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">rowmax</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">colmax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the model.</span>
-
 <span class="sd">        Args:</span>
 <span class="sd">            cleanup (bool): Delete temporary hdf5 files?</span>
 <span class="sd">            rowmax (int): Number of rows to compute at once; None does all at</span>
 <span class="sd">                once.</span>
 <span class="sd">            colmax (int): Number of columns to compute at once; None does all</span>
 <span class="sd">                at once.</span>
-
 <span class="sd">        Returns:</span>
 <span class="sd">            dict: Dictionary containing the model results (and model inputs if</span>
 <span class="sd">            saveinputs was set to True). See</span>
 <span class="sd">            `the description &lt;https://github.com/usgs/groundfailure#api-for-model-output&gt;`_</span>
 <span class="sd">            of the structure.</span>
-
 <span class="sd">        &quot;&quot;&quot;</span>
 
         <span class="c1"># Figure out what slices to do</span>
@@ -575,7 +564,8 @@
             <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">units5</span><span class="p">,</span>
             <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span><span class="p">,</span>
             <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;slopemin&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span><span class="p">,</span>
-                           <span class="s1">&#39;slopemax&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span><span class="p">}}</span>
+                           <span class="s1">&#39;slopemax&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span><span class="p">,</span>
+                           <span class="s1">&#39;modeltype&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="p">}}</span>
         <span class="n">Pgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
         <span class="n">rdict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
         <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
@@ -684,13 +674,10 @@
 <div class="viewcode-block" id="getLogisticModelNames"><a class="viewcode-back" href="../logisticmodel.html#logisticmodel.getLogisticModelNames">[docs]</a><span class="k">def</span> <span class="nf">getLogisticModelNames</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the names of the models present in the configobj</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        config: configobj object defining the model and its inputs.</span>
-
 <span class="sd">    Returns:</span>
 <span class="sd">        list: list of model names.</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">names</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">lmodel_space</span> <span class="o">=</span> <span class="n">config</span>
@@ -706,13 +693,10 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Determine whether input file is a shapefile or a grid (ESRI or GMT).</span>
 <span class="sd">    EVENTUALLY WILL BE MOVED TO MAPIO.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        filename (str): Path to candidate filename.</span>
-
 <span class="sd">    Returns:</span>
 <span class="sd">        str: &#39;shapefile&#39;, &#39;grid&#39;, or &#39;unknown&#39;.</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;dir&#39;</span>
@@ -734,13 +718,10 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get list of all gmt or esri (.grd, .bil) files in a directory.</span>
 <span class="sd">    EVENTUALLY WILL BE MOVED TO MAPIO</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        indir (str): Directory to search.</span>
-
 <span class="sd">    Returns:</span>
 <span class="sd">        list: List of file names.</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">tflist</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">indir</span><span class="p">)</span>
     <span class="n">flist</span> <span class="o">=</span> <span class="p">[]</span>
@@ -756,18 +737,13 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Ensures coefficients provided in model description are valid and outputs</span>
 <span class="sd">    a dictionary of the coefficients.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
 <span class="sd">            e.g.</span>
-
 <span class="sd">            .. code-block:: python</span>
-
 <span class="sd">                cmodel = config[&#39;test_model&#39;]</span>
-
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: a dictionary of model coefficients named b0, b1, b2...</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">coeffs</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;coefficients&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -784,25 +760,18 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Ensures all input files required to run the model exist and are valid</span>
 <span class="sd">    file types.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
 <span class="sd">            e.g.</span>
-
 <span class="sd">            .. code-block:: python</span>
-
 <span class="sd">                cmodel = config[&#39;test_model&#39;]</span>
-
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: a dictionary of file names, e.g.</span>
-
 <span class="sd">        .. code-block:: python</span>
-
 <span class="sd">            {</span>
 <span class="sd">                &#39;slope&#39;: &#39;slopefile.bil&#39;,</span>
 <span class="sd">                &#39;vs30&#39;: &#39;vs30.grd&#39;</span>
 <span class="sd">            }</span>
-
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">layers</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;layers&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
@@ -825,41 +794,29 @@
 <span class="sd">    to run eval in the calculate step), addressing any time variables, and</span>
 <span class="sd">    checks that term names match coefficient names.</span>
 
-<span class="sd">    TODO: return a time field for every term, not just one global one.</span>
+<span class="sd">    TODO:</span>
+<span class="sd">        - Return a time field for every term, not just one global one.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
 <span class="sd">            e.g.</span>
-
 <span class="sd">            .. code-block:: python</span>
-
 <span class="sd">                cmodel = config[&#39;test_model&#39;]</span>
-
 <span class="sd">        coeffs (dict): Dictionary of model coefficients, e.g.</span>
-
 <span class="sd">            .. code-block:: python</span>
-
 <span class="sd">                {&#39;b0&#39;: 3.5, &#39;b1&#39;: -0.01}</span>
-
 <span class="sd">        layers (dict): Dictionary of file names for all input layers, e.g.</span>
-
 <span class="sd">            .. code-block:: python</span>
-
 <span class="sd">                {&#39;slope&#39;: &#39;slopefile.bil&#39;, &#39;vs30&#39;: &#39;vs30.grd&#39;}</span>
-
 <span class="sd">    Returns:</span>
 <span class="sd">        tuple: (terms, timeField), where</span>
-
 <span class="sd">            - &#39;terms&#39; is a dictionary of terms that form the model equation,</span>
 <span class="sd">              e.g.</span>
-
 <span class="sd">            .. code-block:: python</span>
-
 <span class="sd">                {</span>
 <span class="sd">                    &#39;b1&#39;: &quot;self.layerdict[&#39;friction&#39;].getData()&quot;,</span>
 <span class="sd">                    &#39;b2&#39;: &quot;self.layerdict[&#39;slope&#39;].getData()/100.&quot;</span>
 <span class="sd">                }</span>
-
 <span class="sd">            - &#39;timeField&#39; indicates the time that is used to know which input</span>
 <span class="sd">              file to read in, e.g. for monthly average precipitation, &#39;MONTH&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -886,10 +843,8 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Use gdal to trim a large global file down quickly so mapio can read it</span>
 <span class="sd">    efficiently.</span>
-
 <span class="sd">    Using subprocess approach because ``gdal.Translate`` doesn&#39;t hang on the</span>
 <span class="sd">    command until the file is created which causes problems in the next steps.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        filename (str): File path to original input file (raster).</span>
 <span class="sd">        tempname (str): File path to desired location of clipped part of</span>
@@ -898,7 +853,6 @@
 <span class="sd">        extrasamp (int): Number of extra cells to cut around each edge of</span>
 <span class="sd">            geodict to have resampling buffer for future steps.</span>
 <span class="sd">        method (str): If resampling is necessary, method to use.</span>
-
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: Geodict for new file that was cut and also creates the file in</span>
 <span class="sd">        the tempname location.</span>

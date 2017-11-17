@@ -16,7 +16,7 @@ from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
 import numpy as np
 
-#local imports
+# local imports
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
@@ -28,7 +28,7 @@ from mapio.shake import ShakeGrid
 
 
 def main(args):
-    #TODO ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
+    # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
     if args.set_default_paths:
         set_default_paths(args)
         print('default paths set, continuing...\n')
@@ -49,7 +49,10 @@ def main(args):
             outdir = os.getcwd()
         else:
             outdir = args.output_filepath
-        if args.hdf5 or args.make_static_pngs or args.make_static_pdfs or args.make_interactive_plots or args.gis:
+        if (args.hdf5 or args.make_static_pngs or
+                args.make_static_pdfs or
+                args.make_interactive_plots or
+                args.gis):
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
 
@@ -57,7 +60,8 @@ def main(args):
         cleanup = False
         if not os.path.isfile(shakefile):
             if isURL(shakefile):
-                shakefile = getGridURL(shakefile)  # returns a  named temporary file object
+                # getGridURL returns a named temporary file object
+                shakefile = getGridURL(shakefile)
                 cleanup = True  # Be sure to delete it after
             else:
                 raise NameError('Could not find "%s" as a file or a valid url'
@@ -101,7 +105,8 @@ def main(args):
                     temp = ConfigObj(conf)
                     if temp:
                         if args.data_path is not None:
-                            temp = correct_config_filepaths(args.data_path, temp)
+                            temp = correct_config_filepaths(args.data_path,
+                                                            temp)
                         configs.append(temp)
                     else:
                         conffail.append(conf)
@@ -259,9 +264,14 @@ def main(args):
 
         if args.make_webpage:
 
-            webloc = makeWebpage(results, configs, args.web_template, shakefile,
-                                 outfolder=outfolder, cleanup=True)
+            webloc = makeWebpage(results, configs, args.web_template,
+                                 shakefile, outfolder=outfolder, cleanup=True)
             filenames.append(webloc)
+
+        # Write shakefile to a file for use later
+        shake_file = open(os.path.join(outfolder, "shakefile.txt"), "w")
+        shake_file.write(shakefile)
+        shake_file.close()
 
         print('\nFiles created:\n')
         for filen in filenames:
@@ -379,11 +389,12 @@ def set_default_paths(args):
         if args.web_template == 'reset':
             D.pop('web_template')
         else:
-            #check that it's a valid path
+            # check that it's a valid path
             if os.path.exists(args.web_template):
                 D.update({'web_template': args.web_template})
             else:
-                print('Path given for webpage templates does not exist: %s' % args.web_template)
+                print('Path given for webpage templates does not exist: %s'
+                      % args.web_template)
     print('New default paths set.\n')
 
     if D:
@@ -588,16 +599,19 @@ if __name__ == '__main__':
         help='See listing of currently set default paths')
     parser.add_argument(
         '-set', '--set-default-paths', action='store_true', default=False,
-        help='Sets paths given as inputs as defaults (overwrites existing values)')
+        help='Sets paths given as inputs as defaults '
+             '(overwrites existing values)')
     parser.add_argument(
         '-reset', '--reset-default-paths', action='store_true', default=False,
         help='Clears all existing default paths')
     parser.add_argument(
         '-w', '--make-webpage', action='store_true', default=False,
-        help='Create webpage that summarizes all model results, including interactive maps')
+        help='Create webpage that summarizes all model results, '
+             'including interactive maps')
     parser.add_argument(
         '-n', '--nest-folder', action='store_true', default=True,
-        help='do not nest in output folder with eventid as name (default is it will nest)')
+        help='do not nest in output folder with eventid as name '
+             '(default is it will nest)')
     #parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 
