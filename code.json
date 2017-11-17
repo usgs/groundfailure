@@ -1,0 +1,49 @@
+{
+  "version": "2.0.0",
+  "measurementType": {},
+  "agency": "U.S. Department of Interior",
+  "releases": [
+    {
+      "name": "groundfailure",
+      "description": "Earthquake-induced ground failure",
+      "version": "0.1dev",
+      "status": "pre-release",
+      "organization": "U.S. Geological Survey",
+      "vcs": "git",
+      "repositoryURL":
+          "https://github.com/usgs/groundfailure",
+      "homepageURL":
+          "https://github.com/usgs/groundfailure",
+      "downloadURL":
+          "https://github.com/usgs/groundfailure/releases/tag/0.1dev",
+      "disclaimerURL":
+          "https://github.com/usgs/groundfailure/blob/master/DISCLAIMER.md",
+      "permissions": {
+        "licenses": [
+          {
+            "name": "Public Domain",
+            "URL": "https://github.com/usgs/groundfailure/blob/master/LICENSE.md"
+          }
+        ],
+        "usageType": "openSource",
+        "exemptionText": null
+      },
+      "laborHours": 1,
+      "languages": [ "Python" ],
+      "tags": [
+        "ground failure",
+        "liquefaction",
+        "landslide",
+        "hazard"
+        "earthquake"
+      ],
+      "contact": {
+        "name": "Kate Allstadt",
+        "email": "kallstadt@usgs.gov"
+      },
+      "date": {
+        "metadataLastUpdated": "2017-11-17"
+      }
+    }
+  ]
+}
