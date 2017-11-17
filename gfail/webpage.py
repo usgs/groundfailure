@@ -17,24 +17,29 @@ import json
 
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
-                includeunc=False, cleanup=False):
+                includeunc=False, cleanup=True):
     """
-    TODO:
-        - Add in logic to deal with when one of the model types is missing.
+    :param maplayers: list of maplayer outputs from multiple models
+    Create a webpage that summarizes ground failure results (both landslides
+        and liquefaction)
 
     Args:
-        maplayers (list): List of maplayer outputs from multiple models.
-        config (ConfigObj): Config object.
-        web_template (str): Path to web template.
-        shakemap (str): Path to shakemap grid.xml file.
-        outfolder (str): Path for output. If None, then a new directory is
-            used in the current directory.
-        includeunc (bool): Should uncertainty be used?
-        cleanup (bool): Delete everything except files needed for website?
+        maplayerlist (list): list of model output structures to include
+        configs (list): list of paths to config files corresponding to each
+            of the models in maplayerlist in the same order
+        web_template (str): Path to location of pelican template
+            (final folder should be "theme")
+        shakemap (str): path to shakemap .xml file for the current event
+        outfolder (str): path to folder where output should be placed
+        includeunc (bool): include uncertainty, NOT IMPLEMENTED
+        cleanup (bool): cleanup all unneeded intermediate files that
+            pelican creates, default True.
 
     Returns:
-        str: Path to directory of web page.
-    """
+        Folder where webpage files are located
+
+     TODO add in logic to deal with when one of the model types is missing
+     """
     # get ShakeMap id
     sm_id = maplayerlist[0]['model']['description']['shakemap']
     if outfolder is None:
