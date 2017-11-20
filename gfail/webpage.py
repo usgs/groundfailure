@@ -208,6 +208,15 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                             os.remove(ofilen)
         shutil.copytree(os.path.join(fullout, 'output'), finalout)
         shutil.rmtree(fullout)
+        # Get rid of mapLS.js and mapLQ.js files from theme directory
+        try:
+            os.remove(os.path.join(theme, 'static', 'js', 'mapLQ.js'))
+        except Exception as e:
+            print(e)
+        try:
+            os.remove(os.path.join(theme, 'static', 'js', 'mapLS.js'))
+        except Exception as e:
+            print(e)
 
     return finalout
 
@@ -288,7 +297,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                            staticmap.split('images')[-1]))
 
         file1.write('<hr>\n')
-        file1.write('<center><h3>Summary</h3></center>')
+        file1.write('<center><h3>%s Summary</h3></center>' % modeltype.title())
         file1.write('<table style="width:100%">')
         file1.write('<tr><th>Model</th><th>Aggregate Hazard</th><th>Max. '
                     'Probability</th></tr>\n')

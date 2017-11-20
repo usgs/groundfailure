@@ -3,7 +3,7 @@
 
 {% if pages %}
 {% for page in pages %}
-    <div class="uk-container uk-container-center">
+    <div class="column one-of-one">
         {{ page.content}}
     </div>
 {% endfor %}
@@ -11,10 +11,8 @@
 
 {% if articles %}
 {% for article in articles %}
-    <div class="uk-width-large-1-2">
-        <div class="uk-panel uk-panel-box">
+    <div class="column one-of-two">
             {{ article.content}}
-        </div>
     </div>
 {% endfor %}
 
@@ -22,7 +20,7 @@
 
 {% if hidden_pages %}
 {% for hpage in hidden_pages %}
-    <div class="uk-container uk-container-center">
+    <div class="row">
         {{ hpage.content}}
     </div>
 {% endfor %}

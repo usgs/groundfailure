@@ -3,7 +3,7 @@ body {width: 100%;height: 100%;margin: 0;padding: 0;}
 
 #map_LS {
        position : relative;
-       width : 450px;
+       width : 85%;
        height: 450px;
        left: 0.0;
        top: 0.0;
@@ -11,7 +11,7 @@ body {width: 100%;height: 100%;margin: 0;padding: 0;}
 
 #map_LQ {
        position : relative;
-       width : 450px;
+       width : 85%;
        height: 450px;
        left: 0.0;
        top: 0.0;

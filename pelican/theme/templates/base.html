@@ -4,6 +4,7 @@
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
     <title>{% block title %}{{ SITENAME }}{% endblock %}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="{% block description %}{{ DESCRIPTION }}{% endblock %}">
@@ -11,67 +12,62 @@
     <meta name="copyright" content="{{ AUTHOR }}">
     <meta property="og:site_name" content="{{ SITENAME }}" />
 
-    <link href="//fonts.googleapis.com/css?family=Open+Sans:800italic" rel="stylesheet" type="text/css">
-    <link href="//fonts.googleapis.com/css?family=Oswald" rel="stylesheet" type="text/css">
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/uikit/2.15.0/css/uikit.min.css">
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/uikit/2.15.0/css/components/search.min.css">
-    <link rel="stylesheet" href="theme/css/solarized.css">
-    <link rel="stylesheet" href="theme/css/main.css">
 
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
-    <script>L_PREFER_CANVAS = true; L_NO_TOUCH = false; L_DISABLE_3D = false;</script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.2.0/dist/leaflet.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons|Merriweather:400,400italic,700|Source+Sans+Pro:400,300,700">
+    <link rel="stylesheet" href="https://earthquake.usgs.gov/theme/site/earthquake/index.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.2.0/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css" />
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css" />
     <link rel="stylesheet" href="https://rawgit.com/python-visualization/folium/master/folium/templates/leaflet.awesome.rotate.css" />
-    <link rel="stylesheet" href="theme/css/map.css">
-    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.2/html5shiv.min.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css" crossorigin=""/>
+    <link rel="stylesheet" href="theme/css/map.css">
+
     <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet-src.js" crossorigin=""></script>
     <script src="https://cdn.rawgit.com/jieter/Leaflet.Sync/0.2.1/L.Map.Sync.js" content-type="application/javascript" charset="utf-8"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-dvf/0.3.0/leaflet-dvf.markers.min.js"></script>
+    <script>L_PREFER_CANVAS = true; L_NO_TOUCH = false; L_DISABLE_3D = false;</script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.2.0/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+
+
 
 </head>
 
 <body>
 
-    <header class=" mg-header uk-navbar uk-navbar-attached">
-
-        <div class="uk-container uk-container-center">
-
-            <a class="mg-brand uk-navbar-brand uk-hidden-small" href="{{ SITEURL }}">{% if ALT_NAME %}{{ ALT_NAME }}{% else %}{{ SITENAME }}{% endif %}</a>
-
-        </div>
+    <header role="banner" class="site-header">
+        <a class="site-logo" href="/" title="U.S. Geological Survey">
+          <img src="https://earthquake.usgs.gov/theme/images/usgs-logo.svg" alt="">
+        </a>
     </header>
 
-    <main class="mg-main">
+    <main class=page padding=0.>
 
-        <div class="uk-container uk-container-center">
+        <center>
+        <div class="row">
 
-            <div class="uk-grid" data-uk-grid-margin>
-                {% block content %} {% endblock %}
-                <script src="theme/js/mapLS.js"></script>
-                <script src="theme/js/mapLQ.js"></script>
-                <script src="theme/js/mapsync.js"></script>
-            </div>
+            {% block content %} {% endblock %}
+            <script src="theme/js/mapLS.js"></script>
+            <script src="theme/js/mapLQ.js"></script>
+            <script src="theme/js/mapsync.js"></script>
 
         </div>
+        </center>
+
+        <small>
+            <div class="row">
+                <p class="alert warning">
+                    {{ FOOTER }}
+                </p>
+            </div>
+        </small>
 
     </main>
 
-    <footer class="mg-footer">
-        <div class="uk-container uk-container-center uk-text-center">
-
-            <div class="mg-author uk-panel">
-                {{ FOOTER }}
-            </div>
-        </div>
+    <footer class="site-commonnav">
+      <a href="https://earthquake.usgs.gov">Home</a>
+      <a href="/aboutus/">About Us</a>
+      <a href="/contactus/">Contacts</a>
+      <a href="/legal.php">Legal</a>
     </footer>
 
 </body>
