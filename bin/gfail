@@ -498,7 +498,8 @@ if __name__ == '__main__':
     config_filepath = None
     mapconfig = None
     mapdata_filepath = None
-    web_template = None
+    web_template = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pelican', 'theme')
 
     if os.path.exists(defaults):
         D = ConfigObj(defaults)
