@@ -3,13 +3,9 @@
 #stdlib imports
 import os
 import fiona
-import pyproj
-from functools import partial
-from shapely.ops import transform
-from shapely.geometry import shape, Point, MultiPoint
+from shapely.geometry import shape
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.path as mplPath
 from matplotlib.patches import Polygon
 from scipy import interpolate
 from sklearn.metrics import roc_curve, roc_auc_score, auc
@@ -17,7 +13,6 @@ import copy
 import collections
 import urllib
 import json
-from skimage.measure import block_reduce
 
 #local imports
 from groundfailure.sample import pointsFromShapes
@@ -357,18 +352,98 @@ def modelSummary(models, titles=None, eids=None, outputtype='unknown', cumulativ
     return means, medians, totareas, titles, means_min, means_max, medians_min, medians_max, totareas_min, totareas_max
 
 
-def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
+def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
+                shakethreshtype='pga', shakethresh=0.0):
     """
-    Computes the Aggregate Hazard (Hagg) which is equal to the probability * area of grid cell
-    For models that compute areal coverage, this is equivalant to the total predicted area affected in km2
+    Computes the Aggregate Hazard (Hagg) which is equal to the
+    probability * area of grid cell For models that compute areal coverage,
+    this is equivalant to the total predicted area affected in km2.
 
-    :param model: grid2D object of model output
-    :param proj: projection to use to obtain equal area, 'moll'  mollweide, or 'laea' lambert equal area
-    :param probthresh: Probability threshold, any values less than this will not be included in aggregate hazard estimation
-    :param shakefile: Optional, path to shakemap file to use for ground motion threshold
-    :param shakethreshtype: Optional, Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'
-    :param shakethresh: Optional, Float or list of shaking thresholds in %g for pga, cm/s for pgv, float for mmi.
-    :returns Hagg: Single float if no shakethresh defined or only one shakethresh defined, otherwise, a list of aggregate hazard for all shakethresh values
+    Args:
+        grid2D: grid2D object of model output.
+        proj: projection to use to obtain equal area, 'moll'  mollweide, or
+            'laea' lambert equal area.
+        probthresh: Probability threshold, any values less than this will not
+            be included in aggregate hazard estimation.
+        shakefile: Optional, path to shakemap file to use for ground motion
+            threshold.
+        shakethreshtype: Optional, Type of ground motion to use for
+            shakethresh, 'pga', 'pgv', or 'mmi'.
+        shakethresh: Optional, Float or list of shaking thresholds in %g for
+            pga, cm/s for pgv, float for mmi.
+
+    Returns:
+        Float if no shakethresh defined or only one shakethresh defined,
+        otherwise, a list of aggregate hazard for all shakethresh values.
+    """
+    Hagg = []
+    bounds = grid2D.getBounds()
+    lat0 = np.mean((bounds[2], bounds[3]))
+    lon0 = np.mean((bounds[0], bounds[1]))
+    #projs = '+proj=merc +a=6378137 +b=6378137 +lat_ts=%1.5f +lon_0=%1.5f +x_0=0.0 +y_0=0 +k=1.0 +units=km +nadgrids=@null +wktext  +no_defs' % (lat0, lon0)
+    #projs = '+proj=nzmg +lat_0=-41 +lon_0=173 +x_0=2510000 +y_0=6023150 +ellps=intl +towgs84=59.47,-5.04,187.44,0.47,-0.1,1.024,-4.5993 +units=km +no_defs'
+    #projs = '+proj=tmerc +lat_0=0 +lon_0=173 +k=0.9996 +x_0=1600000 +y_0=10000000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=km +no_defs'
+    #projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +a=6371007.181 +b=6371007.181 +units=km +no_defs' % (proj, lat0, lon0)
+    projs = '+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 +units=km +no_defs' % (proj, lat0, lon0)
+    geodict = grid2D.getGeoDict()
+
+    if shakefile is not None:
+        if type(shakethresh) is float or type(shakethresh) is int:
+            shakethresh = [shakethresh]
+        for shaket in shakethresh:
+            if shaket < 0.:
+                raise Exception('shaking threshold must be equal or greater than zero')
+        # resample shakemap to grid2D
+        temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True,
+                              doPadding=True, adjust='res')
+        shk = temp.getLayer(shakethreshtype)
+        if shk.getGeoDict() != geodict:
+            raise Exception('shakemap was not resampled to exactly the same geodict as the model')
+
+    if probthresh < 0.:
+        raise Exception('probability threshold must be equal or greater than zero')
+
+    grid = grid2D.project(projection=projs)
+    geodictRS = grid.getGeoDict()
+    cell_area_km2 = geodictRS.dx * geodictRS.dy
+    model = grid.getData()
+    model[np.isnan(model)] = -1.
+    if shakefile is not None:
+        for shaket in shakethresh:
+            modcop = model.copy()
+            shkgrid = shk.project(projection=projs)
+            shkdat = shkgrid.getData()
+            shkdat[np.isnan(shkdat)] = -1.  # use -1 to avoid nan errors and warnings, will always be thrown out because default is 0.
+            modcop[shkdat < shaket] = -1.
+            Hagg.append(np.sum(modcop[modcop >= probthresh] * cell_area_km2))
+    else:
+        Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+    if len(Hagg) == 1:
+        Hagg = Hagg[0]
+    return Hagg
+
+
+def computeHagg2(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethreshtype='pga', shakethresh=0.0):
+    """
+    Alternative Aggregate Hazard (Hagg), which is equal to the
+    the sum of the area of grid cell that exceeds a given probability.
+
+    Args:
+        grid2D: grid2D object of model output.
+        proj: projection to use to obtain equal area, 'moll'  mollweide, or
+            'laea' lambert equal area.
+        probthresh: Probability threshold, any values less than this will not
+            be included in aggregate hazard estimation.
+        shakefile: Optional, path to shakemap file to use for ground motion
+            threshold.
+        shakethreshtype: Optional, Type of ground motion to use for
+            shakethresh, 'pga', 'pgv', or 'mmi'.
+        shakethresh: Optional, Float or list of shaking thresholds in %g for
+            pga, cm/s for pgv, float for mmi.
+
+    Returns:
+        Float if no shakethresh defined or only one shakethresh defined,
+        otherwise, a list of aggregate hazard for all shakethresh values.
     """
     Hagg = []
     bounds = grid2D.getBounds()
@@ -407,11 +482,15 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None, shakethresh
             modcop = model.copy()
             shkgrid = shk.project(projection=projs)
             shkdat = shkgrid.getData()
-            shkdat[np.isnan(shkdat)] = -1.  # use -1 to avoid nan errors and warnings, will always be thrown out because default is 0.
+            # use -1 to avoid nan errors and warnings, will always be thrown
+            # out because default probthresh is 0 and must be positive.
+            shkdat[np.isnan(shkdat)] = -1.
             modcop[shkdat < shaket] = -1.
-            Hagg.append(np.sum(modcop[modcop >= probthresh] * cell_area_km2))
+            one_mat = np.ones_like(modcop)
+            Hagg.append(np.sum(one_mat[modcop >= probthresh] * cell_area_km2))
     else:
-        Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+        one_mat = np.ones_like(model)
+        Hagg.append(np.sum(one_mat[model >= probthresh] * cell_area_km2))
     if len(Hagg) == 1:
         Hagg = Hagg[0]
     return Hagg
