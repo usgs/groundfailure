@@ -49,6 +49,7 @@ def main(args):
             outdir = os.getcwd()
         else:
             outdir = args.output_filepath
+
         if (args.hdf5 or args.make_static_pngs or
                 args.make_static_pdfs or
                 args.make_interactive_plots or
@@ -263,9 +264,9 @@ def main(args):
                     filenames.append(filen)
 
         if args.make_webpage:
-
             webloc = makeWebpage(results, configs, args.web_template,
-                                 shakefile, outfolder=outfolder, cleanup=True)
+                                 shakefile, outfolder=outfolder,
+                                 includeAlert=args.alert, cleanup=True)
             filenames.append(webloc)
 
         # Write shakefile to a file for use later
@@ -613,6 +614,9 @@ if __name__ == '__main__':
         '-n', '--nest-folder', action='store_true', default=True,
         help='do not nest in output folder with eventid as name '
              '(default is it will nest)')
+    parser.add_argument(
+        '--alert', action='store_true', default=False,
+        help='Determine and report alert levels. Default is false')
     #parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 
