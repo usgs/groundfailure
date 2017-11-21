@@ -18,7 +18,7 @@ import json
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False,
-                shakethreshtype='pga', shakethresh=None):
+                shakethreshtype='pga', shakethresh=0.0):
     """
     :param maplayers: list of maplayer outputs from multiple models
     Create a webpage that summarizes ground failure results (both landslides
@@ -59,30 +59,18 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     images = os.path.join(content, 'images')
     theme = web_template
     static = os.path.join(theme, 'static')
-    try:
+    if not os.path.exists(outfolder):
         os.mkdir(outfolder)
-    except Exception as e:
-        print(e)
-    try:
+    if not os.path.exists(fullout):
         os.mkdir(fullout)
-    except Exception as e:
-        print(e)
-    try:
+    if not os.path.exists(content):
         os.mkdir(content)
-    except Exception as e:
-        print(e)
-    try:
+    if not os.path.exists(images):
         os.mkdir(images)
-    except Exception as e:
-        print(e)
-    try:
+    if not os.path.exists(pages):
         os.mkdir(pages)
-    except Exception as e:
-        print(e)
-    try:
+    if not os.path.exists(articles):
         os.mkdir(articles)
-    except Exception as e:
-        print(e)
     if os.path.exists(finalout):
         shutil.rmtree(finalout)
 
@@ -122,12 +110,11 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         limLS = []
         colLS = []
         namesLS = []
-
+        
         for conf, L in zip(confLS, LS):
-            # TODO: Add threshold option for Hagg
-            HaggLS.append(computeHagg(L['model']['grid']), probthresh=0.0,
+            HaggLS.append(computeHagg(L['model']['grid'], probthresh=0.0,
                           shakefile=shakemap, shakethreshtype=shakethreshtype,
-                          shakethresh=shakethresh)
+                          shakethresh=shakethresh))
             maxLS.append(np.nanmax(L['model']['grid'].getData()))
             plotorder, logscale, lims, colormaps, maskthreshes = \
                 makemaps.parseConfigLayers(L, conf, keys=['model'])
@@ -152,7 +139,9 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         namesLQ = []
 
         for conf, L in zip(confLQ, LQ):
-            HaggLQ.append(computeHagg(L['model']['grid']))
+            HaggLQ.append(computeHagg(L['model']['grid'], probthresh=0.0,
+                          shakefile=shakemap, shakethreshtype=shakethreshtype,
+                          shakethresh=shakethresh))
             maxLQ.append(np.nanmax(L['model']['grid'].getData()))
             plotorder, logscale, lims, colormaps, maskthreshes = \
                 makemaps.parseConfigLayers(L, conf, keys=['model'])

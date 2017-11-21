@@ -11,7 +11,7 @@ from impactutils.io.cmd import get_command_output
 import gfail.pdl as pdl
 
 # where is this script?
-homedir = os.path.dirname(os.path.abspath(__file__))
+homedir = '/Users/kallstadt/SecondaryHazards/Codes/groundfailure/tests'#os.path.dirname(os.path.abspath(__file__))
 upone = os.path.join(homedir, os.pardir)
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
@@ -40,7 +40,7 @@ def test_zhu2015(tmpdir):
     rc, so, se = get_command_output(pathcmd)
 
     # Run model
-    runcmd = "gfail --gis -pn -pi -pd zhu_2015.ini %s" % (shakegrid)
+    runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd" % (shakegrid)
     rc, so, se = get_command_output(runcmd)
 
     # Read in target file
@@ -84,15 +84,17 @@ def test_zhu2015_web(tmpdir):
     p = os.path.join(str(tmpdir), "sub")
     if not os.path.exists(p):
         os.makedirs(p)
+    else:
+        shutil.rmtree(p)
+        os.makedirs(p)
 
     # Modify paths
     pathcmd = pathcmd.replace('[TMPOUT]', p)
     rc, so, se = get_command_output(pathcmd)
 
     # Run model
-    template = os.path.join(upone, "pelican", "theme")
     conf = os.path.join(datadir, 'test_conf')
-    runcmd = "gfail --gis -w -t %s %s %s" % (template, conf, shakegrid)
+    runcmd = "gfail %s %s --gis -w --alert" % (conf, shakegrid)
     rc, so, se = get_command_output(runcmd)
 
     # Make PDL directory
