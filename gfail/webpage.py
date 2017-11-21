@@ -17,7 +17,8 @@ import json
 
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
-                includeunc=False, cleanup=True):
+                includeunc=False, cleanup=True, includeAlert=False,
+                shakethreshtype='pga', shakethresh=None):
     """
     :param maplayers: list of maplayer outputs from multiple models
     Create a webpage that summarizes ground failure results (both landslides
@@ -34,6 +35,12 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         includeunc (bool): include uncertainty, NOT IMPLEMENTED
         cleanup (bool): cleanup all unneeded intermediate files that
             pelican creates, default True.
+        includeAlert (bool): if True, computes and reports alert level, default
+            False
+        shakethreshtype (str): Type of ground motion to use for Hagg threshold,
+            'pga', 'pgv', or 'mmi'
+        shakethresh (float): Ground motion threshold corresponding to 
+            gmthreshtype. If None (default), no threshold will be used
 
     Returns:
         Folder where webpage files are located
@@ -118,7 +125,9 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
         for conf, L in zip(confLS, LS):
             # TODO: Add threshold option for Hagg
-            HaggLS.append(computeHagg(L['model']['grid']))
+            HaggLS.append(computeHagg(L['model']['grid']), probthresh=0.0,
+                          shakefile=shakemap, shakethreshtype=shakethreshtype,
+                          shakethresh=shakethresh)
             maxLS.append(np.nanmax(L['model']['grid'].getData()))
             plotorder, logscale, lims, colormaps, maskthreshes = \
                 makemaps.parseConfigLayers(L, conf, keys=['model'])
@@ -161,11 +170,18 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     write_summary(shakemap, pages, images,
                   HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
                   HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
-    alertLS, alertLQ, statement = get_alert(
-            HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
-            HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
-    topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
-    topfileLS = make_alert_img(alertLS, 'landslide', images)
+    if includeAlert:
+        alertLS, alertLQ, statement = get_alert(
+                HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
+                HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
+        topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
+        topfileLS = make_alert_img(alertLS, 'landslide', images)
+    else:
+        topfileLQ = None
+        topfileLS = None
+        alertLS = None
+        alertLQ = None
+
     write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
                      interactivehtml=filenameLQ[0], outjsfile=outjsfileLQ,
                      topimage=topfileLQ)
@@ -182,7 +198,6 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     alert_file = os.path.join(outfolder, 'alert.json')
     with open(alert_file, 'w') as f:
         json.dump(alert_dict, f)
-
 
     # run website
     retcode, stdout, stderr = get_command_output(
@@ -326,21 +341,24 @@ def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
         file1.write('modified: 2017-06-09\n')
-        file1.write('# Ground failure\n')
-        file1.write('### Last updated at: %s (UTC)\n'
-                    % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('### Based on ground motion estimates from '
-                    'ShakeMap version %1.1f\n'
-                    % edict['version'])
+        file1.write('# Ground Failure\n')
+
         file1.write('## Magnitude %1.1f - %s\n'
                     % (edict['magnitude'],
                        edict['event_description']))
-        file1.write('### %s (UTC) | %1.4f°,  %1.4f° | %1.1f km\n'
+
+        file1.write('### %s (UTC) | %1.4f°,  %1.4f° | %1.1f km depth\n'
                     % (edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
                        edict['lat'],
                        edict['lon'], edict['depth']))
 
-        file1.write('### Summary\n')
+        file1.write('Last updated at: %s (UTC)\n\n'
+                    % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        file1.write('Based on ground motion estimates from '
+                    'ShakeMap version %1.1f\n'
+                    % edict['version'])
+
+        file1.write('## Summary\n')
         file1.write(statement)
         file1.write('<hr>')
 
