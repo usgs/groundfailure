@@ -4,8 +4,6 @@ TODO:
     - Add max probability to product properties
     - Add support to specify location of PDL key
     - Potentially add more files (e.g., png, pdf)
-    - Improve evensourcecode issue, although this can probably only happen
-      once is it fixed in shakemap's grid.xml.
 """
 import os
 import numpy as np
@@ -66,7 +64,7 @@ def transfer(eventid, pdl_conf, pdl_bin=None, source="us", dryrun=False):
 
     # Note that eventsource is like 'catalog' for scenarios, but I think for
     # real events this is just the same as 'source'
-    eventsource = source
+    eventsource = event_dict['event_network']
     if eventid.startswith(eventsource):
         code = eventid
         nch = len(eventsource)
