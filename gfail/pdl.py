@@ -68,11 +68,11 @@ def transfer(eventid, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     # real events this is just the same as 'source'
     eventsource = source
     if eventid.startswith(eventsource):
-        code = eventsource + eventid
+        code = eventid
         nch = len(eventsource)
         eventsourcecode = eventid[nch:]
     else:
-        code = eventid
+        code = eventsource + eventid
         eventsourcecode = eventid
 
     pdl_type = 'groundfailure'
