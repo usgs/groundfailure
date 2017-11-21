@@ -11,7 +11,7 @@ from impactutils.io.cmd import get_command_output
 import gfail.pdl as pdl
 
 # where is this script?
-homedir = '/Users/kallstadt/SecondaryHazards/Codes/groundfailure/tests'#os.path.dirname(os.path.abspath(__file__))
+homedir = os.path.dirname(os.path.abspath(__file__))
 upone = os.path.join(homedir, os.pardir)
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
