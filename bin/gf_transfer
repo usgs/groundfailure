@@ -16,6 +16,7 @@ def main(args):
     print('done.')
     if log['rc'] is True:
         print('Successful PDL transfer.')
+
         # Construct URL to index.html
         url_template = ('https://dev01-earthquake.cr.usgs.gov/archive'
                         '/product/[TYPE]/[ID]/[SOURCE]/[TIME]/html/index.html')
@@ -31,14 +32,25 @@ def main(args):
             '[ID]', eventid).replace(
             '[SOURCE]', source).replace(
             '[TIME]', timestamp)
+
+        # URL for event's detail feed
+        feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
+                'query?eventid=[EVENTID]&format=geojson')
+        feed = feed.replace('[EVENTID]', eventid)
+
         # Print to screen
         print("Web page URL:")
         print(url)
+        print("Event detail JSON feed:")
+        print(feed)
+
         # Save to file
         with open("url.txt", "w") as f:
             f.write(url)
+            f.write(feed)
     else:
         print('PDL transfer failed.')
+
     with open("gf_transfer.log", "w") as f:
         f.write('----------------\n')
         f.write('Standard Output:\n')
@@ -48,6 +60,7 @@ def main(args):
         f.write('Standard Error:\n')
         f.write('----------------\n')
         f.write(log['se'].decode())
+
 
 if __name__ == '__main__':
 
