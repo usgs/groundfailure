@@ -14,10 +14,40 @@ def main(args):
     print('Transferring...')
     log = pdl.transfer(args.eventid, args.pdl_config)
     print('done.')
-    print(log['rc'])
-    print(log['so'].decode())
-    print(log['se'].decode())
-
+    if log['rc'] is True:
+        print('Successful PDL transfer.')
+        # Construct URL to index.html
+        url_template = ('https://dev01-earthquake.cr.usgs.gov/archive'
+                        '/product/[TYPE]/[ID]/[SOURCE]/[TIME]/html/index.html')
+        se_lines = log['se'].decode().split("\n")
+        info_line = [l for l in se_lines if 'send complete Socket' in l][0]
+        info = info_line.split(':')
+        timestamp = info[-1].replace("'", "")
+        eventid = info[-2]
+        ptype = info[-3]
+        source = info[-4]
+        url = url_template.replace(
+            '[TYPE]', ptype).replace(
+            '[ID]', eventid).replace(
+            '[SOURCE]', source).replace(
+            '[TIME]', timestamp)
+        # Print to screen
+        print("Web page URL:")
+        print(url)
+        # Save to file
+        with open("url.txt", "w") as f:
+            f.write(url)
+    else:
+        print('PDL transfer failed.')
+    with open("gf_transfer.log", "w") as f:
+        f.write('----------------\n')
+        f.write('Standard Output:\n')
+        f.write('----------------\n')
+        f.write(log['so'].decode())
+        f.write('----------------\n')
+        f.write('Standard Error:\n')
+        f.write('----------------\n')
+        f.write(log['se'].decode())
 
 if __name__ == '__main__':
 
