@@ -41,9 +41,6 @@ from mapio.grid2d import Grid2D
 from mapio.basemapcity import BasemapCities
 from mapio.shake import ShakeGrid
 
-import warnings
-warnings.filterwarnings('ignore')
-
 # So figures will still be created even without display
 mpl.use('Agg')
 
@@ -1189,9 +1186,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
         dat = grid.getData().copy()
 
-
         # Find order of range to know how to scale
-        if dat.nanmax > 0.:
+        if np.nanmax(dat) > 0.:
             minnonzero = np.nanmin(dat[dat > 0.])
         else:
             minnonzero = 0.0001

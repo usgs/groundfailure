@@ -26,11 +26,6 @@ from gfail.makemaps import (parseConfigLayers, parseMapConfig,
 from gfail.webpage import makeWebpage
 from mapio.shake import ShakeGrid
 
-# temporary until mapio is updated
-import warnings
-warnings.filterwarnings('ignore')
-
-
 def main(args):
     # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
     if args.set_default_paths:
