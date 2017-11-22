@@ -17,7 +17,7 @@ import json
 
 # temporary until mapio is updated
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings('ignore')
 
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,

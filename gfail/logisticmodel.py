@@ -29,7 +29,7 @@ from gfail.temphdf import TempHdf
 
 # temporary until mapio is updated
 import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning) 
+warnings.filterwarnings('ignore') 
 
 PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'

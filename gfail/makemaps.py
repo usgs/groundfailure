@@ -12,7 +12,6 @@ import matplotlib as mpl
 from matplotlib.colors import LightSource, LogNorm, Normalize
 import re
 from matplotlib.colorbar import ColorbarBase
-from matplotlib.ticker import FormatStrFormatter
 
 # third party imports
 import matplotlib.cm as cm
@@ -41,6 +40,9 @@ from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
 from mapio.basemapcity import BasemapCities
 from mapio.shake import ShakeGrid
+
+import warnings
+warnings.filterwarnings('ignore')
 
 # So figures will still be created even without display
 mpl.use('Agg')
