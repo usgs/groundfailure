@@ -1034,8 +1034,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             estimate the limits, when an array is specified but the scale
             type is continuous, vmin will be set to min(array) and vmax will
             be set to max(array).
-        logscale (list): None or Nx1 list of booleans defining whether to use
-            a log scale or not for each layer.
+        logscale (list): None, single boolean value, or Nx1 list of booleans
+            defining whether to use a log scale or not for each layer.
         ALPHA (float): Transparency for mapping, if there is a hillshade that
             will plot below each layer, it is recommended to set this to at
             least 0.7.
@@ -1079,7 +1079,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
     """
     if separate and sepcolorbar:
         sepcolorbar = False
-
+        
     plt.ioff()
     clear_color = [0, 0, 0, 0.0]
     if plotorder is None:
@@ -1087,7 +1087,32 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             plotorder = [m.keys() for m in grids]
         else:
             plotorder = grids.keys()
+
+    if type(logscale) != list:
+        logscale = np.repeat(logscale, len(plotorder))
+
+    if lims is None:
+        lims = np.repeat(None, len(plotorder))
+    elif len(lims) != len(plotorder):
+        print('length of lims not equal to length of plotorder,\
+              setting lims as None for all layers')
+        lims = np.repeat(None, len(plotorder))
+
+    if maskthreshes is None:
+        maskthreshes = np.repeat(None, len(plotorder))
+    elif len(maskthreshes) != len(plotorder):
+        print('length of maskthreshes not equal to length of plotorder,\
+              setting maskthreshes as None for all layers')
+        maskthreshes = np.repeat(None, len(plotorder))
+
     defaultcolormap = cm.CMRmap_r
+    
+    if colormaps is None:
+        colormaps = np.repeat(defaultcolormap, len(plotorder))
+    elif len(colormaps) != len(plotorder):
+        print('length of colormaps not equal to length of plotorder,\
+              setting colormaps to default or %s for all layers' % defaultcolormap)
+        colormaps = np.repeat(defaultcolormap, len(plotorder))
 
     if shakefile is not None:
         edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
@@ -1153,105 +1178,113 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         if outfilename is None:
             outfilename = '%s_%s' % (edict['event_id'], sref_fix)
 
-        if colormaps is not None and len(colormaps) == len(plotorder):
-            if colormaps[k] is not None:
-                palette = colormaps[k]
-            else:
-                palette = defaultcolormap
-        else:  # Find preferred default color map for each type of layer
-                palette = defaultcolormap
+        if colormaps[k] is not None:
+            palette = colormaps[k]
+        else:
+            palette = defaultcolormap
 
         palette.set_bad(clear_color, alpha=0.0)
 
         dat = grid.getData().copy()
+
+        # Find order of range to know how to scale
+        
+        minnonzero = np.nanmin(dat[dat > 0.])
+
         if clear_zero:
             dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
 
         if scaletype.lower() == 'binned':
-            if logscale is not False and len(logscale) == len(plotorder):
-                if logscale[k] is True:
-                    clev = 10.**(np.arange(np.floor(np.log10(np.nanmin(dat))),
-                                           np.ceil(np.log10(np.nanmax(dat))),
-                                           0.25))
-                else:
-                    # Find order of range to know how to scale
-                    order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
+            order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
+            if logscale[k]:
+                clev = np.logspace(np.floor(np.log10(minnonzero)),
+                                   np.ceil(np.log10(np.nanmax(dat))), 2*order+1)
+                # Adjust to colorbar levels
+                
+                dat[dat < clev[0]] = clev[0]
+                for j, level in enumerate(clev[:-1]):
+                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
+                        (clev[j] + clev[j+1])/2.
+                # So colorbar saturates at top
+                dat[dat > clev[-1]] = clev[-1]
+                vmin = np.log10(clev[0])
+                vmax = np.log10(clev[-1])
+            else:
+                if lims[k] is None:
                     if order < 1.:
                         scal = 10**-order
                     else:
                         scal = 1.
-
-                    if lims is None or len(lims) != len(plotorder):
-                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)),
-                                            np.ceil(scal*np.nanmax(dat)),
-                                            10))/scal
-                    else:
-                        if lims[k] is None:
-                            clev = (np.linspace(np.floor(scal*np.nanmin(dat)),
-                                                np.ceil(scal*np.nanmax(dat)),
-                                                10))/scal
-                        else:
-                            clev = lims[k]
-            else:
-                # Find order of range to know how to scale
-                order = np.round(np.log(np.nanmax(dat) - np.nanmin(dat)))
-                if order < 1.:
-                    scal = 10**-order
-                else:
-                    scal = 1.
-
-                if lims is None or len(lims) != len(plotorder):
-                    clev = (np.linspace(np.floor(scal*np.nanmin(dat)),
+                    clev = (np.linspace(np.floor(scal*minnonzero),
                                         np.ceil(scal*np.nanmax(dat)),
-                                        10))/scal
+                                        6))/scal
                 else:
-                    if lims[k] is None:
-                        clev = (np.linspace(np.floor(scal*np.nanmin(dat)),
-                                            np.ceil(scal*np.nanmax(dat)),
-                                            10))/scal
-                    else:
-                        clev = lims[k]
+                    clev = lims[k]
 
-            # Adjust to colorbar levels
-            dat[dat < clev[0]] = clev[0]
-            for j, level in enumerate(clev[:-1]):
-                dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
-                    (clev[j] + clev[j+1])/2.
-            # So colorbar saturates at top
-            dat[dat > clev[-1]] = clev[-1]
-            vmin = clev[0]
-            vmax = clev[-1]
+                # Adjust to colorbar levels
+                dat[dat < clev[0]] = clev[0]
+                for j, level in enumerate(clev[:-1]):
+                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
+                        (clev[j] + clev[j+1])/2.
+                # So colorbar saturates at top
+                dat[dat > clev[-1]] = clev[-1]
+                vmin = clev[0]
+                vmax = clev[-1]
 
         else:
-            if lims is not None and len(lims) == len(plotorder):
-                if lims[k] is None:
+
+            if lims[k] is None:
+                if logscale[k]:
+                    order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
+                    clev = np.logspace(np.floor(np.log10(minnonzero)),
+                                       np.ceil(np.log10(np.nanmax(dat))), order+1)
+                    vmin = np.log10(clev[0])
+                    vmax = np.log10(clev[-1])
+                else:
                     vmin = np.nanmin(dat)
                     vmax = np.nanmax(dat)
+                    clev = np.linspace(vmin, vmax, 6)
+            else:
+                if logscale[k]:
+                    order = np.ceil(np.log10(lims[k][-1])) - np.floor(np.log10(minnonzero))
+                    clev = np.logspace(np.floor(np.log10(minnonzero)),
+                                       np.ceil(np.log10(lims[k][-1])), order+1)
+                    vmin = np.log10(clev[0])
+                    vmax = np.log10(clev[-1])
                 else:
                     vmin = lims[k][0]
                     vmax = lims[k][-1]
-            else:
-                vmin = np.nanmin(dat)
-                vmax = np.nanmax(dat)
-            clev = np.linspace(vmin, vmax, 10)
+                    clev = np.linspace(vmin, vmax, 6)
 
-        if maskthreshes is not None and len(maskthreshes) == len(plotorder):
-            if maskthreshes[k] is not None:
-                dat[dat <= maskthreshes[k]] = float('nan')
+        if maskthreshes[k] is not None:
+            dat[dat <= maskthreshes[k]] = float('nan')
 
-        if maskthreshes is not None or clear_zero:
+        if maskthreshes[k] is not None or clear_zero:
             dat = np.ma.array(dat, mask=np.isnan(dat))
         else:
             dat[np.isnan(dat)] = 0.
 
+        if logscale[k]:
+            norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
+        else:
+            norm = Normalize(vmin=vmin, vmax=vmax)
+
         # turn data into an RGBA image
         # adjust data so scaled between vmin and vmax and between 0 and 1
         cmap = palette
-        dat1 = dat.copy()
-        dat1[dat1 < vmin] = vmin  # saturate at ends
-        dat1[dat1 > vmax] = vmax
-        dat1 = (dat1 - vmin)/(vmax-vmin)
-        rgba_img = cmap(dat1)
+        
+        if logscale[k]:
+            dat1 = np.log10(dat.copy())
+            dat1[dat1 < vmin] = vmin  # saturate at ends
+            dat1[dat1 > vmax] = vmax
+            dat1 = (dat1 - vmin)/(vmax-vmin)
+            rgba_img = cmap(dat1)
+        else:
+            dat1 = dat.copy()
+            dat1[dat1 < vmin] = vmin  # saturate at ends
+            dat1[dat1 > vmax] = vmax
+            dat1 = (dat1 - vmin)/(vmax-vmin)
+            rgba_img = cmap(dat1)
 
         gd = grid.getGeoDict()
         minlat = gd.ymin - gd.dy/2.
@@ -1259,27 +1292,19 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         maxlat = gd.ymax + gd.dy/2.
         maxlon = gd.xmax + gd.dx/2.
 
-        if logscale is not False and len(logscale) == len(plotorder):
-            norm = Normalize(vmin=vmin, vmax=vmax)
-            if logscale[k] is True:
-                norm = LogNorm(vmin=vmin, vmax=vmax)
-        else:
-            norm = Normalize(vmin=vmin, vmax=vmax)
 
         # Make colorbar figure
 
         if sepcolorbar:
-            cbfmt = '%1.1f'
-            if vmax is not None and vmin is not None:
-                if logscale is not False and len(logscale) == len(plotorder):
-                    if logscale[k] is True:
-                        cbfmt = '%1.0e'
-                elif vmax < 1.:
-                    cbfmt = '%1.2f'
-                if vmax >= 1. and vmax < 5.:
-                    cbfmt = '%1.1f'
-                elif vmax >= 5.:  # (vmax - vmin) > len(clev):
-                    cbfmt = '%1.0f'
+            if vmax < 1.:
+                cbfmt = '%1.2f'
+            elif vmax >= 1. and vmax < 5.:
+                cbfmt = '%1.1f'
+            elif vmax >= 5.:  # (vmax - vmin) > len(clev):
+                cbfmt = '%1.0f'
+
+            if logscale[k]: # override previous choice if logscale
+                cbfmt = None #'%1.0e'
 
             if separate:
                 fig = plt.figure(figsize=(4., 1.0))
@@ -1292,18 +1317,20 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
             if scaletype.lower() == 'binned':
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                             orientation='horizontal', extend='both',
-                             format=cbfmt, spacing='proportional',
+                             orientation='horizontal', format=cbfmt,
                              ticks=clev, boundaries=clev))
             else:
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
                              orientation='horizontal', extend='both',
-                             format=cbfmt))
-
+                             format=cbfmt, ticks=clev))
+            if logscale[k]:
+                cbars[k].ax.tick_params(labelsize=8)
+            else:
+                cbars[k].ax.tick_params(labelsize=10)
             cbars[k].set_label('%s - %s' % (label1, sref), fontsize=10)
-            cbars[k].ax.tick_params(labelsize=10)
-            cbars[k].ax.yaxis.set_major_formatter(FormatStrFormatter(cbfmt))
-            plt.tight_layout()
+            cbars[k].ax.set_aspect(0.05)
+            #plt.tight_layout()
+            plt.subplots_adjust(hspace=0.3, left=0.01, right=0.99, top=0.99, bottom=0.01)
             if separate:
                 ctemp = '%s_%s_colorbar.png' % (outfilename, keyS)
                 # This file has to move with the html files
@@ -1382,7 +1409,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         if key != onkey and separate is False and savefiles:
             removelater.append(images[k].get_name())
 
-        if sepcolorbar and floatcb:
+        if sepcolorbar and floatcb and k == len(plotorder)-1:
             plugins.FloatImage(ctemp, bottom=0, left=1).add_to(map1)
         elif not sepcolorbar:
             if scaletype.lower() == 'binned':
@@ -1453,6 +1480,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 plt.close('all')
                 if len(removelater) > 0:  # Make only one layer show up initially
                     removeVis(filen, removelater, map1.get_name())
+
         if separate and len(plotorder) > 1:
             maps.append(map1)
 

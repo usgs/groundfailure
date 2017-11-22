@@ -15,6 +15,10 @@ import shutil
 import glob
 import json
 
+# temporary until mapio is updated
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False,

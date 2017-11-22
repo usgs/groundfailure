@@ -27,6 +27,10 @@ from mapio.geodict import GeoDict
 
 from gfail.temphdf import TempHdf
 
+# temporary until mapio is updated
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning) 
+
 PARAM_PATTERN = 'b[0-9]+'
 LAYER_PATTERN = '_layer'
 TERM_PATTERN = 'term'
