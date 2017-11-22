@@ -12,7 +12,7 @@ def main(args):
 
     # Transfer
     print('Transferring...')
-    log = pdl.transfer(args.eventid, args.pdl_config)
+    log = pdl.transfer(args.eventid, args.pdl_config, dryrun=args.dry_run)
     print('done.')
     if log['rc'] is True:
         print('Successful PDL transfer.')
@@ -69,6 +69,10 @@ if __name__ == '__main__':
 
     parser.add_argument('eventid', help='Event id.')
     parser.add_argument('pdl_config', help='Path to PDL config.')
+
+    parser.add_argument(
+        '-d', '--dry-fun', action='store_true', default=False,
+        help='Dry run of pdl transfer')
 
     args = parser.parse_args()
     main(args)

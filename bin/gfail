@@ -243,7 +243,8 @@ def main(args):
                     colormaps=colormaps, isScenario=False,
                     scaletype='continuous', lims=lims, logscale=logscale,
                     ALPHA=0.7, outputdir=outfolder, outfilename=filename,
-                    tiletype='Stamen Terrain', separate=True)
+                    tiletype='Stamen Terrain', separate=True,
+                    faultfile=args.fault_file)
                 for filen in filenames1:
                     filenames.append(filen)
             if args.make_webpage:
@@ -270,7 +271,8 @@ def main(args):
         if args.make_webpage:
             webloc = makeWebpage(results, configs, args.web_template,
                                  shakefile, outfolder=outfolder,
-                                 includeAlert=args.alert, cleanup=True)
+                                 includeAlert=args.alert, cleanup=True,
+                                 faultfile=args.fault_file)
             filenames.append(webloc)
 
         # Write shakefile to a file for use later
@@ -580,6 +582,9 @@ if __name__ == '__main__':
         '-t', '--web-template', metavar='template', nargs='?',
         default=web_template,
         help='location of directory containing pelican files and templates')
+    parser.add_argument(
+        '-f', '--finite-fault', metavar='finitefault', nargs='?',
+        default=None, help='geojson file to show on interactive maps')
 
     # Binary
     parser.add_argument(
