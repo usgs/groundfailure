@@ -375,7 +375,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     maplayers['model'] = {
         'grid': GDALGrid(PROB, shakemap.getGeoDict()),
-        'label': 'Areal coverage',
+        'label': 'Landslide Areal coverage',
         'type': 'output',
         'description': description
     }

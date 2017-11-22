@@ -15,12 +15,15 @@ import shutil
 import glob
 import json
 
+# temporary until mapio is updated
+import warnings
+warnings.filterwarnings('ignore')
+
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False,
                 shakethreshtype='pga', shakethresh=0.0):
     """
-    :param maplayers: list of maplayer outputs from multiple models
     Create a webpage that summarizes ground failure results (both landslides
         and liquefaction)
 
@@ -31,15 +34,15 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         web_template (str): Path to location of pelican template
             (final folder should be "theme")
         shakemap (str): path to shakemap .xml file for the current event
-        outfolder (str): path to folder where output should be placed
-        includeunc (bool): include uncertainty, NOT IMPLEMENTED
-        cleanup (bool): cleanup all unneeded intermediate files that
+        outfolder (str, optional): path to folder where output should be placed
+        includeunc (bool, optional): include uncertainty, NOT IMPLEMENTED
+        cleanup (bool, optional): cleanup all unneeded intermediate files that
             pelican creates, default True.
-        includeAlert (bool): if True, computes and reports alert level, default
+        includeAlert (bool, optional): if True, computes and reports alert level, default
             False
-        shakethreshtype (str): Type of ground motion to use for Hagg threshold,
+        shakethreshtype (str, optional): Type of ground motion to use for Hagg threshold,
             'pga', 'pgv', or 'mmi'
-        shakethresh (float): Ground motion threshold corresponding to 
+        shakethresh (float, optional): Ground motion threshold corresponding to
             gmthreshtype. If None (default), no threshold will be used
 
     Returns:
@@ -110,7 +113,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         limLS = []
         colLS = []
         namesLS = []
-        
+
         for conf, L in zip(confLS, LS):
             HaggLS.append(computeHagg(L['model']['grid'], probthresh=0.0,
                           shakefile=shakemap, shakethreshtype=shakethreshtype,
@@ -161,8 +164,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                   HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
     if includeAlert:
         alertLS, alertLQ, statement = get_alert(
-                HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
-                HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
+            HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
+            HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
         topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
         topfileLS = make_alert_img(alertLS, 'landslide', images)
     else:
@@ -312,14 +315,21 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         file1.write('</table>')
 
 
-def write_scibackground(configLS, configLQ):
-    """
-    Write markdown file describing model background and references.
-    """
-    pass
-
-
 def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
+    """
+    Write markdown file summarizing event
+
+    Args:
+        shakemap (str): path to shakemap .xml file for the current event
+        outputdir (str): path to folder where output should be placed
+        imgoutputdir (str): path to folder where images should be placed
+            and linked
+        HaggLS (float, optional): Aggregate hazard of preferred landslide model
+        HaggLQ (float, optional): Aggregate hazard of preferred liquefaction model
+
+    Returns:
+        Markdown file
+    """
     edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
     temp = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
     edict['eventid'] = temp['shakemap_id']
@@ -355,28 +365,24 @@ def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
 def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.],
               binLQ=[70., 500., 1200.]):
     """
-    Bin edges (3 values) between Green and Yellow, Yellow and Orange, and
-    Orange and Red.
-
-    LS based on Nowicki et al. (2014) model results:
-
-    * Red >4000
-    * Orange 850--4000
-    * Yellow 100--850
-    * Green <100
-
-    LQ ased on Zhu et al. (2017) general model results:
-
-    * Red >1000
-    * Orange 120--1000
-    * Yellow 70--120
-    * Green <70
+    Get alert levels
 
     Args:
-        HaggLS (float): Aggregate landslide hazard.
-        HaggLQ (float): Aggregate liquefaction hazard.
-        binLS (list): List of alert cutoffs for landsliding.
-        binLQ (list): List of alert cutoffs for liquefaction.
+        HaggLS (float): Aggregate hazard (km2) of preferred landslide model
+        HaggLQ (float): Aggregate hazard (km2) of preferred liquefaction model
+        binLS (list, optional): 3 element list of bin edges for landslide alert
+            between Green and Yellow, Yellow and Orange, and Orange and Red.
+        binLQ (list, optional): 3 element list of bin edges for liquefaction
+            alert between Green and Yellow, Yellow and Orange, and Orange
+            and Red.
+
+    Returns:
+        Returns:
+            tuple: alertLS, alertLQ, statement, where
+                * alertLS is the landslide alert level (str)
+                * alertLQ is the liquefaction alert level (str)
+                * statement is a sentence describing the ground failure hazard
+                    based on the alert levels (str)
     """
     if HaggLS is None:
         alertLS = None
