@@ -1189,9 +1189,12 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
         dat = grid.getData().copy()
 
+
         # Find order of range to know how to scale
-        
-        minnonzero = np.nanmin(dat[dat > 0.])
+        if dat.nanmax > 0.:
+            minnonzero = np.nanmin(dat[dat > 0.])
+        else:
+            minnonzero = 0.0001
 
         if clear_zero:
             dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
