@@ -42,7 +42,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             False
         shakethreshtype (str, optional): Type of ground motion to use for Hagg threshold,
             'pga', 'pgv', or 'mmi'
-        shakethresh (float, optional): Ground motion threshold corresponding to 
+        shakethresh (float, optional): Ground motion threshold corresponding to
             gmthreshtype. If None (default), no threshold will be used
 
     Returns:
@@ -113,7 +113,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         limLS = []
         colLS = []
         namesLS = []
-        
+
         for conf, L in zip(confLS, LS):
             HaggLS.append(computeHagg(L['model']['grid'], probthresh=0.0,
                           shakefile=shakemap, shakethreshtype=shakethreshtype,
@@ -164,8 +164,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                   HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
     if includeAlert:
         alertLS, alertLQ, statement = get_alert(
-                HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
-                HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
+            HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
+            HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
         topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
         topfileLS = make_alert_img(alertLS, 'landslide', images)
     else:
