@@ -22,7 +22,7 @@ warnings.filterwarnings('ignore')
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False,
-                shakethreshtype='pga', shakethresh=0.0):
+                shakethreshtype='pga', shakethresh=0.0, faultfile=None):
     """
     Create a webpage that summarizes ground failure results (both landslides
         and liquefaction)
@@ -44,6 +44,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             'pga', 'pgv', or 'mmi'
         shakethresh (float, optional): Ground motion threshold corresponding to
             gmthreshtype. If None (default), no threshold will be used
+        faultfile (str, optional): GeoJson file of finite fault to display on
+            interactive maps
 
     Returns:
         Folder where webpage files are located
@@ -131,7 +133,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             colormaps=colLS, lims=limLS, clear_zero=False,
             logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
             mapid='LS', savefiles=True, outputdir=images,
-            sepcolorbar=True, floatcb=False)
+            sepcolorbar=True, floatcb=False, faultfile=faultfile)
 
     if len(LQ) > 0:
         HaggLQ = []
@@ -157,7 +159,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             colormaps=colLQ, lims=limLQ, clear_zero=False,
             logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
             savefiles=True, mapid='LQ', outputdir=images,
-            sepcolorbar=True, floatcb=False)
+            sepcolorbar=True, floatcb=False, faultfile=faultfile)
 
     write_summary(shakemap, pages, images,
                   HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
