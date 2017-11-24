@@ -20,7 +20,7 @@ import csv
 import datetime
 
 # local imports
-from groundfailure.sample import pointsFromShapes
+from gfail.sample import pointsFromShapes
 from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
