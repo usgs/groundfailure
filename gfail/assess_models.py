@@ -39,6 +39,7 @@ def concatenateModels(modellist, astitle='id', includeunc=False):
     Put several models together into dictionary in format for modelSummary.
 
     Args:
+        modellist: List of model results.
         astitle: 'id' to use shakemap id or 'model' to use model name.
         includeunc: include modelmin and modelmax if present, will include in
             same dictionary as model.
@@ -560,7 +561,6 @@ def convert2Coverage(gdict, inventory, numdiv=30.0, method='nearest',
         gdict: Geodict, likely taken from model to compare inventory against.
         inventory: Path to shapefile of inventory, must be in geographic
             coordinates, WGS84.
-        inventory: Path to inventory.
         numdiv: Approximate amount to subdivide each cell of geodict by to
             compute areas (higher number slower but more accurate).
         method: Method for resampling when projecting back to geographic
@@ -640,8 +640,8 @@ def convert2Prob(gdict, inventory, mustContainCenter=False):
 
     Args:
         gdict: Geodict, likely taken from model to compare inventory against.
-        inventory: Full file path to shapefile of inventory, must be in
-            geographic coordinates, WGS84.
+        inventory: Path to shapefile of inventory, must be in geographic
+            coordinates, WGS84.
         mustContainCenter: Bool indicating whether the geometry must touch
             the center of the cell versus be inside the cell extent in order
             to set the value. Note that when false the class balance is not
@@ -715,10 +715,11 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True,
     # Make statistical comparisons
     results = {}
     if bins is None:
-        bins = np.linspace(0, np.max((inv.max(), model.max())), 11)
+        bins = np.linspace(0, np.max((np.nanmax(inv), np.nanmax(model))), 11)
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.hist((model, inv), bins=bins)
+    notnans = ~np.isnan(model) & ~np.isnan(inv)
+    ax.hist((model[notnans], inv[notnans]), bins=bins)
     ax.set_yscale('log')
     ax.legend(('Model', 'Inventory'))
     ax.set_ylabel('Total # of cells')
