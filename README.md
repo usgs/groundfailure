@@ -14,8 +14,9 @@ near-real-time, triggered by the Shakemaps.
 
 The API docs can be found [here](http://usgs.github.io/groundfailure/). 
 Besides the API, there are two command-line programs:
--`gfail`
--`gf_transfer`
+    - `gfail`
+    - `gf_transfer`
+
 Documentation for the use of these programs can be seen by calling them
 with the `-h` flag. 
 
@@ -34,8 +35,8 @@ in the defaultconfigfiles folder of the
 These can be edited but to avoid overwriting your changes each time you update
 the groundfailure codes, you should edit copies outside of the repository.
 
-Default options, such as the output directory, paths to input data files, paths to mapping files etc.
-can be specified using gfail, see below for details.
+Default options, such as the output directory, paths to input data files, paths
+to mapping files etc. can be specified using gfail, see below for details.
 
 ### Using gfail to set default paths on system (gfail must be in system path)
 
