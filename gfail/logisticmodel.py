@@ -65,11 +65,14 @@ class LogisticModel(object):
                 VALUE IN CONFIG.
             bounds (dict): Default of None uses ShakeMap boundaries, otherwise
                 a dictionary of boundaries to cut to like
+
                 .. code-block:: python
+
                     bounds = {
                         'xmin': lonmin, 'xmax': lonmax,
                         'ymin': latmin, 'ymax': latmax
                     }
+
             numstd (float): Number of +/- standard deviations to use if
                 uncertainty is computed.
             slopemod (str): How slope input should be modified to be in
@@ -704,8 +707,11 @@ def validateCoefficients(cmodel):
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.
+
             .. code-block:: python
+
                 cmodel = config['test_model']
+
     Returns:
         dict: a dictionary of model coefficients named b0, b1, b2...
     """
@@ -727,15 +733,21 @@ def validateLayers(cmodel):
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.
+
             .. code-block:: python
+
                 cmodel = config['test_model']
+
     Returns:
         dict: a dictionary of file names, e.g.
+
         .. code-block:: python
+
             {
                 'slope': 'slopefile.bil',
                 'vs30': 'vs30.grd'
             }
+
     """
     layers = {}
     for key in cmodel['layers'].keys():
@@ -764,23 +776,35 @@ def validateTerms(cmodel, coeffs, layers):
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.
+
             .. code-block:: python
+
                 cmodel = config['test_model']
+
         coeffs (dict): Dictionary of model coefficients, e.g.
+
             .. code-block:: python
+
                 {'b0': 3.5, 'b1': -0.01}
+
         layers (dict): Dictionary of file names for all input layers, e.g.
+
             .. code-block:: python
+
                 {'slope': 'slopefile.bil', 'vs30': 'vs30.grd'}
+
     Returns:
         tuple: (terms, timeField), where
             - 'terms' is a dictionary of terms that form the model equation,
               e.g.
+
             .. code-block:: python
+
                 {
                     'b1': "self.layerdict['friction'].getData()",
                     'b2': "self.layerdict['slope'].getData()/100."
                 }
+
             - 'timeField' indicates the time that is used to know which input
               file to read in, e.g. for monthly average precipitation, 'MONTH'.
     """

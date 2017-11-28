@@ -68,6 +68,11 @@
 
 <span class="kn">from</span> <span class="nn">gfail.temphdf</span> <span class="k">import</span> <span class="n">TempHdf</span>
 
+<span class="c1"># temporary until mapio is updated</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+
+
 <span class="n">PARAM_PATTERN</span> <span class="o">=</span> <span class="s1">&#39;b[0-9]+&#39;</span>
 <span class="n">LAYER_PATTERN</span> <span class="o">=</span> <span class="s1">&#39;_layer&#39;</span>
 <span class="n">TERM_PATTERN</span> <span class="o">=</span> <span class="s1">&#39;term&#39;</span>
@@ -101,11 +106,14 @@
 <span class="sd">                VALUE IN CONFIG.</span>
 <span class="sd">            bounds (dict): Default of None uses ShakeMap boundaries, otherwise</span>
 <span class="sd">                a dictionary of boundaries to cut to like</span>
+
 <span class="sd">                .. code-block:: python</span>
+
 <span class="sd">                    bounds = {</span>
 <span class="sd">                        &#39;xmin&#39;: lonmin, &#39;xmax&#39;: lonmax,</span>
 <span class="sd">                        &#39;ymin&#39;: latmin, &#39;ymax&#39;: latmax</span>
 <span class="sd">                    }</span>
+
 <span class="sd">            numstd (float): Number of +/- standard deviations to use if</span>
 <span class="sd">                uncertainty is computed.</span>
 <span class="sd">            slopemod (str): How slope input should be modified to be in</span>
@@ -740,8 +748,11 @@
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
 <span class="sd">            e.g.</span>
+
 <span class="sd">            .. code-block:: python</span>
+
 <span class="sd">                cmodel = config[&#39;test_model&#39;]</span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: a dictionary of model coefficients named b0, b1, b2...</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -763,15 +774,21 @@
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
 <span class="sd">            e.g.</span>
+
 <span class="sd">            .. code-block:: python</span>
+
 <span class="sd">                cmodel = config[&#39;test_model&#39;]</span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: a dictionary of file names, e.g.</span>
+
 <span class="sd">        .. code-block:: python</span>
+
 <span class="sd">            {</span>
 <span class="sd">                &#39;slope&#39;: &#39;slopefile.bil&#39;,</span>
 <span class="sd">                &#39;vs30&#39;: &#39;vs30.grd&#39;</span>
 <span class="sd">            }</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">layers</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;layers&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
@@ -800,23 +817,35 @@
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
 <span class="sd">            e.g.</span>
+
 <span class="sd">            .. code-block:: python</span>
+
 <span class="sd">                cmodel = config[&#39;test_model&#39;]</span>
+
 <span class="sd">        coeffs (dict): Dictionary of model coefficients, e.g.</span>
+
 <span class="sd">            .. code-block:: python</span>
+
 <span class="sd">                {&#39;b0&#39;: 3.5, &#39;b1&#39;: -0.01}</span>
+
 <span class="sd">        layers (dict): Dictionary of file names for all input layers, e.g.</span>
+
 <span class="sd">            .. code-block:: python</span>
+
 <span class="sd">                {&#39;slope&#39;: &#39;slopefile.bil&#39;, &#39;vs30&#39;: &#39;vs30.grd&#39;}</span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        tuple: (terms, timeField), where</span>
 <span class="sd">            - &#39;terms&#39; is a dictionary of terms that form the model equation,</span>
 <span class="sd">              e.g.</span>
+
 <span class="sd">            .. code-block:: python</span>
+
 <span class="sd">                {</span>
 <span class="sd">                    &#39;b1&#39;: &quot;self.layerdict[&#39;friction&#39;].getData()&quot;,</span>
 <span class="sd">                    &#39;b2&#39;: &quot;self.layerdict[&#39;slope&#39;].getData()/100.&quot;</span>
 <span class="sd">                }</span>
+
 <span class="sd">            - &#39;timeField&#39; indicates the time that is used to know which input</span>
 <span class="sd">              file to read in, e.g. for monthly average precipitation, &#39;MONTH&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
