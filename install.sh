@@ -15,34 +15,30 @@ fi
 
 conda update -q -y conda
 conda config --prepend channels conda-forge
-conda config --append channels digitalglobe # for rasterio v 1.0a9
-conda config --append channels ioos # for rasterio v 1.0a2
 
-
-DEPARRAY=(pytables \
-          numpy==1.13 \
-          scipy=0.19.1 \
-          pip \
-          matplotlib=2.0.2 \
-          rasterio=1.0 \
-          fiona=1.7.8 \
-          basemap=1.1.0 \
+DEPARRAY=(basemap=1.1.0 \
           basemap-data-hires=1.1.0 \
-          shapely=1.5.17 \
-          h5py=2.7.0 \
-          gdal=2.1.4 \
+          beautifulsoup4=4.6.0\
+          branca=0.2.0 \
+          configobj=5.0.6 \
           descartes=1.1.0 \
-          pytest=3.2.0 \
+          gdal=2.1.4 \
+          h5py=2.7.1 \
+          lxml=4.1.1 \
+          matplotlib=2.0.2 \
+          numpy==1.13 \
+          pandas=0.20.3 \
+          paramiko=2.3.1 \
+          pip \
+          pytables \
+          pytest=3.2.5 \
           pytest-cov=2.5.1 \
           pytest-mpl=0.7 \
-          configobj=5.0.6 \
-          pandas=0.20.3 \
+          scipy=0.19.1 \
           scikit-learn=0.18.2 \
           scikit-image=0.13.0 \
-          branca=0.2.0 \
-          paramiko=2.1.2 \
-          beautifulsoup4=4.6.0\
-          lxml=4.1.1)
+)
+
 
 # Is the Travis flag set?
 travis=0
@@ -79,6 +75,15 @@ conda create --name $VENV -y python=$PYVER ${DEPARRAY[*]}
 echo "Activating the $VENV virtual environment"
 source activate $VENV
 
+# Force incompatible versions of fiona, shapely, rasterio
+# and their dependencies
+conda install -y -f fiona=1.7.8 
+conda install -y -f shapely=1.5.17 
+conda install -y -f rasterio=0.36  
+conda install -y -f affine=2.1.0
+conda install -y -f click=6.7
+conda install -y -f click-plugins=1.0.3
+
 # psutil
 conda install -y psutil=5.2.1
 
@@ -92,13 +97,6 @@ pip -q install https://github.com/usgs/MapIO/archive/master.zip
 echo "Installing impact-utils..."
 pip -q install \
     https://github.com/usgs/earthquake-impact-utils/archive/master.zip
-
-# OpenQuake v2.5.0
-echo "Downloading OpenQuake v2.5.0..."
-curl --max-time 60 --retry 3 -L \
-    https://github.com/gem/oq-engine/archive/v2.5.0.zip -o openquake.zip
-pip -q install --no-deps openquake.zip
-rm openquake.zip
 
 pip install sphinx_rtd_theme
 pip install folium

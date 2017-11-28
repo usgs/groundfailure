@@ -6,13 +6,9 @@ import numpy as np
 from configobj import ConfigObj
 
 # third party
-from mapio.gmt import GMTGrid
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
-from gfail.godt import godt2008
 from gfail import assess_models
-
-homedir='/Users/emthompson/src/python/groundfailure/tests/'
 
 # where is this script?
 homedir = os.path.dirname(os.path.abspath(__file__))
@@ -54,9 +50,10 @@ def test_assess_models():
                                       probthresh=0.2)
     np.testing.assert_allclose(hagg, 183.4069587520)
     einfo = assess_models.getQuakeInfo('us2000ahv0')
-    assert einfo[0] =='M 8.2 - 101km SSW of Tres Picos, Mexico'
+    assert einfo[0] == 'M 8.2 - 101km SSW of Tres Picos, Mexico'
 
     # fake inventory
+    np.random.seed(123)
     fake_inv = os.path.join(datadir, 'loma_prieta', 'fake_inventory.shp')
     gdict = maplayers2['model']['grid'].getGeoDict()
     cov_grid = assess_models.convert2Coverage(gdict, fake_inv, numdiv=10.0)
@@ -76,9 +73,14 @@ def test_assess_models():
     np.testing.assert_allclose(
         np.nanmean(resid.getData()), 0.01525620534927)
 
-    assess_models.stats(
-            maplayers2['model']['grid'], fake_inv)
+    temp = assess_models.stats(maplayers2['model']['grid'], fake_inv)
+    np.testing.assert_allclose(temp[4]['AUC_ROC'], 0.79468845760980589)
+    np.testing.assert_allclose(temp[4]['Brier'], 0.10103376655829596)
+    np.testing.assert_allclose(temp[4]['Brier_no'], 0.016153871532088152)
+    np.testing.assert_allclose(temp[4]['Brier_yes'], 0.78778928086125)
 
+    rho = assess_models.normXcorr(maplayers2['model']['grid'], prob_grid)
+    np.testing.assert_allclose(rho, 0.23128079285329287)
 
 
 if __name__ == "__main__":

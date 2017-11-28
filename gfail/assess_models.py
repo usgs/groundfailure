@@ -791,7 +791,7 @@ def statsCoverage(modelgrid, inventorygrid, bins=None, showplots=True,
     return invminusmod, results
 
 
-def stats(modelgrid, inventory, dx=100., Nsamp=None, method='nearest',
+def stats(modelgrid, inventory, dx=100.0, Nsamp=100, method='nearest',
           extent='inventory', bins=None, runtests=True, showplots=True,
           saveplots=False, filepath=None):
     """

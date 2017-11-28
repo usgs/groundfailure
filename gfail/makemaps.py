@@ -5,7 +5,6 @@ import os.path
 import gc
 import math
 import glob
-from mpl_toolkits.basemap import maskoceans
 import copy
 import datetime
 import matplotlib as mpl
@@ -23,6 +22,7 @@ from shapely.geometry import mapping, shape
 from shapely.geometry import Polygon as PolygonSH
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.basemap import cm as cm2
+from mpl_toolkits.basemap import maskoceans
 from matplotlib.patches import Polygon, Rectangle
 from skimage.measure import block_reduce
 import collections
@@ -1081,7 +1081,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
     """
     if separate and sepcolorbar:
         sepcolorbar = False
-        
+
     plt.ioff()
     clear_color = [0, 0, 0, 0.0]
     if plotorder is None:
@@ -1108,7 +1108,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         maskthreshes = np.repeat(None, len(plotorder))
 
     defaultcolormap = cm.CMRmap_r
-    
+
     if colormaps is None:
         colormaps = np.repeat(defaultcolormap, len(plotorder))
     elif len(colormaps) != len(plotorder):
@@ -1190,7 +1190,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         dat = grid.getData().copy()
 
         # Find order of range to know how to scale
-        
+
         minnonzero = np.nanmin(dat[dat > 0.])
 
         if clear_zero:
@@ -1202,7 +1202,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 clev = np.logspace(np.floor(np.log10(minnonzero)),
                                    np.ceil(np.log10(np.nanmax(dat))), 2*order+1)
                 # Adjust to colorbar levels
-                
+
                 dat[dat < clev[0]] = clev[0]
                 for j, level in enumerate(clev[:-1]):
                     dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
@@ -1274,7 +1274,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         # turn data into an RGBA image
         # adjust data so scaled between vmin and vmax and between 0 and 1
         cmap = palette
-        
+
         if logscale[k]:
             dat1 = np.log10(dat.copy())
             dat1[dat1 < vmin] = vmin  # saturate at ends
