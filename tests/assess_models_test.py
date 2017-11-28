@@ -40,7 +40,9 @@ def test_assess_models():
     test_dict1 = assess_models.concatenateModels(model_list)
     test_dict2 = assess_models.concatenateModels(model_list, astitle='model')
 
-    tmp = assess_models.modelSummary(test_dict2)
+    tmp = assess_models.modelSummary(test_dict2, showplots=False,
+                                     summary_figure=False,
+                                     individual_plots=False)
     np.testing.assert_allclose(tmp[0][0], 0.025677016713957716)
     np.testing.assert_allclose(tmp[1][0], 0.00098462898029272805)
 
