@@ -108,13 +108,13 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                             "maplayer['model']['parameters']"
                             "['modeltype'] to ensure it is defined")
 
+    HaggLS = []
+    maxLS = []
+    logLS = []
+    limLS = []
+    colLS = []
+    namesLS = []
     if len(LS) > 0:
-        HaggLS = []
-        maxLS = []
-        logLS = []
-        limLS = []
-        colLS = []
-        namesLS = []
 
         for conf, L in zip(confLS, LS):
             HaggLS.append(computeHagg(L['model']['grid'], probthresh=0.0,
@@ -130,19 +130,27 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
         mapLS, filenameLS = makemaps.interactiveMap(
             concM(LS, astitle='model', includeunc=includeunc),
+            shakefile=shakemap,
             colormaps=colLS, lims=limLS, clear_zero=False,
             logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
             mapid='LS', savefiles=True, outputdir=images,
             sepcolorbar=True, floatcb=False, faultfile=faultfile)
+        try:
+            alHaggLS = HaggLS[namesLS.index('Nowicki and others (2014)')]
+        except:
+            alHaggLS = None
+        filenameLS = filenameLS[0]
+    else:
+        alHaggLS = None
+        filenameLS = None
 
+    HaggLQ = []
+    maxLQ = []
+    logLQ = []
+    limLQ = []
+    colLQ = []
+    namesLQ = []
     if len(LQ) > 0:
-        HaggLQ = []
-        maxLQ = []
-        logLQ = []
-        limLQ = []
-        colLQ = []
-        namesLQ = []
-
         for conf, L in zip(confLQ, LQ):
             HaggLQ.append(computeHagg(L['model']['grid'], probthresh=0.0,
                           shakefile=shakemap, shakethreshtype=shakethreshtype,
@@ -156,18 +164,30 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             namesLQ.append(L['model']['description']['name'])
         mapLQ, filenameLQ = makemaps.interactiveMap(
             concM(LQ, astitle='model', includeunc=includeunc),
+            shakefile=shakemap,
             colormaps=colLQ, lims=limLQ, clear_zero=False,
             logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
             savefiles=True, mapid='LQ', outputdir=images,
             sepcolorbar=True, floatcb=False, faultfile=faultfile)
+        try:
+            alHaggLQ = HaggLQ[namesLQ.index('Zhu and others (2017)')]
+        except:
+            alHaggLQ = None
+        filenameLQ = filenameLQ[0]
 
-    write_summary(shakemap, pages, images,
-                  HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
-                  HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
+    else:
+        alHaggLQ = None
+        filenameLQ = None
+        
+        
+    write_summary(shakemap, pages, images, alert=includeAlert,
+                  HaggLS=alHaggLS,
+                  HaggLQ=alHaggLQ)
+
     if includeAlert:
         alertLS, alertLQ, statement = get_alert(
-            HaggLS=HaggLS[namesLS.index('Nowicki and others (2014)')],
-            HaggLQ=HaggLQ[namesLQ.index('Zhu and others (2017)')])
+            HaggLS=alHaggLS,
+            HaggLQ=alHaggLQ)
         topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
         topfileLS = make_alert_img(alertLS, 'landslide', images)
     else:
@@ -177,18 +197,18 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         alertLQ = None
 
     write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
-                     interactivehtml=filenameLQ[0], outjsfile=outjsfileLQ,
+                     interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
                      topimage=topfileLQ)
     write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
-                     interactivehtml=filenameLS[0], outjsfile=outjsfileLS,
+                     interactivehtml=filenameLS, outjsfile=outjsfileLS,
                      topimage=topfileLS)
 
     # Save some alert info to output directory for use later
     alert_dict = {
         'alertLS': alertLS,
         'alertLQ': alertLQ,
-        'HaggLS': HaggLS[namesLS.index('Nowicki and others (2014)')],
-        'HaggLQ': HaggLQ[namesLQ.index('Zhu and others (2017)')]}
+        'HaggLS': alHaggLS,
+        'HaggLQ': alHaggLQ}
     alert_file = os.path.join(outfolder, 'alert.json')
     with open(alert_file, 'w') as f:
         json.dump(alert_dict, f)
@@ -268,56 +288,59 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         file1.write('date: %s\n'
                     % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('<center><h2>%s</h2></center>' % modeltype.title())
-        if topimage is not None:
-            file1.write('<center><img src="images%s" width="250" '
-                        'href="images%s"/></center>\n'
-                        % (topimage.split('images')[-1],
-                           topimage.split('images')[-1]))
-        if interactivehtml is not None:
-            # Extract js and move to map.js
-            with open(interactivehtml) as f:
-                soup = BeautifulSoup(f, 'html.parser')
-                soup.prettify(encoding='utf-8')
-                scs = soup.find_all('script')
-                if scs is not None:
-                    for sc in scs:
-                        if 'var' in str(sc):
-                            temp = str(sc)
-                            temp = temp.strip('<script>').strip('</script>')
-                            with open(outjsfile, 'a') as f2:
-                                f2.write(temp)
-            # Embed and link to fullscreen
-            fileloc = interactivehtml.split('images')[-1]
-            file1.write('<center><a href="images%s">Click here for full '
-                        'interactive map</a></center>\n'
-                        % fileloc)
+        if len(Hagg) > 0:
+            if topimage is not None:
+                file1.write('<center><img src="images%s" width="250" '
+                            'href="images%s"/></center>\n'
+                            % (topimage.split('images')[-1],
+                               topimage.split('images')[-1]))
+            if interactivehtml is not None:
+                # Extract js and move to map.js
+                with open(interactivehtml) as f:
+                    soup = BeautifulSoup(f, 'html.parser')
+                    soup.prettify(encoding='utf-8')
+                    scs = soup.find_all('script')
+                    if scs is not None:
+                        for sc in scs:
+                            if 'var' in str(sc):
+                                temp = str(sc)
+                                temp = temp.strip('<script>').strip('</script>')
+                                with open(outjsfile, 'a') as f2:
+                                    f2.write(temp)
+                # Embed and link to fullscreen
+                fileloc = interactivehtml.split('images')[-1]
+                file1.write('<center><a href="images%s">Click here for full '
+                            'interactive map</a></center>\n'
+                            % fileloc)
+    
+                file1.write('<center><div class="folium-map" id="map_%s">'
+                            '</div></center>\n' % id1)
+    
+                cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
+                file1.write('<center><img src="images%s" width="300" '
+                            'href="images%s"/></center>\n'
+                            % (cbname, cbname))
+            if staticmap is not None:
+                file1.write('<center><img src="images%s" width="450" '
+                            'href="images%s"/></center>\n'
+                            % (staticmap.split('images')[-1],
+                               staticmap.split('images')[-1]))
+    
+            file1.write('<hr>\n')
+            file1.write('<center><h3>%s Summary</h3></center>' % modeltype.title())
+            file1.write('<table style="width:100%">')
+            file1.write('<tr><th>Model</th><th>Aggregate Hazard</th><th>Max. '
+                        'Probability</th></tr>\n')
+            for H, m, n in zip(Hagg, maxprobs, modelnames):
+                file1.write('<tr><td>%s</td><td>%0.2f km<sup>2</sup>'
+                            '</td><td>%0.2f</td></tr>\n'
+                            % (n.title(), H, m))
+            file1.write('</table>')
+        else:
+            file1.write('<center><h2>No results</h2></center>')
 
-            file1.write('<center><div class="folium-map" id="map_%s">'
-                        '</div></center>\n' % id1)
 
-            cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
-            file1.write('<center><img src="images%s" width="300" '
-                        'href="images%s"/></center>\n'
-                        % (cbname, cbname))
-        if staticmap is not None:
-            file1.write('<center><img src="images%s" width="450" '
-                        'href="images%s"/></center>\n'
-                        % (staticmap.split('images')[-1],
-                           staticmap.split('images')[-1]))
-
-        file1.write('<hr>\n')
-        file1.write('<center><h3>%s Summary</h3></center>' % modeltype.title())
-        file1.write('<table style="width:100%">')
-        file1.write('<tr><th>Model</th><th>Aggregate Hazard</th><th>Max. '
-                    'Probability</th></tr>\n')
-        for H, m, n in zip(Hagg, maxprobs, modelnames):
-            file1.write('<tr><td>%s</td><td>%0.2f km<sup>2</sup>'
-                        '</td><td>%0.2f</td></tr>\n'
-                        % (n.title(), H, m))
-        file1.write('</table>')
-
-
-def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
+def write_summary(shakemap, outputdir, imgoutputdir, alert=False, HaggLS=None, HaggLQ=None):
     """
     Write markdown file summarizing event
 
@@ -336,7 +359,8 @@ def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
     temp = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
     edict['eventid'] = temp['shakemap_id']
     edict['version'] = temp['shakemap_version']
-    alertLS, alertLQ, statement = get_alert(HaggLS, HaggLQ)
+    if alert:
+        alertLS, alertLQ, statement = get_alert(HaggLS, HaggLQ)
 
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
@@ -358,10 +382,10 @@ def write_summary(shakemap, outputdir, imgoutputdir, HaggLS=None, HaggLQ=None):
         file1.write('Based on ground motion estimates from '
                     'ShakeMap version %1.1f\n'
                     % edict['version'])
-
-        file1.write('## Summary\n')
-        file1.write(statement)
-        file1.write('<hr>')
+        if alert:
+            file1.write('## Summary\n')
+            file1.write(statement)
+            file1.write('<hr>')
 
 
 def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.],
@@ -456,16 +480,19 @@ def make_alert_img(color, type1, outfolder):
     Returns:
         str: Output file name.
     """
-    fig = plt.figure(figsize=(6, 1.8))
-    ax = fig.add_subplot(111)
-    ax.add_artist(plt.Circle((0.4, 0.3), 0.15, facecolor=color,
-                             edgecolor='black', lw=1))
-    ax.text(0.7, 0.25, '%s alert %s' % (type1.title(), color), fontsize=25)
-    ax.axis('off')
-    ax.set_xlim([0, 2.0])
-    ax.set_ylim([0., 0.6])
-    plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
-    outfilename = os.path.join(outfolder, '%s_alert.png' % type1)
-    fig.savefig(outfilename, transparent=True)
-    plt.close()
+    if color is None:
+        outfilename = None
+    else:
+        fig = plt.figure(figsize=(6, 1.8))
+        ax = fig.add_subplot(111)
+        ax.add_artist(plt.Circle((0.4, 0.3), 0.15, facecolor=color,
+                                 edgecolor='black', lw=1))
+        ax.text(0.7, 0.25, '%s alert %s' % (type1.title(), color), fontsize=25)
+        ax.axis('off')
+        ax.set_xlim([0, 2.0])
+        ax.set_ylim([0., 0.6])
+        plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
+        outfilename = os.path.join(outfolder, '%s_alert.png' % type1)
+        fig.savefig(outfilename, transparent=True)
+        plt.close()
     return outfilename

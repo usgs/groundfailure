@@ -29,8 +29,9 @@ import collections
 from descartes import PolygonPatch
 import shapefile
 import folium
-from folium import plugins
-from folium.features import GeoJson, RectangleMarker
+from folium import plugins, GeoJson
+from folium.features import GeoJson as GeoJson1
+from folium.features import RectangleMarker
 
 
 # local imports
@@ -1369,7 +1370,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                                     properties=atr))
 
             # create geojson object
-            invt = GeoJson({"type": "FeatureCollection",
+            invt = GeoJson1({"type": "FeatureCollection",
                             "features": buffer1},
                            style_function=style_function)
 
@@ -1397,6 +1398,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 tiles=tiletype,
                 control=False,
                 overlay=not overlay).add_to(map1)
+
         images.append(plugins.ImageOverlay(rgba_img,
                                            opacity=ALPHA,
                                            bounds=[[minlat, minlon], [maxlat, maxlon]],
@@ -1429,8 +1431,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                     vmax=vmax,
                     caption='%s - %s' % (label1, sref)))
             map1.add_child(cbars[k])
-
+        
         if separate or k == len(plotorder)-1:
+
             folium.LayerControl(
                 collapsed=False,
                 position='bottomright').add_to(map1)
@@ -1447,19 +1450,13 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
             if smcontourfile is not None:
                 style_function = lambda x: {'fillColor': 'none', 'color': 'white', 'weight': 0.7}
-                smc = GeoJson(open(smcontourfile))
-                #smc.layer_name = 'ShakeMap Contours'
-                map1.add_child(smc)
-                #for feature in smc.data['features']:
-                #    label = ('%s (%s)') % (feature['properties']['value'], feature['properties']['units'].replace('pct', '%'))
-                #    plugins.PolyLineTextPath(feature['geometry']['coordinates'], label,
-                #                             center=True, attributes={'fill': 'white', 'font-size': '14'}).add_to(map1)
+                GeoJson(smcontourfile, style_function=style_function,
+                         name='ShakeMap Contours').add_to(map1)
 
             if faultfile is not None:
-                style_function = lambda x: {'fillColor': 'none', 'color': 'blue', 'weight': 0.7}
-                smc = GeoJson(open(faultfile), style_function=style_function)
-                smc.layer_name = 'Finite fault'
-                map1.add_child(smc)
+                style_function = lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 0.7}
+                GeoJson(faultfile, style_function=style_function,
+                         name='Finite fault', control=False).add_to(map1)
 
             #draw epicenter
             if edict is not None:
@@ -1469,6 +1466,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                     fill_color='#769d96',
                     number_of_sides=4,
                     radius=6).add_to(map1)
+
             if savefiles:
                 if separate:
                     filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
