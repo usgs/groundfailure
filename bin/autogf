@@ -41,6 +41,7 @@ defaultThresh = {'mag': 6.5,
                  'eis': 'yellow',
                  'mmi': 7}
 
+
 def main(args):
     print('%s - Running autogf' % datetime.now())
 
@@ -48,9 +49,9 @@ def main(args):
     args = validateArgs(args)
 
     config = configparser.ConfigParser()
-    
+
     gfail_flags = args.gfail_flags
-    
+
     if args.autoconfig is None:
         mail = False
         print('No autoconfig.ini file, using default thresholds:\n %s' % defaultThresh)
@@ -59,7 +60,7 @@ def main(args):
         with open(args.autoconfig) as f:
             config.read_file(f)
         sections = config.sections()
-        
+
         thresh = {}
         if 'THRESHOLDS' not in sections:
             print('autoconfig.ini missing THRESHOLDS section, using defaults:\n %s' % defaultThresh)
@@ -133,13 +134,13 @@ def main(args):
             # Clean up finite fault temp geojson files
             if finitefault == 1:
                 os.remove(event['finite_fault'])
-                
+
     if args.testrun:
         # This was a test run so delete files and remove entries from database
         print('Test successful, cleaning up files')
         shutil.rmtree(tempdir)
 
-            
+
 def validateArgs(args):
     if not os.path.exists(args.gfailconfig):
         raise IOError('gfail config file specified (%s) does not exist' % args.gfailconfig)
@@ -160,7 +161,7 @@ def validateArgs(args):
         args.feed = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson'
     else:
         args.feed = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson'
-        
+
     return args
 
 
@@ -179,13 +180,13 @@ def mailUsers(event, autoconfig, url, jsonfeed):
         UPDATE Ground Failure models for ShakeMap v%i of event id %s.
         Event name: %s
         Model summary page: %s
-        
+
         Event detail JSON feed: %s
 
-        Model results are provisional and subject to revision. The results are released 
+        Model results are provisional and subject to revision. The results are released
         on the condition that neither the USGS nor the U.S. Government may be held liable
         for any damages resulting from its authorized or unauthorized use.
-        
+
         Do not reply to this message. Contact kallstadt@usgs.gov with questions.
         """ % (vnum, eid, title, url, jsonfeed)
     else:
@@ -193,10 +194,10 @@ def mailUsers(event, autoconfig, url, jsonfeed):
         Ground Failure models for ShakeMap v%i of event id %s.
         Event name: %s
         Model summary page: %s
-        
+
         Event detail JSON feed: %s
-        
-        Model results are provisional and subject to revision. The results are released 
+
+        Model results are provisional and subject to revision. The results are released
         on the condition that neither the USGS nor the U.S. Government may be held liable
         for any damages resulting from its authorized or unauthorized use.
 
@@ -229,14 +230,14 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
         temp = temp.split('Files created:\n')[1]
         filenames = []
         for line in temp.split('\n'):
-            if 'pdf' in line or 'png' in line or 'html' in line or 'hdf5' \
-                in line or 'bil' in line or 'webpage':
+            if 'pdf' in line or 'png' in line or 'html' in line or 'hdf5' in line or 'bil' in line or 'webpage':
                 filenames.append(line)
     else:
-        print('Did not find any files output by runGF for event_id %s, \
-              Continuing to next event\n \
-              Warnings that were output: \
-              %s\n' % (event_id, print(stderr.decode())))
+        print("""
+            Did not find any files output by runGF for event_id %s,
+            Continuing to next event\n \
+            Warnings that were output: \
+            %s\n""" % (event_id, stderr.decode()))
         filenames = None
         url = None
         jsonfeed = None
@@ -259,9 +260,9 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
     else:
         url = None
         jsonfeed = None
-        
+
     return filenames, url, jsonfeed
-    
+
 
 def getProductInfo(shakemap, pager):
     edict = {}
@@ -377,7 +378,7 @@ def text_to_json(url):
     Simplification of text_to_json from shakelib.rupture.factory
     """
     with urllib.request.urlopen(url) as f:
-       lines = f.readlines()
+        lines = f.readlines()
     x = []
     y = []
     z = []
@@ -417,11 +418,11 @@ def text_to_json(url):
                 poly.append([lon, lat, dep])
         if poly != []:
             coords.append(poly)
-    
+
     d = {
         "type": "FeatureCollection",
         "metadata": {
-            'reference':reference
+            'reference': reference
         },
         "features": [
             {
@@ -438,14 +439,14 @@ def text_to_json(url):
     }
     return json.dumps(d)
 
-                   
+
 if __name__ == '__main__':
 
     default_loc = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     parser = argparse.ArgumentParser(
-        description='Check for triggering events for ground failure, if found,'
-            'run gfail and transfer to dev comcat')
+        description="""Check for triggering events for ground failure, if found,
+        run gfail and transfer to dev comcat""")
 
     parser.add_argument(
         '-c', '--gfailconfig', metavar='gfailconfig', nargs='?',
@@ -456,10 +457,11 @@ if __name__ == '__main__':
     parser.add_argument(
         '-a', '--autoconfig', metavar='autoconfig',
         nargs='?', default=None,
-        help='Location of autoconfig.ini file that contains threshold'
-             'information and email address list for automated emails.'
-             'If not specified, will not send emails and will use default'
-             'thresholds')
+        help="""
+        Location of autoconfig.ini file that contains threshold
+        information and email address list for automated emails.
+        If not specified, will not send emails and will use default
+        thresholds""")
 
     parser.add_argument(
         '-d', '--db', metavar='sqldatabase', nargs='?',
@@ -470,14 +472,15 @@ if __name__ == '__main__':
     parser.add_argument(
         '-p', '--pdlconf', metavar='pdlconfig', nargs='?',
         default=None,
-        help='Location of pdl config file on local machine, if not specified'
-            ', will do a dry run')
+        help="""
+        Location of pdl config file on local machine, if not specified
+        will do a dry run""")
 
     parser.add_argument(
         '-fl', '--gfail-flags', metavar='gfailflags', nargs='?',
         default='--gis -w --hdf5',
         help='String of flags for gfail')
-    
+
     parser.add_argument(
         '--feed', metavar='jsonfeed', nargs='?',
         default='day', help='Which jsonfeed to check, default day, other'
