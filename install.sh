@@ -39,7 +39,6 @@ DEPARRAY=(basemap=1.1.0 \
           scikit-image=0.13.0 \
 )
 
-
 # Is the Travis flag set?
 travis=0
 while getopts t FLAG; do
@@ -74,6 +73,7 @@ conda create --name $VENV -y python=$PYVER ${DEPARRAY[*]}
 # Activate the new environment
 echo "Activating the $VENV virtual environment"
 source activate $VENV
+
 
 # Force incompatible versions of fiona, shapely, rasterio
 # and their dependencies
@@ -111,6 +111,7 @@ rm impactutils.zip
 echo "Installing folium..."
 pip install folium
 echo "Installing pelican markdown..."
+
 pip install pelican markdown
 
 # This package
@@ -120,3 +121,4 @@ pip install -e .
 
 # Tell the user they have to activate this environment
 echo "Type 'source activate $VENV' to use this new virtual environment."
+
