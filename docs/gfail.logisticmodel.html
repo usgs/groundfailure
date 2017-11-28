@@ -67,16 +67,13 @@ model.</li>
 to the other input files for applying thresholds. OVERWRITES
 VALUE IN CONFIG.</li>
 <li><strong>bounds</strong> (<em>dict</em>) – <p>Default of None uses ShakeMap boundaries, otherwise
-a dictionary of boundaries to cut to like
-.. code-block:: python</p>
-<blockquote>
-<div><dl class="docutils">
-<dt>bounds = {</dt>
-<dd>‘xmin’: lonmin, ‘xmax’: lonmax,
-‘ymin’: latmin, ‘ymax’: latmax</dd>
-</dl>
-<p>}</p>
-</div></blockquote>
+a dictionary of boundaries to cut to like</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;xmin&#39;</span><span class="p">:</span> <span class="n">lonmin</span><span class="p">,</span> <span class="s1">&#39;xmax&#39;</span><span class="p">:</span> <span class="n">lonmax</span><span class="p">,</span>
+    <span class="s1">&#39;ymin&#39;</span><span class="p">:</span> <span class="n">latmin</span><span class="p">,</span> <span class="s1">&#39;ymax&#39;</span><span class="p">:</span> <span class="n">latmax</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 </li>
 <li><strong>numstd</strong> (<em>float</em>) – Number of +/- standard deviations to use if
 uncertainty is computed.</li>
@@ -218,10 +215,10 @@ EVENTUALLY WILL BE MOVED TO MAPIO
 a dictionary of the coefficients.
 :param cmodel: Sub-dictionary from config for specific model,</p>
 <blockquote>
-<div><p>e.g.
-.. code-block:: python</p>
-<blockquote>
-<div>cmodel = config[‘test_model’]</div></blockquote>
+<div><p>e.g.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cmodel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;test_model&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
 </div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -242,24 +239,21 @@ a dictionary of the coefficients.
 file types.
 :param cmodel: Sub-dictionary from config for specific model,</p>
 <blockquote>
-<div><p>e.g.
-.. code-block:: python</p>
-<blockquote>
-<div>cmodel = config[‘test_model’]</div></blockquote>
+<div><p>e.g.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cmodel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;test_model&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
 </div></blockquote>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a dictionary of file names, e.g.
-.. code-block:: python<blockquote>
-<div><dl class="docutils">
-<dt>{</dt>
-<dd>‘slope’: ‘slopefile.bil’,
-‘vs30’: ‘vs30.grd’</dd>
-</dl>
-<p>}</p>
-</div></blockquote>
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">a dictionary of file names, e.g.<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;slope&#39;</span><span class="p">:</span> <span class="s1">&#39;slopefile.bil&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;vs30&#39;</span><span class="p">:</span> <span class="s1">&#39;vs30.grd&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Return type:</th><td class="field-body">dict</td>
@@ -287,20 +281,20 @@ checks that term names match coefficient names.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>cmodel</strong> (<em>dict</em>) – <p>Sub-dictionary from config for specific model,
-e.g.
-.. code-block:: python</p>
-<blockquote>
-<div>cmodel = config[‘test_model’]</div></blockquote>
+e.g.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="n">cmodel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;test_model&#39;</span><span class="p">]</span>
+</pre></div>
+</div>
 </li>
-<li><strong>coeffs</strong> (<em>dict</em>) – <p>Dictionary of model coefficients, e.g.
-.. code-block:: python</p>
-<blockquote>
-<div>{‘b0’: 3.5, ‘b1’: -0.01}</div></blockquote>
+<li><strong>coeffs</strong> (<em>dict</em>) – <p>Dictionary of model coefficients, e.g.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s1">&#39;b0&#39;</span><span class="p">:</span> <span class="mf">3.5</span><span class="p">,</span> <span class="s1">&#39;b1&#39;</span><span class="p">:</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">}</span>
+</pre></div>
+</div>
 </li>
-<li><strong>layers</strong> (<em>dict</em>) – <p>Dictionary of file names for all input layers, e.g.
-.. code-block:: python</p>
-<blockquote>
-<div>{‘slope’: ‘slopefile.bil’, ‘vs30’: ‘vs30.grd’}</div></blockquote>
+<li><strong>layers</strong> (<em>dict</em>) – <p>Dictionary of file names for all input layers, e.g.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span><span class="s1">&#39;slope&#39;</span><span class="p">:</span> <span class="s1">&#39;slopefile.bil&#39;</span><span class="p">,</span> <span class="s1">&#39;vs30&#39;</span><span class="p">:</span> <span class="s1">&#39;vs30.grd&#39;</span><span class="p">}</span>
+</pre></div>
+</div>
 </li>
 </ul>
 </td>
@@ -311,6 +305,12 @@ e.g.
 <li>’terms’ is a dictionary of terms that form the model equation,
 e.g.</li>
 </ul>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;b1&#39;</span><span class="p">:</span> <span class="s2">&quot;self.layerdict[&#39;friction&#39;].getData()&quot;</span><span class="p">,</span>
+    <span class="s1">&#39;b2&#39;</span><span class="p">:</span> <span class="s2">&quot;self.layerdict[&#39;slope&#39;].getData()/100.&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
 <ul class="last simple">
 <li>’timeField’ indicates the time that is used to know which input
 file to read in, e.g. for monthly average precipitation, ‘MONTH’.</li>
@@ -408,11 +408,13 @@ the tempname location.</p>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.assess_models.html">gfail.assess_models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>

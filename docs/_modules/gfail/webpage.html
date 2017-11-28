@@ -45,8 +45,8 @@
 <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
 <span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
 <span class="kn">from</span> <span class="nn">gfail</span> <span class="k">import</span> <span class="n">makemaps</span>
-<span class="kn">from</span> <span class="nn">groundfailure.assessmodels</span> <span class="k">import</span> <span class="n">concatenateModels</span> <span class="k">as</span> <span class="n">concM</span>
-<span class="kn">from</span> <span class="nn">groundfailure.assessmodels</span> <span class="k">import</span> <span class="n">computeHagg</span>
+<span class="kn">from</span> <span class="nn">gfail.assess_models</span> <span class="k">import</span> <span class="n">concatenateModels</span> <span class="k">as</span> <span class="n">concM</span>
+<span class="kn">from</span> <span class="nn">gfail.assess_models</span> <span class="k">import</span> <span class="n">computeHagg</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="k">import</span> <span class="n">get_command_output</span>
 <span class="kn">from</span> <span class="nn">shutil</span> <span class="k">import</span> <span class="n">copy</span>
@@ -56,26 +56,41 @@
 <span class="kn">import</span> <span class="nn">glob</span>
 <span class="kn">import</span> <span class="nn">json</span>
 
+<span class="c1"># temporary until mapio is updated</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
+
 
 <div class="viewcode-block" id="makeWebpage"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.makeWebpage">[docs]</a><span class="k">def</span> <span class="nf">makeWebpage</span><span class="p">(</span><span class="n">maplayerlist</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span> <span class="n">web_template</span><span class="p">,</span> <span class="n">shakemap</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">includeunc</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+                <span class="n">includeunc</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">includeAlert</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    TODO:</span>
-<span class="sd">        - Add in logic to deal with when one of the model types is missing.</span>
+<span class="sd">    Create a webpage that summarizes ground failure results (both landslides</span>
+<span class="sd">        and liquefaction)</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        maplayers (list): List of maplayer outputs from multiple models.</span>
-<span class="sd">        config (ConfigObj): Config object.</span>
-<span class="sd">        web_template (str): Path to web template.</span>
-<span class="sd">        shakemap (str): Path to shakemap grid.xml file.</span>
-<span class="sd">        outfolder (str): Path for output. If None, then a new directory is</span>
-<span class="sd">            used in the current directory.</span>
-<span class="sd">        includeunc (bool): Should uncertainty be used?</span>
-<span class="sd">        cleanup (bool): Delete everything except files needed for website?</span>
+<span class="sd">        maplayerlist (list): list of model output structures to include</span>
+<span class="sd">        configs (list): list of paths to config files corresponding to each</span>
+<span class="sd">            of the models in maplayerlist in the same order</span>
+<span class="sd">        web_template (str): Path to location of pelican template</span>
+<span class="sd">            (final folder should be &quot;theme&quot;)</span>
+<span class="sd">        shakemap (str): path to shakemap .xml file for the current event</span>
+<span class="sd">        outfolder (str, optional): path to folder where output should be placed</span>
+<span class="sd">        includeunc (bool, optional): include uncertainty, NOT IMPLEMENTED</span>
+<span class="sd">        cleanup (bool, optional): cleanup all unneeded intermediate files that</span>
+<span class="sd">            pelican creates, default True.</span>
+<span class="sd">        includeAlert (bool, optional): if True, computes and reports alert level, default</span>
+<span class="sd">            False</span>
+<span class="sd">        shakethreshtype (str, optional): Type of ground motion to use for Hagg threshold,</span>
+<span class="sd">            &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;</span>
+<span class="sd">        shakethresh (float, optional): Ground motion threshold corresponding to</span>
+<span class="sd">            gmthreshtype. If None (default), no threshold will be used</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        str: Path to directory of web page.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+<span class="sd">        Folder where webpage files are located</span>
+
+<span class="sd">     TODO add in logic to deal with when one of the model types is missing</span>
+<span class="sd">     &quot;&quot;&quot;</span>
     <span class="c1"># get ShakeMap id</span>
     <span class="n">sm_id</span> <span class="o">=</span> <span class="n">maplayerlist</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;shakemap&#39;</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">outfolder</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -88,30 +103,18 @@
     <span class="n">images</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">content</span><span class="p">,</span> <span class="s1">&#39;images&#39;</span><span class="p">)</span>
     <span class="n">theme</span> <span class="o">=</span> <span class="n">web_template</span>
     <span class="n">static</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">theme</span><span class="p">,</span> <span class="s1">&#39;static&#39;</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outfolder</span><span class="p">):</span>
         <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">outfolder</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">fullout</span><span class="p">):</span>
         <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">fullout</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">content</span><span class="p">):</span>
         <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
         <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">pages</span><span class="p">):</span>
         <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">pages</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-    <span class="k">try</span><span class="p">:</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">articles</span><span class="p">):</span>
         <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">articles</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">finalout</span><span class="p">):</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">finalout</span><span class="p">)</span>
 
@@ -153,8 +156,9 @@
         <span class="n">namesLS</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">for</span> <span class="n">conf</span><span class="p">,</span> <span class="n">L</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">confLS</span><span class="p">,</span> <span class="n">LS</span><span class="p">):</span>
-            <span class="c1"># TODO: Add threshold option for Hagg</span>
-            <span class="n">HaggLS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">computeHagg</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]))</span>
+            <span class="n">HaggLS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">computeHagg</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">],</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                          <span class="n">shakefile</span><span class="o">=</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span>
+                          <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">))</span>
             <span class="n">maxLS</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getData</span><span class="p">()))</span>
             <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
                 <span class="n">makemaps</span><span class="o">.</span><span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">])</span>
@@ -179,7 +183,9 @@
         <span class="n">namesLQ</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="k">for</span> <span class="n">conf</span><span class="p">,</span> <span class="n">L</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">confLQ</span><span class="p">,</span> <span class="n">LQ</span><span class="p">):</span>
-            <span class="n">HaggLQ</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">computeHagg</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]))</span>
+            <span class="n">HaggLQ</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">computeHagg</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">],</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                          <span class="n">shakefile</span><span class="o">=</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span>
+                          <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">))</span>
             <span class="n">maxLQ</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">L</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getData</span><span class="p">()))</span>
             <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
                 <span class="n">makemaps</span><span class="o">.</span><span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">])</span>
@@ -197,11 +203,18 @@
     <span class="n">write_summary</span><span class="p">(</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">pages</span><span class="p">,</span> <span class="n">images</span><span class="p">,</span>
                   <span class="n">HaggLS</span><span class="o">=</span><span class="n">HaggLS</span><span class="p">[</span><span class="n">namesLS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s1">&#39;Nowicki and others (2014)&#39;</span><span class="p">)],</span>
                   <span class="n">HaggLQ</span><span class="o">=</span><span class="n">HaggLQ</span><span class="p">[</span><span class="n">namesLQ</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s1">&#39;Zhu and others (2017)&#39;</span><span class="p">)])</span>
-    <span class="n">alertLS</span><span class="p">,</span> <span class="n">alertLQ</span><span class="p">,</span> <span class="n">statement</span> <span class="o">=</span> <span class="n">get_alert</span><span class="p">(</span>
+    <span class="k">if</span> <span class="n">includeAlert</span><span class="p">:</span>
+        <span class="n">alertLS</span><span class="p">,</span> <span class="n">alertLQ</span><span class="p">,</span> <span class="n">statement</span> <span class="o">=</span> <span class="n">get_alert</span><span class="p">(</span>
             <span class="n">HaggLS</span><span class="o">=</span><span class="n">HaggLS</span><span class="p">[</span><span class="n">namesLS</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s1">&#39;Nowicki and others (2014)&#39;</span><span class="p">)],</span>
             <span class="n">HaggLQ</span><span class="o">=</span><span class="n">HaggLQ</span><span class="p">[</span><span class="n">namesLQ</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="s1">&#39;Zhu and others (2017)&#39;</span><span class="p">)])</span>
-    <span class="n">topfileLQ</span> <span class="o">=</span> <span class="n">make_alert_img</span><span class="p">(</span><span class="n">alertLQ</span><span class="p">,</span> <span class="s1">&#39;liquefaction&#39;</span><span class="p">,</span> <span class="n">images</span><span class="p">)</span>
-    <span class="n">topfileLS</span> <span class="o">=</span> <span class="n">make_alert_img</span><span class="p">(</span><span class="n">alertLS</span><span class="p">,</span> <span class="s1">&#39;landslide&#39;</span><span class="p">,</span> <span class="n">images</span><span class="p">)</span>
+        <span class="n">topfileLQ</span> <span class="o">=</span> <span class="n">make_alert_img</span><span class="p">(</span><span class="n">alertLQ</span><span class="p">,</span> <span class="s1">&#39;liquefaction&#39;</span><span class="p">,</span> <span class="n">images</span><span class="p">)</span>
+        <span class="n">topfileLS</span> <span class="o">=</span> <span class="n">make_alert_img</span><span class="p">(</span><span class="n">alertLS</span><span class="p">,</span> <span class="s1">&#39;landslide&#39;</span><span class="p">,</span> <span class="n">images</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">topfileLQ</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">topfileLS</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">alertLS</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">alertLQ</span> <span class="o">=</span> <span class="kc">None</span>
+
     <span class="n">write_individual</span><span class="p">(</span><span class="n">HaggLQ</span><span class="p">,</span> <span class="n">maxLQ</span><span class="p">,</span> <span class="n">namesLQ</span><span class="p">,</span> <span class="n">articles</span><span class="p">,</span> <span class="s1">&#39;Liquefaction&#39;</span><span class="p">,</span>
                      <span class="n">interactivehtml</span><span class="o">=</span><span class="n">filenameLQ</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">outjsfile</span><span class="o">=</span><span class="n">outjsfileLQ</span><span class="p">,</span>
                      <span class="n">topimage</span><span class="o">=</span><span class="n">topfileLQ</span><span class="p">)</span>
@@ -218,7 +231,6 @@
     <span class="n">alert_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;alert.json&#39;</span><span class="p">)</span>
     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">alert_file</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
         <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">alert_dict</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-
 
     <span class="c1"># run website</span>
     <span class="n">retcode</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span>
@@ -244,6 +256,15 @@
                             <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">ofilen</span><span class="p">)</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fullout</span><span class="p">,</span> <span class="s1">&#39;output&#39;</span><span class="p">),</span> <span class="n">finalout</span><span class="p">)</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">fullout</span><span class="p">)</span>
+        <span class="c1"># Get rid of mapLS.js and mapLQ.js files from theme directory</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">theme</span><span class="p">,</span> <span class="s1">&#39;static&#39;</span><span class="p">,</span> <span class="s1">&#39;js&#39;</span><span class="p">,</span> <span class="s1">&#39;mapLQ.js&#39;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">theme</span><span class="p">,</span> <span class="s1">&#39;static&#39;</span><span class="p">,</span> <span class="s1">&#39;js&#39;</span><span class="p">,</span> <span class="s1">&#39;mapLS.js&#39;</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">finalout</span></div>
 
@@ -324,7 +345,7 @@
                            <span class="n">staticmap</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;images&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
 
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;hr&gt;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
-        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;center&gt;&lt;h3&gt;Summary&lt;/h3&gt;&lt;/center&gt;&#39;</span><span class="p">)</span>
+        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;center&gt;&lt;h3&gt;</span><span class="si">%s</span><span class="s1"> Summary&lt;/h3&gt;&lt;/center&gt;&#39;</span> <span class="o">%</span> <span class="n">modeltype</span><span class="o">.</span><span class="n">title</span><span class="p">())</span>
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;table style=&quot;width:100%&quot;&gt;&#39;</span><span class="p">)</span>
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;tr&gt;&lt;th&gt;Model&lt;/th&gt;&lt;th&gt;Aggregate Hazard&lt;/th&gt;&lt;th&gt;Max. &#39;</span>
                     <span class="s1">&#39;Probability&lt;/th&gt;&lt;/tr&gt;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
@@ -335,14 +356,21 @@
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;/table&gt;&#39;</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="write_scibackground"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.write_scibackground">[docs]</a><span class="k">def</span> <span class="nf">write_scibackground</span><span class="p">(</span><span class="n">configLS</span><span class="p">,</span> <span class="n">configLQ</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Write markdown file describing model background and references.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">pass</span></div>
-
-
 <div class="viewcode-block" id="write_summary"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.write_summary">[docs]</a><span class="k">def</span> <span class="nf">write_summary</span><span class="p">(</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">outputdir</span><span class="p">,</span> <span class="n">imgoutputdir</span><span class="p">,</span> <span class="n">HaggLS</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">HaggLQ</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Write markdown file summarizing event</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shakemap (str): path to shakemap .xml file for the current event</span>
+<span class="sd">        outputdir (str): path to folder where output should be placed</span>
+<span class="sd">        imgoutputdir (str): path to folder where images should be placed</span>
+<span class="sd">            and linked</span>
+<span class="sd">        HaggLS (float, optional): Aggregate hazard of preferred landslide model</span>
+<span class="sd">        HaggLQ (float, optional): Aggregate hazard of preferred liquefaction model</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Markdown file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">edict</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()</span>
     <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getShakeDict</span><span class="p">()</span>
     <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;eventid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_id&#39;</span><span class="p">]</span>
@@ -353,21 +381,24 @@
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;title: summary</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;date: 2017-06-09</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;modified: 2017-06-09</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
-        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;# Ground failure</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
-        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;### Last updated at: </span><span class="si">%s</span><span class="s1"> (UTC)</span><span class="se">\n</span><span class="s1">&#39;</span>
-                    <span class="o">%</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">))</span>
-        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;### Based on ground motion estimates from &#39;</span>
-                    <span class="s1">&#39;ShakeMap version </span><span class="si">%1.1f</span><span class="se">\n</span><span class="s1">&#39;</span>
-                    <span class="o">%</span> <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">])</span>
+        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;# Ground Failure</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;## Magnitude </span><span class="si">%1.1f</span><span class="s1"> - </span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span>
                     <span class="o">%</span> <span class="p">(</span><span class="n">edict</span><span class="p">[</span><span class="s1">&#39;magnitude&#39;</span><span class="p">],</span>
                        <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;event_description&#39;</span><span class="p">]))</span>
-        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;### </span><span class="si">%s</span><span class="s1"> (UTC) | </span><span class="si">%1.4f</span><span class="s1">°,  </span><span class="si">%1.4f</span><span class="s1">° | </span><span class="si">%1.1f</span><span class="s1"> km</span><span class="se">\n</span><span class="s1">&#39;</span>
+
+        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;### </span><span class="si">%s</span><span class="s1"> (UTC) | </span><span class="si">%1.4f</span><span class="s1">°,  </span><span class="si">%1.4f</span><span class="s1">° | </span><span class="si">%1.1f</span><span class="s1"> km depth</span><span class="se">\n</span><span class="s1">&#39;</span>
                     <span class="o">%</span> <span class="p">(</span><span class="n">edict</span><span class="p">[</span><span class="s1">&#39;event_timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">T%H:%M:%S&#39;</span><span class="p">),</span>
                        <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span>
                        <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">],</span> <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;depth&#39;</span><span class="p">]))</span>
 
-        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;### Summary</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Last updated at: </span><span class="si">%s</span><span class="s1"> (UTC)</span><span class="se">\n\n</span><span class="s1">&#39;</span>
+                    <span class="o">%</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">))</span>
+        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Based on ground motion estimates from &#39;</span>
+                    <span class="s1">&#39;ShakeMap version </span><span class="si">%1.1f</span><span class="se">\n</span><span class="s1">&#39;</span>
+                    <span class="o">%</span> <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">])</span>
+
+        <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;## Summary</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">statement</span><span class="p">)</span>
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;hr&gt;&#39;</span><span class="p">)</span></div>
 
@@ -375,28 +406,24 @@
 <div class="viewcode-block" id="get_alert"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.get_alert">[docs]</a><span class="k">def</span> <span class="nf">get_alert</span><span class="p">(</span><span class="n">HaggLS</span><span class="p">,</span> <span class="n">HaggLQ</span><span class="p">,</span> <span class="n">binLS</span><span class="o">=</span><span class="p">[</span><span class="mf">100.</span><span class="p">,</span> <span class="mf">850.</span><span class="p">,</span> <span class="mf">4000.</span><span class="p">],</span>
               <span class="n">binLQ</span><span class="o">=</span><span class="p">[</span><span class="mf">70.</span><span class="p">,</span> <span class="mf">500.</span><span class="p">,</span> <span class="mf">1200.</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Bin edges (3 values) between Green and Yellow, Yellow and Orange, and</span>
-<span class="sd">    Orange and Red.</span>
-
-<span class="sd">    LS based on Nowicki et al. (2014) model results:</span>
-
-<span class="sd">    * Red &gt;4000</span>
-<span class="sd">    * Orange 850--4000</span>
-<span class="sd">    * Yellow 100--850</span>
-<span class="sd">    * Green &lt;100</span>
-
-<span class="sd">    LQ ased on Zhu et al. (2017) general model results:</span>
-
-<span class="sd">    * Red &gt;1000</span>
-<span class="sd">    * Orange 120--1000</span>
-<span class="sd">    * Yellow 70--120</span>
-<span class="sd">    * Green &lt;70</span>
+<span class="sd">    Get alert levels</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        HaggLS (float): Aggregate landslide hazard.</span>
-<span class="sd">        HaggLQ (float): Aggregate liquefaction hazard.</span>
-<span class="sd">        binLS (list): List of alert cutoffs for landsliding.</span>
-<span class="sd">        binLQ (list): List of alert cutoffs for liquefaction.</span>
+<span class="sd">        HaggLS (float): Aggregate hazard (km2) of preferred landslide model</span>
+<span class="sd">        HaggLQ (float): Aggregate hazard (km2) of preferred liquefaction model</span>
+<span class="sd">        binLS (list, optional): 3 element list of bin edges for landslide alert</span>
+<span class="sd">            between Green and Yellow, Yellow and Orange, and Orange and Red.</span>
+<span class="sd">        binLQ (list, optional): 3 element list of bin edges for liquefaction</span>
+<span class="sd">            alert between Green and Yellow, Yellow and Orange, and Orange</span>
+<span class="sd">            and Red.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: alertLS, alertLQ, statement, where</span>
+<span class="sd">                * alertLS is the landslide alert level (str)</span>
+<span class="sd">                * alertLQ is the liquefaction alert level (str)</span>
+<span class="sd">                * statement is a sentence describing the ground failure hazard</span>
+<span class="sd">                    based on the alert levels (str)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">HaggLS</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">alertLS</span> <span class="o">=</span> <span class="kc">None</span>

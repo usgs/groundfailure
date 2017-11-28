@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import os
 import shutil
@@ -102,8 +103,8 @@ def test_zhu2015_web(tmpdir):
 
     # Transfer dry run
     transfer_cmd = pdl.transfer('19891018000415', 'None', dryrun=True)
-    assert '--property-alertLQ=orange' in transfer_cmd
-    assert '--property-alertLS=orange' in transfer_cmd
+    assert '--property-alertLQ=yellow' in transfer_cmd
+    assert '--property-alertLS=yellow' in transfer_cmd
     assert '--type=groundfailure' in transfer_cmd
     assert '--property-title=Earthquake-Induced Groundfailure' in transfer_cmd
     assert '--eventsourcecode=19891018000415' in transfer_cmd

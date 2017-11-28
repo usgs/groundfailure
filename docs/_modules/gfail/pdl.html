@@ -45,8 +45,6 @@
 <span class="sd">    - Add max probability to product properties</span>
 <span class="sd">    - Add support to specify location of PDL key</span>
 <span class="sd">    - Potentially add more files (e.g., png, pdf)</span>
-<span class="sd">    - Improve evensourcecode issue, although this can probably only happen</span>
-<span class="sd">      once is it fixed in shakemap&#39;s grid.xml.</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
@@ -107,13 +105,13 @@
 
     <span class="c1"># Note that eventsource is like &#39;catalog&#39; for scenarios, but I think for</span>
     <span class="c1"># real events this is just the same as &#39;source&#39;</span>
-    <span class="n">eventsource</span> <span class="o">=</span> <span class="n">source</span>
+    <span class="n">eventsource</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_network&#39;</span><span class="p">]</span>
     <span class="k">if</span> <span class="n">eventid</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">eventsource</span><span class="p">):</span>
-        <span class="n">code</span> <span class="o">=</span> <span class="n">eventsource</span> <span class="o">+</span> <span class="n">eventid</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="n">eventid</span>
         <span class="n">nch</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">eventsource</span><span class="p">)</span>
         <span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">eventid</span><span class="p">[</span><span class="n">nch</span><span class="p">:]</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">code</span> <span class="o">=</span> <span class="n">eventid</span>
+        <span class="n">code</span> <span class="o">=</span> <span class="n">eventsource</span> <span class="o">+</span> <span class="n">eventid</span>
         <span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">eventid</span>
 
     <span class="n">pdl_type</span> <span class="o">=</span> <span class="s1">&#39;groundfailure&#39;</span>

@@ -4,8 +4,8 @@ import os
 import matplotlib.pyplot as plt
 from mapio.shake import ShakeGrid
 from gfail import makemaps
-from groundfailure.assessmodels import concatenateModels as concM
-from groundfailure.assessmodels import computeHagg
+from gfail.assess_models import concatenateModels as concM
+from gfail.assess_models import computeHagg
 import numpy as np
 from impactutils.io.cmd import get_command_output
 from shutil import copy
