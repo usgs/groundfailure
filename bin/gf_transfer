@@ -71,7 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('pdl_config', help='Path to PDL config.')
 
     parser.add_argument(
-        '-d', '--dry-fun', action='store_true', default=False,
+        '-d', '--dry-run', action='store_true', default=False,
         help='Dry run of pdl transfer')
 
     args = parser.parse_args()

@@ -11,6 +11,7 @@ from collections import OrderedDict
 from datetime import datetime
 import numpy as np
 import tempfile
+import shutil
 
 #third party
 from impactutils.io.cmd import get_command_output
@@ -29,10 +30,12 @@ tablecols = [('id', 'integer primary key'),
              ('alert', 'text'),
              ('maxmmi', 'real'),
              ('location', 'text'),
-             ('finitefault', 'integer')]
+             ('finitefault', 'integer'),
+             ('url', 'text'),
+             ('jsonfeed', 'text')]
 TABLES = {'shakemap': OrderedDict(tablecols)}
 
-ALERTLEVELS = ['green', 'yellow', 'orange', 'red', 'pending']
+ALERTLEVELS = ['pending', 'green', 'yellow', 'orange', 'red']
 
 defaultThresh = {'mag': 6.5,
                  'eis': 'yellow',
@@ -45,6 +48,8 @@ def main(args):
     args = validateArgs(args)
 
     config = configparser.ConfigParser()
+    
+    gfail_flags = args.gfail_flags
     
     if args.autoconfig is None:
         mail = False
@@ -70,28 +75,43 @@ def main(args):
         if 'MAIL' not in sections:
             print('autoconfig.ini missing MAIL section, no emails will be sent')
             mail = False
+        else:
+            mail = True
 
+    if args.testrun:
+        tempdir = tempfile.mkdtemp()
+        gfail_flags = gfail_flags + ' -o %s' % tempdir
+        dryrun = True
+    else:
+        dryrun = False
 
     db, cursor = connect(args.db)
     recentevents = getRecentEvents(thresh, args.feed)
     for event in recentevents:
+        empty = False
         fmt = 'SELECT id FROM shakemap WHERE eventcode="%s" AND version=%i AND time="%s"'
         query = fmt % (event['eventcode'], event['version'], event['time'])
         cursor.execute(query)
         row = cursor.fetchone()
-        if row is None:
+        if row is None or args.testrun:
             #this event has not been processed before (not in .db file)
-            filenames, url, jsonfeed = runGF(args.gfail_flags,
+            print('Now running M%s - %s' % (event['mag'], event['location']))
+            filenames, url, jsonfeed = runGF(gfail_flags,
                                              args.gfailconfig,
                                              event['url'],
                                              event['eventcode'],
-                                             faultfile=event['finite_fault'])
-            if not filenames:
-                print('No outputs found, problem with codes\n')
-                continue
-            if mail:
+                                             pdlconf=args.pdlconf,
+                                             faultfile=event['finite_fault'],
+                                             dryrun=dryrun)
+            if filenames is None:
+                #print('No outputs found, problem with codes\n')
+                empty = True
+                url = 'Failed to run'
+                jsonfeed = 'Failed to run'
+
+            if mail and not empty:
                 mailUsers(event, args.autoconfig, url, jsonfeed)
-            fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location,finitefault) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s",%i)'
+            fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location,finitefault,url,jsonfeed) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s",%i,"%s","%s")'
             eid = event['eventcode']
             enum = event['version']
             elat = event['lat']
@@ -106,12 +126,18 @@ def main(args):
                 finitefault = 1
             else:
                 finitefault = 0
-            insertquery = fmt % (eid, enum, elat, elon, edepth, str(etime), emag, alert, maxmmi, eloc, finitefault)
-            cursor.execute(insertquery)
-            db.commit()
+            if not args.testrun:
+                insertquery = fmt % (eid, enum, elat, elon, edepth, str(etime), emag, alert, maxmmi, eloc, finitefault, url, jsonfeed)
+                cursor.execute(insertquery)
+                db.commit()
             # Clean up finite fault temp geojson files
             if finitefault == 1:
                 os.remove(event['finite_fault'])
+                
+    if args.testrun:
+        # This was a test run so delete files and remove entries from database
+        print('Test successful, cleaning up files')
+        shutil.rmtree(tempdir)
 
             
 def validateArgs(args):
@@ -122,7 +148,7 @@ def validateArgs(args):
             raise IOError('autoconfig file specified (%s) does not exist' % args.autoconfig)
     if not os.path.exists(args.db):
         print('database file specified (%s) does not yet exist, new one will be created' % args.db)
-    if args.pdlconf is not None and ~os.path.exists(args.pdlconf):
+    if args.pdlconf is not None and not os.path.exists(args.pdlconf):
         print('Pdl config file specified (%s) does not exist, files will not be transferred' % args.pdlconf)
         args.pdlconf = None
     if args.feed not in 'dayweekmonth':
@@ -138,7 +164,11 @@ def validateArgs(args):
     return args
 
 
-def mailUsers(event, config, url, jsonfeed):
+def mailUsers(event, autoconfig, url, jsonfeed):
+    config = configparser.ConfigParser()
+    with open(autoconfig) as f:
+        config.read_file(f)
+
     props = {}
     eid = event['eventcode']
     title = event['title']
@@ -146,29 +176,29 @@ def mailUsers(event, config, url, jsonfeed):
 
     if vnum > 1:
         props['message'] = """
-        UPDATE Secondary hazard models for ShakeMap v%i of event id %s.
+        UPDATE Ground Failure models for ShakeMap v%i of event id %s.
         Event name: %s
-        Ground failure model summmary page: %s
+        Model summary page: %s
         Event detail JSON feed: %s
 
-        Model results are provisional and subject to revision. The results are released on the condition that neither the USGS nor the U.S. Government may be held liable for any damages resulting from its authorized or unauthorized use.
+        Model results are provisional and subject to revision. The results are released 
+        on the condition that neither the USGS nor the U.S. Government may be held liable
+        for any damages resulting from its authorized or unauthorized use.
         
-        Do not reply to this message.
-        
-        Contact kallstadt@usgs.gov with questions.
+        Do not reply to this message. Contact kallstadt@usgs.gov with questions.
         """ % (vnum, eid, title, url, jsonfeed)
     else:
         props['message'] = """
-        Secondary hazard models for ShakeMap v%i of event id %s.
+        Ground Failure models for ShakeMap v%i of event id %s.
         Event name: %s
-        Ground failure model summmary page: %s
+        Model summary page: %s
         Event detail JSON feed: %s
         
-        Model results are provisional and subject to revision. The results are released on the condition that neither the USGS nor the U.S. Government may be held liable for any damages resulting from its authorized or unauthorized use.
-        
-        Do not reply to this message.
-        
-        Contact kallstadt@usgs.gov with questions.
+        Model results are provisional and subject to revision. The results are released 
+        on the condition that neither the USGS nor the U.S. Government may be held liable
+        for any damages resulting from its authorized or unauthorized use.
+
+        Do not reply to this message. Contact kallstadt@usgs.gov with questions.
         """ % (vnum, eid, title, url, jsonfeed)
 
     props['subject'] = 'Ground Failure Model Results for %s' % (title)
@@ -182,7 +212,11 @@ def mailUsers(event, config, url, jsonfeed):
 
 
 def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
-          transfer=True, dryrun=False, faultfile=None):
+          transfer=True, faultfile=None, dryrun=False):
+    if dryrun:
+        dryrun = '-d'
+    else:
+        dryrun = ''
     if faultfile is not None:
         cmd = 'gfail -f %s %s %s %s' % (faultfile, flagstr, modelconfig, shakefile)
     else:
@@ -197,34 +231,29 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
                 in line or 'bil' in line or 'webpage':
                 filenames.append(line)
     else:
-        raise Exception('Did not find any files output by runGF,\
-                        these warnings were output: \
-                        %s\n' % print(stderr.decode()))
-        return
-    
+        print('Did not find any files output by runGF for event_id %s, \
+              Continuing to next event\n \
+              Warnings that were output: \
+              %s\n' % (event_id, print(stderr.decode())))
+        filenames = None
+        url = None
+        jsonfeed = None
+        return filenames, url, jsonfeed
+
     if transfer and pdlconf is not None:
-        if dryrun:
-            cmd = 'gf_transfer %s %s -d' % (event_id, pdlconf)
-            retcode, stdout, stderr = get_command_output(cmd)
-            temp = stdout.decode('utf-8')
-            print(temp)
-            if 'PDL transfer failed' in stdout:
-                print('PDL transfer dry run failed')
-                url = None
-                jsonfeed = None
+        cmd = 'gf_transfer %s %s %s' % (event_id, pdlconf, dryrun)
+        retcode, stdout, stderr = get_command_output(cmd)
+        temp = stdout.decode('utf-8')
+        print(temp)
+        if 'PDL transfer failed' in temp:
+            print('PDL transfer failed')
+            url = None
+            jsonfeed = None
+            print(stderr.decode('utf-8'))
         else:
-            cmd = 'gf_transfer %s %s' % (event_id, pdlconf)
-            retcode, stdout, stderr = get_command_output(cmd)
-            temp = stdout.decode('utf-8')
-            print(temp)
-            if 'PDL transfer failed' in stdout:
-                print('PDL transfer failed')
-                url = None
-                jsonfeed = None
-            else:
-                result = stdout.split('Web page URL:')[-1].split('Event detail JSON feed:')
-                url = result[0]
-                jsonfeed = result[1]
+            result = temp.split('Web page URL:')[-1].split('Event detail JSON feed:')
+            url = result[0].strip('\n')
+            jsonfeed = result[1].strip('\n')
     else:
         url = None
         jsonfeed = None
@@ -243,7 +272,10 @@ def getProductInfo(shakemap, pager):
     edict['mag'] = float(shakemap['properties']['magnitude'])
     edict['location'] = shakemap['properties']['event-description']
     edict['url'] = shakemap['contents']['download/grid.xml']['url']
-    edict['alert'] = pager['properties']['alertlevel']
+    if pager is not None:
+        edict['alert'] = pager['properties']['alertlevel']
+    else:
+        edict['alert'] = None
     try:
         edict['maxmmi'] = float(shakemap['properties']['maxmmi'])
     except:
@@ -262,7 +294,9 @@ def getRecentEvents(thresholds, feed):
         if 'shakemap' not in etypes:
             continue
         if 'losspager' not in etypes:
-            continue
+            PAG = False
+        else:
+            PAG = True
 
         edict = {}
         detailurl = event['properties']['detail']
@@ -271,7 +305,10 @@ def getRecentEvents(thresholds, feed):
         jdict2 = json.loads(data)
         fh.close()
         shakemap = jdict2['properties']['products']['shakemap'][0]
-        pager = jdict2['properties']['products']['losspager'][0]
+        if PAG:
+            pager = jdict2['properties']['products']['losspager'][0]
+        else:
+            pager = None
         # search for finitefault presence
         ff = False
         finft = None
@@ -287,18 +324,21 @@ def getRecentEvents(thresholds, feed):
             with tempfile.NamedTemporaryFile(delete=False, mode='w') as f3:
                 f3.write(d)
                 finft = f3.name  # save name of geojson file
+                #print(f3.name)
 
         #check pager and shakemap thresholds
         pmag = float(shakemap['properties']['magnitude'])
         pmmi = float(shakemap['properties']['maxmmi'])
-        palert = ALERTLEVELS.index(pager['properties']['alertlevel'])
+        if PAG:
+            palert = ALERTLEVELS.index(pager['properties']['alertlevel'])
         getShake = False
         if 'mag' in thresholds and pmag > thresholds['mag']:
             getShake = True
         if 'mmi' in thresholds and pmmi > thresholds['mmi']:
             getShake = True
-        if 'eis' in thresholds and palert >= ALERTLEVELS.index(thresholds['eis']):
-            getShake = True
+        if PAG:
+            if 'eis' in thresholds and palert >= ALERTLEVELS.index(thresholds['eis']):
+                getShake = True
 
         if getShake:
             edict = getProductInfo(shakemap, pager)
@@ -306,6 +346,7 @@ def getRecentEvents(thresholds, feed):
             edict['title'] = event['properties']['title']
             edict['finite_fault'] = finft
             eventlist.append(edict.copy())
+
     return eventlist
 
 
@@ -334,7 +375,7 @@ def text_to_json(url):
     Simplification of text_to_json from shakelib.rupture.factory
     """
     with urllib.request.urlopen(url) as f:
-       lines = f.readlines()       
+       lines = f.readlines()
     x = []
     y = []
     z = []
@@ -343,7 +384,7 @@ def text_to_json(url):
     for line in lines:
         sline = line.decode('utf8').strip()
         if sline.startswith('#'):
-            reference += sline
+            reference += sline.strip('#').strip('Source: ')
             continue
         if sline.startswith('>'):
             if len(x):  # start of new line segment
@@ -375,25 +416,25 @@ def text_to_json(url):
         if poly != []:
             coords.append(poly)
     
-        d = {
-            "type": "FeatureCollection",
-            "metadata": {
-                'reference':reference
-            },
-            "features": [
-                {
-                    "type": "Feature",
-                    "properties": {
-                        "rupture type": "rupture extent"
-                    },
-                    "geometry": {
-                        "type": "MultiPolygon",
-                        "coordinates": [coords]
-                    }
+    d = {
+        "type": "FeatureCollection",
+        "metadata": {
+            'reference':reference
+        },
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "rupture type": "rupture extent"
+                },
+                "geometry": {
+                    "type": "MultiPolygon",
+                    "coordinates": [coords]
                 }
-            ]
-        }
-        return json.dumps(d)
+            }
+        ]
+    }
+    return json.dumps(d)
 
                    
 if __name__ == '__main__':
@@ -411,7 +452,7 @@ if __name__ == '__main__':
              'file listing config files (do not use .ini extension)')
 
     parser.add_argument(
-        '-a', '--autoconfig', metavar='mailconfig',
+        '-a', '--autoconfig', metavar='autoconfig',
         nargs='?', default=None,
         help='Location of autoconfig.ini file that contains threshold'
              'information and email address list for automated emails.'
@@ -441,7 +482,6 @@ if __name__ == '__main__':
                             'options are week and hour')
 
     # Binary
-    #TODO add this option to main
     parser.add_argument(
         '-t', '--testrun', action='store_true', default=False,
         help='Do a test run, will not transfer files (dry run)'
