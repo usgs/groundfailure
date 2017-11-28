@@ -9,6 +9,8 @@ from configobj import ConfigObj
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail import assess_models
+import matplotlib
+matplotlib.use('Agg')
 
 # where is this script?
 homedir = os.path.dirname(os.path.abspath(__file__))
@@ -71,7 +73,7 @@ def test_assess_models():
         np.mean(prob_grid.getData()), 0.022321429)
 
     resid, rslt = assess_models.statsCoverage(
-            maplayers2['model']['grid'], prob_grid)
+            maplayers2['model']['grid'], prob_grid, showplots=False)
     np.testing.assert_allclose(
         np.nanmean(resid.getData()), 0.01525620534927)
 
