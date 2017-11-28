@@ -88,18 +88,29 @@ conda install -y -f click-plugins=1.0.3
 conda install -y psutil=5.2.1
 
 # Sphinx extensions
+echo "Installing Sphinx extensions..."
 pip install sphinxcontrib-napoleon
 pip install sphinx-argparse
+pip install sphinx_rtd_theme
 
 # MapIO and impact-utils
 echo "Installing MapIO..."
-pip -q install https://github.com/usgs/MapIO/archive/master.zip
-echo "Installing impact-utils..."
-pip -q install \
-    https://github.com/usgs/earthquake-impact-utils/archive/master.zip
+curl --max-time 60 --retry 3 -L \
+     https://github.com/usgs/MapIO/archive/master.zip -o mapio.zip
+pip -q install --no-deps mapio.zip
+rm mapio.zip
 
-pip install sphinx_rtd_theme
+echo "Installing impact-utils..."
+curl --max-time 60 --retry 3 -L \
+     https://github.com/usgs/earthquake-impact-utils/archive/master.zip\
+     -o impactutils.zip
+pip -q install --no-deps impactutils.zip
+rm impactutils.zip
+
+
+echo "Installing folium..."
 pip install folium
+echo "Installing pelican markdown..."
 pip install pelican markdown
 
 # This package
