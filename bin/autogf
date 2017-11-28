@@ -6,11 +6,9 @@ import configparser
 import os
 import urllib.request, urllib.error, urllib.parse
 import json
-import sys
 import sqlite3
 from collections import OrderedDict
 from datetime import datetime
-import gfail.pdl as pdl
 import numpy as np
 import tempfile
 
@@ -84,7 +82,7 @@ def main(args):
         if row is None:
             #this event has not been processed before (not in .db file)
             filenames, url, jsonfeed = runGF(args.gfail_flags,
-                                            args.gfailconfig,
+                                             args.gfailconfig,
                                              event['url'],
                                              event['eventcode'],
                                              faultfile=event['finite_fault'])
@@ -400,7 +398,7 @@ def text_to_json(url):
                    
 if __name__ == '__main__':
 
-    default_loc = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    default_loc = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
     parser = argparse.ArgumentParser(
         description='Check for triggering events for ground failure, if found,'

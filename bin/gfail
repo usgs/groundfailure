@@ -245,7 +245,7 @@ def main(args):
                     scaletype='continuous', lims=lims, logscale=logscale,
                     ALPHA=0.7, outputdir=outfolder, outfilename=filename,
                     tiletype='Stamen Terrain', separate=True,
-                    faultfile=args.fault_file)
+                    faultfile=args.finite_fault)
                 for filen in filenames1:
                     filenames.append(filen)
             if args.make_webpage:
@@ -273,7 +273,7 @@ def main(args):
             webloc = makeWebpage(results, configs, args.web_template,
                                  shakefile, outfolder=outfolder,
                                  includeAlert=args.alert, cleanup=True,
-                                 faultfile=args.fault_file)
+                                 faultfile=args.finite_fault)
             filenames.append(webloc)
 
         # Write shakefile to a file for use later
@@ -299,15 +299,12 @@ def getGridURL(gridurl):
     """
 
     f = None
-    try:
-        fh = urllib.request.urlopen(gridurl)
+    fh = None
+    with urllib.request.urlopen(gridurl) as fh:
         data = fh.read().decode('utf-8')
-        f = tempfile.NamedTemporaryFile(delete=False)
-        f.write(data)
-        f.close()
-        fh.close()
-    except:
-        raise IOError('Could not retrieve data from %s' % gridurl)
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
+            f.write(data)
+
     return f.name
 
 
