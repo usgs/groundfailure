@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from scipy import interpolate
 from sklearn.metrics import roc_curve, roc_auc_score, auc
+from skimage.feature import match_template
 import copy
 import collections
 import urllib
@@ -918,8 +919,6 @@ def normXcorr(model, inventory):
     :param inventory: Grid 2D file of inventory processed to simulate what model is supposed to predict (using convert2Prob or convert2Coverage)
     :returns: normalized cross correlation coefficient (between 0 and 1)
     """
-    from skimage.feature import match_template
-
     if model.getGeoDict() != inventory.getGeoDict():
         raise Exception('model and inventory files are not identical')
 

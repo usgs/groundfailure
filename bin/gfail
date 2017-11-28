@@ -26,11 +26,6 @@ from gfail.makemaps import (parseConfigLayers, parseMapConfig,
 from gfail.webpage import makeWebpage
 from mapio.shake import ShakeGrid
 
-# temporary until mapio is updated
-import warnings
-warnings.filterwarnings('ignore')
-
-
 def main(args):
     # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
     if args.set_default_paths:
@@ -243,7 +238,8 @@ def main(args):
                     colormaps=colormaps, isScenario=False,
                     scaletype='continuous', lims=lims, logscale=logscale,
                     ALPHA=0.7, outputdir=outfolder, outfilename=filename,
-                    tiletype='Stamen Terrain', separate=True)
+                    tiletype='Stamen Terrain', separate=True,
+                    faultfile=args.finite_fault)
                 for filen in filenames1:
                     filenames.append(filen)
             if args.make_webpage:
@@ -270,7 +266,8 @@ def main(args):
         if args.make_webpage:
             webloc = makeWebpage(results, configs, args.web_template,
                                  shakefile, outfolder=outfolder,
-                                 includeAlert=args.alert, cleanup=True)
+                                 includeAlert=args.alert, cleanup=True,
+                                 faultfile=args.finite_fault)
             filenames.append(webloc)
 
         # Write shakefile to a file for use later
@@ -296,15 +293,12 @@ def getGridURL(gridurl):
     """
 
     f = None
-    try:
-        fh = urllib.request.urlopen(gridurl)
+    fh = None
+    with urllib.request.urlopen(gridurl) as fh:
         data = fh.read().decode('utf-8')
-        f = tempfile.NamedTemporaryFile(delete=False)
-        f.write(data)
-        f.close()
-        fh.close()
-    except:
-        raise IOError('Could not retrieve data from %s' % gridurl)
+        with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
+            f.write(data)
+
     return f.name
 
 
@@ -580,6 +574,9 @@ if __name__ == '__main__':
         '-t', '--web-template', metavar='template', nargs='?',
         default=web_template,
         help='location of directory containing pelican files and templates')
+    parser.add_argument(
+        '-f', '--finite-fault', metavar='finitefault', nargs='?',
+        default=None, help='geojson file to show on interactive maps')
 
     # Binary
     parser.add_argument(
