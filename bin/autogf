@@ -179,6 +179,7 @@ def mailUsers(event, autoconfig, url, jsonfeed):
         UPDATE Ground Failure models for ShakeMap v%i of event id %s.
         Event name: %s
         Model summary page: %s
+        
         Event detail JSON feed: %s
 
         Model results are provisional and subject to revision. The results are released 
@@ -192,6 +193,7 @@ def mailUsers(event, autoconfig, url, jsonfeed):
         Ground Failure models for ShakeMap v%i of event id %s.
         Event name: %s
         Model summary page: %s
+        
         Event detail JSON feed: %s
         
         Model results are provisional and subject to revision. The results are released 
