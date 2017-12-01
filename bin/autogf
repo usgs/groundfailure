@@ -309,7 +309,12 @@ def getRecentEvents(thresholds, feed):
         fh.close()
         shakemap = jdict2['properties']['products']['shakemap'][0]
         if PAG:
-            pager = jdict2['properties']['products']['losspager'][0]
+            try:
+                pager = jdict2['properties']['products']['losspager'][0]
+            except:
+                print('No losspager product found, setting pager to None\n')
+                pager = None
+                PAG = False
         else:
             pager = None
         # search for finitefault presence
@@ -329,7 +334,7 @@ def getRecentEvents(thresholds, feed):
                 finft = f3.name  # save name of geojson file
                 #print(f3.name)
 
-        #check pager and shakemap thresholds
+        #check shakemap thresholds
         pmag = float(shakemap['properties']['magnitude'])
         pmmi = float(shakemap['properties']['maxmmi'])
         if PAG:

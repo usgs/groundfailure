@@ -178,8 +178,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     else:
         alHaggLQ = None
         filenameLQ = None
-        
-        
+
     write_summary(shakemap, pages, images, alert=includeAlert,
                   HaggLS=alHaggLS,
                   HaggLQ=alHaggLQ)
@@ -312,10 +311,10 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                 file1.write('<center><a href="images%s">Click here for full '
                             'interactive map</a></center>\n'
                             % fileloc)
-    
+
                 file1.write('<center><div class="folium-map" id="map_%s">'
                             '</div></center>\n' % id1)
-    
+
                 cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
                 file1.write('<center><img src="images%s" width="300" '
                             'href="images%s"/></center>\n'
@@ -325,7 +324,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                             'href="images%s"/></center>\n'
                             % (staticmap.split('images')[-1],
                                staticmap.split('images')[-1]))
-    
+
             file1.write('<hr>\n')
             file1.write('<center><h3>%s Summary</h3></center>' % modeltype.title())
             file1.write('<table style="width:100%">')
@@ -337,7 +336,7 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                             % (n.title(), H, m))
             file1.write('</table>')
         else:
-            file1.write('<center><h2>No results</h2></center>')
+            file1.write('<center><h3>No results</h3></center>')
 
 
 def write_summary(shakemap, outputdir, imgoutputdir, alert=False, HaggLS=None, HaggLQ=None):
@@ -366,25 +365,25 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False, HaggLS=None, H
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
         file1.write('modified: 2017-06-09\n')
-        file1.write('# Ground Failure\n')
+        file1.write('<h1>Ground Failure</h1>\n')
 
-        file1.write('## Magnitude %1.1f - %s\n'
+        file1.write('<h2>Magnitude %1.1f - %s</h2>\n'
                     % (edict['magnitude'],
                        edict['event_description']))
 
-        file1.write('### %s (UTC) | %1.4f°,  %1.4f° | %1.1f km depth\n'
+        writeline = '<h3> %s (UTC) | %1.4f&#176,  %1.4f&#176 | %1.1f km depth</h3>\n' \
                     % (edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
-                       edict['lat'],
-                       edict['lon'], edict['depth']))
+                        edict['lat'], edict['lon'], edict['depth'])
+        file1.write(writeline)
 
-        file1.write('Last updated at: %s (UTC)\n\n'
+        file1.write('<p>Last updated at: %s (UTC)\n\n'
                     % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('Based on ground motion estimates from '
-                    'ShakeMap version %1.1f\n'
+                    'ShakeMap version %1.1f</p>\n'
                     % edict['version'])
         if alert:
-            file1.write('## Summary\n')
-            file1.write(statement)
+            file1.write('<h2>Summary</h2>\n')
+            file1.write('<p>%s</p>' % statement)
             file1.write('<hr>')
 
 
