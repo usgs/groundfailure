@@ -143,10 +143,18 @@ def prepare_pdl_directory(eventid):
     # Put geotif files into pdl directory
     for i in range(len(geotif_files)):
         src = geotif_files[i]
-        tfile = src.split('/')[-1]
+        tfile = os.path.basename(src)
         dst = os.path.join(pdl_dir, tfile)
         shutil.move(src, dst)
 
+    # Put json files into pdl directory
+    json_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.json')]
+    for i in range(len(json_files)):
+        src = json_files[i]
+        jfile = os.path.basename(src)
+        dst = os.path.join(pdl_dir, jfile)
+        shutil.copy(src, dst)
+    
     # Make contents.xml
     contents = etree.Element("contents")
 
@@ -180,6 +188,25 @@ def prepare_pdl_directory(eventid):
             tif_files[i], "format",
             href=fname,
             type='image/geotiff')
+        
+    # Json files
+    j_files = [None] * len(json_files)
+    file_caps = [None] * len(json_files)
+    for i in range(len(json_files)):
+        fname = json_files[i].split('/')[-1]
+        spl = fname.split('_')
+        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Metadata'
+        fid = '_'.join(spl[1:3])+"_json"
+        j_files[i] = etree.SubElement(
+            contents, "file",
+            title=ftitle,
+            id=fid)
+        file_caps[i] = etree.SubElement(j_files[i], "caption")
+        file_caps[i].text = ftitle + ' metadata json file'
+        etree.SubElement(
+            j_files[i], "format",
+            href=fname,
+            type='text/json')
 
     # Write result
     out_file = os.path.join(pdl_dir, 'contents.xml')
@@ -204,6 +231,6 @@ def bil_to_geotiff(file):
     if file[-4:] != '.bil':
         raise Exception('Input file must have extension .bil')
     outfile = file[:-4] + '.tif'
-    cmd = 'gdal_translate -of GTiff %s %s' % (file, outfile)
+    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (file, outfile)
     rc, so, se = get_command_output(cmd)
     return outfile

@@ -2,6 +2,7 @@
 
 from mapio.multihaz import MultiHazardGrid
 import collections
+import json
 
 # NEED TO ADD ERROR CATCHING IN CASE FIELDS ARE MISSING
 # TAKES A TON OF MEMORY AND A LONG TIME WITH LARGE FILES
@@ -51,3 +52,29 @@ def loadlayers(filename):
         }
 
     return grids
+
+
+def metadata2json(model, filename):
+    """
+    Save metadata from ground failure model in json file
+
+    Args:
+        model (dict): Dictionary of single model output formatted like:
+
+            .. code-block:: python
+
+                {
+                    'grid': mapio grid2D object,
+                    'label': 'label for colorbar and top line of subtitle',
+                    'type': 'output or input to model',
+                    'description': 'description for subtitle'
+                }
+        filename: Name of json file, should end in .json extension
+        
+    Returns:
+        Json file containing metadata information
+    """
+    metadata = model['description']
+    metajson = json.dumps(metadata)
+    with open(filename, mode='w') as f3:
+        f3.write(metajson)
