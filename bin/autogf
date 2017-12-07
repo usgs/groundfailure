@@ -552,8 +552,8 @@ if __name__ == '__main__':
              'of ground failure runs')
 
     parser.add_argument(
-        '-e', '--eventdir', metavar='path to folder containing output', nargs='?'
-        default=None, help="""
+        '-e', '--eventdir', metavar='path to folder containing output',
+        nargs='?', default=None, help="""
         Send results that were already computed. eventdirectory should be
         to file path to the directory containing all the files (usually a
         subfolder named with the event id)
