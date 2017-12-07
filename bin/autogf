@@ -463,11 +463,11 @@ def gf_transfer(event_dir, event_id, pdl_config, dry_run=False):
     """
     print('Preparing directory to transfer %s...'
           % event_id)
-    pdl.prepare_pdl_directory(event_id)
+    pdl.prepare_pdl_directory(eventdir)
 
     # Transfer
     print('Transferring...')
-    log = pdl.transfer(eventdir, eventid, pdl_config, dryrun=dry_run)
+    log = pdl.transfer(eventdir, pdl_config, eventid=event_id, dryrun=dry_run)
     print('done.')
     if log['rc'] is True:
         print('Successful PDL transfer.')

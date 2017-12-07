@@ -11,18 +11,18 @@ import json
 import shutil
 from lxml import etree
 from impactutils.io.cmd import get_command_output
-from configobj import ConfigObj
 from mapio.shake import ShakeGrid
 
 
-def transfer(eventdir, eventid, pdl_conf, pdl_bin=None, source="us", dryrun=False):
+def transfer(eventdir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     """
     This is to transfer the event's 'pdl_directory' to comcat.
 
     Args:
         eventdir (str): File path to location of results for event
-        eventid (str): Event id
         pdl_conf (str): Path to PDL conf file.
+        eventid (str): Event id, if None, assumes that basename of eventdir is
+            the eventid
         pdl_bin (str): Path to 'ProductClient.jar'. If None it guesses that it
             is installed in the user's home directory:
             ``~/ProductClient/ProductClient.jar``.
@@ -56,6 +56,7 @@ def transfer(eventdir, eventid, pdl_conf, pdl_bin=None, source="us", dryrun=Fals
     lon = event_dict['lon']
     dep = event_dict['depth']
     mag = event_dict['magnitude']
+    eventid = event_dict['event_id']
     time_stamp = event_dict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # Note that eventsource is like 'catalog' for scenarios, but I think for
@@ -106,18 +107,14 @@ def transfer(eventdir, eventid, pdl_conf, pdl_bin=None, source="us", dryrun=Fals
         return pdl_cmd
 
 
-def prepare_pdl_directory(eventid):
+def prepare_pdl_directory(eventdir):
     """
     Make director for transferring to comcat.
 
     Args:
-        eventid (str): Event id.
+        eventdir (str): Path to event directory
     """
 
-    defaults = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
-    defaults_conf = ConfigObj(defaults)
-    output_filepath = defaults_conf['output_filepath']
-    eventdir = os.path.join(output_filepath, eventid)
     pdl_dir = os.path.join(eventdir, 'pdl_directory')
     if os.path.exists(pdl_dir):
         shutil.rmtree(pdl_dir)
@@ -189,16 +186,20 @@ def prepare_pdl_directory(eventid):
     j_files = [None] * len(json_files)
     file_caps = [None] * len(json_files)
     for i in range(len(json_files)):
-        fname = json_files[i].split('/')[-1]
-        spl = fname.split('_')
-        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Metadata'
-        fid = '_'.join(spl[1:3])+"_json"
+        fname = os.path.splitext(os.path.basename(json_files[i]))[0]
+        if 'alert' in fname:
+            ftitle = 'Alert'
+            fid = 'alert_json'
+        else:
+            spl = fname.split('_')
+            ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Metadata'
+            fid = '_'.join(spl[1:3])+"_json"
         j_files[i] = etree.SubElement(
             contents, "file",
             title=ftitle,
             id=fid)
         file_caps[i] = etree.SubElement(j_files[i], "caption")
-        file_caps[i].text = ftitle + ' metadata json file'
+        file_caps[i].text = ftitle + ' json file'
         etree.SubElement(
             j_files[i], "format",
             href=fname,
