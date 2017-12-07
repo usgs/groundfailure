@@ -264,7 +264,7 @@ def main(args):
                                 
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     filenames.append(filen)
-            if args.json:
+            if args.json or args.make_webpage:
                 jsfn = os.path.join(outfolder, '%s.json' % filename)
                 metadata2json(maplayers['model'], jsfn)
                 filenames.append(jsfn)
@@ -275,6 +275,8 @@ def main(args):
                                  includeAlert=args.alert, cleanup=True,
                                  faultfile=args.finite_fault)
             filenames.append(webloc)
+            # Make summary json file for webpage rendering here
+            #TODO
 
         # Write shakefile to a file for use later
         shake_file = open(os.path.join(outfolder, "shakefile.txt"), "w")

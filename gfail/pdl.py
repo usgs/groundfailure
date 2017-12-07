@@ -15,12 +15,13 @@ from configobj import ConfigObj
 from mapio.shake import ShakeGrid
 
 
-def transfer(eventid, pdl_conf, pdl_bin=None, source="us", dryrun=False):
+def transfer(eventdir, eventid, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     """
     This is to transfer the event's 'pdl_directory' to comcat.
 
     Args:
-        eventid (str): Event id.
+        eventdir (str): File path to location of results for event
+        eventid (str): Event id
         pdl_conf (str): Path to PDL conf file.
         pdl_bin (str): Path to 'ProductClient.jar'. If None it guesses that it
             is installed in the user's home directory:
@@ -41,11 +42,6 @@ def transfer(eventid, pdl_conf, pdl_bin=None, source="us", dryrun=False):
                                'ProductClient',
                                'ProductClient.jar')
 
-    defaults = os.path.join(os.path.expanduser('~'),
-                            '.gfail_defaults')
-    defaults_conf = ConfigObj(defaults)
-    output_filepath = defaults_conf['output_filepath']
-    eventdir = os.path.join(output_filepath, eventid)
     pdl_dir = os.path.join(eventdir, 'pdl_directory')
 
     # Get the shakefile
