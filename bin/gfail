@@ -21,7 +21,7 @@ import numpy as np
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
-from gfail.savelayers import savelayers, metadata2json
+from gfail.savelayers import savelayers
 from gfail.makemaps import (parseConfigLayers, parseMapConfig,
                             modelMap, interactiveMap)
 from gfail.webpage import makeWebpage
@@ -244,7 +244,23 @@ def main(args):
                 for filen in filenames1:
                     filenames.append(filen)
             if args.make_webpage:
+                # Compile into list of results for later
                 results.append(maplayers)
+                # Make GIS files that are always needed for website if they aren't already being made
+                if not args.gis:
+                    filen = os.path.join(outfolder, '%s_model.bil'
+                                         % filename)
+                    fileg = os.path.join(outfolder, '%s_model.tif'
+                                         % filename)
+                                
+                    GDALGrid.copyFromGrid(maplayers['model']['grid']).save(filen)
+                    # convert to geotif
+
+                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
+                    rc, so, se = get_command_output(cmd)
+                    os.remove(filen)
+                    filenames.append(fileg)
+                    
             if args.gis:
 
                 for key in maplayers:
@@ -263,7 +279,11 @@ def main(args):
                                          % (filename, keyS))
                                 
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
-                    filenames.append(filen)
+                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
+                    rc, so, se = get_command_output(cmd)
+                    os.remove(filen)
+                    filenames.append(fileg)
+                    
                     
         if args.make_webpage:
             outputs = makeWebpage(results, configs, args.web_template,

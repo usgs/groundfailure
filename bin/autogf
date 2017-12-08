@@ -239,9 +239,9 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
     else:
         dryrun = ''
     if faultfile is not None:
-        cmd = 'gfail --hdf5 -i -f %s %s %s %s' % (faultfile, flagstr, modelconfig, shakefile)
+        cmd = 'gfail -f %s %s %s %s' % (faultfile, flagstr, modelconfig, shakefile)
     else:
-        cmd = 'gfail --hdf5 -i %s %s %s' % (flagstr, modelconfig, shakefile)
+        cmd = 'gfail %s %s %s' % (flagstr, modelconfig, shakefile)
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
     if temp.find('Files created:\n') > -1:
@@ -567,7 +567,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '-fl', '--gfail-flags', metavar='gfailflags', nargs='?',
-        default='--gis -w --hdf5',
+        default='-w --hdf5',
         help='String of flags for gfail')
 
     parser.add_argument(

@@ -58,6 +58,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
      """
     # get event id
     event_id = maplayerlist[0]['model']['description']['event_id']
+
     if outfolder is None:
         outfolder = os.path.join(os.getcwd(), event_id)
     fullout = os.path.join(outfolder, 'temp')
@@ -129,10 +130,16 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             colLS.append(colormaps[0])
             concLS[title] = maplayer['model']
             
+            if 'godt' in maplayer['model']['description']['name'].lower():
+                statprobthresh = None
+            else:
+                statprobthresh = 0.0 # Since logistic models can't equal one, need to eliminate placeholder zeros before computing stats
+            
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
                                  shakefile=shakemap,
-                                 shakethresh=shakethresh)
+                                 shakethresh=shakethresh,
+                                 statprobthresh=statprobthresh)
             
             if il == 0:
                 on = True
@@ -152,14 +159,14 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             with open(outfilebase + '.json', mode='w') as f3:
                 f3.write(metad2)
                 
-            lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': '',
+            lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': outfilebase + '.tif',
                                 'bin_edges': list(lims[0]),
                                 'metadata': metadata,
                                 'stats': stats,
                                 'layer_on': on
                                     }
             il += 1  
-            
+            filenames.append(outfilebase + '.tif')
         elif 'liquefaction' in mdict['parameters']['modeltype'].lower():
             title = maplayer['model']['description']['name']
             plotorder, logscale, lims, colormaps, maskthreshes = \
@@ -193,13 +200,14 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             with open(outfilebase + '.json', mode='w') as f3:
                 f3.write(metad2)
             
-            lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': '',
+            lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': outfilebase + '.tif',
                                 'bin_edges': list(lims[0]),
                                 'metadata': metadata,
                                 'stats': stats,
                                 'layer_on': on
                                     }
-            iq += 1  
+            iq += 1
+            filenames.append(outfilebase + '.tif')
         else:
             raise Exception("model type is undefined, check "
                             "maplayer['model']['parameters']"
@@ -278,7 +286,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                     'name': sks['name'],
                     'date': sks['date'],
                     'event_id': sks['event_id'],
-                    'event_url': 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % sks['event_id'],
+                    'event_url': sks['event_url'],
                     'shakemap_url': 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % sks['shakemap_id'],
                     'shakemap_version': sks['shakemap_version'],
                     'statement': sks['statement'],
@@ -286,13 +294,11 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                     },
             'Landslides': {
                     'models': lsmodels,
-                    'downloads': ['list of files'],
                     'alert': sks['alertLS'],
                     'alertvalue': paramalertLS
                     },
             'Liquefaction': {
                     'models': lsmodels,
-                    'downloads': ['list of files'],
                     'alert': sks['alertLQ'],
                     'alertvalue': paramalertLQ
                     }
@@ -475,6 +481,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
     """
     edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
     smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
+    event_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % edict['event_id']
     
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
@@ -482,8 +489,8 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
         file1.write('modified: 2017-06-09\n')
         file1.write('<h1>Ground Failure</h1>\n')
 
-        file1.write('<h2>Magnitude %1.1f - %s</h2>\n'
-                    % (edict['magnitude'],
+        file1.write('<h2><a href=%s>Magnitude %1.1f - %s</a></h2>\n'
+                    % (event_url, edict['magnitude'],
                        edict['event_description']))
 
         writeline = '<h3> %s (UTC) | %1.4f&#176,  %1.4f&#176 | %1.1f km depth</h3>\n' \
@@ -516,7 +523,8 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
                     'alertLS': alertLS,
                     'alertLQ': alertLQ,
                     'event_id': edict['event_id'],
-                    'shakemap_id': smdict['shakemap_id']
+                    'shakemap_id': smdict['shakemap_id'],
+                    'event_url': event_url
                     }
 
     return shakesummary

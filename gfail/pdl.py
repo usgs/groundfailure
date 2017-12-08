@@ -125,15 +125,9 @@ def prepare_pdl_directory(eventdir):
     new_web_dir = os.path.join(pdl_dir, 'html')
     shutil.copytree(old_web_dir, new_web_dir)
 
-    # Convert .bil to geotif
-    all_files = os.listdir(eventdir)
-    bil_files = [a for a in all_files if a.endswith('.bil')]
-    geotif_files = []
-    for i in range(len(bil_files)):
-        tfile = os.path.join(eventdir, bil_files[i])
-        geotif_files.append(bil_to_geotiff(tfile))
-
     # Put geotif files into pdl directory
+    all_files = os.listdir(eventdir)
+    geotif_files = [a for a in all_files if a.endswith('.tif')]
     for i in range(len(geotif_files)):
         src = geotif_files[i]
         tfile = os.path.basename(src)
@@ -240,21 +234,3 @@ def prepare_pdl_directory(eventdir):
         xml_declaration=True,
         encoding='UTF-8'
     )
-
-
-def bil_to_geotiff(file):
-    """
-    Convert bil file to geodiff.
-
-    Args:
-        file (str): Input file path; must have extension '.bil'.
-
-    Returns:
-        str: Output file path.
-    """
-    if file[-4:] != '.bil':
-        raise Exception('Input file must have extension .bil')
-    outfile = file[:-4] + '.tif'
-    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (file, outfile)
-    rc, so, se = get_command_output(cmd)
-    return outfile

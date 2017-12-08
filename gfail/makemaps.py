@@ -1175,8 +1175,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             sref_fix = sref_fix.replace(')', '')
             sref_fix = sref_fix.replace(' ', '_')
 
-        if outfilename is None:
+        if outfilename is None and edict is not None:
             outfilename = '%s_%s' % (edict['event_id'], sref_fix)
+        elif outfilename is None:
+            outfilename = sref_fix
 
         if colormaps[k] is not None:
             palette = colormaps[k]
@@ -1318,7 +1320,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 ax = axes[k]
 
             if scaletype.lower() == 'binned':
-                newclev = clev[:-1] + [clev[-1]+0.01*clev[-1]] # Modify so colorbar uses full expanse of colorbar
+                newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1])) # Modify so colorbar uses full expanse of colorbar
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
                              orientation='horizontal', format=cbfmt, extend='both',
                              extendfrac=0.15, ticks=newclev, boundaries=newclev,
@@ -1462,12 +1464,27 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
             #draw epicenter
             if edict is not None:
-                folium.RegularPolygonMarker(
-                    location=[edict['lat'], edict['lon']],
-                    popup='Epicenter',
-                    fill_color='#769d96',
-                    number_of_sides=4,
-                    radius=6).add_to(map1)
+                #f = folium.map.FeatureGroup(overlay=False)
+                for j in [9,7,5,3,1]:
+                    if j in [9,5,1]:
+                        color3 = 'black'
+                    else:
+                        color3 = 'white'
+                    map1.add_child(folium.features.CircleMarker(
+                            [edict['lat'], edict['lon']],
+                            radius=j,
+                            color=color3,
+                            fill=False,
+                            fill_opacity=0.5
+                            ))
+
+                #map1.add_child(f)
+#                folium.RegularPolygonMarker(
+#                    location=[edict['lat'], edict['lon']],
+#                    popup='Epicenter',
+#                    fill_color='#769d96',
+#                    number_of_sides=4,
+#                    radius=6).add_to(map1)
 
             if savefiles:
                 if separate:

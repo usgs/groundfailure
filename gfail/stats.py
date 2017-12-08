@@ -17,7 +17,8 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
 
 
 def computeStats(grid2D, probthresh=0.0, shakefile=None,
-                shakethreshtype='pga', shakethresh=0.0):
+                shakethreshtype='pga', shakethresh=0.0,
+                statprobthresh=None):
     """
     Compute summary stats of a ground failure model output.
 
@@ -31,6 +32,8 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi. Used for Hagg computation
+        statprobthresh: Optional, Float, Exclude any values less than or equal to this value in
+            calculation of regular stats (max, median, std)
 
     Returns:
         Dictionary with the following keys:
@@ -42,6 +45,8 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
     """
     stats = collections.OrderedDict()
     grid = grid2D.getData()
+    if statprobthresh is not None:
+        grid = grid[grid>statprobthresh]
     
     stats['Max'] = np.nanmax(grid)
     stats['Median'] = np.nanmedian(grid)
