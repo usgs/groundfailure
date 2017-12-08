@@ -4,9 +4,7 @@ import os
 import matplotlib.pyplot as plt
 from mapio.shake import ShakeGrid
 from gfail import makemaps
-from gfail.assess_models import concatenateModels as concM
-from gfail.assess_models import computeHagg
-import numpy as np
+from gfail.stats import computeStats
 from impactutils.io.cmd import get_command_output
 from shutil import copy
 from datetime import datetime
@@ -14,6 +12,7 @@ from bs4 import BeautifulSoup
 import shutil
 import glob
 import json
+import collections
 
 # temporary until mapio is updated
 import warnings
@@ -21,7 +20,7 @@ warnings.filterwarnings('ignore')
 
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
-                includeunc=False, cleanup=True, includeAlert=False,
+                includeunc=False, cleanup=True, includeAlert=False, alertkey='Hagg',
                 shakethreshtype='pga', shakethresh=0.0, faultfile=None):
     """
     Create a webpage that summarizes ground failure results (both landslides
@@ -49,8 +48,6 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
     Returns:
         Folder where webpage files are located
-
-     TODO add in logic to deal with when one of the model types is missing
      """
     # get ShakeMap id
     sm_id = maplayerlist[0]['model']['description']['shakemap']
@@ -91,126 +88,178 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         f.write('\n')
 
     # Separate the LS and LQ models
-    LS = []
-    LQ = []
-    confLS = []
-    confLQ = []
+
+    concLS = collections.OrderedDict()
+    concLQ = collections.OrderedDict()
+    
+    lsmodels = {}
+    lqmodels = {}
+    logLS = []
+    limLS = []
+    colLS = []
+    logLQ = []
+    limLQ = []
+    colLQ = []
+
+    
+    il = 0
+    iq = 0
+
     for conf, maplayer in zip(configs, maplayerlist):
         mdict = maplayer['model']['description']
         if 'landslide' in mdict['parameters']['modeltype'].lower():
-            LS.append(maplayer)
-            confLS.append(conf)
+            title = maplayer['model']['description']['name']
+            plotorder, logscale, lims, colormaps, maskthreshes = \
+                makemaps.parseConfigLayers(maplayer, conf, keys=['model'])
+            logLS.append(logscale[0])
+            limLS.append(lims[0])
+            colLS.append(colormaps[0])
+            concLS[title] = maplayer['model']
+            
+            stats = computeStats(maplayer['model']['grid'],
+                                 probthresh=[0.0, 0.1, 0.2, 0.3],
+                                 shakefile=shakemap,
+                                 shakethresh=[0.0, 5., 10.])
+            
+            if il == 0:
+                on = True
+            else:
+                on = False
+            lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': '',
+                                'bin_edges': list(lims[0]),
+                                'metadata': maplayer['model']['description'],
+                                'stats': stats,
+                                'layer_on': on
+                                    }
+            il += 1  
+            
         elif 'liquefaction' in mdict['parameters']['modeltype'].lower():
-            LQ.append(maplayer)
-            confLQ.append(conf)
+            title = maplayer['model']['description']['name']
+            plotorder, logscale, lims, colormaps, maskthreshes = \
+                makemaps.parseConfigLayers(maplayer, conf, keys=['model'])
+            logLQ.append(logscale[0])
+            limLQ.append(lims[0])
+            colLQ.append(colormaps[0])
+            concLQ[title] = maplayer['model']
+            
+            stats = computeStats(maplayer['model']['grid'],
+                                 probthresh=[0.0, 0.1, 0.2, 0.3],
+                                 shakefile=shakemap,
+                                 shakethresh=[0.0, 5., 10.])
+            
+            if iq == 0:
+                on = True
+            else:
+                on = False
+            lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': '',
+                                'bin_edges': list(lims[0]),
+                                'metadata': maplayer['description'],
+                                'stats': stats,
+                                'layer_on': on
+                                    }
+            iq += 1  
         else:
             raise Exception("model type is undefined, check "
                             "maplayer['model']['parameters']"
                             "['modeltype'] to ensure it is defined")
 
-    HaggLS = []
-    maxLS = []
-    logLS = []
-    limLS = []
-    colLS = []
-    namesLS = []
-    if len(LS) > 0:
+        # Make interactive maps for each
+        if il > 0:
+            mapLS, filenameLS = makemaps.interactiveMap(
+                concLS, shakefile=shakemap, scaletype='binned',
+                colormaps=colLS, lims=limLS, clear_zero=False,
+                logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
+                mapid='LS', savefiles=True, outputdir=images,
+                sepcolorbar=True, floatcb=False, faultfile=faultfile)
+            filenameLS = filenameLS[0]
+        else:
+            filenameLS = None
 
-        for conf, L in zip(confLS, LS):
-            HaggLS.append(computeHagg(L['model']['grid'], probthresh=0.0,
-                          shakefile=shakemap, shakethreshtype=shakethreshtype,
-                          shakethresh=shakethresh))
-            maxLS.append(np.nanmax(L['model']['grid'].getData()))
-            plotorder, logscale, lims, colormaps, maskthreshes = \
-                makemaps.parseConfigLayers(L, conf, keys=['model'])
-            logLS.append(logscale[0])
-            limLS.append(lims[0])
-            colLS.append(colormaps[0])
-            namesLS.append(L['model']['description']['name'])
+        if iq > 0:
+            mapLQ, filenameLQ = makemaps.interactiveMap(
+                concLQ, shakefile=shakemap, scaletype='binned',
+                colormaps=colLQ, lims=limLQ, clear_zero=False,
+                logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
+                savefiles=True, mapid='LQ', outputdir=images,
+                sepcolorbar=True, floatcb=False, faultfile=faultfile)
+            filenameLQ = filenameLQ[0]
+        else:
+            filenameLQ = None
+        
+        
+        # Get alert levels
+        #TODO update to exact name of Hagg to use
+        if includeAlert:
+            try:
+                paramalertLS = concLS['Nowicki and others (2014)']['stats'][alertkey]
+            except:
+                paramalertLS = None
 
-        mapLS, filenameLS = makemaps.interactiveMap(
-            concM(LS, astitle='model', includeunc=includeunc),
-            shakefile=shakemap,
-            colormaps=colLS, lims=limLS, clear_zero=False,
-            logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
-            mapid='LS', savefiles=True, outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile)
-        try:
-            alHaggLS = HaggLS[namesLS.index('Nowicki and others (2014)')]
-        except:
-            alHaggLS = None
-        filenameLS = filenameLS[0]
-    else:
-        alHaggLS = None
-        filenameLS = None
+            try:
+                paramalertLQ = concLQ['Zhu and others (2017)']['stats'][alertkey]
+            except:
+                paramalertLQ = None
 
-    HaggLQ = []
-    maxLQ = []
-    logLQ = []
-    limLQ = []
-    colLQ = []
-    namesLQ = []
-    if len(LQ) > 0:
-        for conf, L in zip(confLQ, LQ):
-            HaggLQ.append(computeHagg(L['model']['grid'], probthresh=0.0,
-                          shakefile=shakemap, shakethreshtype=shakethreshtype,
-                          shakethresh=shakethresh))
-            maxLQ.append(np.nanmax(L['model']['grid'].getData()))
-            plotorder, logscale, lims, colormaps, maskthreshes = \
-                makemaps.parseConfigLayers(L, conf, keys=['model'])
-            logLQ.append(logscale[0])
-            limLQ.append(lims[0])
-            colLQ.append(colormaps[0])
-            namesLQ.append(L['model']['description']['name'])
-        mapLQ, filenameLQ = makemaps.interactiveMap(
-            concM(LQ, astitle='model', includeunc=includeunc),
-            shakefile=shakemap,
-            colormaps=colLQ, lims=limLQ, clear_zero=False,
-            logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
-            savefiles=True, mapid='LQ', outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile)
-        try:
-            alHaggLQ = HaggLQ[namesLQ.index('Zhu and others (2017)')]
-        except:
-            alHaggLQ = None
-        filenameLQ = filenameLQ[0]
+            alertLS, alertLQ, statement = get_alert(paramalertLS, paramalertLQ)
+            topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
+            topfileLS = make_alert_img(alertLS, 'landslide', images)
+        else:
+            alertLS = None
+            alertLQ = None
+            statement = None
+            topfileLQ = None
+            topfileLS = None
+            paramalertLS = None
+            paramalertLQ = None
 
-    else:
-        alHaggLQ = None
-        filenameLQ = None
+    sks = write_summary(shakemap, pages, images,
+                        alert=includeAlert,
+                        alertLS=alertLS, alertLQ=alertLQ,
+                        statement=statement)
 
-    write_summary(shakemap, pages, images, alert=includeAlert,
-                  HaggLS=alHaggLS,
-                  HaggLQ=alHaggLQ)
-
-    if includeAlert:
-        alertLS, alertLQ, statement = get_alert(
-            HaggLS=alHaggLS,
-            HaggLQ=alHaggLQ)
-        topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
-        topfileLS = make_alert_img(alertLS, 'landslide', images)
-    else:
-        topfileLQ = None
-        topfileLS = None
-        alertLS = None
-        alertLQ = None
-
-    write_individual(HaggLQ, maxLQ, namesLQ, articles, 'Liquefaction',
-                     interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
-                     topimage=topfileLQ)
-    write_individual(HaggLS, maxLS, namesLS, articles, 'Landslides',
+    # Create webpages for each type of ground motion
+    write_individual(lsmodels, articles, 'Landslides',
                      interactivehtml=filenameLS, outjsfile=outjsfileLS,
                      topimage=topfileLS)
+    write_individual(lqmodels, articles, 'Liquefaction',
+                     interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
+                     topimage=topfileLQ)
 
-    # Save some alert info to output directory for use later
-    alert_dict = {
-        'alertLS': alertLS,
-        'alertLQ': alertLQ,
-        'HaggLS': alHaggLS,
-        'HaggLQ': alHaggLQ}
-    alert_file = os.path.join(outfolder, 'alert.json')
-    with open(alert_file, 'w') as f:
-        json.dump(alert_dict, f)
+
+    # Create info.json for website rendering and metadata purposes
+    web_dict = {
+            'Summary': {
+                    'magnitude': sks['magnitude'],
+                    'depth': sks['depth'],
+                    'lat': sks['lat'],
+                    'lon': sks['lon'],
+                    'name': sks['name'],
+                    'date': sks['date'],
+                    'event_url': 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % sks['event_id'],
+                    'shakemap_url': 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % sks['shakemap_id'],
+                    'shakemap_version': sks['shakemap_version'],
+                    'statement': sks['statement'],
+                    'scibackground': 'url placeholder'
+                    },
+            'Landslides': {
+                    'models': lsmodels,
+                    'downloads': ['list of files'],
+                    'alert': sks['alertLS'],
+                    'alertvalue': paramalertLS
+                    },
+            'Liquefaction': {
+                    'models': lsmodels,
+                    'downloads': ['list of files'],
+                    'alert': sks['alertLQ'],
+                    'alertvalue': paramalertLQ
+                    }
+                    
+            }
+    import pdb; pdb.set_trace()
+    web_file = os.path.join(outfolder, 'info.json')
+    with open(web_file, 'w') as f:
+        json.dump(web_dict, f)
+
 
     # run website
     retcode, stdout, stderr = get_command_output(
@@ -249,16 +298,15 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     return finalout
 
 
-def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
-                     topimage=None, staticmap=None, interactivehtml=None,
-                     outjsfile=None):
+def write_individual(concatmods, outputdir, modeltype, topimage=None,
+                     staticmap=None, interactivehtml=None,
+                     outjsfile=None, statlist=None):
     """
     Write markdown file for landslides or liquefaction.
 
     Args:
-        Hagg (float or list): Aggregate hazard.
-        maxprobs (float or list): Maximum probability.
-        modelnames (str or list): Model name.
+        concatmods (float or list): Ordered dictionary of models with 
+            fields required for write_individual populated (stats in particular)
         outputdir (str): Path to output directory.
         modeltype (str): 'Landslides' for landslide model, otherwise it is
             a liquefaction model.
@@ -266,18 +314,32 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         staticmap (str, optional): Path to static map.
         interactivehtml (str, optional): Path to interactive map file.
         outjsfile (str, optional): Path for output javascript file.
-
+        stats (list): List of stats keys to include in the table, if None,
+            it will include all of them
     """
+    
     if modeltype == 'Landslides':
         id1 = 'LS'
     else:
         id1 = 'LQ'
 
-    # If single model and not in list form, turn into lists
-    if type(Hagg) is float:
-        Hagg = [Hagg]
-        maxprobs = [maxprobs]
-        modelnames = [modelnames]
+    if len(concatmods) > 0:
+        # If single model and not in list form, turn into lists
+        modelnames = [key for key, value in concatmods.items()]
+        #TODO Extract stats
+        stattable = collections.OrderedDict()
+        stattable['Model'] = modelnames
+        if statlist is None:
+            statlist = concatmods[modelnames[0]]['stats'].keys()
+    
+        # initialize empty lists for each
+        for st in statlist:
+            stattable[st] = []
+
+        # put stats in
+        for i, mod in enumerate(modelnames):
+            for st in statlist:
+                stattable[st].append(concatmods[mod]['stats'][st])
 
     if outjsfile is None:
         outjsfile = 'map.js'
@@ -287,7 +349,8 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
         file1.write('date: %s\n'
                     % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('<center><h2>%s</h2></center>' % modeltype.title())
-        if len(Hagg) > 0:
+        
+        if len(concatmods) > 0:
             if topimage is not None:
                 file1.write('<center><img src="images%s" width="250" '
                             'href="images%s"/></center>\n'
@@ -311,35 +374,44 @@ def write_individual(Hagg, maxprobs, modelnames, outputdir, modeltype,
                 file1.write('<center><a href="images%s">Click here for full '
                             'interactive map</a></center>\n'
                             % fileloc)
-
+    
                 file1.write('<center><div class="folium-map" id="map_%s">'
                             '</div></center>\n' % id1)
-
+    
                 cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
                 file1.write('<center><img src="images%s" width="300" '
                             'href="images%s"/></center>\n'
                             % (cbname, cbname))
-            if staticmap is not None:
-                file1.write('<center><img src="images%s" width="450" '
-                            'href="images%s"/></center>\n'
-                            % (staticmap.split('images')[-1],
-                               staticmap.split('images')[-1]))
-
-            file1.write('<hr>\n')
-            file1.write('<center><h3>%s Summary</h3></center>' % modeltype.title())
-            file1.write('<table style="width:100%">')
-            file1.write('<tr><th>Model</th><th>Aggregate Hazard</th><th>Max. '
-                        'Probability</th></tr>\n')
-            for H, m, n in zip(Hagg, maxprobs, modelnames):
-                file1.write('<tr><td>%s</td><td>%0.2f km<sup>2</sup>'
-                            '</td><td>%0.2f</td></tr>\n'
-                            % (n.title(), H, m))
-            file1.write('</table>')
+                if staticmap is not None:
+                    file1.write('<center><img src="images%s" width="450" '
+                                'href="images%s"/></center>\n'
+                                % (staticmap.split('images')[-1],
+                                   staticmap.split('images')[-1]))
+    
+                file1.write('<hr>\n')
+                file1.write('<center><h3>%s Summary</h3></center>' % modeltype.title())
+                file1.write('<table style="width:100%">')
+                file1.write('<tr><th>Model</th>')
+                for st in statlist:
+                    file1.write('<th>%s</th>' % st)
+                file1.write('\n')
+                
+                # Write each row
+                for i, mod in enumerate(modelnames):
+                    file1.write('<tr>')
+                    file1.write('<td>%s</td>' % mod.title())
+                    for st in statlist:
+                        file1.write('<td>%s</td>' % st[i])
+                    
+                    file1.write('</tr>\n')
+    
+                file1.write('</table>')
         else:
             file1.write('<center><h3>No results</h3></center>')
 
 
-def write_summary(shakemap, outputdir, imgoutputdir, alert=False, HaggLS=None, HaggLQ=None):
+def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
+                  alertLS=None, alertLQ=None, statement=None):
     """
     Write markdown file summarizing event
 
@@ -355,12 +427,8 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False, HaggLS=None, H
         Markdown file
     """
     edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
-    temp = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
-    edict['eventid'] = temp['shakemap_id']
-    edict['version'] = temp['shakemap_version']
-    if alert:
-        alertLS, alertLQ, statement = get_alert(HaggLS, HaggLQ)
-
+    smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
+    
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
@@ -380,11 +448,31 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False, HaggLS=None, H
                     % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('Based on ground motion estimates from '
                     'ShakeMap version %1.1f</p>\n'
-                    % edict['version'])
+                    % smdict['shakemap_version'])
         if alert:
             file1.write('<h2>Summary</h2>\n')
             file1.write('<p>%s</p>' % statement)
             file1.write('<hr>')
+        else:
+            statement = None
+            alertLS = None
+            alertLQ = None
+    shakesummary = {'magnitude': edict['magnitude'],
+                    'shakemap_version': smdict['shakemap_version'],
+                    'date': edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
+                    'lat': edict['lat'],
+                    'lon': edict['lon'],
+                    'depth': edict['depth'],
+                    'name': 'Magnitude %1.1f - %s' % (edict['magnitude'],
+                       edict['event_description']),
+                    'statement': statement,
+                    'alertLS': alertLS,
+                    'alertLQ': alertLQ,
+                    'event_id': edict['event_id'],
+                    'shakemap_id': smdict['shakemap_id']
+                    }
+
+    return shakesummary
 
 
 def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.],

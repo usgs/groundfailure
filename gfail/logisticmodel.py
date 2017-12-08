@@ -166,9 +166,9 @@ class LogisticModel(object):
             self.slopemax = float(config[self.model]['slopemax'])
         except:
             print('Could not find slopemin and/or slopemax in config, limits '
-                  'of 0 to 90 degrees will be used.')
-            self.slopemin = 0.
-            self.slopemax = 90.
+                  'No slope thresholds will be applied.')
+            self.slopemin = None
+            self.slopemax = None
 
         # Make temporary directory for hdf5 pytables file storage
         self.tempdir = tempfile.mkdtemp()
@@ -268,6 +268,8 @@ class LogisticModel(object):
 
                 if layerfile == self.slopefile:
                     flag = 0
+                    if self.slopemin is None and self.slopemax is None:
+                        flag = 1
                     if self.slopemod is None:
                         slope1 = temp.getData().astype(float)
                         slope = 0
@@ -286,6 +288,11 @@ class LogisticModel(object):
                         self.nonzero = nonzero[0, :, :]
                         del(slope1)
                         del(slope)
+                    else:
+                        # Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
+                        nonzero = np.array([slope1 != 0.0])
+                        self.nonzero = nonzero[0, :, :]
+                        del(slope1)
                     didslope = True
                 del(temp)
 
@@ -310,6 +317,8 @@ class LogisticModel(object):
                 temp = GDALGrid.load(templyrname, sampledict, resample=True,
                                      method=interp, doPadding=True)
             flag = 0
+            if self.slopemin is None and self.slopemax is None:
+                flag = 1
             if self.slopemod is None:
                 slope1 = temp.getData().astype(float)
                 slope = 0
@@ -327,6 +336,11 @@ class LogisticModel(object):
                 self.nonzero = nonzero[0, :, :]
                 del(slope1)
                 del(slope)
+            else:
+                # Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
+                nonzero = np.array([slope1 != 0.0])
+                self.nonzero = nonzero[0, :, :]
+                del(slope1)
 
         self.nuggets = [str(self.coeffs['b0'])]
 

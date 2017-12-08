@@ -261,7 +261,7 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
         jsonfeed = None
         return filenames, url, jsonfeed
         
-    event_dir = [fn for fn in filenames if '.bil' in fn or 'webpage' in fn][0]
+    event_dir = os.path.dirname([fn for fn in filenames if '.bil' in fn or 'webpage' in fn][0])
 
     if transfer and pdlconf is not None:
         success, url, jsonfeed = gf_transfer(event_dir, event_id, pdlconf, dryrun)
@@ -457,7 +457,7 @@ def text_to_json(url):
     return json.dumps(d)
 
 
-def gf_transfer(event_dir, event_id, pdl_config, dry_run=False):
+def gf_transfer(eventdir, event_id, pdl_config, dry_run=False):
     """
     Transfer ground failure results to dev server
     """
@@ -467,7 +467,7 @@ def gf_transfer(event_dir, event_id, pdl_config, dry_run=False):
 
     # Transfer
     print('Transferring...')
-    log = pdl.transfer(eventdir, pdl_config, eventid=event_id, dryrun=dry_run)
+    log = pdl.transfer(eventdir, pdl_config, dryrun=dry_run)
     print('done.')
     if log['rc'] is True:
         print('Successful PDL transfer.')

@@ -800,7 +800,7 @@ def modelMap(grids, shakefile=None,
             if logscale is not False and len(logscale) == len(plotorder):
                 if logscale[k] is True:
                     cbfmt = None
-            elif (vmax - vmin) < 1.:
+            elif (vmax - vmin) <= 1.:
                 cbfmt = '%1.2f'
             elif vmax > 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
@@ -1298,9 +1298,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         # Make colorbar figure
 
         if sepcolorbar:
-            if vmax < 1.:
+            if vmax <= 1.:
                 cbfmt = '%1.2f'
-            elif vmax >= 1. and vmax < 5.:
+            elif vmax > 1. and vmax < 5.:
                 cbfmt = '%1.1f'
             elif vmax >= 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
@@ -1308,13 +1308,13 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             if logscale[k]: # override previous choice if logscale
                 cbfmt = None #'%1.0e'
 
-            if separate:
+            if separate or len(plotorder)==1:
                 fig = plt.figure(figsize=(4., 1.0))
                 ax = plt.gca()
             else:
                 if k == 0:
-                    fig, axes = plt.subplots(len(plotorder), 1,
-                                             figsize=(4., 0.8*len(plotorder)))
+                    fig, axes = plt.subplots(3, 1, figsize=(4., 2.5)) # So the webpage will always line up
+                                             #len(plotorder), 1, figsize=(4., 0.8*len(plotorder)))
                 ax = axes[k]
 
             if scaletype.lower() == 'binned':

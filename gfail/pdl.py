@@ -74,12 +74,12 @@ def transfer(eventdir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
 
     # PDL properties
     title = '"--property-title=Earthquake-Induced Groundfailure"'
-    alert_file = os.path.join(eventdir, 'alert.json')
+    alert_file = os.path.join(eventdir, 'info.json')
     alert_json = json.load(open(alert_file))
-    lq_alert = '"--property-alertLQ=%s" ' % alert_json['alertLQ']
-    ls_alert = '"--property-alertLS=%s" ' % alert_json['alertLS']
-    lq_hagg = '"--property-HaggLQ=%s" ' % np.round(alert_json['HaggLQ'], 0)
-    ls_hagg = '"--property-HaggLS=%s" ' % np.round(alert_json['HaggLS'], 0)
+    lq_alert = '"--property-alertLQ=%s" ' % alert_json['Liquefaction']['alert']
+    ls_alert = '"--property-alertLS=%s" ' % alert_json['Landslides']['alert']
+    lq_hagg = '"--property-HaggLQ=%s" ' % np.round(alert_json['Liquefaction']['paramalertLQ'], 0)
+    ls_hagg = '"--property-HaggLS=%s" ' % np.round(alert_json['Landslides']['paramalertLS'], 0)
 
     # Construct PDL command
     pdl_cmd = ('java -jar %s ' % pdl_bin +
@@ -167,7 +167,7 @@ def prepare_pdl_directory(eventdir):
     tif_files = [None] * len(geotif_files)
     file_caps = [None] * len(geotif_files)
     for i in range(len(geotif_files)):
-        fname = geotif_files[i].split('/')[-1]
+        fname = os.path.basename(geotif_files[i])
         spl = fname.split('_')
         ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model'
         fid = '_'.join(spl[1:3])+"_gtiff"
@@ -187,9 +187,9 @@ def prepare_pdl_directory(eventdir):
     file_caps = [None] * len(json_files)
     for i in range(len(json_files)):
         fname = os.path.splitext(os.path.basename(json_files[i]))[0]
-        if 'alert' in fname:
-            ftitle = 'Alert'
-            fid = 'alert_json'
+        if fname in 'info.json':
+            ftitle = 'Info'
+            fid = 'info_json'
         else:
             spl = fname.split('_')
             ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Metadata'
