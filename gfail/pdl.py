@@ -78,8 +78,8 @@ def transfer(eventdir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     alert_json = json.load(open(alert_file))
     lq_alert = '"--property-alertLQ=%s" ' % alert_json['Liquefaction']['alert']
     ls_alert = '"--property-alertLS=%s" ' % alert_json['Landslides']['alert']
-    lq_hagg = '"--property-HaggLQ=%s" ' % np.round(alert_json['Liquefaction']['paramalertLQ'], 0)
-    ls_hagg = '"--property-HaggLS=%s" ' % np.round(alert_json['Landslides']['paramalertLS'], 0)
+    lq_hagg = '"--property-HaggLQ=%s" ' %alert_json['Liquefaction']['alertvalue'] #np.round(alert_json['Liquefaction']['alertvalue'], 0)
+    ls_hagg = '"--property-HaggLS=%s" ' %alert_json['Landslides']['alertvalue'] #np.round(alert_json['Landslides']['alertvalue'], 0)
 
     # Construct PDL command
     pdl_cmd = ('java -jar %s ' % pdl_bin +
@@ -127,7 +127,7 @@ def prepare_pdl_directory(eventdir):
 
     # Put geotif files into pdl directory
     all_files = os.listdir(eventdir)
-    geotif_files = [a for a in all_files if a.endswith('.tif')]
+    geotif_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.tif')]
     for i in range(len(geotif_files)):
         src = geotif_files[i]
         tfile = os.path.basename(src)

@@ -548,6 +548,11 @@ class LogisticModel(object):
             'parameters': {'slopemin': self.slopemin,
                            'slopemax': self.slopemax,
                            'modeltype': self.modeltype}}
+        if 'vs30max' in self.config[self.model].keys():
+            description['vs30max'] = float(self.config[self.model]['vs30max'])
+        if 'minpgv' in self.config[self.model].keys():
+            description['minpgv'] = float(self.config[self.model]['minpgv'])
+            
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {
