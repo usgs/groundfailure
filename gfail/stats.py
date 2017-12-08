@@ -56,7 +56,7 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
         if T == 0.:
             stats['Hagg'] = H
         else:
-            newkey = 'Hagg_%1.0fg' % T
+            newkey = 'Hagg_%1.0f%%g' % T
             stats[newkey] = H
 
     Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,

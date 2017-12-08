@@ -172,7 +172,9 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     else:
         shakemap = ShakeGrid.load(shakefile, adjust='res')
     shkgdict = shakemap.getGeoDict()  # Get updated geodict
-    M = shakemap.getEventDict()['magnitude']
+    t2 = shakemap.getEventDict()
+    M = t2['magnitude']
+    event_id = t2['event_id']
 
     # read in uncertainty if present
     if uncertfile is not None:
@@ -362,6 +364,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         'longref': modellref,
         'units': 'coverage',
         'shakemap': shakedetail,
+        'event_id': event_id,
         'parameters': {
             'displmodel': displmodel,
             'thickness_m': thick,
@@ -385,13 +388,13 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             'grid': GDALGrid(PROBmin, shkgdict),
             'label': 'Probability-%1.2fstd' % numstd,
             'type': 'output',
-            'description': {}
+            'description': description
         }
         maplayers['modelmax'] = {
             'grid': GDALGrid(PROBmax, shkgdict),
             'label': 'Probability+%1.2fstd' % numstd,
             'type': 'output',
-            'description': {}
+            'description': description
         }
 
     if saveinputs is True:

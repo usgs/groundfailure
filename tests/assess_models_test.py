@@ -8,7 +8,8 @@ from configobj import ConfigObj
 # third party
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
-from gfail import assess_models
+from groundfailure import assess_models
+from gfail import stats
 import matplotlib
 matplotlib.use('Agg')
 
@@ -49,9 +50,9 @@ def test_assess_models():
 #    np.testing.assert_allclose(tmp[0][0], 0.025677016713957716)
 #    np.testing.assert_allclose(tmp[1][0], 0.00098462898029272805)
 
-    hagg = assess_models.computeHagg(maplayers2['model']['grid'])
+    hagg = stats.computeHagg(maplayers2['model']['grid'])
     np.testing.assert_allclose(hagg, 104.6847472)
-    hagg = assess_models.computeHagg2(maplayers2['model']['grid'],
+    hagg = stats.computeParea(maplayers2['model']['grid'],
                                       probthresh=0.2)
     np.testing.assert_allclose(hagg, 183.4069587520)
     einfo = assess_models.getQuakeInfo('us2000ahv0')

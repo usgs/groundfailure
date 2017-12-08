@@ -264,19 +264,14 @@ def main(args):
                                 
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     filenames.append(filen)
-            if args.json or args.make_webpage:
-                jsfn = os.path.join(outfolder, '%s.json' % filename)
-                metadata2json(maplayers['model'], jsfn)
-                filenames.append(jsfn)
                     
         if args.make_webpage:
-            webloc = makeWebpage(results, configs, args.web_template,
+            outputs = makeWebpage(results, configs, args.web_template,
                                  shakefile, outfolder=outfolder,
                                  includeAlert=args.alert, cleanup=True,
                                  faultfile=args.finite_fault)
-            filenames.append(webloc)
-            # Make summary json file for webpage rendering here
-            #TODO
+            filenames = filenames + outputs
+
 
         # Write shakefile to a file for use later
         shake_file = open(os.path.join(outfolder, "shakefile.txt"), "w")
@@ -630,9 +625,6 @@ if __name__ == '__main__':
     parser.add_argument(
         '--alert', action='store_true', default=False,
         help='Determine and report alert levels. Default is false')
-    parser.add_argument(
-        '-j', '--json', action='store_true', default=False,
-        help='Save model metadata separately in json format')
     #parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 

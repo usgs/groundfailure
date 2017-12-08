@@ -13,6 +13,7 @@ import shutil
 import glob
 import json
 import collections
+from configobj import ConfigObj
 
 # temporary until mapio is updated
 import warnings
@@ -21,7 +22,9 @@ warnings.filterwarnings('ignore')
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False, alertkey='Hagg',
-                shakethreshtype='pga', shakethresh=0.0, faultfile=None):
+                faultfile=None, shakethreshtype='pga', 
+                statlist=['Max', 'Std', 'Hagg', 'Hagg_5%g', 'Parea', 'Parea_0.10'],
+                probthresh=[0.0, 0.1], shakethresh=[0.0, 5.]):
     """
     Create a webpage that summarizes ground failure results (both landslides
         and liquefaction)
@@ -39,20 +42,24 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             pelican creates, default True.
         includeAlert (bool, optional): if True, computes and reports alert level, default
             False
-        shakethreshtype (str, optional): Type of ground motion to use for Hagg threshold,
-            'pga', 'pgv', or 'mmi'
-        shakethresh (float, optional): Ground motion threshold corresponding to
-            gmthreshtype. If None (default), no threshold will be used
+        alertkey (str): stat key used for alert calculation
         faultfile (str, optional): GeoJson file of finite fault to display on
             interactive maps
+        shakethreshtype (str, optional): Type of ground motion to use for stat thresholds,
+            'pga', 'pgv', or 'mmi'
+        statlist (list): list of strings indicating which stats to show on webpage
+        probthresh (float, optional): List of probability thresholds for which to compute
+            Parea.
+        shakethresh (list, optional): List of ground motion thresholds for which
+            to compute Hagg, units corresponding to shakethreshtype.
 
     Returns:
         Folder where webpage files are located
      """
-    # get ShakeMap id
-    sm_id = maplayerlist[0]['model']['description']['shakemap']
+    # get event id
+    event_id = maplayerlist[0]['model']['description']['event_id']
     if outfolder is None:
-        outfolder = os.path.join(os.getcwd(), sm_id)
+        outfolder = os.path.join(os.getcwd(), event_id)
     fullout = os.path.join(outfolder, 'temp')
     finalout = os.path.join(outfolder, 'webpage')
     content = os.path.join(fullout, 'content')
@@ -75,7 +82,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         os.mkdir(articles)
     if os.path.exists(finalout):
         shutil.rmtree(finalout)
-
+        
     peliconf = os.path.join(fullout, 'pelicanconf.py')
     copy(os.path.join(os.path.dirname(web_template),
                       'pelicanconf.py'),
@@ -104,9 +111,15 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     
     il = 0
     iq = 0
+    
+    filenames = []
 
     for conf, maplayer in zip(configs, maplayerlist):
         mdict = maplayer['model']['description']
+        config = ConfigObj(conf)
+        filename = '%s_%s' % (event_id, config.keys()[0])
+        outfilebase = os.path.join(outfolder, filename)
+        
         if 'landslide' in mdict['parameters']['modeltype'].lower():
             title = maplayer['model']['description']['name']
             plotorder, logscale, lims, colormaps, maskthreshes = \
@@ -117,17 +130,31 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             concLS[title] = maplayer['model']
             
             stats = computeStats(maplayer['model']['grid'],
-                                 probthresh=[0.0, 0.1, 0.2, 0.3],
+                                 probthresh=probthresh,
                                  shakefile=shakemap,
-                                 shakethresh=[0.0, 5., 10.])
+                                 shakethresh=shakethresh)
             
             if il == 0:
                 on = True
             else:
                 on = False
+            metadata = maplayer['model']['description']
+            if len(maplayer) > 1:
+                inputs = {}
+                inkeys = list(maplayer.keys())
+                for key in inkeys:
+                    if key != 'model':
+                        newkey = maplayer[key]['label']
+                        inputs[newkey] = maplayer[key]['description']
+                metadata['inputs'] = inputs
+            metad2 = json.dumps(metadata)
+            filenames.append(outfilebase + '.json')
+            with open(outfilebase + '.json', mode='w') as f3:
+                f3.write(metad2)
+                
             lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': '',
                                 'bin_edges': list(lims[0]),
-                                'metadata': maplayer['model']['description'],
+                                'metadata': metadata,
                                 'stats': stats,
                                 'layer_on': on
                                     }
@@ -143,17 +170,32 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             concLQ[title] = maplayer['model']
             
             stats = computeStats(maplayer['model']['grid'],
-                                 probthresh=[0.0, 0.1, 0.2, 0.3],
+                                 probthresh=probthresh,
                                  shakefile=shakemap,
-                                 shakethresh=[0.0, 5., 10.])
+                                 shakethresh=shakethresh)
             
             if iq == 0:
                 on = True
             else:
                 on = False
+            metadata = maplayer['model']['description']
+            if len(maplayer) > 1:
+                inputs = {}
+                inkeys = list(maplayer.keys())
+                for key in inkeys:
+                    if key != 'model':
+                        newkey = maplayer[key]['label']
+                        inputs[newkey] = maplayer[key]['description']
+                metadata['inputs'] = inputs
+            # Save metadata separately for each model
+            metad2 = json.dumps(metadata)
+            filenames.append(outfilebase + '.json')
+            with open(outfilebase + '.json', mode='w') as f3:
+                f3.write(metad2)
+            
             lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': '',
                                 'bin_edges': list(lims[0]),
-                                'metadata': maplayer['description'],
+                                'metadata': metadata,
                                 'stats': stats,
                                 'layer_on': on
                                     }
@@ -168,7 +210,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             mapLS, filenameLS = makemaps.interactiveMap(
                 concLS, shakefile=shakemap, scaletype='binned',
                 colormaps=colLS, lims=limLS, clear_zero=False,
-                logscale=logLS, separate=False, outfilename='LS_%s' % sm_id,
+                logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
                 mapid='LS', savefiles=True, outputdir=images,
                 sepcolorbar=True, floatcb=False, faultfile=faultfile)
             filenameLS = filenameLS[0]
@@ -179,7 +221,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             mapLQ, filenameLQ = makemaps.interactiveMap(
                 concLQ, shakefile=shakemap, scaletype='binned',
                 colormaps=colLQ, lims=limLQ, clear_zero=False,
-                logscale=logLQ, separate=False, outfilename='LQ_%s' % sm_id,
+                logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
                 savefiles=True, mapid='LQ', outputdir=images,
                 sepcolorbar=True, floatcb=False, faultfile=faultfile)
             filenameLQ = filenameLQ[0]
@@ -220,10 +262,10 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     # Create webpages for each type of ground motion
     write_individual(lsmodels, articles, 'Landslides',
                      interactivehtml=filenameLS, outjsfile=outjsfileLS,
-                     topimage=topfileLS)
+                     topimage=topfileLS, statlist=statlist)
     write_individual(lqmodels, articles, 'Liquefaction',
                      interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
-                     topimage=topfileLQ)
+                     topimage=topfileLQ, statlist=statlist)
 
 
     # Create info.json for website rendering and metadata purposes
@@ -235,6 +277,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                     'lon': sks['lon'],
                     'name': sks['name'],
                     'date': sks['date'],
+                    'event_id': sks['event_id'],
                     'event_url': 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % sks['event_id'],
                     'shakemap_url': 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % sks['shakemap_id'],
                     'shakemap_version': sks['shakemap_version'],
@@ -255,8 +298,9 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                     }
                     
             }
-    import pdb; pdb.set_trace()
+
     web_file = os.path.join(outfolder, 'info.json')
+    filenames.append(web_file)
     with open(web_file, 'w') as f:
         json.dump(web_dict, f)
 
@@ -294,8 +338,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             os.remove(os.path.join(theme, 'static', 'js', 'mapLS.js'))
         except Exception as e:
             print(e)
-
-    return finalout
+    filenames.append(finalout)
+    return filenames
 
 
 def write_individual(concatmods, outputdir, modeltype, topimage=None,
@@ -330,7 +374,7 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
         stattable = collections.OrderedDict()
         stattable['Model'] = modelnames
         if statlist is None:
-            statlist = concatmods[modelnames[0]]['stats'].keys()
+            statlist = list(concatmods[modelnames[0]]['stats'].keys())
     
         # initialize empty lists for each
         for st in statlist:
@@ -401,7 +445,10 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                     file1.write('<tr>')
                     file1.write('<td>%s</td>' % mod.title())
                     for st in statlist:
-                        file1.write('<td>%s</td>' % st[i])
+                        if 'hagg' in st.lower() or 'parea' in st.lower():
+                            file1.write('<td>%1.0f</td>' % stattable[st][i])
+                        else:
+                            file1.write('<td>%1.2f</td>' % stattable[st][i])
                     
                     file1.write('</tr>\n')
     

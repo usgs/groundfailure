@@ -544,6 +544,7 @@ class LogisticModel(object):
             'longref': self.modelrefs['longref'],
             'units': units5,
             'shakemap': shakedetail,
+            'event_id': self.shakemap.edict['event_id'],
             'parameters': {'slopemin': self.slopemin,
                            'slopemax': self.slopemax,
                            'modeltype': self.modeltype}}

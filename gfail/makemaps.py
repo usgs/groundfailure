@@ -8,7 +8,7 @@ import glob
 import copy
 import datetime
 import matplotlib as mpl
-from matplotlib.colors import LightSource, LogNorm, Normalize
+from matplotlib.colors import LightSource, LogNorm, Normalize, BoundaryNorm
 import re
 from matplotlib.colorbar import ColorbarBase
 
@@ -1270,6 +1270,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
         else:
             norm = Normalize(vmin=vmin, vmax=vmax)
+            
 
         # turn data into an RGBA image
         # adjust data so scaled between vmin and vmax and between 0 and 1
@@ -1313,14 +1314,15 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 ax = plt.gca()
             else:
                 if k == 0:
-                    fig, axes = plt.subplots(3, 1, figsize=(4., 2.5)) # So the webpage will always line up
-                                             #len(plotorder), 1, figsize=(4., 0.8*len(plotorder)))
+                    fig, axes = plt.subplots(len(plotorder), 1, figsize=(4., 0.8*len(plotorder)))
                 ax = axes[k]
 
             if scaletype.lower() == 'binned':
+                newclev = clev[:-1] + [clev[-1]+0.01*clev[-1]] # Modify so colorbar uses full expanse of colorbar
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                             orientation='horizontal', format=cbfmt,
-                             ticks=clev, boundaries=clev))
+                             orientation='horizontal', format=cbfmt, extend='both',
+                             extendfrac=0.15, ticks=newclev, boundaries=newclev,
+                             spacing='proportional'))
             else:
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
                              orientation='horizontal', extend='both',

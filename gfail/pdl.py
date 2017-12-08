@@ -73,7 +73,7 @@ def transfer(eventdir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     pdl_type = 'groundfailure'
 
     # PDL properties
-    title = '"--property-title=Earthquake-Induced Groundfailure"'
+    title = '"--property-title=Earthquake-Induced Ground Failure"'
     alert_file = os.path.join(eventdir, 'info.json')
     alert_json = json.load(open(alert_file))
     lq_alert = '"--property-alertLQ=%s" ' % alert_json['Liquefaction']['alert']
@@ -147,6 +147,14 @@ def prepare_pdl_directory(eventdir):
         jfile = os.path.basename(src)
         dst = os.path.join(pdl_dir, jfile)
         shutil.copy(src, dst)
+        
+    # Put hdf files into pdl directory
+    hdf_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.hdf5')]
+    for i in range(len(hdf_files)):
+        src = hdf_files[i]
+        hfile = os.path.basename(src)
+        dst = os.path.join(pdl_dir, hfile)
+        shutil.copy(src, dst)
     
     # Make contents.xml
     contents = etree.Element("contents")
@@ -204,6 +212,25 @@ def prepare_pdl_directory(eventdir):
             j_files[i], "format",
             href=fname,
             type='text/json')
+
+    # Hdf5 files
+    h_files = [None] * len(hdf_files)
+    file_caps = [None] * len(hdf_files)
+    for i in range(len(hdf_files)):
+        fname = os.path.splitext(os.path.basename(hdf_files[i]))[0]
+        spl = fname.split('_')
+        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Results (All)'
+        fid = '_'.join(spl[1:3])+"_hdf5"
+        h_files[i] = etree.SubElement(
+            contents, "file",
+            title=ftitle,
+            id=fid)
+        file_caps[i] = etree.SubElement(h_files[i], "caption")
+        file_caps[i].text = ftitle + ' hdf5 file'
+        etree.SubElement(
+            h_files[i], "format",
+            href=fname,
+            type='text/hdf5')
 
     # Write result
     out_file = os.path.join(pdl_dir, 'contents.xml')
