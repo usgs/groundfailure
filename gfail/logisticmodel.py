@@ -593,7 +593,8 @@ class LogisticModel(object):
                     'type': 'input',
                     'description': {
                         'units': units,
-                        'shakemap': shakedetail
+                        'name': self.shortrefs[layername],
+                        'longref': self.longrefs[layername]
                     }
                 }
             for gmused in self.gmused:
@@ -765,6 +766,8 @@ def validateLayers(cmodel):
 
     """
     layers = {}
+    longrefs = {}
+    shortrefs = {}
     for key in cmodel['layers'].keys():
         for item, value in cmodel['layers'][key].items():
             if item == 'file':
@@ -775,6 +778,10 @@ def validateLayers(cmodel):
                 if ftype == 'dir':
                     value = getAllGridFiles(value)
                 layers[key] = value
+            elif item == 'shortref':
+                shortrefs[key] = value
+            elif item == 'longref':
+                longrefs[key] = value
     return layers
 
 
