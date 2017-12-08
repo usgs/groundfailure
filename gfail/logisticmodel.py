@@ -167,8 +167,8 @@ class LogisticModel(object):
         except:
             print('Could not find slopemin and/or slopemax in config, limits '
                   'No slope thresholds will be applied.')
-            self.slopemin = None
-            self.slopemax = None
+            self.slopemin = 'none'
+            self.slopemax = 'none'
 
         # Make temporary directory for hdf5 pytables file storage
         self.tempdir = tempfile.mkdtemp()
@@ -268,7 +268,7 @@ class LogisticModel(object):
 
                 if layerfile == self.slopefile:
                     flag = 0
-                    if self.slopemin is None and self.slopemax is None:
+                    if self.slopemin == 'none' and self.slopemax == 'none':
                         flag = 1
                     if self.slopemod is None:
                         slope1 = temp.getData().astype(float)
@@ -317,7 +317,7 @@ class LogisticModel(object):
                 temp = GDALGrid.load(templyrname, sampledict, resample=True,
                                      method=interp, doPadding=True)
             flag = 0
-            if self.slopemin is None and self.slopemax is None:
+            if self.slopemin == 'none' and self.slopemax == 'none':
                 flag = 1
             if self.slopemod is None:
                 slope1 = temp.getData().astype(float)

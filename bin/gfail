@@ -16,6 +16,8 @@ import shutil
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
 import numpy as np
+from impactutils.io.cmd import get_command_output
+from mapio.shake import ShakeGrid
 
 # local imports
 from gfail.conf import correct_config_filepaths
@@ -25,7 +27,6 @@ from gfail.savelayers import savelayers
 from gfail.makemaps import (parseConfigLayers, parseMapConfig,
                             modelMap, interactiveMap)
 from gfail.webpage import makeWebpage
-from mapio.shake import ShakeGrid
 
 def main(args):
     # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
@@ -182,6 +183,8 @@ def main(args):
                 filename = ('%s_%s' % (eventid, modelname))
             if args.hdf5:
                 filenameh = filename + '.hdf5'
+                if os.path.exists(filenameh):
+                    os.remove(filenameh)
                 savelayers(maplayers, os.path.join(outfolder, filenameh))
 
             if args.make_static_pdfs or args.make_static_pngs:
@@ -250,6 +253,8 @@ def main(args):
                 if not args.gis:
                     filen = os.path.join(outfolder, '%s_model.bil'
                                          % filename)
+                    fileh = os.path.join(outfolder, '%s_model.hdr'
+                                         % filename)
                     fileg = os.path.join(outfolder, '%s_model.tif'
                                          % filename)
                                 
@@ -259,6 +264,7 @@ def main(args):
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
                     os.remove(filen)
+                    os.remove(fileh)
                     filenames.append(fileg)
                     
             if args.gis:
@@ -277,11 +283,16 @@ def main(args):
                     keyS = keyS.replace(' ', '')
                     filen = os.path.join(outfolder, '%s_%s.bil'
                                          % (filename, keyS))
+                    fileh = os.path.join(outfolder, '%s_%s.hdr'
+                                         % filename, keyS)
+                    fileg = os.path.join(outfolder, '%s_%s.tif'
+                                         % filename, keyS)
                                 
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
                     os.remove(filen)
+                    os.remove(fileh)
                     filenames.append(fileg)
                     
                     
