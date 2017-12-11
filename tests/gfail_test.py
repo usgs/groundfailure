@@ -32,6 +32,7 @@ def test_zhu2015(tmpdir):
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
     shutil.copy(default_file, default_file+'_bak')
 
+    #p = os.path.join(str(tmpdir.name), "sub")
     p = os.path.join(str(tmpdir), "sub")
     if not os.path.exists(p):
         os.makedirs(p)
@@ -44,17 +45,21 @@ def test_zhu2015(tmpdir):
     runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd" % (shakegrid)
     rc, so, se = get_command_output(runcmd)
 
-    # Read in target file
-    target_file = os.path.join(datadir, 'loma_prieta', 'targets',
-                               '19891018000415_zhu_2015_model.bil')
-    target_grid = GDALGrid.load(target_file)
-    target_data = target_grid.getData()
-
     # Read in the testing data
     test_file = os.path.join(p, '19891018000415',
-                             '19891018000415_zhu_2015_model.bil')
+                             '19891018000415_zhu_2015_model.tif')
     test_grid = GDALGrid.load(test_file)
     test_data = test_grid.getData()
+
+    # Read in target file
+    target_file = os.path.join(datadir, 'loma_prieta', 'targets',
+                               '19891018000415_zhu_2015_model.tif')
+#    # To change target data:
+#    test_grid.save(test_file)
+#    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
+#    rc, so, se = get_command_output(cmd)
+    target_grid = GDALGrid.load(target_file)
+    target_data = target_grid.getData()
 
     # Put defaults back
     shutil.copy(default_file+'_bak', default_file)
@@ -82,6 +87,7 @@ def test_zhu2015_web(tmpdir):
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
     shutil.copy(default_file, default_file+'_bak')
 
+    #p = os.path.join(str(tmpdir.name), "sub")
     p = os.path.join(str(tmpdir), "sub")
     if not os.path.exists(p):
         os.makedirs(p)
@@ -95,18 +101,18 @@ def test_zhu2015_web(tmpdir):
 
     # Run model
     conf = os.path.join(datadir, 'test_conf')
-    runcmd = "gfail %s %s --gis -w --alert" % (conf, shakegrid)
+    runcmd = "gfail %s %s -w --alert" % (conf, shakegrid)
     rc, so, se = get_command_output(runcmd)
 
     # Make PDL directory
-    pdl.prepare_pdl_directory('19891018000415')
+    pdl.prepare_pdl_directory(os.path.join(p, '19891018000415'))
 
     # Transfer dry run
-    transfer_cmd = pdl.transfer('19891018000415', 'None', dryrun=True)
-    assert '--property-alertLQ=yellow' in transfer_cmd
+    transfer_cmd = pdl.transfer(os.path.join(p, '19891018000415'), 'None', dryrun=True)
+    assert '--property-alertLQ=green' in transfer_cmd
     assert '--property-alertLS=yellow' in transfer_cmd
     assert '--type=groundfailure' in transfer_cmd
-    assert '--property-title=Earthquake-Induced Groundfailure' in transfer_cmd
+    assert '--property-title=Earthquake-Induced Ground Failure' in transfer_cmd
     assert '--eventsourcecode=19891018000415' in transfer_cmd
 
     # Put defaults back
@@ -118,7 +124,7 @@ def test_zhu2015_web(tmpdir):
 
 
 if __name__ == "__main__":
-    td1 = tempfile.TemporaryDirectory()
-    test_zhu2015(td1)
+    #td1 = tempfile.TemporaryDirectory()
+    #test_zhu2015(td1)
     td2 = tempfile.TemporaryDirectory()
     test_zhu2015_web(td2)

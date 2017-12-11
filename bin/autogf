@@ -12,6 +12,7 @@ from datetime import datetime
 import numpy as np
 import tempfile
 import shutil
+import gfail.pdl as pdl
 
 #third party
 from impactutils.io.cmd import get_command_output
@@ -86,54 +87,63 @@ def main(args):
     else:
         dryrun = False
 
-    db, cursor = connect(args.db)
-    recentevents = getRecentEvents(thresh, args.feed)
-    for event in recentevents:
-        empty = False
-        fmt = 'SELECT id FROM shakemap WHERE eventcode="%s" AND version=%i AND time="%s"'
-        query = fmt % (event['eventcode'], event['version'], event['time'])
-        cursor.execute(query)
-        row = cursor.fetchone()
-        if row is None or args.testrun:
-            #this event has not been processed before (not in .db file)
-            print('Now running M%s - %s' % (event['mag'], event['location']))
-            filenames, url, jsonfeed = runGF(gfail_flags,
-                                             args.gfailconfig,
-                                             event['url'],
-                                             event['eventcode'],
-                                             pdlconf=args.pdlconf,
-                                             faultfile=event['finite_fault'],
-                                             dryrun=dryrun)
-            if filenames is None:
-                #print('No outputs found, problem with codes\n')
-                empty = True
-                url = 'Failed to run'
-                jsonfeed = 'Failed to run'
-
-            if mail and not empty:
-                mailUsers(event, args.autoconfig, url, jsonfeed)
-            fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location,finitefault,url,jsonfeed) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s",%i,"%s","%s")'
-            eid = event['eventcode']
-            enum = event['version']
-            elat = event['lat']
-            elon = event['lon']
-            edepth = event['depth']
-            etime = event['time']
-            emag = event['mag']
-            alert = event['alert']
-            maxmmi = event['maxmmi']
-            eloc = event['location']
-            if event['finite_fault'] is not None:
-                finitefault = 1
-            else:
-                finitefault = 0
-            if not args.testrun:
-                insertquery = fmt % (eid, enum, elat, elon, edepth, str(etime), emag, alert, maxmmi, eloc, finitefault, url, jsonfeed)
-                cursor.execute(insertquery)
-                db.commit()
-            # Clean up finite fault temp geojson files
-            if finitefault == 1:
-                os.remove(event['finite_fault'])
+    if args.eventdir is None:
+        db, cursor = connect(args.db)
+        recentevents = getRecentEvents(thresh, args.feed)
+        for event in recentevents:
+            empty = False
+            fmt = 'SELECT id FROM shakemap WHERE eventcode="%s" AND version=%i AND time="%s"'
+            query = fmt % (event['eventcode'], event['version'], event['time'])
+            cursor.execute(query)
+            row = cursor.fetchone()
+            if row is None or args.testrun:
+                #this event has not been processed before (not in .db file)
+                print('Now running M%s - %s' % (event['mag'], event['location']))
+                filenames, url, jsonfeed = runGF(gfail_flags,
+                                                 args.gfailconfig,
+                                                 event['url'],
+                                                 event['eventcode'],
+                                                 pdlconf=args.pdlconf,
+                                                 faultfile=event['finite_fault'],
+                                                 dryrun=dryrun)
+                if filenames is None:
+                    #print('No outputs found, problem with codes\n')
+                    empty = True
+                    url = 'Failed to run'
+                    jsonfeed = 'Failed to run'
+    
+                if mail and not empty:
+                    mailUsers(event, args.autoconfig, url, jsonfeed)
+                fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location,finitefault,url,jsonfeed) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s",%i,"%s","%s")'
+                eid = event['eventcode']
+                enum = event['version']
+                elat = event['lat']
+                elon = event['lon']
+                edepth = event['depth']
+                etime = event['time']
+                emag = event['mag']
+                alert = event['alert']
+                maxmmi = event['maxmmi']
+                eloc = event['location']
+                if event['finite_fault'] is not None:
+                    finitefault = 1
+                else:
+                    finitefault = 0
+                if not args.testrun:
+                    insertquery = fmt % (eid, enum, elat, elon, edepth, str(etime), emag, alert, maxmmi, eloc, finitefault, url, jsonfeed)
+                    cursor.execute(insertquery)
+                    db.commit()
+                # Clean up finite fault temp geojson files
+                if finitefault == 1:
+                    os.remove(event['finite_fault'])
+    else:
+        # Just send the files
+        event_id = os.path.basename(args.eventdir)
+        success, url, feed = gf_transfer(args.eventdir, event_id, args.pdlconf, dry_run=dryrun)
+        if success:
+            print('Folder for event %s successfully sent, viewable at: %s' % (event_id, url))
+        else:
+            raise Exception('Folder was not transfered')
 
     if args.testrun:
         # This was a test run so delete files and remove entries from database
@@ -142,6 +152,17 @@ def main(args):
 
 
 def validateArgs(args):
+    if args.pdlconf is not None and not os.path.exists(args.pdlconf):
+        print('Pdl config file specified (%s) does not exist, files will not be transferred' % args.pdlconf)
+        args.pdlconf = None
+
+    if args.eventdir is not None:
+        if not os.path.exists(args.eventdir):
+            print('event directory does not exist, rerunning event')
+            args.eventdir = None
+        else:
+            return args  # don't need to check the rest of them if just sending files
+
     if not os.path.exists(args.gfailconfig):
         raise IOError('gfail config file specified (%s) does not exist' % args.gfailconfig)
     if args.autoconfig is not None:
@@ -149,9 +170,6 @@ def validateArgs(args):
             raise IOError('autoconfig file specified (%s) does not exist' % args.autoconfig)
     if not os.path.exists(args.db):
         print('database file specified (%s) does not yet exist, new one will be created' % args.db)
-    if args.pdlconf is not None and not os.path.exists(args.pdlconf):
-        print('Pdl config file specified (%s) does not exist, files will not be transferred' % args.pdlconf)
-        args.pdlconf = None
     if args.feed not in 'dayweekmonth':
         print('Feed specified not valid, using daily feed')
         args.feed = 'http://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson'
@@ -230,7 +248,7 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
         temp = temp.split('Files created:\n')[1]
         filenames = []
         for line in temp.split('\n'):
-            if 'pdf' in line or 'png' in line or 'html' in line or 'hdf5' in line or 'bil' in line or 'webpage':
+            if 'pdf' in line or 'png' in line or 'html' in line or 'hdf5' in line or 'bil' in line or 'webpage' or 'json':
                 filenames.append(line)
     else:
         print("""
@@ -242,21 +260,15 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
         url = None
         jsonfeed = None
         return filenames, url, jsonfeed
+        
+    event_dir = os.path.dirname([fn for fn in filenames if '.bil' in fn or 'webpage' in fn][0])
 
     if transfer and pdlconf is not None:
-        cmd = 'gf_transfer %s %s %s' % (event_id, pdlconf, dryrun)
-        retcode, stdout, stderr = get_command_output(cmd)
-        temp = stdout.decode('utf-8')
-        print(temp)
-        if 'PDL transfer failed' in temp:
+        success, url, jsonfeed = gf_transfer(event_dir, event_id, pdlconf, dryrun)
+        if not success:
             print('PDL transfer failed')
             url = None
             jsonfeed = None
-            print(stderr.decode('utf-8'))
-        else:
-            result = temp.split('Web page URL:')[-1].split('Event detail JSON feed:')
-            url = result[0].strip('\n')
-            jsonfeed = result[1].strip('\n')
     else:
         url = None
         jsonfeed = None
@@ -445,6 +457,71 @@ def text_to_json(url):
     return json.dumps(d)
 
 
+def gf_transfer(eventdir, event_id, pdl_config, dry_run=False):
+    """
+    Transfer ground failure results to dev server
+    """
+    print('Preparing directory to transfer %s...'
+          % event_id)
+    pdl.prepare_pdl_directory(eventdir)
+
+    # Transfer
+    print('Transferring...')
+    log = pdl.transfer(eventdir, pdl_config, dryrun=dry_run)
+    print('done.')
+    if log['rc'] is True:
+        print('Successful PDL transfer.')
+        success = True
+
+        # Construct URL to index.html
+        url_template = ('https://dev01-earthquake.cr.usgs.gov/archive'
+                        '/product/[TYPE]/[ID]/[SOURCE]/[TIME]/html/index.html')
+        se_lines = log['se'].decode().split("\n")
+        info_line = [l for l in se_lines if 'send complete Socket' in l][0]
+        info = info_line.split(':')
+        timestamp = info[-1].replace("'", "")
+        eventid = info[-2]
+        ptype = info[-3]
+        source = info[-4]
+        url = url_template.replace(
+            '[TYPE]', ptype).replace(
+            '[ID]', eventid).replace(
+            '[SOURCE]', source).replace(
+            '[TIME]', timestamp)
+
+        # URL for event's detail feed
+        feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
+                'query?eventid=[EVENTID]&format=geojson')
+        feed = feed.replace('[EVENTID]', eventid)
+
+        # Print to screen
+        print("Web page URL:")
+        print(url)
+        print("Event detail JSON feed:")
+        print(feed)
+
+        # Save to file
+        with open("url.txt", "w") as f:
+            f.write(url)
+            f.write(feed)
+    else:
+        print('PDL transfer failed.')
+        print(log['so'].decode())
+        success = False
+
+    with open("gf_transfer.log", "w") as f:
+        f.write('----------------\n')
+        f.write('Standard Output:\n')
+        f.write('----------------\n')
+        f.write(log['so'].decode())
+        f.write('----------------\n')
+        f.write('Standard Error:\n')
+        f.write('----------------\n')
+        f.write(log['se'].decode())
+
+    return success, url, feed
+        
+
 if __name__ == '__main__':
 
     default_loc = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -475,6 +552,13 @@ if __name__ == '__main__':
              'of ground failure runs')
 
     parser.add_argument(
+        '-e', '--eventdir', metavar='path to folder containing output',
+        nargs='?', default=None, help="""
+        Send results that were already computed. eventdirectory should be
+        to file path to the directory containing all the files (usually a
+        subfolder named with the event id)
+        """)
+    parser.add_argument(
         '-p', '--pdlconf', metavar='pdlconfig', nargs='?',
         default=None,
         help="""
@@ -483,7 +567,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '-fl', '--gfail-flags', metavar='gfailflags', nargs='?',
-        default='--gis -w --hdf5',
+        default='-w --hdf5',
         help='String of flags for gfail')
 
     parser.add_argument(

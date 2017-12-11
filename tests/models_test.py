@@ -29,7 +29,6 @@ def test_zhu2015():
 
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
-
     # To change target data:
     # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
     # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2015.grd'))

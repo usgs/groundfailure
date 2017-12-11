@@ -152,10 +152,16 @@ class LogisticModel(object):
         ftype = getFileType(basefile)
         if ftype == 'esri':
             basegeodict, firstcol = GDALGrid.getFileGeoDict(basefile)
-            sampledict = basegeodict.getBoundsWithin(gdict)
+            if basegeodict == gdict:
+                sampledict = gdict
+            else:
+                sampledict = basegeodict.getBoundsWithin(gdict)
         elif ftype == 'gmt':
             basegeodict, firstcol = GMTGrid.getFileGeoDict(basefile)
-            sampledict = basegeodict.getBoundsWithin(gdict)
+            if basegeodict == gdict:
+                sampledict = gdict
+            else:
+                sampledict = basegeodict.getBoundsWithin(gdict)
         else:
             raise Exception('All predictor variable grids must be a valid '
                             'GMT or ESRI file type.')
@@ -166,9 +172,9 @@ class LogisticModel(object):
             self.slopemax = float(config[self.model]['slopemax'])
         except:
             print('Could not find slopemin and/or slopemax in config, limits '
-                  'of 0 to 90 degrees will be used.')
-            self.slopemin = 0.
-            self.slopemax = 90.
+                  'No slope thresholds will be applied.')
+            self.slopemin = 'none'
+            self.slopemax = 'none'
 
         # Make temporary directory for hdf5 pytables file storage
         self.tempdir = tempfile.mkdtemp()
@@ -268,6 +274,8 @@ class LogisticModel(object):
 
                 if layerfile == self.slopefile:
                     flag = 0
+                    if self.slopemin == 'none' and self.slopemax == 'none':
+                        flag = 1
                     if self.slopemod is None:
                         slope1 = temp.getData().astype(float)
                         slope = 0
@@ -286,6 +294,11 @@ class LogisticModel(object):
                         self.nonzero = nonzero[0, :, :]
                         del(slope1)
                         del(slope)
+                    else:
+                        # Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
+                        nonzero = np.array([slope1 != 0.0])
+                        self.nonzero = nonzero[0, :, :]
+                        del(slope1)
                     didslope = True
                 del(temp)
 
@@ -310,6 +323,8 @@ class LogisticModel(object):
                 temp = GDALGrid.load(templyrname, sampledict, resample=True,
                                      method=interp, doPadding=True)
             flag = 0
+            if self.slopemin == 'none' and self.slopemax == 'none':
+                flag = 1
             if self.slopemod is None:
                 slope1 = temp.getData().astype(float)
                 slope = 0
@@ -327,6 +342,11 @@ class LogisticModel(object):
                 self.nonzero = nonzero[0, :, :]
                 del(slope1)
                 del(slope)
+            else:
+                # Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
+                nonzero = np.array([slope1 != 0.0])
+                self.nonzero = nonzero[0, :, :]
+                del(slope1)
 
         self.nuggets = [str(self.coeffs['b0'])]
 
@@ -502,10 +522,13 @@ class LogisticModel(object):
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
+            #P[P==0.0] = float('nan')
             P[np.isnan(P)] = 0.0
             if self.uncert is not None:
                 Pmin = Pmin * self.nonzero
                 Pmax = Pmax * self.nonzero
+                #Pmin[Pmin==0.0] = float('nan')
+                #Pmax[Pmax==0.0] = float('nan')
                 Pmin[np.isnan(Pmin)] = 0.0
                 Pmax[np.isnan(Pmax)] = 0.0
         else:
@@ -530,9 +553,15 @@ class LogisticModel(object):
             'longref': self.modelrefs['longref'],
             'units': units5,
             'shakemap': shakedetail,
+            'event_id': self.shakemap.edict['event_id'],
             'parameters': {'slopemin': self.slopemin,
                            'slopemax': self.slopemax,
                            'modeltype': self.modeltype}}
+        if 'vs30max' in self.config[self.model].keys():
+            description['vs30max'] = float(self.config[self.model]['vs30max'])
+        if 'minpgv' in self.config[self.model].keys():
+            description['minpgv'] = float(self.config[self.model]['minpgv'])
+            
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {
@@ -578,7 +607,8 @@ class LogisticModel(object):
                     'type': 'input',
                     'description': {
                         'units': units,
-                        'shakemap': shakedetail
+                        'name': self.shortrefs[layername],
+                        'longref': self.longrefs[layername]
                     }
                 }
             for gmused in self.gmused:
@@ -750,6 +780,8 @@ def validateLayers(cmodel):
 
     """
     layers = {}
+    longrefs = {}
+    shortrefs = {}
     for key in cmodel['layers'].keys():
         for item, value in cmodel['layers'][key].items():
             if item == 'file':
@@ -760,6 +792,10 @@ def validateLayers(cmodel):
                 if ftype == 'dir':
                     value = getAllGridFiles(value)
                 layers[key] = value
+            elif item == 'shortref':
+                shortrefs[key] = value
+            elif item == 'longref':
+                longrefs[key] = value
     return layers
 
 

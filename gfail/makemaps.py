@@ -8,7 +8,7 @@ import glob
 import copy
 import datetime
 import matplotlib as mpl
-from matplotlib.colors import LightSource, LogNorm, Normalize
+from matplotlib.colors import LightSource, LogNorm, Normalize, BoundaryNorm
 import re
 from matplotlib.colorbar import ColorbarBase
 
@@ -800,7 +800,7 @@ def modelMap(grids, shakefile=None,
             if logscale is not False and len(logscale) == len(plotorder):
                 if logscale[k] is True:
                     cbfmt = None
-            elif (vmax - vmin) < 1.:
+            elif (vmax - vmin) <= 1.:
                 cbfmt = '%1.2f'
             elif vmax > 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
@@ -1175,8 +1175,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             sref_fix = sref_fix.replace(')', '')
             sref_fix = sref_fix.replace(' ', '_')
 
-        if outfilename is None:
+        if outfilename is None and edict is not None:
             outfilename = '%s_%s' % (edict['event_id'], sref_fix)
+        elif outfilename is None:
+            outfilename = sref_fix
 
         if colormaps[k] is not None:
             palette = colormaps[k]
@@ -1270,6 +1272,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
         else:
             norm = Normalize(vmin=vmin, vmax=vmax)
+            
 
         # turn data into an RGBA image
         # adjust data so scaled between vmin and vmax and between 0 and 1
@@ -1298,9 +1301,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         # Make colorbar figure
 
         if sepcolorbar:
-            if vmax < 1.:
+            if vmax <= 1.:
                 cbfmt = '%1.2f'
-            elif vmax >= 1. and vmax < 5.:
+            elif vmax > 1. and vmax < 5.:
                 cbfmt = '%1.1f'
             elif vmax >= 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
@@ -1308,19 +1311,20 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             if logscale[k]: # override previous choice if logscale
                 cbfmt = None #'%1.0e'
 
-            if separate:
+            if separate or len(plotorder)==1:
                 fig = plt.figure(figsize=(4., 1.0))
                 ax = plt.gca()
             else:
                 if k == 0:
-                    fig, axes = plt.subplots(len(plotorder), 1,
-                                             figsize=(4., 0.8*len(plotorder)))
+                    fig, axes = plt.subplots(len(plotorder), 1, figsize=(4., 0.8*len(plotorder)))
                 ax = axes[k]
 
             if scaletype.lower() == 'binned':
+                newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1])) # Modify so colorbar uses full expanse of colorbar
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                             orientation='horizontal', format=cbfmt,
-                             ticks=clev, boundaries=clev))
+                             orientation='horizontal', format=cbfmt, extend='both',
+                             extendfrac=0.15, ticks=newclev, boundaries=newclev,
+                             spacing='proportional'))
             else:
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
                              orientation='horizontal', extend='both',
@@ -1460,12 +1464,27 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
             #draw epicenter
             if edict is not None:
-                folium.RegularPolygonMarker(
-                    location=[edict['lat'], edict['lon']],
-                    popup='Epicenter',
-                    fill_color='#769d96',
-                    number_of_sides=4,
-                    radius=6).add_to(map1)
+                #f = folium.map.FeatureGroup(overlay=False)
+                for j in [9,7,5,3,1]:
+                    if j in [9,5,1]:
+                        color3 = 'black'
+                    else:
+                        color3 = 'white'
+                    map1.add_child(folium.features.CircleMarker(
+                            [edict['lat'], edict['lon']],
+                            radius=j,
+                            color=color3,
+                            fill=False,
+                            fill_opacity=0.5
+                            ))
+
+                #map1.add_child(f)
+#                folium.RegularPolygonMarker(
+#                    location=[edict['lat'], edict['lon']],
+#                    popup='Epicenter',
+#                    fill_color='#769d96',
+#                    number_of_sides=4,
+#                    radius=6).add_to(map1)
 
             if savefiles:
                 if separate:

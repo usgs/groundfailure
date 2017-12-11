@@ -16,6 +16,8 @@ import shutil
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
 import numpy as np
+from impactutils.io.cmd import get_command_output
+from mapio.shake import ShakeGrid
 
 # local imports
 from gfail.conf import correct_config_filepaths
@@ -25,7 +27,6 @@ from gfail.savelayers import savelayers
 from gfail.makemaps import (parseConfigLayers, parseMapConfig,
                             modelMap, interactiveMap)
 from gfail.webpage import makeWebpage
-from mapio.shake import ShakeGrid
 
 def main(args):
     # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
@@ -182,6 +183,8 @@ def main(args):
                 filename = ('%s_%s' % (eventid, modelname))
             if args.hdf5:
                 filenameh = filename + '.hdf5'
+                if os.path.exists(filenameh):
+                    os.remove(filenameh)
                 savelayers(maplayers, os.path.join(outfolder, filenameh))
 
             if args.make_static_pdfs or args.make_static_pngs:
@@ -244,7 +247,26 @@ def main(args):
                 for filen in filenames1:
                     filenames.append(filen)
             if args.make_webpage:
+                # Compile into list of results for later
                 results.append(maplayers)
+                # Make GIS files that are always needed for website if they aren't already being made
+                if not args.gis:
+                    filen = os.path.join(outfolder, '%s_model.bil'
+                                         % filename)
+                    fileh = os.path.join(outfolder, '%s_model.hdr'
+                                         % filename)
+                    fileg = os.path.join(outfolder, '%s_model.tif'
+                                         % filename)
+                                
+                    GDALGrid.copyFromGrid(maplayers['model']['grid']).save(filen)
+                    # convert to geotif
+
+                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
+                    rc, so, se = get_command_output(cmd)
+                    os.remove(filen)
+                    os.remove(fileh)
+                    filenames.append(fileg)
+                    
             if args.gis:
 
                 for key in maplayers:
@@ -261,15 +283,26 @@ def main(args):
                     keyS = keyS.replace(' ', '')
                     filen = os.path.join(outfolder, '%s_%s.bil'
                                          % (filename, keyS))
+                    fileh = os.path.join(outfolder, '%s_%s.hdr'
+                                         % (filename, keyS))
+                    fileg = os.path.join(outfolder, '%s_%s.tif'
+                                         % (filename, keyS))
+                                
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
-                    filenames.append(filen)
-
+                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
+                    rc, so, se = get_command_output(cmd)
+                    os.remove(filen)
+                    os.remove(fileh)
+                    filenames.append(fileg)
+                    
+                    
         if args.make_webpage:
-            webloc = makeWebpage(results, configs, args.web_template,
+            outputs = makeWebpage(results, configs, args.web_template,
                                  shakefile, outfolder=outfolder,
                                  includeAlert=args.alert, cleanup=True,
                                  faultfile=args.finite_fault)
-            filenames.append(webloc)
+            filenames = filenames + outputs
+
 
         # Write shakefile to a file for use later
         shake_file = open(os.path.join(outfolder, "shakefile.txt"), "w")
@@ -527,23 +560,42 @@ if __name__ == '__main__':
         'shakefile', nargs='?',
         help='single ShakeMap grid.xml file or url')
     parser.add_argument(
-        '-u', '--uncertfile', metavar='uncertfile', nargs='?',
-        help='single ShakeMap uncertainty.xml file', default=None)
+        '-a', '--appendname', metavar='appendname', nargs='?',
+        help='append word to file names to describe current run',
+        default=None)
+    parser.add_argument(
+        '-c', '--config-filepath', metavar='configfilepath', nargs='?',
+        default=config_filepath,
+        help='Filepath where config files are located, default is '
+             'defaultconfigfiles folder of groundfailure repository')
     parser.add_argument(
         '-d', '--data-path', metavar='datafilepath', nargs='?',
         default=data_path,
         help='Set file path to model input data (only needed if file paths '
         'in config are relative)')
     parser.add_argument(
+        '-m', '--mapconfig', metavar='mapconfig', nargs='?',
+        help='full file path to config file containing mapping options',
+        default=mapconfig)
+    parser.add_argument(
+        '-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
+        help='Set file path to mapping input data (only needed if file '
+             'paths in mapconfig are relative)',
+        default=mapdata_filepath)        
+    parser.add_argument(
         '-o', '--output-filepath', metavar='outfilepath', nargs='?',
         default=output_filepath,
         help='Filepath for output files, uses current directory if '
              'not specified')
     parser.add_argument(
-        '-c', '--config-filepath', metavar='configfilepath', nargs='?',
-        default=config_filepath,
-        help='Filepath where config files are located, default is '
-             'defaultconfigfiles folder of groundfailure repository')
+        '-t', '--web-template', metavar='template', nargs='?',
+        default=web_template,
+        help='location of directory containing pelican files and templates')
+    parser.add_argument(
+        '-u', '--uncertfile', metavar='uncertfile', nargs='?',
+        help='single ShakeMap uncertainty.xml file', default=None)
+
+
     parser.add_argument(
         '-b', '--set-bounds', type=str,
         metavar=('latmin, latmax, lonmin, lonmax'), nargs='?',
@@ -554,50 +606,35 @@ if __name__ == '__main__':
              "where 2 is in percent g",
         default=None)
     parser.add_argument(
-        '-m', '--mapconfig', metavar='mapconfig', nargs='?',
-        help='full file path to config file containing mapping options',
-        default=mapconfig)
-    parser.add_argument(
-        '-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
-        help='Set file path to mapping input data (only needed if file '
-             'paths in mapconfig are relative)',
-        default=mapdata_filepath)
+        '-f', '--finite-fault', metavar='finitefault', nargs='?',
+        default=None, help='geojson file to show on interactive maps')
     parser.add_argument(
         '-s', '--std', metavar='numstd', nargs='?',
         help='Number of ground motion standard deviations to use '
              '(only used if uncertainty file used)',
         default=1.)
-    parser.add_argument(
-        '-a', '--appendname', metavar='appendname', nargs='?',
-        help='append word to file names to describe current run',
-        default=None)
-    parser.add_argument(
-        '-t', '--web-template', metavar='template', nargs='?',
-        default=web_template,
-        help='location of directory containing pelican files and templates')
-    parser.add_argument(
-        '-f', '--finite-fault', metavar='finitefault', nargs='?',
-        default=None, help='geojson file to show on interactive maps')
 
     # Binary
-    parser.add_argument(
-        '-i', '--save-inputs', action='store_true', default=False,
-        help='Save input layer grids with model output')
-    parser.add_argument(
-        '--hdf5', action='store_true', default=False,
-        help='Save model results as MultiHazard HDF file (MapIO)')
+
     parser.add_argument(
         '--gis', action='store_true', default=False,
         help='Save GIS file (ESRI .bil format) of model result')
     parser.add_argument(
-        '-pd', '--make-static-pdfs', action='store_true', default=False,
-        help='Make static plots for each model')
+        '--hdf5', action='store_true', default=False,
+        help='Save model results as MultiHazard HDF file (MapIO)')
     parser.add_argument(
-        '-pn', '--make-static-pngs', action='store_true', default=False,
+        '-i', '--save-inputs', action='store_true', default=False,
+        help='Save input layer grids with model output')
+    parser.add_argument(
+        '-pd', '--make-static-pdfs', action='store_true', default=False,
         help='Make static plots for each model')
     parser.add_argument(
         '-pi', '--make-interactive-plots', action='store_true', default=False,
         help='Make interactive html plots for each model')
+    parser.add_argument(
+        '-pn', '--make-static-pngs', action='store_true', default=False,
+        help='Make static plots for each model')
+
     parser.add_argument(
         '-l', '--list-default-paths', action='store_true', default=False,
         help='See listing of currently set default paths')
