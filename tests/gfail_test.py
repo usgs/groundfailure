@@ -88,7 +88,7 @@ def test_zhu2015_web(tmpdir):
     shutil.copy(default_file, default_file+'_bak')
 
     #p = os.path.join(str(tmpdir.name), "sub")
-    p = os.path.join(str(tmpdir.name), "sub")
+    p = os.path.join(str(tmpdir), "sub")
     if not os.path.exists(p):
         os.makedirs(p)
     else:
