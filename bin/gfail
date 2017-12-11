@@ -284,9 +284,9 @@ def main(args):
                     filen = os.path.join(outfolder, '%s_%s.bil'
                                          % (filename, keyS))
                     fileh = os.path.join(outfolder, '%s_%s.hdr'
-                                         % filename, keyS)
+                                         % (filename, keyS))
                     fileg = os.path.join(outfolder, '%s_%s.tif'
-                                         % filename, keyS)
+                                         % (filename, keyS))
                                 
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)

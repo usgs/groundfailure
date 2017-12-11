@@ -152,10 +152,16 @@ class LogisticModel(object):
         ftype = getFileType(basefile)
         if ftype == 'esri':
             basegeodict, firstcol = GDALGrid.getFileGeoDict(basefile)
-            sampledict = basegeodict.getBoundsWithin(gdict)
+            if basegeodict == gdict:
+                sampledict = gdict
+            else:
+                sampledict = basegeodict.getBoundsWithin(gdict)
         elif ftype == 'gmt':
             basegeodict, firstcol = GMTGrid.getFileGeoDict(basefile)
-            sampledict = basegeodict.getBoundsWithin(gdict)
+            if basegeodict == gdict:
+                sampledict = gdict
+            else:
+                sampledict = basegeodict.getBoundsWithin(gdict)
         else:
             raise Exception('All predictor variable grids must be a valid '
                             'GMT or ESRI file type.')
@@ -516,10 +522,13 @@ class LogisticModel(object):
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
+            #P[P==0.0] = float('nan')
             P[np.isnan(P)] = 0.0
             if self.uncert is not None:
                 Pmin = Pmin * self.nonzero
                 Pmax = Pmax * self.nonzero
+                #Pmin[Pmin==0.0] = float('nan')
+                #Pmax[Pmax==0.0] = float('nan')
                 Pmin[np.isnan(Pmin)] = 0.0
                 Pmax[np.isnan(Pmax)] = 0.0
         else:

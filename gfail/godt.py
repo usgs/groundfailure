@@ -165,7 +165,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         tempgdict = GeoDict.createDictFromBox(
             bounds['xmin'], bounds['xmax'], bounds['ymin'], bounds['ymax'],
             shkgdict.dx, shkgdict.dy, inside=False)
-        gdict = shkgdict.getBoundsWithin(tempgdict)
+        if tempgdict == shkgdict:
+            gdict = tempgdict
+        else:
+            gdict = shkgdict.getBoundsWithin(tempgdict)
         shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict,
                                   resample=True, method='linear',
                                   adjust='bounds')

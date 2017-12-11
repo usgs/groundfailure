@@ -6,7 +6,7 @@ TODO:
     - Potentially add more files (e.g., png, pdf)
 """
 import os
-import numpy as np
+#import numpy as np
 import json
 import shutil
 from lxml import etree

@@ -241,12 +241,12 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         #TODO update to exact name of Hagg to use
         if includeAlert:
             try:
-                paramalertLS = concLS['Nowicki and others (2014)']['stats'][alertkey]
+                paramalertLS = lsmodels['Nowicki and others (2014)']['stats'][alertkey]
             except:
                 paramalertLS = None
 
             try:
-                paramalertLQ = concLQ['Zhu and others (2017)']['stats'][alertkey]
+                paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkey]
             except:
                 paramalertLQ = None
 
@@ -295,11 +295,13 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             'Landslides': {
                     'models': lsmodels,
                     'alert': sks['alertLS'],
+                    'alertkey': alertkey,
                     'alertvalue': paramalertLS
                     },
             'Liquefaction': {
                     'models': lsmodels,
                     'alert': sks['alertLQ'],
+                    'alertkey': alertkey,
                     'alertvalue': paramalertLQ
                     }
                     
@@ -597,7 +599,7 @@ def get_word(color):
     """
     if color is None:
         word = 'unknown levels of'
-    if color in 'green':
+    elif color in 'green':
         word = 'little to no'
     elif color in 'yellow':
         word = 'localized'
