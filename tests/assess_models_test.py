@@ -52,11 +52,20 @@ def test_assess_models():
 
     hagg = stats.computeHagg(maplayers2['model']['grid'])
     np.testing.assert_allclose(hagg, 60.8999734766)
-    hagg = stats.computeParea(maplayers2['model']['grid'],
-                              probthresh=0.2)
-    np.testing.assert_allclose(hagg, 48.908522334)
+    parea = stats.computeParea(maplayers2['model']['grid'],
+                               probthresh=0.2)
+    np.testing.assert_allclose(parea, 48.908522334)
     einfo = assess_models.getQuakeInfo('us2000ahv0')
     assert einfo[0] == 'M 8.2 - 101km SSW of Tres Picos, Mexico'
+
+    stats2 = stats.computeStats(maplayers2['model']['grid'], probthresh=0.2, shakefile=shakefile,
+                                shakethreshtype='pga', shakethresh=20.,
+                                statprobthresh=0.0)
+    np.testing.assert_allclose(stats2['Max'], 0.40945028419807472)
+    np.testing.assert_allclose(stats2['Median'], 0.00033004360203373138)
+    np.testing.assert_allclose(stats2['Std'], 0.04488517841212223)
+    np.testing.assert_allclose(stats2['Hagg_0.20g'], 49.70535263249463)
+    np.testing.assert_allclose(stats2['Parea_0.20'], 48.908522333887255)
 
     # fake inventory
     np.random.seed(123)

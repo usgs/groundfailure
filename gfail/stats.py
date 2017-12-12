@@ -17,8 +17,8 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
 
 
 def computeStats(grid2D, probthresh=0.0, shakefile=None,
-                shakethreshtype='pga', shakethresh=0.0,
-                statprobthresh=None):
+                 shakethreshtype='pga', shakethresh=0.0,
+                 statprobthresh=None):
     """
     Compute summary stats of a ground failure model output.
 
@@ -46,22 +46,22 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
     stats = collections.OrderedDict()
     grid = grid2D.getData()
     if statprobthresh is not None:
-        grid = grid[grid>statprobthresh]
-    
+        grid = grid[grid > statprobthresh]
+
     stats['Max'] = np.nanmax(grid)
     stats['Median'] = np.nanmedian(grid)
     stats['Std'] = np.nanstd(grid)
     Hagg = computeHagg(grid2D, probthresh=0.0, shakefile=shakefile,
-                shakethreshtype=shakethreshtype, shakethresh=shakethresh)
+                       shakethreshtype=shakethreshtype, shakethresh=shakethresh)
     if type(Hagg) != list and type(Hagg) != list:
         shakethresh = [shakethresh]
         Hagg = [Hagg]
-            
+
     for T, H in zip(shakethresh, Hagg):
         if T == 0.:
             stats['Hagg'] = H
         else:
-            newkey = 'Hagg_%1.0f%%g' % T
+            newkey = 'Hagg_%1.2fg' % (T/100.)
             stats[newkey] = H
 
     Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
@@ -69,7 +69,7 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
     if type(Parea) != list and type(Parea) != np.ndarray:
         probthresh = [probthresh]
         Parea = [Parea]
-        
+
     for T, P in zip(probthresh, Parea):
         if T == 0.:
             stats['Parea'] = P
