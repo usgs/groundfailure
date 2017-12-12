@@ -23,7 +23,7 @@ warnings.filterwarnings('ignore')
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False, alertkey='Hagg_0.05g',
                 faultfile=None, shakethreshtype='pga',
-                statlist=['Max', 'Std', 'Hagg_0.05g', 'Hagg_0.1g', 'Parea_0.1', 'Parea_0.2'],
+                statlist=['Max', 'Std', 'Hagg_0.05g', 'Hagg_0.10g', 'Parea_0.10', 'Parea_0.30'],
                 probthresh=[0.1, 0.3], shakethresh=[5., 10.]):
     """
     Create a webpage that summarizes ground failure results (both landslides
@@ -485,10 +485,14 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
         file1.write('date: 2017-06-09\n')
         file1.write('modified: 2017-06-09\n')
         file1.write('<h1>Ground Failure</h1>\n')
-
-        file1.write('<h2><a href=%s>Magnitude %1.1f - %s</a></h2>\n'
-                    % (event_url, edict['magnitude'],
-                       edict['event_description']))
+        if 'scenario' in smdict['shakemap_event_type'].lower():
+            file1.write('<h2><a href=%s>Magnitude %1.1f Scenario Earthquake - %s</a></h2>\n'
+                        % (event_url, edict['magnitude'],
+                           edict['event_description']))
+        else:
+            file1.write('<h2><a href=%s>Magnitude %1.1f - %s</a></h2>\n'
+                        % (event_url, edict['magnitude'],
+                           edict['event_description']))
 
         writeline = '<h3> %s (UTC) | %1.4f&#176,  %1.4f&#176 | %1.1f km depth</h3>\n' \
                     % (edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
