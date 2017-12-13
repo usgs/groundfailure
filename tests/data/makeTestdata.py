@@ -40,9 +40,9 @@ geodict = GeoDict({'xmin': 0.5, 'xmax': 1.5,
                   'ny': 2, 'nx': 2})
 
 geodict1 = GeoDict({'xmin': -0.5, 'xmax': 2.5,
-                  'ymin': -0.5, 'ymax': 2.5,
-                  'dx': 1., 'dy': 1.,
-                  'ny': 4, 'nx': 4})
+                   'ymin': -0.5, 'ymax': 2.5,
+                   'dx': 1., 'dy': 1.,
+                   'ny': 4, 'nx': 4})
 
 susgeodict = GeoDict({'xmin': 0., 'xmax': 2.0,
                       'ymin': 0., 'ymax': 2.0,
