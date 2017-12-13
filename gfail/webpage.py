@@ -260,10 +260,14 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             paramalertLS = None
             paramalertLQ = None
 
+    if faultfile is not None:
+        finitefault = True
+    else:
+        finitefault = False
     sks = write_summary(shakemap, pages, images,
                         alert=includeAlert,
                         alertLS=alertLS, alertLQ=alertLQ,
-                        statement=statement)
+                        statement=statement, finitefault=finitefault)
 
     # Create webpages for each type of ground motion
     write_individual(lsmodels, articles, 'Landslides',
@@ -461,7 +465,8 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
 
 
 def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
-                  alertLS=None, alertLQ=None, statement=None):
+                  alertLS=None, alertLQ=None, statement=None,
+                  finitefault=False):
     """
     Write markdown file summarizing event
 
@@ -480,6 +485,10 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
     smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
     event_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % edict['event_id']
 
+    if finitefault:
+        faulttype = '(finite fault model)'
+    else:
+        faulttype = '(point source model)'
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
@@ -502,16 +511,18 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
         file1.write('<p>Last updated at: %s (UTC)\n\n'
                     % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('Based on ground motion estimates from '
-                    'ShakeMap version %1.1f</p>\n'
-                    % smdict['shakemap_version'])
+                    'ShakeMap version %1.1f %s</p>\n'
+                    % (smdict['shakemap_version'], faulttype))
         if alert:
             file1.write('<h2>Summary</h2>\n')
             file1.write('<p>%s</p>' % statement)
-            file1.write('<hr>')
+            
         else:
             statement = None
             alertLS = None
             alertLQ = None
+
+        file1.write('<hr>')
     shakesummary = {'magnitude': edict['magnitude'],
                     'shakemap_version': smdict['shakemap_version'],
                     'date': edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
