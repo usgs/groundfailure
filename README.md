@@ -79,8 +79,9 @@ Prior to running autogf, the defaults needs to be set for gfail (see above).
 Additionally, a configuration file is required if the user wants to set
 thresholds for when the ground failure models will run and also the information
 required to send out automated emails. The file should follow the convention
-below:
+below (excluding the notes after # sounds):
 
+```sh
 [THRESHOLDS] # If any of these are met or exceeded, the ground failure models will run
 eis = yellow  # PAGER alert level
 mag = 6.5  # Magnitude
@@ -91,9 +92,10 @@ server = someserversomewhere.usgs.gov
 sender = example@usgs.gov
 stype = email
 recipients = person1@usgs.gov, person2@usgs.gov  # comma separated email addresses
+```
 
-See [here](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/autoconfig.ini)
-for an example.
+An example file is available [here](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/autoconfig.ini).
+
 
 ### Model config file format
 
