@@ -9,8 +9,8 @@ setup(name='groundfailure',
       url='http://github.com/usgs/groundfailure',
       packages=['gfail'],
       package_data={'groundfailure':
-            ['configspec.ini',
-             os.path.join('tests', 'data', '*'),
-            ]},
-      scripts=['bin/gfail', 'bin/gf_transfer'],
+                    ['configspec.ini',
+                     os.path.join('tests', 'data', '*'),
+                     ]},
+      scripts=['bin/gfail', 'bin/autogf'],
       )
