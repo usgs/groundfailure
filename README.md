@@ -14,8 +14,8 @@ near-real-time, triggered by the Shakemaps.
 
 The API docs can be found [here](http://usgs.github.io/groundfailure/). 
 Besides the API, there are two command-line programs:
-    - `gfail`
-    - `gf_transfer`
+    - `gfail` - runs ground failure models
+    - `autogf` - automation wrapper for gfail that can be run as a cron job
 
 Documentation for the use of these programs can be seen by calling them
 with the `-h` flag. 
@@ -72,6 +72,28 @@ gfail modelconfig.ini shakefile.xml -s -pd -pi
 * the pd flag outputs static pdfs of model results
 * the pi flag creates interactive plots as html files
 * type gfail -h to see all options
+
+### autogf configuration
+
+Prior to running autogf, the defaults needs to be set for gfail (see above).
+Additionally, a configuration file is required if the user wants to set
+thresholds for when the ground failure models will run and also the information
+required to send out automated emails. The file should follow the convention
+below:
+
+[THRESHOLDS] # If any of these are met or exceeded, the ground failure models will run
+eis = yellow  # PAGER alert level
+mag = 6.5  # Magnitude
+mmi = 7  # Intensity
+
+[MAIL]
+server = someserversomewhere.usgs.gov
+sender = example@usgs.gov
+stype = email
+recipients = person1@usgs.gov, person2@usgs.gov  # comma separated email addresses
+
+See [here](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/autoconfig.ini)
+for an example.
 
 ### Model config file format
 
