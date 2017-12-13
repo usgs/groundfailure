@@ -124,7 +124,7 @@ def test_zhu2015_web(tmpdir):
 
 
 if __name__ == "__main__":
-    #td1 = tempfile.TemporaryDirectory()
-    #test_zhu2015(td1)
+    td1 = tempfile.TemporaryDirectory()
+    test_zhu2015(td1)
     td2 = tempfile.TemporaryDirectory()
     test_zhu2015_web(td2)

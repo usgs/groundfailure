@@ -94,7 +94,7 @@ def test_parseMapConfig():
     # Give an invalid city file
     config = mapconfig
     config['cities']['file'] = os.path.join(datadir,
-        'loma_prieta/mapping_inputs/gmted_global_hillshade.grd.aux.xml')
+                                            'loma_prieta/mapping_inputs/gmted_global_hillshade.grd.aux.xml')
     makemaps.parseMapConfig(config)
     # 'alpha' in config['colors']
     config = mapconfig
@@ -173,4 +173,3 @@ if __name__ == "__main__":
     test_parseConfigLayers()
     test_modelMap()
     test_zoom()
-

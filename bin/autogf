@@ -42,6 +42,8 @@ defaultThresh = {'mag': 6.5,
                  'eis': 'yellow',
                  'mmi': 7}
 
+homedir = os.path.dirname(os.path.abspath(__file__))
+testdatadir = os.path.abspath(os.path.join(os.path.dirname(homedir), 'tests','data'))
 
 def main(args):
     print('%s - Running autogf' % datetime.now())
@@ -50,8 +52,18 @@ def main(args):
     args = validateArgs(args)
 
     config = configparser.ConfigParser()
-
-    gfail_flags = args.gfail_flags
+    
+    gfail_flags = ''
+    if args.webpage:
+        gfail_flags += '-w'
+    if args.hdf5:
+        gfail_flags += ' --hdf5'
+    if args.make_static_pngs:
+        gfail_flags += ' -pn'
+        
+    if not args.webpage and not args.hdf5:
+        print('No outputs specified, saving static plots')
+        gfail_flags = '-pn'
 
     if args.autoconfig is None:
         mail = False
@@ -79,17 +91,32 @@ def main(args):
             mail = False
         else:
             mail = True
-
+            
     if args.testrun:
         tempdir = tempfile.mkdtemp()
         gfail_flags = gfail_flags + ' -o %s' % tempdir
         dryrun = True
+        mail = False
+        testurl = 'https://earthquake.usgs.gov/fdsnws/event/1/query?eventid=nc216859&format=geojson'
+        with urllib.request.urlopen(testurl) as fh:
+            data = fh.read().decode('utf8')
+        testjd = json.loads(data)
+        smp = testjd['properties']['products']['shakemap'][0]
+        tempevent = getProductInfo(smp)
+        tempevent['time'] = datetime.now
+        tempevent['title'] = 'Test of Loma Prieta'
+        tempevent['finite_fault'] = None
+        testrecents = [tempevent]
+        tempevent['url'] = os.path.join(testdatadir, 'loma_prieta', 'grid.xml')
     else:
         dryrun = False
 
-    if args.eventdir is None:
+    if args.eventdir is None or args.testrun:
         db, cursor = connect(args.db)
-        recentevents = getRecentEvents(thresh, args.feed)
+        if args.testrun:
+            recentevents = testrecents
+        else:
+            recentevents = getRecentEvents(thresh, args.feed)
         for event in recentevents:
             empty = False
             fmt = 'SELECT id FROM shakemap WHERE eventcode="%s" AND version=%i AND time="%s"'
@@ -97,7 +124,6 @@ def main(args):
             cursor.execute(query)
             row = cursor.fetchone()
             if row is None or args.testrun:
-                #this event has not been processed before (not in .db file)
                 print('Now running M%s - %s' % (event['mag'], event['location']))
                 filenames, url, jsonfeed = runGF(gfail_flags,
                                                  args.gfailconfig,
@@ -136,12 +162,21 @@ def main(args):
                 # Clean up finite fault temp geojson files
                 if finitefault == 1:
                     os.remove(event['finite_fault'])
-    else:
+
+    if args.eventdir is not None or args.testrun: # Also test this functionality
         # Just send the files
-        event_id = os.path.basename(args.eventdir)
-        success, url, feed = gf_transfer(args.eventdir, event_id, args.pdlconf, dry_run=dryrun)
-        if success:
+        if args.testrun:
+            event_id = '19891018000415'
+            eventdir = os.path.join(tempdir, event_id)
+            dryrun = True
+        else:
+            eventdir = args.eventdir
+            event_id = os.path.basename(args.eventdir)
+        success, url, feed = gf_transfer(eventdir, event_id, args.pdlconf, dry_run=dryrun)
+        if success and not dryrun:
             print('Folder for event %s successfully sent, viewable at: %s' % (event_id, url))
+        elif success and dryrun:
+            print('Dry run for event %s successful' % (event_id,))
         else:
             raise Exception('Folder was not transfered')
 
@@ -242,6 +277,7 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
         cmd = 'gfail -f %s %s %s %s' % (faultfile, flagstr, modelconfig, shakefile)
     else:
         cmd = 'gfail %s %s %s' % (flagstr, modelconfig, shakefile)
+    print(cmd)
     retcode, stdout, stderr = get_command_output(cmd)
     temp = stdout.decode('utf-8')
     if temp.find('Files created:\n') > -1:
@@ -276,7 +312,7 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
     return filenames, url, jsonfeed
 
 
-def getProductInfo(shakemap, pager):
+def getProductInfo(shakemap, pager=None):
     edict = {}
     edict['eventcode'] = shakemap['code']
     edict['version'] = int(shakemap['properties']['version'])
@@ -457,7 +493,7 @@ def text_to_json(url):
     return json.dumps(d)
 
 
-def gf_transfer(eventdir, event_id, pdl_config, dry_run=False):
+def gf_transfer(eventdir, event_id, pdl_config=None, dry_run=False):
     """
     Transfer ground failure results to dev server
     """
@@ -465,61 +501,65 @@ def gf_transfer(eventdir, event_id, pdl_config, dry_run=False):
           % event_id)
     pdl.prepare_pdl_directory(eventdir)
 
-    # Transfer
-    print('Transferring...')
-    log = pdl.transfer(eventdir, pdl_config, dryrun=dry_run)
-    print('done.')
-    if log['rc'] is True:
-        print('Successful PDL transfer.')
-        success = True
-
-        # Construct URL to index.html
-        url_template = ('https://dev01-earthquake.cr.usgs.gov/archive'
-                        '/product/[TYPE]/[ID]/[SOURCE]/[TIME]/html/index.html')
-        se_lines = log['se'].decode().split("\n")
-        info_line = [l for l in se_lines if 'send complete Socket' in l][0]
-        info = info_line.split(':')
-        timestamp = info[-1].replace("'", "")
-        eventid = info[-2]
-        ptype = info[-3]
-        source = info[-4]
-        url = url_template.replace(
-            '[TYPE]', ptype).replace(
-            '[ID]', eventid).replace(
-            '[SOURCE]', source).replace(
-            '[TIME]', timestamp)
-
-        # URL for event's detail feed
-        feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
-                'query?eventid=[EVENTID]&format=geojson')
-        feed = feed.replace('[EVENTID]', eventid)
-
-        # Print to screen
-        print("Web page URL:")
-        print(url)
-        print("Event detail JSON feed:")
-        print(feed)
-
-        # Save to file
-        with open("url.txt", "w") as f:
-            f.write(url)
-            f.write(feed)
+    if pdl_config is None:
+        print('PDL directory prepared, no pdl_config provided so no files were sent')
+        return (True, None, None)
     else:
-        print('PDL transfer failed.')
-        print(log['so'].decode())
-        success = False
-
-    with open("gf_transfer.log", "w") as f:
-        f.write('----------------\n')
-        f.write('Standard Output:\n')
-        f.write('----------------\n')
-        f.write(log['so'].decode())
-        f.write('----------------\n')
-        f.write('Standard Error:\n')
-        f.write('----------------\n')
-        f.write(log['se'].decode())
-
-    return success, url, feed
+        # Transfer
+        print('Transferring...')
+        log = pdl.transfer(eventdir, pdl_config, dryrun=dry_run)
+        print('done.')
+        if log['rc'] is True:
+            print('Successful PDL transfer.')
+            success = True
+    
+            # Construct URL to index.html
+            url_template = ('https://dev01-earthquake.cr.usgs.gov/archive'
+                            '/product/[TYPE]/[ID]/[SOURCE]/[TIME]/html/index.html')
+            se_lines = log['se'].decode().split("\n")
+            info_line = [l for l in se_lines if 'send complete Socket' in l][0]
+            info = info_line.split(':')
+            timestamp = info[-1].replace("'", "")
+            eventid = info[-2]
+            ptype = info[-3]
+            source = info[-4]
+            url = url_template.replace(
+                '[TYPE]', ptype).replace(
+                '[ID]', eventid).replace(
+                '[SOURCE]', source).replace(
+                '[TIME]', timestamp)
+    
+            # URL for event's detail feed
+            feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
+                    'query?eventid=[EVENTID]&format=geojson')
+            feed = feed.replace('[EVENTID]', eventid)
+    
+            # Print to screen
+            print("Web page URL:")
+            print(url)
+            print("Event detail JSON feed:")
+            print(feed)
+    
+            # Save to file
+            with open("url.txt", "w") as f:
+                f.write(url)
+                f.write(feed)
+        else:
+            print('PDL transfer failed.')
+            print(log['so'].decode())
+            success = False
+    
+        with open("gf_transfer.log", "w") as f:
+            f.write('----------------\n')
+            f.write('Standard Output:\n')
+            f.write('----------------\n')
+            f.write(log['so'].decode())
+            f.write('----------------\n')
+            f.write('Standard Error:\n')
+            f.write('----------------\n')
+            f.write(log['se'].decode())
+    
+        return success, url, feed
         
 
 if __name__ == '__main__':
@@ -528,7 +568,8 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(
         description="""Check for triggering events for ground failure, if found,
-        run gfail and transfer to dev comcat""")
+        run gfail and transfer to dev comcat. Note that defaults for gfail
+        should be set prior to running this code""")
 
     parser.add_argument(
         '-c', '--gfailconfig', metavar='gfailconfig', nargs='?',
@@ -547,7 +588,7 @@ if __name__ == '__main__':
 
     parser.add_argument(
         '-d', '--db', metavar='sqldatabase', nargs='?',
-        default=os.path.join(default_loc, 'mail.db'),
+        default=os.path.join(default_loc, 'events_run.db'),
         help='SQLite database file location that stores history'
              'of ground failure runs')
 
@@ -566,11 +607,6 @@ if __name__ == '__main__':
         will do a dry run""")
 
     parser.add_argument(
-        '-fl', '--gfail-flags', metavar='gfailflags', nargs='?',
-        default='-w --hdf5',
-        help='String of flags for gfail')
-
-    parser.add_argument(
         '--feed', metavar='jsonfeed', nargs='?',
         default='day', help='Which jsonfeed to check, default day, other'
                             'options are week and hour')
@@ -580,6 +616,18 @@ if __name__ == '__main__':
         '-t', '--testrun', action='store_true', default=False,
         help='Do a test run, will not transfer files (dry run)'
              'and will delete all files created')
+             
+    parser.add_argument(
+        '-w', '--webpage', action='store_true', default=False,
+        help='Make web page')
+
+    parser.add_argument(
+        '--hdf5', action='store_true', default=False,
+        help='Save hdf5 files')
+    
+    parser.add_argument(
+        '-pn', '--make-static-pngs', action='store_true', default=False,
+        help='Make static plots for each model')
 
     pargs = parser.parse_args()
     main(pargs)

@@ -71,7 +71,7 @@ def main(args):
                 return
         eventid = getHeaderData(shakefile)[0]['event_id']
 
-        if args.nest_folder:
+        if args.unnest_folder:
             outfolder = os.path.join(outdir, eventid)
             if not os.path.exists(outfolder):
                 os.makedirs(outfolder)
@@ -650,7 +650,7 @@ if __name__ == '__main__':
         help='Create webpage that summarizes all model results, '
              'including interactive maps')
     parser.add_argument(
-        '-n', '--nest-folder', action='store_true', default=True,
+        '-n', '--unnest-folder', action='store_true', default=True,
         help='do not nest in output folder with eventid as name '
              '(default is it will nest)')
     parser.add_argument(

@@ -983,7 +983,7 @@ def modelMap(grids, shakefile=None,
 def interactiveMap(grids, shakefile=None, plotorder=None,
                    inventory_shapefile=None, maskthreshes=None, colormaps=None,
                    scaletype='continuous', lims=None, logscale=False,
-                   ALPHA=0.6, isScenario=False, outputdir=None,
+                   ALPHA=0.8, isScenario=False, outputdir=None,
                    outfilename=None, tiletype='Stamen Terrain',
                    smcontourfile=None, faultfile=None, separate=True,
                    onkey=None, sepcolorbar=False, floatcb=True,
@@ -1039,7 +1039,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         ALPHA (float): Transparency for mapping, if there is a hillshade that
             will plot below each layer, it is recommended to set this to at
             least 0.7.
-        isScenario (float): Is this a scenario?
+        isScenario (bool): Is this a scenario?
         outputdir (str): File path for outputting figures, if edict is defined,
             a subfolder based on the event id will be created in this folder.
             If None, will use current directory.
@@ -1119,6 +1119,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
         edict['eventid'] = temp['shakemap_id']
         edict['version'] = temp['shakemap_version']
+        if 'scenario' in temp['shakemap_event_type'].lower():
+            isScenario = True
     else:
         edict = None
 
@@ -1272,7 +1274,6 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
         else:
             norm = Normalize(vmin=vmin, vmax=vmax)
-            
 
         # turn data into an RGBA image
         # adjust data so scaled between vmin and vmax and between 0 and 1
@@ -1297,9 +1298,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         maxlat = gd.ymax + gd.dy/2.
         maxlon = gd.xmax + gd.dx/2.
 
-
         # Make colorbar figure
-
         if sepcolorbar:
             if vmax <= 1.:
                 cbfmt = '%1.2f'
@@ -1308,10 +1307,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             elif vmax >= 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
 
-            if logscale[k]: # override previous choice if logscale
-                cbfmt = None #'%1.0e'
+            if logscale[k]:  # override previous choice if logscale
+                cbfmt = None  # '%1.0e'
 
-            if separate or len(plotorder)==1:
+            if separate or len(plotorder) == 1:
                 fig = plt.figure(figsize=(4., 1.0))
                 ax = plt.gca()
             else:
@@ -1320,7 +1319,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 ax = axes[k]
 
             if scaletype.lower() == 'binned':
-                newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1])) # Modify so colorbar uses full expanse of colorbar
+                newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1]))  # Modify so colorbar uses full expanse of colorbar
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
                              orientation='horizontal', format=cbfmt, extend='both',
                              extendfrac=0.15, ticks=newclev, boundaries=newclev,
@@ -1347,16 +1346,6 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 fig.savefig(os.path.join(outfolder, ctemp),
                             transparent=True, bbox_inches='tight')
 
-        # if edict is not None:
-        #     if isScenario:
-        #         title = edict['event_description']
-        #     else:
-        #         timestr = edict['event_timestamp'].strftime('%b %d %Y')
-        #         title = 'M%.1f %s v%i - %s' % (edict['magnitude'], timestr, edict['version'], edict['event_description'])
-        #     plt.suptitle(title+'\n'+sref, fontsize=16)
-        # else:
-        #     plt.suptitle(sref, fontsize=16)
-
         if inventory_shapefile is not None:
             reader = shapefile.Reader(inventory_shapefile)
             fields = reader.fields[1:]
@@ -1376,7 +1365,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             # create geojson object
             invt = GeoJson1({"type": "FeatureCollection",
                             "features": buffer1},
-                           style_function=style_function)
+                            style_function=style_function)
 
         zoom_start = getZoom(minlon, maxlon) + 2.
 
@@ -1435,7 +1424,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                     vmax=vmax,
                     caption='%s - %s' % (label1, sref)))
             map1.add_child(cbars[k])
-        
+
         if separate or k == len(plotorder)-1:
 
             folium.LayerControl(
@@ -1455,36 +1444,42 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             if smcontourfile is not None:
                 style_function = lambda x: {'fillColor': 'none', 'color': 'white', 'weight': 0.7}
                 GeoJson(smcontourfile, style_function=style_function,
-                         name='ShakeMap Contours').add_to(map1)
+                        name='ShakeMap Contours').add_to(map1)
 
             if faultfile is not None:
                 style_function = lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 0.7}
                 GeoJson(faultfile, style_function=style_function,
-                         name='Finite fault', control=False).add_to(map1)
+                        name='Finite fault', control=False).add_to(map1)
+
+            # Make scenario float image
+            if isScenario:
+                fig = plt.figure(figsize=(1.2, 0.4))
+                ax = fig.add_subplot(111)
+                ax.add_artist(plt.Rectangle((0.0, 0.0), 0.99, 0.99, facecolor='r',
+                                            edgecolor='black', lw=1, alpha=0.5))
+                ax.text(0.5, 0.5, 'Scenario', fontsize=20, ha='center', va='center', alpha=0.8)
+                ax.axis('off')
+                plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
+                scenfile = os.path.join(outfolder, 'scenario.png')
+                fig.savefig(scenfile, transparent=True)
+                plt.close()
+                plugins.FloatImage('scenario.png', bottom=94, left=3).add_to(map1)
 
             #draw epicenter
             if edict is not None:
                 #f = folium.map.FeatureGroup(overlay=False)
-                for j in [9,7,5,3,1]:
-                    if j in [9,5,1]:
+                for j in [7, 5, 3, 1]:
+                    if j in [5, 1]:
                         color3 = 'black'
                     else:
                         color3 = 'white'
                     map1.add_child(folium.features.CircleMarker(
-                            [edict['lat'], edict['lon']],
-                            radius=j,
-                            color=color3,
-                            fill=False,
-                            fill_opacity=0.5
-                            ))
-
-                #map1.add_child(f)
-#                folium.RegularPolygonMarker(
-#                    location=[edict['lat'], edict['lon']],
-#                    popup='Epicenter',
-#                    fill_color='#769d96',
-#                    number_of_sides=4,
-#                    radius=6).add_to(map1)
+                                   [edict['lat'], edict['lon']],
+                                   radius=j,
+                                   color=color3,
+                                   fill=False,
+                                   fill_opacity=0.5
+                                   ))
 
             if savefiles:
                 if separate:
