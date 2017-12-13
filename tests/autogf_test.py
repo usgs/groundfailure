@@ -53,7 +53,8 @@ def test_autogf(tmpdir):
     """ % (gconfig, config)
     
     rc, so, se = get_command_output(agfcmd)
-    
+    print(so.decode())
+    print(se.decode())
     temp = so.decode().split('\n')[-2]
     
     np.testing.assert_equal(True, rc, 'autogf run failed')
