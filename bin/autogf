@@ -238,7 +238,9 @@ def mailUsers(event, autoconfig, url, jsonfeed):
 
         Model results are provisional and subject to revision. The results are released
         on the condition that neither the USGS nor the U.S. Government may be held liable
-        for any damages resulting from its authorized or unauthorized use.
+        for any damages resulting from its authorized or unauthorized use. As this
+        product is still in development, do not forward the links or share widely
+        without permission.
 
         Do not reply to this message. Contact kallstadt@usgs.gov with questions.
         """ % (vnum, eid, title, url, jsonfeed)
@@ -252,7 +254,9 @@ def mailUsers(event, autoconfig, url, jsonfeed):
 
         Model results are provisional and subject to revision. The results are released
         on the condition that neither the USGS nor the U.S. Government may be held liable
-        for any damages resulting from its authorized or unauthorized use.
+        for any damages resulting from its authorized or unauthorized use. As this
+        product is still in development, do not forward the links or share widely
+        without permission.
 
         Do not reply to this message. Contact kallstadt@usgs.gov with questions.
         """ % (vnum, eid, title, url, jsonfeed)
