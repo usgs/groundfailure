@@ -193,10 +193,16 @@
         <span class="n">ftype</span> <span class="o">=</span> <span class="n">getFileType</span><span class="p">(</span><span class="n">basefile</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">ftype</span> <span class="o">==</span> <span class="s1">&#39;esri&#39;</span><span class="p">:</span>
             <span class="n">basegeodict</span><span class="p">,</span> <span class="n">firstcol</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">basefile</span><span class="p">)</span>
-            <span class="n">sampledict</span> <span class="o">=</span> <span class="n">basegeodict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">gdict</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">basegeodict</span> <span class="o">==</span> <span class="n">gdict</span><span class="p">:</span>
+                <span class="n">sampledict</span> <span class="o">=</span> <span class="n">gdict</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sampledict</span> <span class="o">=</span> <span class="n">basegeodict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">gdict</span><span class="p">)</span>
         <span class="k">elif</span> <span class="n">ftype</span> <span class="o">==</span> <span class="s1">&#39;gmt&#39;</span><span class="p">:</span>
             <span class="n">basegeodict</span><span class="p">,</span> <span class="n">firstcol</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">basefile</span><span class="p">)</span>
-            <span class="n">sampledict</span> <span class="o">=</span> <span class="n">basegeodict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">gdict</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">basegeodict</span> <span class="o">==</span> <span class="n">gdict</span><span class="p">:</span>
+                <span class="n">sampledict</span> <span class="o">=</span> <span class="n">gdict</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sampledict</span> <span class="o">=</span> <span class="n">basegeodict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">gdict</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;All predictor variable grids must be a valid &#39;</span>
                             <span class="s1">&#39;GMT or ESRI file type.&#39;</span><span class="p">)</span>
@@ -207,9 +213,9 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;slopemax&#39;</span><span class="p">])</span>
         <span class="k">except</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not find slopemin and/or slopemax in config, limits &#39;</span>
-                  <span class="s1">&#39;of 0 to 90 degrees will be used.&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">=</span> <span class="mf">0.</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="mf">90.</span>
+                  <span class="s1">&#39;No slope thresholds will be applied.&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
 
         <span class="c1"># Make temporary directory for hdf5 pytables file storage</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
@@ -309,6 +315,8 @@
 
                 <span class="k">if</span> <span class="n">layerfile</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span><span class="p">:</span>
                     <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span><span class="p">:</span>
+                        <span class="n">flag</span> <span class="o">=</span> <span class="mi">1</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemod</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="n">slope1</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
                         <span class="n">slope</span> <span class="o">=</span> <span class="mi">0</span>
@@ -327,6 +335,11 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="o">=</span> <span class="n">nonzero</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
                         <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
                         <span class="k">del</span><span class="p">(</span><span class="n">slope</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="c1"># Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas</span>
+                        <span class="n">nonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">slope1</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">])</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="o">=</span> <span class="n">nonzero</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+                        <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
                     <span class="n">didslope</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
 
@@ -351,6 +364,8 @@
                 <span class="n">temp</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">templyrname</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span> <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                      <span class="n">method</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span> <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
             <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span><span class="p">:</span>
+                <span class="n">flag</span> <span class="o">=</span> <span class="mi">1</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemod</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">slope1</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
                 <span class="n">slope</span> <span class="o">=</span> <span class="mi">0</span>
@@ -368,6 +383,11 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="o">=</span> <span class="n">nonzero</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">slope</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas</span>
+                <span class="n">nonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">slope1</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="o">=</span> <span class="n">nonzero</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+                <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coeffs</span><span class="p">[</span><span class="s1">&#39;b0&#39;</span><span class="p">])]</span>
 
@@ -543,10 +563,13 @@
             <span class="c1"># Apply slope min/max limits</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;applying slope thresholds&#39;</span><span class="p">)</span>
             <span class="n">P</span> <span class="o">=</span> <span class="n">P</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
+            <span class="c1">#P[P==0.0] = float(&#39;nan&#39;)</span>
             <span class="n">P</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">P</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">Pmin</span> <span class="o">=</span> <span class="n">Pmin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
                 <span class="n">Pmax</span> <span class="o">=</span> <span class="n">Pmax</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
+                <span class="c1">#Pmin[Pmin==0.0] = float(&#39;nan&#39;)</span>
+                <span class="c1">#Pmax[Pmax==0.0] = float(&#39;nan&#39;)</span>
                 <span class="n">Pmin</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">Pmin</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
                 <span class="n">Pmax</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">Pmax</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="k">else</span><span class="p">:</span>
@@ -571,9 +594,15 @@
             <span class="s1">&#39;longref&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;longref&#39;</span><span class="p">],</span>
             <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">units5</span><span class="p">,</span>
             <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span><span class="p">,</span>
+            <span class="s1">&#39;event_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">edict</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">],</span>
             <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;slopemin&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span><span class="p">,</span>
                            <span class="s1">&#39;slopemax&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span><span class="p">,</span>
                            <span class="s1">&#39;modeltype&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="p">}}</span>
+        <span class="k">if</span> <span class="s1">&#39;vs30max&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">description</span><span class="p">[</span><span class="s1">&#39;vs30max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;vs30max&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="s1">&#39;minpgv&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">description</span><span class="p">[</span><span class="s1">&#39;minpgv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpgv&#39;</span><span class="p">])</span>
+            
         <span class="n">Pgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
         <span class="n">rdict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
         <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
@@ -619,7 +648,8 @@
                     <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;input&#39;</span><span class="p">,</span>
                     <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="p">{</span>
                         <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">units</span><span class="p">,</span>
-                        <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span>
+                        <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortrefs</span><span class="p">[</span><span class="n">layername</span><span class="p">],</span>
+                        <span class="s1">&#39;longref&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">longrefs</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span>
                     <span class="p">}</span>
                 <span class="p">}</span>
             <span class="k">for</span> <span class="n">gmused</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">gmused</span><span class="p">:</span>
@@ -791,6 +821,8 @@
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">layers</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">longrefs</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">shortrefs</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;layers&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
         <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;layers&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="k">if</span> <span class="n">item</span> <span class="o">==</span> <span class="s1">&#39;file&#39;</span><span class="p">:</span>
@@ -801,6 +833,10 @@
                 <span class="k">if</span> <span class="n">ftype</span> <span class="o">==</span> <span class="s1">&#39;dir&#39;</span><span class="p">:</span>
                     <span class="n">value</span> <span class="o">=</span> <span class="n">getAllGridFiles</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
                 <span class="n">layers</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">==</span> <span class="s1">&#39;shortref&#39;</span><span class="p">:</span>
+                <span class="n">shortrefs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+            <span class="k">elif</span> <span class="n">item</span> <span class="o">==</span> <span class="s1">&#39;longref&#39;</span><span class="p">:</span>
+                <span class="n">longrefs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
     <span class="k">return</span> <span class="n">layers</span></div>
 
 

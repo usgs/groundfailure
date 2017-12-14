@@ -170,7 +170,7 @@ but without the metadata.</p>
 
 <dl class="function">
 <dt id="makemaps.interactiveMap">
-<code class="descclassname">makemaps.</code><code class="descname">interactiveMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>plotorder=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.6</em>, <em>isScenario=False</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>smcontourfile=None</em>, <em>faultfile=None</em>, <em>separate=True</em>, <em>onkey=None</em>, <em>sepcolorbar=False</em>, <em>floatcb=True</em>, <em>savefiles=True</em>, <em>mapid=None</em>, <em>clear_zero=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#interactiveMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.interactiveMap" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">makemaps.</code><code class="descname">interactiveMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>plotorder=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.8</em>, <em>isScenario=False</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>smcontourfile=None</em>, <em>faultfile=None</em>, <em>separate=True</em>, <em>onkey=None</em>, <em>sepcolorbar=False</em>, <em>floatcb=True</em>, <em>savefiles=True</em>, <em>mapid=None</em>, <em>clear_zero=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/makemaps.html#interactiveMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#makemaps.interactiveMap" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates interactive html plots of mapio grid layers
 (e.g. liquefaction or landslide models with their input layers).</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -223,7 +223,7 @@ defining whether to use a log scale or not for each layer.</li>
 <li><strong>ALPHA</strong> (<em>float</em>) – Transparency for mapping, if there is a hillshade that
 will plot below each layer, it is recommended to set this to at
 least 0.7.</li>
-<li><strong>isScenario</strong> (<em>float</em>) – Is this a scenario?</li>
+<li><strong>isScenario</strong> (<em>bool</em>) – Is this a scenario?</li>
 <li><strong>outputdir</strong> (<em>str</em>) – File path for outputting figures, if edict is defined,
 a subfolder based on the event id will be created in this folder.
 If None, will use current directory.</li>

@@ -43,7 +43,7 @@
 <span id="gfail-webpage"></span><h1>gfail.webpage<a class="headerlink" href="#module-gfail.webpage" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.webpage.makeWebpage">
-<code class="descclassname">gfail.webpage.</code><code class="descname">makeWebpage</code><span class="sig-paren">(</span><em>maplayerlist</em>, <em>configs</em>, <em>web_template</em>, <em>shakemap</em>, <em>outfolder=None</em>, <em>includeunc=False</em>, <em>cleanup=True</em>, <em>includeAlert=False</em>, <em>shakethreshtype='pga'</em>, <em>shakethresh=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#makeWebpage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.makeWebpage" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.webpage.</code><code class="descname">makeWebpage</code><span class="sig-paren">(</span><em>maplayerlist, configs, web_template, shakemap, outfolder=None, includeunc=False, cleanup=True, includeAlert=False, alertkey='Hagg_0.05g', faultfile=None, shakethreshtype='pga', statlist=['Max', 'Std', 'Hagg_0.05g', 'Hagg_0.10g', 'Parea_0.10', 'Parea_0.30'], probthresh=[0.1, 0.3], shakethresh=[5.0, 10.0]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#makeWebpage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.makeWebpage" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="docutils">
 <dt>Create a webpage that summarizes ground failure results (both landslides</dt>
 <dd>and liquefaction)</dd>
@@ -65,16 +65,20 @@ of the models in maplayerlist in the same order</li>
 pelican creates, default True.</li>
 <li><strong>includeAlert</strong> (<em>bool</em><em>, </em><em>optional</em>) – if True, computes and reports alert level, default
 False</li>
-<li><strong>shakethreshtype</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of ground motion to use for Hagg threshold,
+<li><strong>alertkey</strong> (<em>str</em>) – stat key used for alert calculation</li>
+<li><strong>faultfile</strong> (<em>str</em><em>, </em><em>optional</em>) – GeoJson file of finite fault to display on
+interactive maps</li>
+<li><strong>shakethreshtype</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of ground motion to use for stat thresholds,
 ‘pga’, ‘pgv’, or ‘mmi’</li>
-<li><strong>shakethresh</strong> (<em>float</em><em>, </em><em>optional</em>) – Ground motion threshold corresponding to
-gmthreshtype. If None (default), no threshold will be used</li>
+<li><strong>statlist</strong> (<em>list</em>) – list of strings indicating which stats to show on webpage</li>
+<li><strong>probthresh</strong> (<em>float</em><em>, </em><em>optional</em>) – List of probability thresholds for which to compute
+Parea.</li>
+<li><strong>shakethresh</strong> (<em>list</em><em>, </em><em>optional</em>) – List of ground motion thresholds for which
+to compute Hagg, units corresponding to shakethreshtype.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><p>Folder where webpage files are located</p>
-<p>TODO add in logic to deal with when one of the model types is missing</p>
-</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Folder where webpage files are located</p>
 </td>
 </tr>
 </tbody>
@@ -83,16 +87,15 @@ gmthreshtype. If None (default), no threshold will be used</li>
 
 <dl class="function">
 <dt id="gfail.webpage.write_individual">
-<code class="descclassname">gfail.webpage.</code><code class="descname">write_individual</code><span class="sig-paren">(</span><em>Hagg</em>, <em>maxprobs</em>, <em>modelnames</em>, <em>outputdir</em>, <em>modeltype</em>, <em>topimage=None</em>, <em>staticmap=None</em>, <em>interactivehtml=None</em>, <em>outjsfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#write_individual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.write_individual" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.webpage.</code><code class="descname">write_individual</code><span class="sig-paren">(</span><em>concatmods</em>, <em>outputdir</em>, <em>modeltype</em>, <em>topimage=None</em>, <em>staticmap=None</em>, <em>interactivehtml=None</em>, <em>outjsfile=None</em>, <em>statlist=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#write_individual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.write_individual" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write markdown file for landslides or liquefaction.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>Hagg</strong> (<em>float</em><em> or </em><em>list</em>) – Aggregate hazard.</li>
-<li><strong>maxprobs</strong> (<em>float</em><em> or </em><em>list</em>) – Maximum probability.</li>
-<li><strong>modelnames</strong> (<em>str</em><em> or </em><em>list</em>) – Model name.</li>
+<li><strong>concatmods</strong> (<em>float</em><em> or </em><em>list</em>) – Ordered dictionary of models with
+fields required for write_individual populated (stats in particular)</li>
 <li><strong>outputdir</strong> (<em>str</em>) – Path to output directory.</li>
 <li><strong>modeltype</strong> (<em>str</em>) – ‘Landslides’ for landslide model, otherwise it is
 a liquefaction model.</li>
@@ -100,6 +103,8 @@ a liquefaction model.</li>
 <li><strong>staticmap</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to static map.</li>
 <li><strong>interactivehtml</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to interactive map file.</li>
 <li><strong>outjsfile</strong> (<em>str</em><em>, </em><em>optional</em>) – Path for output javascript file.</li>
+<li><strong>stats</strong> (<em>list</em>) – List of stats keys to include in the table, if None,
+it will include all of them</li>
 </ul>
 </td>
 </tr>
@@ -109,7 +114,7 @@ a liquefaction model.</li>
 
 <dl class="function">
 <dt id="gfail.webpage.write_summary">
-<code class="descclassname">gfail.webpage.</code><code class="descname">write_summary</code><span class="sig-paren">(</span><em>shakemap</em>, <em>outputdir</em>, <em>imgoutputdir</em>, <em>HaggLS=None</em>, <em>HaggLQ=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#write_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.write_summary" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.webpage.</code><code class="descname">write_summary</code><span class="sig-paren">(</span><em>shakemap</em>, <em>outputdir</em>, <em>imgoutputdir</em>, <em>alert=False</em>, <em>alertLS=None</em>, <em>alertLQ=None</em>, <em>statement=None</em>, <em>finitefault=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#write_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.write_summary" title="Permalink to this definition">¶</a></dt>
 <dd><p>Write markdown file summarizing event</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -238,7 +243,6 @@ and Red.</li>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="gfail.assess_models.html">gfail.assess_models</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
@@ -246,6 +250,7 @@ and Red.</li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.webpage</a></li>
 </ul>
