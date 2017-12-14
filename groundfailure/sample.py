@@ -27,6 +27,8 @@ from rasterio.transform import Affine
 import rasterio
 import matplotlib.path as mplPath
 
+plt.switch_backend('agg')
+
 
 def getPointsInCircum(r, n=100, h=0, k=0):
     """Get coordinates of equally spaced points around circle.

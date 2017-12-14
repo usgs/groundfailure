@@ -43,7 +43,8 @@ defaultThresh = {'mag': 6.5,
                  'mmi': 7}
 
 homedir = os.path.dirname(os.path.abspath(__file__))
-testdatadir = os.path.abspath(os.path.join(os.path.dirname(homedir), 'tests','data'))
+testdatadir = os.path.abspath(os.path.join(os.path.dirname(homedir), 'tests', 'data'))
+
 
 def main(args):
     print('%s - Running autogf' % datetime.now())
@@ -52,7 +53,7 @@ def main(args):
     args = validateArgs(args)
 
     config = configparser.ConfigParser()
-    
+
     gfail_flags = ''
     if args.webpage:
         gfail_flags += '-w'
@@ -60,7 +61,7 @@ def main(args):
         gfail_flags += ' --hdf5'
     if args.make_static_pngs:
         gfail_flags += ' -pn'
-        
+
     if not args.webpage and not args.hdf5:
         print('No outputs specified, saving static plots')
         gfail_flags = '-pn'
@@ -91,7 +92,7 @@ def main(args):
             mail = False
         else:
             mail = True
-            
+
     if args.testrun:
         tempdir = tempfile.mkdtemp()
         gfail_flags = gfail_flags + ' -o %s' % tempdir
@@ -137,7 +138,7 @@ def main(args):
                     empty = True
                     url = 'Failed to run'
                     jsonfeed = 'Failed to run'
-    
+
                 if mail and not empty:
                     mailUsers(event, args.autoconfig, url, jsonfeed)
                 fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location,finitefault,url,jsonfeed) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s",%i,"%s","%s")'
@@ -163,7 +164,7 @@ def main(args):
                 if finitefault == 1:
                     os.remove(event['finite_fault'])
 
-    if args.eventdir is not None or args.testrun: # Also test this functionality
+    if args.eventdir is not None or (args.testrun and args.webpage):  # Also test this functionality
         # Just send the files
         if args.testrun:
             event_id = '19891018000415'
@@ -300,8 +301,8 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
         url = None
         jsonfeed = None
         return filenames, url, jsonfeed
-        
-    event_dir = os.path.dirname([fn for fn in filenames if '.bil' in fn or 'webpage' in fn][0])
+
+    event_dir = os.path.dirname([fn for fn in filenames if '.bil' in fn or 'webpage' in fn or '.png' in fn][0])
 
     if transfer and pdlconf is not None:
         success, url, jsonfeed = gf_transfer(event_dir, event_id, pdlconf, dryrun)

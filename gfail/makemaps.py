@@ -8,7 +8,7 @@ import glob
 import copy
 import datetime
 import matplotlib as mpl
-from matplotlib.colors import LightSource, LogNorm, Normalize, BoundaryNorm
+from matplotlib.colors import LightSource, LogNorm, Normalize
 import re
 from matplotlib.colorbar import ColorbarBase
 
@@ -42,13 +42,11 @@ from mapio.grid2d import Grid2D
 from mapio.basemapcity import BasemapCities
 from mapio.shake import ShakeGrid
 
-# So figures will still be created even without display
-mpl.use('Agg')
-
 # Make fonts readable and recognizable by illustrator
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = \
     ['Helvetica', 'Arial', 'Bitstream Vera Serif', 'sans-serif']
+plt.switch_backend('agg')
 
 
 def modelMap(grids, shakefile=None,

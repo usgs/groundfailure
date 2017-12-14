@@ -19,6 +19,8 @@ from configobj import ConfigObj
 import warnings
 warnings.filterwarnings('ignore')
 
+plt.switch_backend('agg')
+
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False, alertkey='Hagg_0.05g',

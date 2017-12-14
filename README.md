@@ -14,8 +14,10 @@ near-real-time, triggered by the Shakemaps.
 
 The API docs can be found [here](http://usgs.github.io/groundfailure/). 
 Besides the API, there are two command-line programs:
-    - `gfail` - runs ground failure models
-    - `autogf` - automation wrapper for gfail that can be run as a cron job
+
+`gfail` - runs ground failure models
+
+`autogf` - automation wrapper for gfail that can be run as a cron job
 
 Documentation for the use of these programs can be seen by calling them
 with the `-h` flag. 
