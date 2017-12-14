@@ -164,7 +164,7 @@ def main(args):
                 if finitefault == 1:
                     os.remove(event['finite_fault'])
 
-    if args.eventdir is not None or args.testrun:  # Also test this functionality
+    if args.eventdir is not None or (args.testrun and args.webpage):  # Also test this functionality
         # Just send the files
         if args.testrun:
             event_id = '19891018000415'
