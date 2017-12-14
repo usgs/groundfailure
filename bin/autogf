@@ -302,7 +302,7 @@ def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
         jsonfeed = None
         return filenames, url, jsonfeed
 
-    event_dir = os.path.dirname([fn for fn in filenames if '.bil' in fn or 'webpage' in fn][0])
+    event_dir = os.path.dirname([fn for fn in filenames if '.bil' in fn or 'webpage' in fn or '.png' in fn][0])
 
     if transfer and pdlconf is not None:
         success, url, jsonfeed = gf_transfer(event_dir, event_id, pdlconf, dryrun)
