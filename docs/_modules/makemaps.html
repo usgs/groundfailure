@@ -70,8 +70,9 @@
 <span class="kn">from</span> <span class="nn">descartes</span> <span class="k">import</span> <span class="n">PolygonPatch</span>
 <span class="kn">import</span> <span class="nn">shapefile</span>
 <span class="kn">import</span> <span class="nn">folium</span>
-<span class="kn">from</span> <span class="nn">folium</span> <span class="k">import</span> <span class="n">plugins</span>
-<span class="kn">from</span> <span class="nn">folium.features</span> <span class="k">import</span> <span class="n">GeoJson</span><span class="p">,</span> <span class="n">RectangleMarker</span>
+<span class="kn">from</span> <span class="nn">folium</span> <span class="k">import</span> <span class="n">plugins</span><span class="p">,</span> <span class="n">GeoJson</span>
+<span class="kn">from</span> <span class="nn">folium.features</span> <span class="k">import</span> <span class="n">GeoJson</span> <span class="k">as</span> <span class="n">GeoJson1</span>
+<span class="kn">from</span> <span class="nn">folium.features</span> <span class="k">import</span> <span class="n">RectangleMarker</span>
 
 
 <span class="c1"># local imports</span>
@@ -82,16 +83,11 @@
 <span class="kn">from</span> <span class="nn">mapio.basemapcity</span> <span class="k">import</span> <span class="n">BasemapCities</span>
 <span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
 
-<span class="kn">import</span> <span class="nn">warnings</span>
-<span class="n">warnings</span><span class="o">.</span><span class="n">filterwarnings</span><span class="p">(</span><span class="s1">&#39;ignore&#39;</span><span class="p">)</span>
-
-<span class="c1"># So figures will still be created even without display</span>
-<span class="n">mpl</span><span class="o">.</span><span class="n">use</span><span class="p">(</span><span class="s1">&#39;Agg&#39;</span><span class="p">)</span>
-
 <span class="c1"># Make fonts readable and recognizable by illustrator</span>
 <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;pdf.fonttype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.sans-serif&#39;</span><span class="p">]</span> <span class="o">=</span> \
     <span class="p">[</span><span class="s1">&#39;Helvetica&#39;</span><span class="p">,</span> <span class="s1">&#39;Arial&#39;</span><span class="p">,</span> <span class="s1">&#39;Bitstream Vera Serif&#39;</span><span class="p">,</span> <span class="s1">&#39;sans-serif&#39;</span><span class="p">]</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">switch_backend</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="modelMap"><a class="viewcode-back" href="../makemaps.html#makemaps.modelMap">[docs]</a><span class="k">def</span> <span class="nf">modelMap</span><span class="p">(</span><span class="n">grids</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -843,7 +839,7 @@
             <span class="k">if</span> <span class="n">logscale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">False</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">logscale</span><span class="p">)</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">plotorder</span><span class="p">):</span>
                 <span class="k">if</span> <span class="n">logscale</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
                     <span class="n">cbfmt</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">elif</span> <span class="p">(</span><span class="n">vmax</span> <span class="o">-</span> <span class="n">vmin</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mf">1.</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="p">(</span><span class="n">vmax</span> <span class="o">-</span> <span class="n">vmin</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mf">1.</span><span class="p">:</span>
                 <span class="n">cbfmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%1.2f</span><span class="s1">&#39;</span>
             <span class="k">elif</span> <span class="n">vmax</span> <span class="o">&gt;</span> <span class="mf">5.</span><span class="p">:</span>  <span class="c1"># (vmax - vmin) &gt; len(clev):</span>
                 <span class="n">cbfmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%1.0f</span><span class="s1">&#39;</span>
@@ -1026,7 +1022,7 @@
 <div class="viewcode-block" id="interactiveMap"><a class="viewcode-back" href="../makemaps.html#makemaps.interactiveMap">[docs]</a><span class="k">def</span> <span class="nf">interactiveMap</span><span class="p">(</span><span class="n">grids</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">plotorder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                    <span class="n">inventory_shapefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">maskthreshes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">colormaps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                    <span class="n">scaletype</span><span class="o">=</span><span class="s1">&#39;continuous&#39;</span><span class="p">,</span> <span class="n">lims</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">logscale</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                   <span class="n">ALPHA</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">isScenario</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                   <span class="n">ALPHA</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span> <span class="n">isScenario</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                    <span class="n">outfilename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tiletype</span><span class="o">=</span><span class="s1">&#39;Stamen Terrain&#39;</span><span class="p">,</span>
                    <span class="n">smcontourfile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">faultfile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">separate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                    <span class="n">onkey</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sepcolorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">floatcb</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
@@ -1082,7 +1078,7 @@
 <span class="sd">        ALPHA (float): Transparency for mapping, if there is a hillshade that</span>
 <span class="sd">            will plot below each layer, it is recommended to set this to at</span>
 <span class="sd">            least 0.7.</span>
-<span class="sd">        isScenario (float): Is this a scenario?</span>
+<span class="sd">        isScenario (bool): Is this a scenario?</span>
 <span class="sd">        outputdir (str): File path for outputting figures, if edict is defined,</span>
 <span class="sd">            a subfolder based on the event id will be created in this folder.</span>
 <span class="sd">            If None, will use current directory.</span>
@@ -1162,6 +1158,8 @@
         <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getShakeDict</span><span class="p">()</span>
         <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;eventid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_id&#39;</span><span class="p">]</span>
         <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;version&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s1">&#39;scenario&#39;</span> <span class="ow">in</span> <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_event_type&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+            <span class="n">isScenario</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">edict</span> <span class="o">=</span> <span class="kc">None</span>
 
@@ -1218,8 +1216,10 @@
             <span class="n">sref_fix</span> <span class="o">=</span> <span class="n">sref_fix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;)&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
             <span class="n">sref_fix</span> <span class="o">=</span> <span class="n">sref_fix</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;_&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">outfilename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">outfilename</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">edict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">outfilename</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">edict</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">],</span> <span class="n">sref_fix</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">outfilename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">outfilename</span> <span class="o">=</span> <span class="n">sref_fix</span>
 
         <span class="k">if</span> <span class="n">colormaps</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">palette</span> <span class="o">=</span> <span class="n">colormaps</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
@@ -1231,8 +1231,10 @@
         <span class="n">dat</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
         <span class="c1"># Find order of range to know how to scale</span>
-
-        <span class="n">minnonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">dat</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">dat</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">minnonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmin</span><span class="p">(</span><span class="n">dat</span><span class="p">[</span><span class="n">dat</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">minnonzero</span> <span class="o">=</span> <span class="mf">0.0001</span>
 
         <span class="k">if</span> <span class="n">clear_zero</span><span class="p">:</span>
             <span class="n">dat</span><span class="p">[</span><span class="n">dat</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>  <span class="c1"># Makes areas clear where dat==0</span>
@@ -1335,33 +1337,32 @@
         <span class="n">maxlat</span> <span class="o">=</span> <span class="n">gd</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="n">gd</span><span class="o">.</span><span class="n">dy</span><span class="o">/</span><span class="mf">2.</span>
         <span class="n">maxlon</span> <span class="o">=</span> <span class="n">gd</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="n">gd</span><span class="o">.</span><span class="n">dx</span><span class="o">/</span><span class="mf">2.</span>
 
-
         <span class="c1"># Make colorbar figure</span>
-
         <span class="k">if</span> <span class="n">sepcolorbar</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">vmax</span> <span class="o">&lt;</span> <span class="mf">1.</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">vmax</span> <span class="o">&lt;=</span> <span class="mf">1.</span><span class="p">:</span>
                 <span class="n">cbfmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%1.2f</span><span class="s1">&#39;</span>
-            <span class="k">elif</span> <span class="n">vmax</span> <span class="o">&gt;=</span> <span class="mf">1.</span> <span class="ow">and</span> <span class="n">vmax</span> <span class="o">&lt;</span> <span class="mf">5.</span><span class="p">:</span>
+            <span class="k">elif</span> <span class="n">vmax</span> <span class="o">&gt;</span> <span class="mf">1.</span> <span class="ow">and</span> <span class="n">vmax</span> <span class="o">&lt;</span> <span class="mf">5.</span><span class="p">:</span>
                 <span class="n">cbfmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%1.1f</span><span class="s1">&#39;</span>
             <span class="k">elif</span> <span class="n">vmax</span> <span class="o">&gt;=</span> <span class="mf">5.</span><span class="p">:</span>  <span class="c1"># (vmax - vmin) &gt; len(clev):</span>
                 <span class="n">cbfmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%1.0f</span><span class="s1">&#39;</span>
 
-            <span class="k">if</span> <span class="n">logscale</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span> <span class="c1"># override previous choice if logscale</span>
-                <span class="n">cbfmt</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1">#&#39;%1.0e&#39;</span>
+            <span class="k">if</span> <span class="n">logscale</span><span class="p">[</span><span class="n">k</span><span class="p">]:</span>  <span class="c1"># override previous choice if logscale</span>
+                <span class="n">cbfmt</span> <span class="o">=</span> <span class="kc">None</span>  <span class="c1"># &#39;%1.0e&#39;</span>
 
-            <span class="k">if</span> <span class="n">separate</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">separate</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">plotorder</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                 <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">))</span>
                 <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">plotorder</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span>
-                                             <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.</span><span class="p">,</span> <span class="mf">0.8</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">plotorder</span><span class="p">)))</span>
+                    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">plotorder</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">4.</span><span class="p">,</span> <span class="mf">0.8</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">plotorder</span><span class="p">)))</span>
                 <span class="n">ax</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
 
             <span class="k">if</span> <span class="n">scaletype</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;binned&#39;</span><span class="p">:</span>
+                <span class="n">newclev</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">clev</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span> <span class="n">clev</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">+</span><span class="mf">0.01</span><span class="o">*</span><span class="n">clev</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>  <span class="c1"># Modify so colorbar uses full expanse of colorbar</span>
                 <span class="n">cbars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ColorbarBase</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">palette</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
-                             <span class="n">orientation</span><span class="o">=</span><span class="s1">&#39;horizontal&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="n">cbfmt</span><span class="p">,</span>
-                             <span class="n">ticks</span><span class="o">=</span><span class="n">clev</span><span class="p">,</span> <span class="n">boundaries</span><span class="o">=</span><span class="n">clev</span><span class="p">))</span>
+                             <span class="n">orientation</span><span class="o">=</span><span class="s1">&#39;horizontal&#39;</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="n">cbfmt</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span>
+                             <span class="n">extendfrac</span><span class="o">=</span><span class="mf">0.15</span><span class="p">,</span> <span class="n">ticks</span><span class="o">=</span><span class="n">newclev</span><span class="p">,</span> <span class="n">boundaries</span><span class="o">=</span><span class="n">newclev</span><span class="p">,</span>
+                             <span class="n">spacing</span><span class="o">=</span><span class="s1">&#39;proportional&#39;</span><span class="p">))</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">cbars</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ColorbarBase</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">cmap</span><span class="o">=</span><span class="n">palette</span><span class="p">,</span> <span class="n">norm</span><span class="o">=</span><span class="n">norm</span><span class="p">,</span>
                              <span class="n">orientation</span><span class="o">=</span><span class="s1">&#39;horizontal&#39;</span><span class="p">,</span> <span class="n">extend</span><span class="o">=</span><span class="s1">&#39;both&#39;</span><span class="p">,</span>
@@ -1384,16 +1385,6 @@
                 <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">ctemp</span><span class="p">),</span>
                             <span class="n">transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
 
-        <span class="c1"># if edict is not None:</span>
-        <span class="c1">#     if isScenario:</span>
-        <span class="c1">#         title = edict[&#39;event_description&#39;]</span>
-        <span class="c1">#     else:</span>
-        <span class="c1">#         timestr = edict[&#39;event_timestamp&#39;].strftime(&#39;%b %d %Y&#39;)</span>
-        <span class="c1">#         title = &#39;M%.1f %s v%i - %s&#39; % (edict[&#39;magnitude&#39;], timestr, edict[&#39;version&#39;], edict[&#39;event_description&#39;])</span>
-        <span class="c1">#     plt.suptitle(title+&#39;\n&#39;+sref, fontsize=16)</span>
-        <span class="c1"># else:</span>
-        <span class="c1">#     plt.suptitle(sref, fontsize=16)</span>
-
         <span class="k">if</span> <span class="n">inventory_shapefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">reader</span> <span class="o">=</span> <span class="n">shapefile</span><span class="o">.</span><span class="n">Reader</span><span class="p">(</span><span class="n">inventory_shapefile</span><span class="p">)</span>
             <span class="n">fields</span> <span class="o">=</span> <span class="n">reader</span><span class="o">.</span><span class="n">fields</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
@@ -1411,9 +1402,9 @@
                                     <span class="n">properties</span><span class="o">=</span><span class="n">atr</span><span class="p">))</span>
 
             <span class="c1"># create geojson object</span>
-            <span class="n">invt</span> <span class="o">=</span> <span class="n">GeoJson</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;FeatureCollection&quot;</span><span class="p">,</span>
+            <span class="n">invt</span> <span class="o">=</span> <span class="n">GeoJson1</span><span class="p">({</span><span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;FeatureCollection&quot;</span><span class="p">,</span>
                             <span class="s2">&quot;features&quot;</span><span class="p">:</span> <span class="n">buffer1</span><span class="p">},</span>
-                           <span class="n">style_function</span><span class="o">=</span><span class="n">style_function</span><span class="p">)</span>
+                            <span class="n">style_function</span><span class="o">=</span><span class="n">style_function</span><span class="p">)</span>
 
         <span class="n">zoom_start</span> <span class="o">=</span> <span class="n">getZoom</span><span class="p">(</span><span class="n">minlon</span><span class="p">,</span> <span class="n">maxlon</span><span class="p">)</span> <span class="o">+</span> <span class="mf">2.</span>
 
@@ -1439,6 +1430,7 @@
                 <span class="n">tiles</span><span class="o">=</span><span class="n">tiletype</span><span class="p">,</span>
                 <span class="n">control</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">overlay</span><span class="o">=</span><span class="ow">not</span> <span class="n">overlay</span><span class="p">)</span><span class="o">.</span><span class="n">add_to</span><span class="p">(</span><span class="n">map1</span><span class="p">)</span>
+
         <span class="n">images</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plugins</span><span class="o">.</span><span class="n">ImageOverlay</span><span class="p">(</span><span class="n">rgba_img</span><span class="p">,</span>
                                            <span class="n">opacity</span><span class="o">=</span><span class="n">ALPHA</span><span class="p">,</span>
                                            <span class="n">bounds</span><span class="o">=</span><span class="p">[[</span><span class="n">minlat</span><span class="p">,</span> <span class="n">minlon</span><span class="p">],</span> <span class="p">[</span><span class="n">maxlat</span><span class="p">,</span> <span class="n">maxlon</span><span class="p">]],</span>
@@ -1473,6 +1465,7 @@
             <span class="n">map1</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">cbars</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
 
         <span class="k">if</span> <span class="n">separate</span> <span class="ow">or</span> <span class="n">k</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">plotorder</span><span class="p">)</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+
             <span class="n">folium</span><span class="o">.</span><span class="n">LayerControl</span><span class="p">(</span>
                 <span class="n">collapsed</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                 <span class="n">position</span><span class="o">=</span><span class="s1">&#39;bottomright&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">add_to</span><span class="p">(</span><span class="n">map1</span><span class="p">)</span>
@@ -1489,28 +1482,44 @@
 
             <span class="k">if</span> <span class="n">smcontourfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">style_function</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;fillColor&#39;</span><span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">}</span>
-                <span class="n">smc</span> <span class="o">=</span> <span class="n">GeoJson</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">smcontourfile</span><span class="p">))</span>
-                <span class="c1">#smc.layer_name = &#39;ShakeMap Contours&#39;</span>
-                <span class="n">map1</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">smc</span><span class="p">)</span>
-                <span class="c1">#for feature in smc.data[&#39;features&#39;]:</span>
-                <span class="c1">#    label = (&#39;%s (%s)&#39;) % (feature[&#39;properties&#39;][&#39;value&#39;], feature[&#39;properties&#39;][&#39;units&#39;].replace(&#39;pct&#39;, &#39;%&#39;))</span>
-                <span class="c1">#    plugins.PolyLineTextPath(feature[&#39;geometry&#39;][&#39;coordinates&#39;], label,</span>
-                <span class="c1">#                             center=True, attributes={&#39;fill&#39;: &#39;white&#39;, &#39;font-size&#39;: &#39;14&#39;}).add_to(map1)</span>
+                <span class="n">GeoJson</span><span class="p">(</span><span class="n">smcontourfile</span><span class="p">,</span> <span class="n">style_function</span><span class="o">=</span><span class="n">style_function</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;ShakeMap Contours&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">add_to</span><span class="p">(</span><span class="n">map1</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">faultfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">style_function</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;fillColor&#39;</span><span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;blue&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">}</span>
-                <span class="n">smc</span> <span class="o">=</span> <span class="n">GeoJson</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">faultfile</span><span class="p">),</span> <span class="n">style_function</span><span class="o">=</span><span class="n">style_function</span><span class="p">)</span>
-                <span class="n">smc</span><span class="o">.</span><span class="n">layer_name</span> <span class="o">=</span> <span class="s1">&#39;Finite fault&#39;</span>
-                <span class="n">map1</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">smc</span><span class="p">)</span>
+                <span class="n">style_function</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;fillColor&#39;</span><span class="p">:</span> <span class="s1">&#39;none&#39;</span><span class="p">,</span> <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="s1">&#39;weight&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">}</span>
+                <span class="n">GeoJson</span><span class="p">(</span><span class="n">faultfile</span><span class="p">,</span> <span class="n">style_function</span><span class="o">=</span><span class="n">style_function</span><span class="p">,</span>
+                        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;Finite fault&#39;</span><span class="p">,</span> <span class="n">control</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">add_to</span><span class="p">(</span><span class="n">map1</span><span class="p">)</span>
+
+            <span class="c1"># Make scenario float image</span>
+            <span class="k">if</span> <span class="n">isScenario</span><span class="p">:</span>
+                <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">))</span>
+                <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">plt</span><span class="o">.</span><span class="n">Rectangle</span><span class="p">((</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="mf">0.99</span><span class="p">,</span> <span class="mf">0.99</span><span class="p">,</span> <span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;r&#39;</span><span class="p">,</span>
+                                            <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;black&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">))</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s1">&#39;Scenario&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+                <span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">subplots_adjust</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="mf">0.98</span><span class="p">,</span> <span class="n">top</span><span class="o">=</span><span class="mf">0.98</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mf">0.02</span><span class="p">)</span>
+                <span class="n">scenfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;scenario.png&#39;</span><span class="p">)</span>
+                <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">scenfile</span><span class="p">,</span> <span class="n">transparent</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+                <span class="n">plugins</span><span class="o">.</span><span class="n">FloatImage</span><span class="p">(</span><span class="s1">&#39;scenario.png&#39;</span><span class="p">,</span> <span class="n">bottom</span><span class="o">=</span><span class="mi">94</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">.</span><span class="n">add_to</span><span class="p">(</span><span class="n">map1</span><span class="p">)</span>
 
             <span class="c1">#draw epicenter</span>
             <span class="k">if</span> <span class="n">edict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">folium</span><span class="o">.</span><span class="n">RegularPolygonMarker</span><span class="p">(</span>
-                    <span class="n">location</span><span class="o">=</span><span class="p">[</span><span class="n">edict</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]],</span>
-                    <span class="n">popup</span><span class="o">=</span><span class="s1">&#39;Epicenter&#39;</span><span class="p">,</span>
-                    <span class="n">fill_color</span><span class="o">=</span><span class="s1">&#39;#769d96&#39;</span><span class="p">,</span>
-                    <span class="n">number_of_sides</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
-                    <span class="n">radius</span><span class="o">=</span><span class="mi">6</span><span class="p">)</span><span class="o">.</span><span class="n">add_to</span><span class="p">(</span><span class="n">map1</span><span class="p">)</span>
+                <span class="c1">#f = folium.map.FeatureGroup(overlay=False)</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                    <span class="k">if</span> <span class="n">j</span> <span class="ow">in</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span class="p">]:</span>
+                        <span class="n">color3</span> <span class="o">=</span> <span class="s1">&#39;black&#39;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">color3</span> <span class="o">=</span> <span class="s1">&#39;white&#39;</span>
+                    <span class="n">map1</span><span class="o">.</span><span class="n">add_child</span><span class="p">(</span><span class="n">folium</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">CircleMarker</span><span class="p">(</span>
+                                   <span class="p">[</span><span class="n">edict</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">],</span> <span class="n">edict</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]],</span>
+                                   <span class="n">radius</span><span class="o">=</span><span class="n">j</span><span class="p">,</span>
+                                   <span class="n">color</span><span class="o">=</span><span class="n">color3</span><span class="p">,</span>
+                                   <span class="n">fill</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                                   <span class="n">fill_opacity</span><span class="o">=</span><span class="mf">0.5</span>
+                                   <span class="p">))</span>
+
             <span class="k">if</span> <span class="n">savefiles</span><span class="p">:</span>
                 <span class="k">if</span> <span class="n">separate</span><span class="p">:</span>
                     <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.html&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">outfilename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>

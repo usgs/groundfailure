@@ -206,14 +206,19 @@
         <span class="n">tempgdict</span> <span class="o">=</span> <span class="n">GeoDict</span><span class="o">.</span><span class="n">createDictFromBox</span><span class="p">(</span>
             <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">],</span>
             <span class="n">shkgdict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="n">shkgdict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span> <span class="n">inside</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-        <span class="n">gdict</span> <span class="o">=</span> <span class="n">shkgdict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">tempgdict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tempgdict</span> <span class="o">==</span> <span class="n">shkgdict</span><span class="p">:</span>
+            <span class="n">gdict</span> <span class="o">=</span> <span class="n">tempgdict</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">gdict</span> <span class="o">=</span> <span class="n">shkgdict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">tempgdict</span><span class="p">)</span>
         <span class="n">shakemap</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">samplegeodict</span><span class="o">=</span><span class="n">gdict</span><span class="p">,</span>
                                   <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span>
                                   <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;bounds&#39;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">shakemap</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
     <span class="n">shkgdict</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>  <span class="c1"># Get updated geodict</span>
-    <span class="n">M</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()[</span><span class="s1">&#39;magnitude&#39;</span><span class="p">]</span>
+    <span class="n">t2</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">t2</span><span class="p">[</span><span class="s1">&#39;magnitude&#39;</span><span class="p">]</span>
+    <span class="n">event_id</span> <span class="o">=</span> <span class="n">t2</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
 
     <span class="c1"># read in uncertainty if present</span>
     <span class="k">if</span> <span class="n">uncertfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -403,6 +408,7 @@
         <span class="s1">&#39;longref&#39;</span><span class="p">:</span> <span class="n">modellref</span><span class="p">,</span>
         <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;coverage&#39;</span><span class="p">,</span>
         <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span><span class="p">,</span>
+        <span class="s1">&#39;event_id&#39;</span><span class="p">:</span> <span class="n">event_id</span><span class="p">,</span>
         <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">{</span>
             <span class="s1">&#39;displmodel&#39;</span><span class="p">:</span> <span class="n">displmodel</span><span class="p">,</span>
             <span class="s1">&#39;thickness_m&#39;</span><span class="p">:</span> <span class="n">thick</span><span class="p">,</span>
@@ -426,13 +432,13 @@
             <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">GDALGrid</span><span class="p">(</span><span class="n">PROBmin</span><span class="p">,</span> <span class="n">shkgdict</span><span class="p">),</span>
             <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="s1">&#39;Probability-</span><span class="si">%1.2f</span><span class="s1">std&#39;</span> <span class="o">%</span> <span class="n">numstd</span><span class="p">,</span>
             <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="p">{}</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
         <span class="p">}</span>
         <span class="n">maplayers</span><span class="p">[</span><span class="s1">&#39;modelmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">GDALGrid</span><span class="p">(</span><span class="n">PROBmax</span><span class="p">,</span> <span class="n">shkgdict</span><span class="p">),</span>
             <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="s1">&#39;Probability+</span><span class="si">%1.2f</span><span class="s1">std&#39;</span> <span class="o">%</span> <span class="n">numstd</span><span class="p">,</span>
             <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output&#39;</span><span class="p">,</span>
-            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="p">{}</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
         <span class="p">}</span>
 
     <span class="k">if</span> <span class="n">saveinputs</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>

@@ -5,7 +5,6 @@ Submodules
 
 .. toctree::
 
-   gfail.assess_models
    gfail.conf
    gfail.godt
    gfail.logisticmodel
@@ -13,6 +12,7 @@ Submodules
    gfail.pdl
    gfail.sample
    gfail.savelayers
+   gfail.stats
    gfail.temphdf
    gfail.webpage
 

@@ -1,0 +1,311 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.stats &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gfail.stats</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+
+<span class="c1"># stdlib imports</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="c1"># local imports</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
+
+<span class="c1"># Make fonts readable and recognizable by illustrator</span>
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;pdf.fonttype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span>
+<span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.sans-serif&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Arial&#39;</span><span class="p">,</span>
+                                   <span class="s1">&#39;Bitstream Vera Serif&#39;</span><span class="p">,</span>
+                                   <span class="s1">&#39;sans-serif&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="computeStats"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.computeStats">[docs]</a><span class="k">def</span> <span class="nf">computeStats</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+                 <span class="n">statprobthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute summary stats of a ground failure model output.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        grid2D: grid2D object of model output.</span>
+<span class="sd">        probthresh: Optional, Float or list of probability thresholds</span>
+<span class="sd">            for use in Hagg2 computation.</span>
+<span class="sd">        shakefile: Optional, path to shakemap file to use for ground motion</span>
+<span class="sd">            threshold.</span>
+<span class="sd">        shakethreshtype: Optional, Type of ground motion to use for</span>
+<span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
+<span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
+<span class="sd">            pga, cm/s for pgv, float for mmi. Used for Hagg computation</span>
+<span class="sd">        statprobthresh: Optional, Float, Exclude any values less than or equal to this value in</span>
+<span class="sd">            calculation of regular stats (max, median, std)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Dictionary with the following keys:</span>
+<span class="sd">            - Max</span>
+<span class="sd">            - Median</span>
+<span class="sd">            - Std</span>
+<span class="sd">            - Hagg_# where # is the shaking threshold for each</span>
+<span class="sd">            - Parea_# where # is the probability threshold</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">statprobthresh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[</span><span class="n">grid</span> <span class="o">&gt;</span> <span class="n">statprobthresh</span><span class="p">]</span>
+
+    <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+    <span class="n">Hagg</span> <span class="o">=</span> <span class="n">computeHagg</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
+                       <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">shakethresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">shakethresh</span><span class="p">]</span>
+        <span class="n">Hagg</span> <span class="o">=</span> <span class="p">[</span><span class="n">Hagg</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">T</span><span class="p">,</span> <span class="n">H</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">shakethresh</span><span class="p">,</span> <span class="n">Hagg</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">T</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">H</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">newkey</span> <span class="o">=</span> <span class="s1">&#39;Hagg_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">T</span><span class="o">/</span><span class="mf">100.</span><span class="p">)</span>
+            <span class="n">stats</span><span class="p">[</span><span class="n">newkey</span><span class="p">]</span> <span class="o">=</span> <span class="n">H</span>
+
+    <span class="n">Parea</span> <span class="o">=</span> <span class="n">computeParea</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="n">probthresh</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Parea</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">Parea</span><span class="p">)</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">probthresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">probthresh</span><span class="p">]</span>
+        <span class="n">Parea</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parea</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">T</span><span class="p">,</span> <span class="n">P</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">probthresh</span><span class="p">,</span> <span class="n">Parea</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">T</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Parea&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">P</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">newkey</span> <span class="o">=</span> <span class="s1">&#39;Parea_</span><span class="si">%1.2f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">T</span>
+            <span class="n">stats</span><span class="p">[</span><span class="n">newkey</span><span class="p">]</span> <span class="o">=</span> <span class="n">P</span>
+
+    <span class="k">return</span> <span class="n">stats</span></div>
+
+
+<div class="viewcode-block" id="computeHagg"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.computeHagg">[docs]</a><span class="k">def</span> <span class="nf">computeHagg</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">proj</span><span class="o">=</span><span class="s1">&#39;moll&#39;</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Computes the Aggregate Hazard (Hagg) which is equal to the</span>
+<span class="sd">    probability * area of grid cell For models that compute areal coverage,</span>
+<span class="sd">    this is equivalant to the total predicted area affected in km2.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        grid2D: grid2D object of model output.</span>
+<span class="sd">        proj: projection to use to obtain equal area, &#39;moll&#39;  mollweide, or</span>
+<span class="sd">            &#39;laea&#39; lambert equal area.</span>
+<span class="sd">        probthresh: Probability threshold, any values less than this will not</span>
+<span class="sd">            be included in aggregate hazard estimation.</span>
+<span class="sd">        shakefile: Optional, path to shakemap file to use for ground motion</span>
+<span class="sd">            threshold.</span>
+<span class="sd">        shakethreshtype: Optional, Type of ground motion to use for</span>
+<span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
+<span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
+<span class="sd">            pga, cm/s for pgv, float for mmi.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Float if no shakethresh defined or only one shakethresh defined,</span>
+<span class="sd">        otherwise, a list of aggregate hazard for all shakethresh values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Hagg</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">bounds</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
+    <span class="n">lat0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
+    <span class="n">lon0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">projs</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;+proj=</span><span class="si">%s</span><span class="s1"> +lat_0=</span><span class="si">%f</span><span class="s1"> +lon_0=</span><span class="si">%f</span><span class="s1"> +x_0=0 +y_0=0 +ellps=WGS84 &#39;</span>
+             <span class="s1">&#39;+units=km +no_defs&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">lat0</span><span class="p">,</span> <span class="n">lon0</span><span class="p">))</span>
+    <span class="n">geodict</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">shakethresh</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">shakethresh</span><span class="p">)</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+            <span class="n">shakethresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">shakethresh</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">shaket</span> <span class="ow">in</span> <span class="n">shakethresh</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">shaket</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;shaking threshold must be equal or greater &#39;</span>
+                                <span class="s1">&#39;than zero&#39;</span><span class="p">)</span>
+        <span class="c1"># resample shakemap to grid2D</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">samplegeodict</span><span class="o">=</span><span class="n">geodict</span><span class="p">,</span> <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                              <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
+        <span class="n">shk</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="n">shakethreshtype</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">shk</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span> <span class="o">!=</span> <span class="n">geodict</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;shakemap was not resampled to exactly the same &#39;</span>
+                            <span class="s1">&#39;geodict as the model&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">probthresh</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;probability threshold must be equal or greater &#39;</span>
+                        <span class="s1">&#39;than zero&#39;</span><span class="p">)</span>
+
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
+    <span class="n">geodictRS</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+    <span class="n">cell_area_km2</span> <span class="o">=</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dx</span> <span class="o">*</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dy</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+    <span class="n">model</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">model</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+    <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">shaket</span> <span class="ow">in</span> <span class="n">shakethresh</span><span class="p">:</span>
+            <span class="n">modcop</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">shkgrid</span> <span class="o">=</span> <span class="n">shk</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
+            <span class="n">shkdat</span> <span class="o">=</span> <span class="n">shkgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+            <span class="c1"># use -1 to avoid nan errors and warnings, will always be thrown</span>
+            <span class="c1"># out because default is 0.</span>
+            <span class="n">shkdat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">shkdat</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+            <span class="n">modcop</span><span class="p">[</span><span class="n">shkdat</span> <span class="o">&lt;</span> <span class="n">shaket</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+            <span class="n">Hagg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">modcop</span><span class="p">[</span><span class="n">modcop</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">Hagg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">Hagg</span> <span class="o">=</span> <span class="n">Hagg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">Hagg</span></div>
+
+
+<div class="viewcode-block" id="computeParea"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.computeParea">[docs]</a><span class="k">def</span> <span class="nf">computeParea</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">proj</span><span class="o">=</span><span class="s1">&#39;moll&#39;</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Alternative to Aggregate Hazard (Hagg), which is equal to the</span>
+<span class="sd">    the sum of the area of grid cells that exceeds a given probability.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        grid2D: grid2D object of model output.</span>
+<span class="sd">        proj: projection to use to obtain equal area, &#39;moll&#39;  mollweide, or</span>
+<span class="sd">            &#39;laea&#39; lambert equal area.</span>
+<span class="sd">        probthresh: Optional, Float or list of probability thresholds.</span>
+<span class="sd">        shakefile: Optional, path to shakemap file to use for ground motion</span>
+<span class="sd">            threshold.</span>
+<span class="sd">        shakethreshtype: Optional, Type of ground motion to use for</span>
+<span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
+<span class="sd">        shakethresh: Optional, Float of shaking thresholds in %g for</span>
+<span class="sd">            pga, cm/s for pgv, float for mmi.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Float if no probthresh defined or only one probthresh defined,</span>
+<span class="sd">        otherwise, a list of Parea for all probthresh values.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">probthresh</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">probthresh</span><span class="p">)</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">probthresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">probthresh</span><span class="p">]</span>
+
+    <span class="n">Parea</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">bounds</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
+    <span class="n">lat0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
+    <span class="n">lon0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="n">projs</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;+proj=</span><span class="si">%s</span><span class="s1"> +lat_0=</span><span class="si">%f</span><span class="s1"> +lon_0=</span><span class="si">%f</span><span class="s1"> +x_0=0 +y_0=0 +ellps=WGS84 &#39;</span>
+             <span class="s1">&#39;+units=km +no_defs&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">lat0</span><span class="p">,</span> <span class="n">lon0</span><span class="p">))</span>
+    <span class="n">geodict</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">shakethresh</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;shaking threshold must be equal or greater &#39;</span>
+                            <span class="s1">&#39;than zero&#39;</span><span class="p">)</span>
+        <span class="c1"># resample shakemap to grid2D</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">samplegeodict</span><span class="o">=</span><span class="n">geodict</span><span class="p">,</span> <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                              <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
+        <span class="n">shk</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="n">shakethreshtype</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">shk</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span> <span class="o">!=</span> <span class="n">geodict</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;shakemap was not resampled to exactly the same &#39;</span>
+                            <span class="s1">&#39;geodict as the model&#39;</span><span class="p">)</span>
+
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
+    <span class="n">geodictRS</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+    <span class="n">cell_area_km2</span> <span class="o">=</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dx</span> <span class="o">*</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dy</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+    <span class="n">model</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">model</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+    <span class="k">for</span> <span class="n">probt</span> <span class="ow">in</span> <span class="n">probthresh</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">probt</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;probability threshold must be equal or greater &#39;</span>
+                            <span class="s1">&#39;than zero&#39;</span><span class="p">)</span>
+        <span class="n">modcop</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">shkgrid</span> <span class="o">=</span> <span class="n">shk</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
+            <span class="n">shkdat</span> <span class="o">=</span> <span class="n">shkgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+            <span class="c1"># use -1 to avoid nan errors and warnings, will always be thrown</span>
+            <span class="c1"># out because default probthresh is 0 and must be positive.</span>
+            <span class="n">shkdat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">shkdat</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+            <span class="n">modcop</span><span class="p">[</span><span class="n">shkdat</span> <span class="o">&lt;</span> <span class="n">shakethresh</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+        <span class="n">one_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">modcop</span><span class="p">)</span>
+        <span class="n">Parea</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">one_mat</span><span class="p">[</span><span class="n">modcop</span> <span class="o">&gt;=</span> <span class="n">probt</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Parea</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">Parea</span> <span class="o">=</span> <span class="n">Parea</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">Parea</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gfail.html">gfail</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
