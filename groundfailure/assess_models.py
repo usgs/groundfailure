@@ -26,6 +26,7 @@ from gfail.stats import computeHagg
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = ['Arial', 'Bitstream Vera Serif', 'sans-serif']
+plt.switch_backend('agg')
 
 
 def concatenateModels(modellist, astitle='id', includeunc=False):
