@@ -160,7 +160,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             with open(outfilebase + '.json', mode='w') as f3:
                 f3.write(metad2)
 
-            lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': outfilebase + '.tif',
+            lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
                                                                   'bin_edges': list(lims[0]),
                                                                   'metadata': metadata,
                                                                   'stats': stats,
@@ -201,7 +201,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             with open(outfilebase + '.json', mode='w') as f3:
                 f3.write(metad2)
 
-            lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': outfilebase + '.tif',
+            lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
                                                                   'bin_edges': list(lims[0]),
                                                                   'metadata': metadata,
                                                                   'stats': stats,
