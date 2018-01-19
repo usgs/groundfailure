@@ -259,13 +259,25 @@ def main(args):
                                          % filename)
                                 
                     GDALGrid.copyFromGrid(maplayers['model']['grid']).save(filen)
+                    
                     # convert to geotif
-
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
                     os.remove(filen)
                     os.remove(fileh)
                     filenames.append(fileg)
+                    
+                # Make binary output for ShakeCast
+                filef = os.path.join(outfolder, '%s_model.flt'
+                                     % filename)
+                # And get name of header                     
+                filefh = os.path.join(outfolder, '%s_model.hdr'
+                                     % filename)
+                # Make file
+                write_floats(filef, maplayers['model']['grid'])
+                filenames.append(filef)
+                filenames.append(filefh)
+                
                     
             if args.gis:
 
@@ -519,6 +531,36 @@ def get_bounds(shakefile, parameter='pga', threshold=2):
         boundaries1['ymax'] = ymax
 
     return boundaries1
+
+
+def write_floats(filename, grid2d):
+    """Create a binary (with acc. header file) version of a Grid2D object.
+
+    Given a filename input of "probability.flt", this function will 
+    create that file, plus a text file called "probability.hdr".
+
+    Args:
+        filename (str): String filename to write (i.e., 'probability.flt')
+        grid2d (Grid2D): MapIO Grid2D object.
+    """
+    geodict = grid2d.getGeoDict().asDict()
+    array = grid2d.getData().astype('float32')
+    np.save(filename, array)
+    npyfilename = filename + '.npy'
+    os.rename(npyfilename, filename)
+    fpath,fname = os.path.split(filename)
+    fbase,_ = os.path.splitext(fname)
+    hdrfile = os.path.join(fpath, fbase + '.hdr')
+    f = open(hdrfile, 'wt')
+    for key,value in geodict.items():
+        if isinstance(value, int):
+            fmt = '%s = %i\n'
+        elif isinstance(value, float):
+            fmt = '%s = %.4f\n'
+        else:
+            fmt = '%s = %s\n'
+        f.write(fmt % (key, value))
+    f.close()
 
 
 if __name__ == '__main__':
