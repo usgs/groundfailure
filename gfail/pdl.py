@@ -2,7 +2,6 @@
 """
 TODO:
     - Add max probability to product properties
-    - Add support to specify location of PDL key
     - Potentially add more files (e.g., png, pdf)
 """
 import os
