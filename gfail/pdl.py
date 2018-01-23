@@ -2,7 +2,6 @@
 """
 TODO:
     - Add max probability to product properties
-    - Add support to specify location of PDL key
     - Potentially add more files (e.g., png, pdf)
 """
 import os
@@ -149,7 +148,21 @@ def prepare_pdl_directory(eventdir):
         hfile = os.path.basename(src)
         dst = os.path.join(pdl_dir, hfile)
         shutil.copy(src, dst)
-    
+
+    # Put binary ShakeCast files into pdl directory
+    flt_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.flt')]
+    flth_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.hdr')]
+    for f1, f2 in zip(flt_files, flth_files):
+        src = f1
+        f1file = os.path.basename(src)
+        dst = os.path.join(pdl_dir, f1file)
+        shutil.copy(src, dst)
+        src = f2
+        f2file = os.path.basename(src)
+        dst = os.path.join(pdl_dir, f2file)
+        shutil.copy(src, dst)
+
+
     # Make contents.xml
     contents = etree.Element("contents")
 
@@ -171,7 +184,7 @@ def prepare_pdl_directory(eventdir):
     for i in range(len(geotif_files)):
         fname = os.path.basename(geotif_files[i])
         spl = fname.split('_')
-        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model'
+        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model (geotiff)'
         fid = '_'.join(spl[1:3])+"_gtiff"
         tif_files[i] = etree.SubElement(
             contents, "file",
@@ -213,7 +226,7 @@ def prepare_pdl_directory(eventdir):
     for i in range(len(hdf_files)):
         fname = os.path.splitext(os.path.basename(hdf_files[i]))[0]
         spl = fname.split('_')
-        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Results (All)'
+        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Results (All, hdf5)'
         fid = '_'.join(spl[1:3])+"_hdf5"
         h_files[i] = etree.SubElement(
             contents, "file",
@@ -224,7 +237,44 @@ def prepare_pdl_directory(eventdir):
         etree.SubElement(
             h_files[i], "format",
             href=fname,
-            type='text/hdf5')
+            type='application/x-hdf')
+        
+    # Flt ShakeCast files
+    f_files = [None] * len(flt_files)
+    fh_files = [None] * len(flth_files)
+    file_caps = [None] * len(flt_files)
+    fileh_caps = [None] * len(flth_files)
+    for i in range(len(flt_files)):
+        fname = os.path.splitext(os.path.basename(flt_files[i]))[0]
+        spl = fname.split('_')
+        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model (flt)'
+        fid = '_'.join(spl[1:3])+"_flt"
+        f_files[i] = etree.SubElement(
+            contents, "file",
+            title=ftitle,
+            id=fid)
+        file_caps[i] = etree.SubElement(f_files[i], "caption")
+        file_caps[i].text = ftitle + ' binary float file'
+        etree.SubElement(
+            f_files[i], "format",
+            href=fname,
+            type='application/octet-stream')
+
+        # same for header
+        fname = os.path.splitext(os.path.basename(flth_files[i]))[0]
+        spl = fname.split('_')
+        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model (flt header)'
+        fid = '_'.join(spl[1:3])+"_hdr"
+        fh_files[i] = etree.SubElement(
+            contents, "file",
+            title=ftitle,
+            id=fid)
+        fileh_caps[i] = etree.SubElement(fh_files[i], "caption")
+        fileh_caps[i].text = ftitle + ' header for flt file'
+        etree.SubElement(
+            fh_files[i], "format",
+            href=fname,
+            type='text/plain')
 
     # Write result
     out_file = os.path.join(pdl_dir, 'contents.xml')

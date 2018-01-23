@@ -546,23 +546,13 @@ def gf_transfer(eventdir, event_id, pdl_config=None, dry_run=False):
             print(feed)
     
             # Save to file
-            with open("url.txt", "w") as f:
-                f.write(url)
-                f.write(feed)
+            #with open("url.txt", "w") as f:
+            #    f.write(url)
+            #    f.write(feed)
         else:
             print('PDL transfer failed.')
             print(log['so'].decode())
             success = False
-    
-        with open("gf_transfer.log", "w") as f:
-            f.write('----------------\n')
-            f.write('Standard Output:\n')
-            f.write('----------------\n')
-            f.write(log['so'].decode())
-            f.write('----------------\n')
-            f.write('Standard Error:\n')
-            f.write('----------------\n')
-            f.write(log['se'].decode())
     
         return success, url, feed
         

@@ -30,45 +30,50 @@ def test_zhu2015(tmpdir):
 
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
-    shutil.copy(default_file, default_file+'_bak')
+    if os.path.exists(default_file):
+        shutil.copy(default_file, default_file+'_bak')
 
-    #p = os.path.join(str(tmpdir.name), "sub")
-    p = os.path.join(str(tmpdir), "sub")
-    if not os.path.exists(p):
-        os.makedirs(p)
+    try:
+        #p = os.path.join(str(tmpdir.name), "sub")
+        p = os.path.join(str(tmpdir), "sub")
+        if not os.path.exists(p):
+            os.makedirs(p)
 
-    # Modify paths
-    pathcmd = pathcmd.replace('[TMPOUT]', p)
-    rc, so, se = get_command_output(pathcmd)
+        # Modify paths
+        pathcmd = pathcmd.replace('[TMPOUT]', p)
+        rc, so, se = get_command_output(pathcmd)
 
-    # Run model
-    runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd" % (shakegrid)
-    rc, so, se = get_command_output(runcmd)
+        # Run model
+        runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd" % (shakegrid)
+        rc, so, se = get_command_output(runcmd)
 
-    # Read in the testing data
-    test_file = os.path.join(p, '19891018000415',
-                             '19891018000415_zhu_2015_model.tif')
-    test_grid = GDALGrid.load(test_file)
-    test_data = test_grid.getData()
+        # Read in the testing data
+        test_file = os.path.join(p, '19891018000415',
+                                 '19891018000415_zhu_2015_model.tif')
+        test_grid = GDALGrid.load(test_file)
+        test_data = test_grid.getData()
 
-    # Read in target file
-    target_file = os.path.join(datadir, 'loma_prieta', 'targets',
-                               '19891018000415_zhu_2015_model.tif')
-#    # To change target data:
-#    test_grid.save(test_file)
-#    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
-#    rc, so, se = get_command_output(cmd)
-    target_grid = GDALGrid.load(target_file)
-    target_data = target_grid.getData()
+        # Read in target file
+        target_file = os.path.join(datadir, 'loma_prieta', 'targets',
+                                   '19891018000415_zhu_2015_model.tif')
+    #    # To change target data:
+    #    test_grid.save(test_file)
+    #    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
+    #    rc, so, se = get_command_output(cmd)
+        target_grid = GDALGrid.load(target_file)
+        target_data = target_grid.getData()
+    except Exception as e:  # So that the defaults are always put back if something above fails
+        print(e)
 
     # Put defaults back
-    shutil.copy(default_file+'_bak', default_file)
+    if os.path.exists(default_file+'_bak'):
+        shutil.copy(default_file+'_bak', default_file)
 
     # Remove backup and tempfile
     os.remove(default_file+'_bak')
     shutil.rmtree(p)
 
-    # Assert
+    # Then do test
     np.testing.assert_allclose(target_data, test_data)
 
 
@@ -85,42 +90,49 @@ def test_zhu2015_web(tmpdir):
 
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
-    shutil.copy(default_file, default_file+'_bak')
+    if os.path.exists(default_file):
+        shutil.copy(default_file, default_file+'_bak')
 
-    #p = os.path.join(str(tmpdir.name), "sub")
-    p = os.path.join(str(tmpdir), "sub")
-    if not os.path.exists(p):
-        os.makedirs(p)
-    else:
-        shutil.rmtree(p)
-        os.makedirs(p)
+    try:
+        #p = os.path.join(str(tmpdir.name), "sub")
+        p = os.path.join(str(tmpdir), "sub")
+        if not os.path.exists(p):
+            os.makedirs(p)
+        else:
+            shutil.rmtree(p)
+            os.makedirs(p)
 
-    # Modify paths
-    pathcmd = pathcmd.replace('[TMPOUT]', p)
-    rc, so, se = get_command_output(pathcmd)
+        # Modify paths
+        pathcmd = pathcmd.replace('[TMPOUT]', p)
+        rc, so, se = get_command_output(pathcmd)
 
-    # Run model
-    conf = os.path.join(datadir, 'test_conf')
-    runcmd = "gfail %s %s -w --alert" % (conf, shakegrid)
-    rc, so, se = get_command_output(runcmd)
+        # Run model
+        conf = os.path.join(datadir, 'test_conf')
+        runcmd = "gfail %s %s -w --alert" % (conf, shakegrid)
+        rc, so, se = get_command_output(runcmd)
 
-    # Make PDL directory
-    pdl.prepare_pdl_directory(os.path.join(p, '19891018000415'))
+        # Make PDL directory
+        pdl.prepare_pdl_directory(os.path.join(p, '19891018000415'))
 
-    # Transfer dry run
-    transfer_cmd = pdl.transfer(os.path.join(p, '19891018000415'), 'None', dryrun=True)
+        # Transfer dry run
+        transfer_cmd = pdl.transfer(os.path.join(p, '19891018000415'), 'None', dryrun=True)
+    except Exception as e:  # So that defaults are put back even if something goes wrong
+        print(e)
+
+    # Put defaults back
+    if os.path.exists(default_file+'_bak'):
+        shutil.copy(default_file+'_bak', default_file)
+
+    # Remove backup and tempfile
+    os.remove(default_file+'_bak')
+    shutil.rmtree(p)
+
+    # Then do test
     assert '--property-alertLQ=green' in transfer_cmd
     assert '--property-alertLS=yellow' in transfer_cmd
     assert '--type=groundfailure' in transfer_cmd
     assert '--property-title=Earthquake-Induced Ground Failure' in transfer_cmd
     assert '--eventsourcecode=19891018000415' in transfer_cmd
-
-    # Put defaults back
-    shutil.copy(default_file+'_bak', default_file)
-
-    # Remove backup and tempfile
-    os.remove(default_file+'_bak')
-    shutil.rmtree(p)
 
 
 if __name__ == "__main__":
