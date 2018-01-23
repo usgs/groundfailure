@@ -1,0 +1,217 @@
+name: gf
+channels:
+- conda-forge
+- defaults
+- digitalglobe
+- ioos
+dependencies:
+- affine=2.1.0
+- alabaster=0.7.10
+- altair=1.2.1
+- appnope=0.1.0
+- asn1crypto=0.22.0
+- attrs=17.4.0
+- babel=2.5.1
+- backports=1.0
+- backports.functools_lru_cache=1.4
+- basemap=1.1.0
+- basemap-data-hires=1.1.0
+- beautifulsoup4=4.6.0
+- blas=1.1
+- bleach=2.0.0
+- blinker=1.4
+- boto3=1.5.14
+- botocore=1.5.92
+- branca=0.2.0
+- bzip2=1.0.6
+- ca-certificates=2017.11.5
+- cairo=1.14.6
+- certifi=2017.11.5
+- cffi=1.11.2
+- chardet=3.0.4
+- clangdev=5.0.0
+- click=6.7
+- click-plugins=1.0.3
+- cligj=0.4.0
+- coverage=4.4.2
+- cryptography=2.1.4
+- curl=7.55.1
+- cycler=0.10.0
+- dask-core=0.16.1
+- decorator=4.1.2
+- descartes=1.1.0
+- docutils=0.14
+- entrypoints=0.2.3
+- expat=2.1.0
+- feedgenerator=1.9
+- fiona=1.7.11
+- folium=0.5.0
+- fontconfig=2.12.1
+- freetype=2.7
+- freexl=1.0.4
+- gdal=2.1.4
+- geos=3.6.2
+- geotiff=1.4.2
+- gettext=0.19.8.1
+- ghp-import=0.5.5
+- giflib=5.1.4
+- glib=2.51.4
+- h5py=2.7.1
+- hdf4=4.2.13
+- hdf5=1.10.1
+- html5lib=1.0.1
+- icu=58.2
+- idna=2.6
+- imageio=2.2.0
+- imagesize=0.7.1
+- ipykernel=4.7.0
+- ipython=6.2.1
+- ipython_genutils=0.2.0
+- ipywidgets=7.1.0
+- jedi=0.10.2
+- jinja2=2.10
+- jmespath=0.9.3
+- jpeg=9b
+- json-c=0.12.1
+- jsonschema=2.6.0
+- jupyter=1.0.0
+- jupyter_client=5.2.1
+- jupyter_console=5.2.0
+- jupyter_core=4.4.0
+- kealib=1.4.7
+- krb5=1.14.2
+- libcxx=5.0.0
+- libdap4=3.18.3
+- libffi=3.2.1
+- libgdal=2.1.4
+- libgfortran=3.0.0
+- libiconv=1.15
+- libnetcdf=4.4.1.1
+- libpng=1.6.28
+- libpq=9.6.3
+- libsodium=1.0.15
+- libspatialite=4.3.0a
+- libssh2=1.8.0
+- libtiff=4.0.7
+- libxml2=2.9.7
+- libxslt=1.1.32
+- llvmdev=5.0.0
+- lxml=4.1.1
+- markdown=2.6.9
+- markupsafe=1.0
+- matplotlib=2.1.1
+- mistune=0.8.3
+- munch=2.2.0
+- nbconvert=5.3.1
+- nbformat=4.4.0
+- ncurses=5.9
+- networkx=2.0
+- nose=1.3.7
+- notebook=5.2.2
+- numexpr=2.6.4
+- numpy=1.14.0
+- olefile=0.44
+- openblas=0.2.20
+- openjpeg=2.1.2
+- openssl=1.0.2n
+- pandas=0.22.0
+- pandoc=2.1
+- pandocfilters=1.4.1
+- paramiko=2.3.1
+- pcre=8.39
+- pelican=3.7.1
+- pexpect=4.3.1
+- pickleshare=0.7.4
+- pillow=4.3.0
+- pip=9.0.1
+- pixman=0.34.0
+- pluggy=0.6.0
+- poppler=0.61.1
+- poppler-data=0.4.8
+- proj4=4.9.3
+- prompt_toolkit=1.0.15
+- ptyprocess=0.5.2
+- py=1.5.2
+- pyasn1=0.4.2
+- pycparser=2.18
+- pygments=2.2.0
+- pynacl=1.1.2
+- pyopenssl=17.4.0
+- pyparsing=2.2.0
+- pyproj=1.9.5.1
+- pyqt=5.6.0
+- pyshp=1.2.12
+- pysocks=1.6.8
+- pytables=3.4.2
+- pytest=3.3.2
+- pytest-cov=2.5.1
+- pytest-mpl=0.9
+- python=3.5.4
+- python-dateutil=2.6.1
+- pytz=2017.3
+- pywavelets=0.5.2
+- pyyaml=3.12
+- pyzmq=16.0.2
+- qt=5.6.2
+- qtconsole=4.3.1
+- rasterio=0.36.0
+- readline=6.2
+- requests=2.18.4
+- s3transfer=0.1.11
+- scikit-image=0.13.1
+- scikit-learn=0.19.1
+- scipy=1.0.0
+- setuptools=38.4.0
+- shapely=1.6.3
+- simplegeneric=0.8.1
+- sip=4.18
+- six=1.11.0
+- snowballstemmer=1.2.1
+- snuggs=1.4.1
+- sphinx=1.6.6
+- sphinxcontrib-websupport=1.0.1
+- sqlite=3.13.0
+- terminado=0.8.1
+- testpath=0.3.1
+- tk=8.5.19
+- toolz=0.8.2
+- tornado=4.5.3
+- traitlets=4.3.2
+- typing=3.6.2
+- unidecode=0.04.21
+- urllib3=1.22
+- vega=0.4.4
+- vincent=0.4.4
+- wcwidth=0.1.7
+- webencodings=0.5
+- wheel=0.30.0
+- widgetsnbextension=3.1.0
+- xerces-c=3.2.0
+- xz=5.2.3
+- yaml=0.1.7
+- zeromq=4.2.1
+- zlib=1.2.11
+- bcrypt=3.1.4
+- configobj=5.0.6
+- libboost=1.65.1
+- libkml=1.3.0
+- pip:
+  - backports.functools-lru-cache==1.4
+  - commonmark==0.7.4
+  - dask==0.16.1
+  - et-xmlfile==1.0.1
+  - future==0.16.0
+  - ipython-genutils==0.2.0
+  - jupyter-client==5.2.1
+  - jupyter-console==5.2.0
+  - jupyter-core==4.4.0
+  - pockets==0.5.1
+  - prompt-toolkit==1.0.15
+  - sphinx-argparse==0.2.1
+  - sphinx-rtd-theme==0.2.4
+  - sphinxcontrib-napoleon==0.6.1
+  - tables==3.4.2
+  - ./mapio.zip
+  - ./impact-utils.zip
+
+

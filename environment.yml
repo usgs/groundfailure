@@ -1,0 +1,52 @@
+name: gf
+channels:
+- conda-forge
+- defaults
+- digitalglobe
+- ioos
+dependencies:
+- affine
+- basemap
+- basemap-data-hires
+- beautifulsoup4
+- branca
+- configobj
+- descartes
+- fiona
+- folium
+- gdal
+- h5py
+- ipython
+- jupyter
+- lxml
+- markdown
+- matplotlib
+- numpy
+- pandas
+- paramiko
+- pelican
+- pytables
+- pytest
+- pytest-cov
+- pytest-mpl
+- python=3.5
+- pyyaml
+- rasterio
+- scipy
+- scikit-learn
+- scikit-image
+- shapely
+- sphinx
+- pip:
+  - et-xmlfile
+  - ipython-genutils
+  - jupyter-client
+  - jupyter-console
+  - jupyter-core
+  - prompt-toolkit
+  - sphinx-argparse
+  - sphinxcontrib-napoleon
+  - sphinx_rtd_theme
+  - ./mapio.zip
+  - ./impact-utils.zip
+  
