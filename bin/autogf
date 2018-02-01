@@ -6,13 +6,14 @@ import configparser
 import os
 import urllib.request, urllib.error, urllib.parse
 import json
-import sqlite3
+import sqlite3 as lite
 from collections import OrderedDict
 from datetime import datetime
 import numpy as np
 import tempfile
 import shutil
 import gfail.pdl as pdl
+import time
 
 #third party
 from impactutils.io.cmd import get_command_output
@@ -23,6 +24,7 @@ from impactutils.transfer.factory import get_sender_class
 tablecols = [('id', 'integer primary key'),
              ('eventcode', 'text'),
              ('version', 'integer'),
+             ('sent_email', 'text'),
              ('lat', 'real'),
              ('lon', 'real'),
              ('depth', 'real'),
@@ -33,14 +35,20 @@ tablecols = [('id', 'integer primary key'),
              ('location', 'text'),
              ('finitefault', 'integer'),
              ('url', 'text'),
-             ('jsonfeed', 'text')]
+             ('jsonfeed', 'text'),
+             ('Hagg05LS', 'real'),
+             ('Parea01LS', 'real'),
+             ('Hagg05LQ', 'real'),
+             ('Parea01LQ', 'real')]
+
 TABLES = {'shakemap': OrderedDict(tablecols)}
 
 ALERTLEVELS = ['pending', 'green', 'yellow', 'orange', 'red']
 
 defaultThresh = {'mag': 6.5,
                  'eis': 'yellow',
-                 'mmi': 7}
+                 'mmi': 7,
+                 'update': 0.25}
 
 homedir = os.path.dirname(os.path.abspath(__file__))
 testdatadir = os.path.abspath(os.path.join(os.path.dirname(homedir), 'tests', 'data'))
@@ -75,11 +83,10 @@ def main(args):
             config.read_file(f)
         sections = config.sections()
 
-        thresh = {}
+        thresh = defaultThresh
         if 'THRESHOLDS' not in sections:
             print('autoconfig.ini missing THRESHOLDS section, using defaults:\n %s' % defaultThresh)
-            thresh = defaultThresh
-        else:
+        else:  # Update defaults
             for key in config.options('THRESHOLDS'):
                 value = config.get('THRESHOLDS', key)
                 if key in ['mag', 'mmi']:
@@ -87,6 +94,8 @@ def main(args):
                     thresh[key] = value
                 if key in ['eis']:
                     thresh[key] = value
+                if key in ['update']:
+                    thresh[key] = float(value)
         if 'MAIL' not in sections:
             print('autoconfig.ini missing MAIL section, no emails will be sent')
             mail = False
@@ -125,22 +134,23 @@ def main(args):
             cursor.execute(query)
             row = cursor.fetchone()
             if row is None or args.testrun:
-                print('Now running M%s - %s' % (event['mag'], event['location']))
-                filenames, url, jsonfeed = runGF(gfail_flags,
-                                                 args.gfailconfig,
-                                                 event['url'],
-                                                 event['eventcode'],
-                                                 pdlconf=args.pdlconf,
-                                                 faultfile=event['finite_fault'],
-                                                 dryrun=dryrun)
-                if filenames is None:
-                    #print('No outputs found, problem with codes\n')
-                    empty = True
-                    url = 'Failed to run'
-                    jsonfeed = 'Failed to run'
+                # See if previous versions have been run
+                cursor.execute("SELECT version FROM shakemap WHERE eventcode = ?", (event['eventcode'],))
+                row = cursor.fetchall()
+                if len(row) > 0:
+                    prevers = [r8[0] for r8 in row]
+                    prevermax = np.max(prevers)
+                    # Logic to avoid running outdated events
+                    if prevermax < event['version']:
+                        print('Now running update to M%s - %s (%s version %i)' % (event['mag'], event['location'], event['eventcode'], event['version']))
+                    else:
+                        continue
+                    update = True
+                else:
+                    print('Now running M%s - %s (%s version %i)' % (event['mag'], event['location'], event['eventcode'], event['version']))
+                    update = False
 
-                if mail and not empty:
-                    mailUsers(event, args.autoconfig, url, jsonfeed)
+                # Insert an "in progress" flag into database so a second instance doesnt start for same version
                 fmt = 'INSERT INTO shakemap (eventcode,version,lat,lon,depth,time,mag,alert,maxmmi,location,finitefault,url,jsonfeed) VALUES ("%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s",%.1f,"%s",%i,"%s","%s")'
                 eid = event['eventcode']
                 enum = event['version']
@@ -152,14 +162,95 @@ def main(args):
                 alert = event['alert']
                 maxmmi = event['maxmmi']
                 eloc = event['location']
+                url = 'In progress'
+                jsonfeed = 'In progress'
+                finitefault = 0
+
+                if not args.testrun:
+                    insertquery = fmt % (eid, enum, elat, elon, edepth, str(etime), emag, alert, maxmmi, eloc, finitefault, url, jsonfeed)
+                    cursor.execute(insertquery)
+                    db.commit()
+
+                filenames, url, jsonfeed = runGF(gfail_flags,
+                                                 args.gfailconfig,
+                                                 event['url'],
+                                                 event['eventcode'],
+                                                 pdlconf=args.pdlconf,
+                                                 faultfile=event['finite_fault'],
+                                                 dryrun=dryrun)
+
+                if filenames is None:
+                    #print('No outputs found, problem with codes\n')
+                    empty = True
+                    url = 'Failed to run'
+                    jsonfeed = 'Failed to run'
+                else:
+                    try:
+                        infojsonfile = [filen for filen in filenames if 'info.json' in filen]
+                        with open(infojsonfile[0], 'r') as fij:
+                            data = fij.read()
+                        infodict = json.loads(data)
+    
+                        LQstats = infodict['Liquefaction']['models']['Zhu and others (2017)']['stats']
+                        LSstats = infodict['Landslides']['models']['Nowicki and others (2014)']['stats']
+                        LQsta = [LQstats['Hagg_0.05g'], LQstats['Parea_0.10']]
+                        LSsta = [LSstats['Hagg_0.05g'], LSstats['Parea_0.10']]
+                        if update and mail:
+                            # See if stats changed enough to send an update
+                            sig = False
+                            # Get previous versions values
+                            cursor.execute("SELECT Hagg05LS, Parea01LS, Hagg05LQ, Parea01LQ FROM shakemap WHERE eventcode = ? and version = ?",
+                            (event['eventcode'], str(prevermax)))
+                            temp = cursor.fetchone()
+                            Hagg05LS, Parea01LS, Hagg05LQ, Parea01LQ = temp
+                            # Send mail if any changes from 0 to a value or vice versa
+                            if (Hagg05LS == 0. and LSsta[0] > 0.) or (Hagg05LS > 0. and LSsta[0] == 0.):
+                                sig = True
+                            elif (Hagg05LQ == 0. and LQsta[0] > 0.) or (Hagg05LQ > 0. and LQsta[0] == 0.):
+                                sig = True
+                            elif (Parea01LS == 0. and LSsta[1] > 0.) or (Parea01LS > 0. and LSsta[1] == 0.):
+                                sig = True
+                            elif (Parea01LQ == 0. and LQsta[1] > 0.) or (Parea01LQ > 0. and LQsta[1] == 0.):
+                                sig = True
+                            else:
+                                changeperc = []
+                                changeperc.append(np.abs(Hagg05LS-LSsta[0])/Hagg05LS)
+                                changeperc.append(np.abs(Hagg05LQ-LQsta[0])/Hagg05LQ)
+                                changeperc.append(np.abs(Parea01LS-LSsta[1])/Parea01LS)
+                                changeperc.append(np.abs(Parea01LQ-LQsta[1])/Parea01LQ)
+                                above = [ch for ch in changeperc if ch >= thresh['update']]
+                                # If none of them changed significantly, don't send an email
+                                if len(above) > 0:
+                                    sig = True
+                            if not sig:
+                                mail = False
+
+                    except Exception as e:
+                        print(e)
+                        LQstats = [None, None]
+                        LSstats = [None, None]
+                        
+    
+                if mail and not empty:
+                    mailUsers(event, args.autoconfig, url, jsonfeed, update)
+                    utctime = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+                    cursor.execute("UPDATE shakemap SET sent_email = ? WHERE eventcode = ? AND version =?",
+                                   (utctime, event['eventcode'], event['version']))
+                    db.commit()
+
                 if event['finite_fault'] is not None:
                     finitefault = 1
                 else:
                     finitefault = 0
                 if not args.testrun:
-                    insertquery = fmt % (eid, enum, elat, elon, edepth, str(etime), emag, alert, maxmmi, eloc, finitefault, url, jsonfeed)
-                    cursor.execute(insertquery)
+                    # Update url and jsonfeed
+                    cursor.execute("UPDATE shakemap SET jsonfeed = ?, url = ?, finitefault=? WHERE eventcode = ? AND version =?",
+                                   (jsonfeed, url, finitefault, event['eventcode'], event['version']))
                     db.commit()
+                    cursor.execute("UPDATE shakemap SET Hagg05LS = ?, Hagg05LQ = ?, Parea01LS = ?, Parea01LQ = ? WHERE eventcode = ? AND version =?",
+                                   (LSsta[0], LQsta[0], LSsta[1], LQsta[1], event['eventcode'], event['version']))
+                    db.commit()
+                    
                 # Clean up finite fault temp geojson files
                 if finitefault == 1:
                     os.remove(event['finite_fault'])
@@ -219,7 +310,7 @@ def validateArgs(args):
     return args
 
 
-def mailUsers(event, autoconfig, url, jsonfeed):
+def mailUsers(event, autoconfig, url, jsonfeed, update=False):
     config = configparser.ConfigParser()
     with open(autoconfig) as f:
         config.read_file(f)
@@ -229,9 +320,14 @@ def mailUsers(event, autoconfig, url, jsonfeed):
     title = event['title']
     vnum = event['version']
 
-    if vnum > 1:
+    if update:
+        props['subject'] = 'UPDATE to Ground Failure Model Results for %s' % (title)
         props['message'] = """
-        UPDATE Ground Failure models for ShakeMap v%i of event id %s.
+        UPDATE non-negligible change to Ground Failure models for ShakeMap v%i of event id %s.
+
+        You will only receive notification of updates if model outputs change significantly,
+        for minor updates, find most recent results by checking the event detail json feed below.
+
         Event name: %s
         Model summary page: %s
 
@@ -246,8 +342,13 @@ def mailUsers(event, autoconfig, url, jsonfeed):
         Do not reply to this message. Contact kallstadt@usgs.gov with questions.
         """ % (vnum, eid, title, url, jsonfeed)
     else:
+        props['subject'] = 'Ground Failure Model Results for %s' % (title)
         props['message'] = """
         Ground Failure models for ShakeMap v%i of event id %s.
+
+        You will only receive notification of updates if model outputs change significantly,
+        for minor updates, find most recent results by checking the event detail json feed below.
+
         Event name: %s
         Model summary page: %s
 
@@ -262,7 +363,6 @@ def mailUsers(event, autoconfig, url, jsonfeed):
         Do not reply to this message. Contact kallstadt@usgs.gov with questions.
         """ % (vnum, eid, title, url, jsonfeed)
 
-    props['subject'] = 'Ground Failure Model Results for %s' % (title)
     props['sender'] = config.get('MAIL', 'sender')
     props['recipients'] = config.get('MAIL', 'recipients').split(',')
     props['smtp_servers'] = [config.get('MAIL', 'server')]
@@ -416,7 +516,7 @@ def connect(dbfile):
     if not os.path.isfile(dbfile):
         doCreate = True
 
-    db = sqlite3.connect(dbfile)
+    db = lite.connect(dbfile)
     cursor = db.cursor()
     if doCreate:
         for tablename, table in TABLES.items():

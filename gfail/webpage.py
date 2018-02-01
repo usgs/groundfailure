@@ -302,7 +302,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             'alertvalue': paramalertLS
             },
         'Liquefaction': {
-            'models': lsmodels,
+            'models': lqmodels,
             'alert': sks['alertLQ'],
             'alertkey': alertkey,
             'alertvalue': paramalertLQ
