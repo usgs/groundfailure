@@ -317,9 +317,9 @@ def main(args):
 
 
         # Write shakefile to a file for use later
-        #shake_file = open(os.path.join(outfolder, "shakefile.txt"), "w")
-        #shake_file.write(shakefile)
-        #shake_file.close()
+        shake_file = open(os.path.join(outfolder, "shakefile.txt"), "w")
+        shake_file.write(shakefile)
+        shake_file.close()
 
         print('\nFiles created:\n')
         for filen in filenames:
