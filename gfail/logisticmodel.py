@@ -165,6 +165,21 @@ class LogisticModel(object):
         else:
             raise Exception('All predictor variable grids must be a valid '
                             'GMT or ESRI file type.')
+            
+        # Do we need to subdivide baselayer?
+        if 'divfactor' in self.config[self.model].keys():
+            divfactor = float(self.config[self.model]['divfactor'])
+            if divfactor != 1.:
+                # adjust sampledict so everything will be resampled
+                newxmin = sampledict.xmin - sampledict.dx/2. + sampledict.dx/(2.*divfactor)
+                newymin = sampledict.ymin - sampledict.dy/2. + sampledict.dy/(2.*divfactor)
+                newxmax = sampledict.xmax + sampledict.dx/2. - sampledict.dx/(2.*divfactor)
+                newymax = sampledict.ymax + sampledict.dy/2. - sampledict.dy/(2.*divfactor)
+                newdx = sampledict.dx/divfactor
+                newdy = sampledict.dy/divfactor
+                
+                sampledict = GeoDict.createDictFromBox(newxmin, newxmax, newymin,
+                                                       newymax, newdx, newdy, inside=True)
 
         # Find slope thresholds, if applicable
         try:
@@ -321,7 +336,7 @@ class LogisticModel(object):
                 temp = GDALGrid.load(templyrname, sampledict, resample=False)
             else:
                 temp = GDALGrid.load(templyrname, sampledict, resample=True,
-                                     method=interp, doPadding=True)
+                                     method=interp, doPadding=True) #nearest
             flag = 0
             if self.slopemin == 'none' and self.slopemax == 'none':
                 flag = 1
@@ -483,6 +498,10 @@ class LogisticModel(object):
         if 'minpgv' in self.config[self.model].keys():
             pgv = self.shakemap.getSlice(None, None, None, None, name='pgv')
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
+            
+        if 'minpga' in self.config[self.model].keys():
+            pga = self.shakemap.getSlice(None, None, None, None, name='pga')
+            P[pga < float(self.config[self.model]['minpga'])] = 0.0
 
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
@@ -512,6 +531,12 @@ class LogisticModel(object):
                     None, None, None, None, name='pgv')
                 Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
                 Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
+                
+            if 'minpga' in self.config[self.model].keys():
+                pga = self.shakemap.getSlice(
+                    None, None, None, None, name='pga')
+                Pmin[pga < float(self.config[self.model]['minpga'])] = 0.0
+                Pmax[pga < float(self.config[self.model]['minpga'])] = 0.0
 
             if 'coverage' in self.config[self.model].keys():
                 eqnmin = eqn.replace('P', 'Pmin')
