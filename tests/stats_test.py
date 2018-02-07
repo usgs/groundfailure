@@ -58,10 +58,10 @@ def test_stats_models():
 #    np.testing.assert_allclose(tmp[1][0], 0.00098462898029272805)
 
     hagg = stats.computeHagg(maplayers2['model']['grid'])
-    np.testing.assert_allclose(hagg, 60.89994974489)
+    np.testing.assert_allclose(hagg, 60.899973476586126)
     parea = stats.computeParea(maplayers2['model']['grid'],
                                probthresh=0.2)
-    np.testing.assert_allclose(parea, 48.908522334)
+    np.testing.assert_allclose(parea, 48.908522333887255)
 
     stats2 = stats.computeStats(maplayers2['model']['grid'], probthresh=0.2, shakefile=shakefile,
                                 shakethreshtype='pga', shakethresh=20.,

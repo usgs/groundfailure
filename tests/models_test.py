@@ -66,7 +66,7 @@ def test_zhu_2017_general():
     # To change target data:
     #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
     #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'zhu2017_general.grd'))
+    #          'zhu2017_general.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -89,7 +89,7 @@ def test_zhu_2017_general():
     # To change target data:
     #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
     #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'zhu2017_general_div4.grd'))
+    #                       'zhu2017_general_div4.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -117,9 +117,9 @@ def test_zhu_2017_coastal():
     test_data = pgrid.getData()
 
     # To change target data:
-    # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'zhu2017_coastal.grd'))
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
+    #          'zhu2017_coastal.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
