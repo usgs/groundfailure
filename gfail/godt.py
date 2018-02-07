@@ -152,28 +152,51 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         print('Was not able to retrieve all references from config file. '
               'Continuing')
 
-    shkgdict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
+    sampledict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
+    
+    # Do we need to subdivide baselayer?
+    resample = False
+    if 'divfactor' in config['godt_2008'].keys():
+        divfactor = float(config['godt_2008']['divfactor'])
+        if divfactor != 1.:
+            # adjust sampledict so everything will be resampled (cut one cell of each edge so will be inside bounds)
+            newxmin = sampledict.xmin - sampledict.dx/2. + sampledict.dx/(2.*divfactor) + sampledict.dx
+            newymin = sampledict.ymin - sampledict.dy/2. + sampledict.dy/(2.*divfactor) + sampledict.dy
+            newxmax = sampledict.xmax + sampledict.dx/2. - sampledict.dx/(2.*divfactor) - sampledict.dx
+            newymax = sampledict.ymax + sampledict.dy/2. - sampledict.dy/(2.*divfactor) - sampledict.dy
+            newdx = sampledict.dx/divfactor
+            newdy = sampledict.dy/divfactor
+            
+            sampledict = GeoDict.createDictFromBox(newxmin, newxmax, newymin,
+                                                   newymax, newdx, newdy, inside=True)
+            resample = True
+    
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-        if (shkgdict.xmin > bounds['xmin'] or
-                shkgdict.xmax < bounds['xmax'] or
-                shkgdict.ymin > bounds['ymin'] or
-                shkgdict.ymax < bounds['ymax']):
+        if (sampledict.xmin > bounds['xmin'] or
+                sampledict.xmax < bounds['xmax'] or
+                sampledict.ymin > bounds['ymin'] or
+                sampledict.ymax < bounds['ymax']):
             print('Specified bounds are outside shakemap area, using '
                   'ShakeMap bounds instead')
             bounds = None
     if bounds is not None:
         tempgdict = GeoDict.createDictFromBox(
             bounds['xmin'], bounds['xmax'], bounds['ymin'], bounds['ymax'],
-            shkgdict.dx, shkgdict.dy, inside=False)
-        if tempgdict == shkgdict:
+            sampledict.dx, sampledict.dy, inside=False)
+        if tempgdict == sampledict:
             gdict = tempgdict
         else:
-            gdict = shkgdict.getBoundsWithin(tempgdict)
+            gdict = sampledict.getBoundsWithin(tempgdict)
         shakemap = ShakeGrid.load(shakefile, samplegeodict=gdict,
                                   resample=True, method='linear',
                                   adjust='bounds')
+    elif resample:
+        shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict, 
+                                  resample=True, method='linear',
+                                  adjust='bounds')
     else:
-        shakemap = ShakeGrid.load(shakefile, adjust='res')
+        shakemap = ShakeGrid.load(shakefile, adjust='res', resample=False)
+
     shkgdict = shakemap.getGeoDict()  # Get updated geodict
     t2 = shakemap.getEventDict()
     M = t2['magnitude']

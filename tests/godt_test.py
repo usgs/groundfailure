@@ -29,6 +29,8 @@ fakegeodict = GeoDict({'xmin': 0.5, 'xmax': 1.5,
 def test_godt2008():
     configfile = os.path.join(datadir, 'testconfig_godt.ini')
     config = ConfigObj(configfile)
+    # Use divfactor of 1.
+    config['godt_2008']['divfactor'] = 1
     bounds = {'xmin': -1.5, 'xmax': 3, 'ymin': -1.5, 'ymax': 3}
     # Test path correction (from conf.py)
     config = correct_config_filepaths(datadir, config)

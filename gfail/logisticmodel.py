@@ -111,7 +111,7 @@ class LogisticModel(object):
             try:
                 self.slopefile = cmodel['slopefile']
             except:
-                print('Slopefile term not specified in config, no slope '
+                print('Slopefile not specified in config, no slope '
                       'thresholds will be applied\n')
                 self.slopefile = None
         else:
