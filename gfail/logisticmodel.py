@@ -362,8 +362,8 @@ class LogisticModel(object):
                 del(slope)
             else:
                 ## Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
-                #nonzero = np.array([slope1 != 0.0])
-                #self.nonzero = nonzero[0, :, :]
+                nonzero = np.array([slope1 != 0.0])
+                self.nonzero = nonzero[0, :, :]
                 del(slope1)
 
         self.nuggets = [str(self.coeffs['b0'])]
@@ -552,7 +552,7 @@ class LogisticModel(object):
             print('applying slope thresholds')
             P = P * self.nonzero
             #P[P==0.0] = float('nan')
-            #P[np.isnan(P)] = 0.0
+            P[np.isnan(P)] = 0.0
             if self.uncert is not None:
                 Pmin = Pmin * self.nonzero
                 Pmax = Pmax * self.nonzero

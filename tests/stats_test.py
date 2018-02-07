@@ -23,7 +23,12 @@ def test_stats_models():
                              'zhu_2015.ini')
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
+    # Check slopefile trimming
+    conf['zhu_2015']['slopefile'] = 'global_gted_maxslope_30c.flt'
     conf = correct_config_filepaths(data_path, conf)
+    # Run with divfactor of 1
+    conf['zhu_2015']['divfactor'] = '1.'
+
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     #maplayers1 = lm.calculate()
@@ -31,7 +36,10 @@ def test_stats_models():
                              'zhu_2017_coastal.ini')
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
+    conf['zhu_2017_coastal']['slopefile'] = 'global_gted_maxslope_30c.flt'
     conf = correct_config_filepaths(data_path, conf)
+    # Run with divfactor of 1
+    conf['zhu_2017_coastal']['divfactor'] = '1.'
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     maplayers2 = lm.calculate()
@@ -50,7 +58,7 @@ def test_stats_models():
 #    np.testing.assert_allclose(tmp[1][0], 0.00098462898029272805)
 
     hagg = stats.computeHagg(maplayers2['model']['grid'])
-    np.testing.assert_allclose(hagg, 60.8999734766)
+    np.testing.assert_allclose(hagg, 60.89994974489)
     parea = stats.computeParea(maplayers2['model']['grid'],
                                probthresh=0.2)
     np.testing.assert_allclose(parea, 48.908522334)
