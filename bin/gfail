@@ -11,6 +11,9 @@ import urllib.parse
 import tempfile
 import re
 import shutil
+import rasterio
+import fiona
+import rasterio.mask
 
 # third party imports
 from mapio.shake import getHeaderData
@@ -177,6 +180,13 @@ def main(args):
                 continue
             # time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
             # filename = ('%s_%s_%s' % (eventid, modelname, time1))
+
+            if args.trimfile is not None:
+                # Mask/zero out areas over water using trimfile
+                model_trim = trim_ocean(maplayers['model']['grid'],
+                                        args.trimfile, nodata=0.)
+                maplayers['model']['grid'] = model_trim
+
             if args.appendname is not None:
                 filename = ('%s_%s_%s' % (eventid, modelname, args.appendname))
             else:
@@ -257,28 +267,28 @@ def main(args):
                                          % filename)
                     fileg = os.path.join(outfolder, '%s_model.tif'
                                          % filename)
-                                
+
                     GDALGrid.copyFromGrid(maplayers['model']['grid']).save(filen)
-                    
+
                     # convert to geotif
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
                     os.remove(filen)
                     os.remove(fileh)
                     filenames.append(fileg)
-                    
+
                 # Make binary output for ShakeCast
                 filef = os.path.join(outfolder, '%s_model.flt'
                                      % filename)
-                # And get name of header                     
+                # And get name of header
                 filefh = os.path.join(outfolder, '%s_model.hdr'
-                                     % filename)
+                                      % filename)
                 # Make file
                 write_floats(filef, maplayers['model']['grid'])
                 filenames.append(filef)
                 filenames.append(filefh)
-                
-                    
+
+
             if args.gis:
 
                 for key in maplayers:
@@ -299,22 +309,21 @@ def main(args):
                                          % (filename, keyS))
                     fileg = os.path.join(outfolder, '%s_%s.tif'
                                          % (filename, keyS))
-                                
+
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
                     os.remove(filen)
                     os.remove(fileh)
                     filenames.append(fileg)
-                    
-                    
+
+
         if args.make_webpage:
             outputs = makeWebpage(results, configs, args.web_template,
-                                 shakefile, outfolder=outfolder,
-                                 includeAlert=args.alert, cleanup=True,
-                                 faultfile=args.finite_fault)
+                                  shakefile, outfolder=outfolder,
+                                  includeAlert=args.alert, cleanup=True,
+                                  faultfile=args.finite_fault)
             filenames = filenames + outputs
-
 
         # Write shakefile to a file for use later
         shake_file = open(os.path.join(outfolder, "shakefile.txt"), "w")
@@ -440,6 +449,21 @@ def set_default_paths(args):
             else:
                 print('Path given for webpage templates does not exist: %s'
                       % args.web_template)
+    if args.trimfile is not None:
+        if args.trimfile == 'reset':
+            D.pop('trim')
+        else:
+            # check that it's a valid path and that it's a shapefile
+            if os.path.exists(args.trimfile):
+                filename4, fileextension = os.path.splitext(args.trimfile)
+                if fileextension == '.shp':
+                    D.update({'trimfile': args.trimfile})
+                else:
+                    print('Ocean trimming file is not a shapefile: %s'
+                          % args.trimfile)
+            else:
+                print('Path given for ocean trimming file does not exist: %s'
+                      % args.trimfile)
     print('New default paths set.\n')
 
     if D:
@@ -536,7 +560,7 @@ def get_bounds(shakefile, parameter='pga', threshold=2):
 def write_floats(filename, grid2d):
     """Create a binary (with acc. header file) version of a Grid2D object.
 
-    Given a filename input of "probability.flt", this function will 
+    Given a filename input of "probability.flt", this function will
     create that file, plus a text file called "probability.hdr".
 
     Args:
@@ -548,11 +572,11 @@ def write_floats(filename, grid2d):
     np.save(filename, array)
     npyfilename = filename + '.npy'
     os.rename(npyfilename, filename)
-    fpath,fname = os.path.split(filename)
-    fbase,_ = os.path.splitext(fname)
+    fpath, fname = os.path.split(filename)
+    fbase, _ = os.path.splitext(fname)
     hdrfile = os.path.join(fpath, fbase + '.hdr')
     f = open(hdrfile, 'wt')
-    for key,value in geodict.items():
+    for key, value in geodict.items():
         if isinstance(value, int):
             fmt = '%s = %i\n'
         elif isinstance(value, float):
@@ -561,6 +585,49 @@ def write_floats(filename, grid2d):
             fmt = '%s = %s\n'
         f.write(fmt % (key, value))
     f.close()
+
+
+def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=0.):
+    """Use the mask (a shapefile) to trim offshore areas
+    """
+    tempdir = tempfile.mkdtemp()
+    tempfilen = os.path.join(tempdir, 'temp.bil')
+    tempfileg = os.path.join(tempdir, 'temp.tif')
+    tempfileg2 = os.path.join(tempdir, 'temp2.tif')
+    GDALGrid.copyFromGrid(grid2D).save(tempfilen)
+    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (tempfilen, tempfileg)
+    rc, so, se = get_command_output(cmd)
+    if rc:
+        with fiona.open(mask, 'r') as shapefile:
+            features = [feature["geometry"] for feature in shapefile]
+        with rasterio.open(tempfileg) as src:
+            out_image, out_transform = rasterio.mask.mask(src, features,
+                                                          all_touched=all_touched,
+                                                          crop=crop)
+            out_meta = src.meta.copy()
+        out_meta.update({"driver": "GTiff",
+                         "height": out_image.shape[1],
+                         "width": out_image.shape[2],
+                         "transform": out_transform})
+        with rasterio.open(tempfileg2, "w", **out_meta) as dest:
+            dest.write(out_image)
+        newgrid = GDALGrid.load(tempfileg2)
+        
+        
+        ##This method is too slow and doens't use all_touched
+        #cmd = 'gdalwarp -dstnodata 0.0 -cutline %s %s %s' % (mask, tempfileg, tempfileg2)
+        #rc, so, se = get_command_output(cmd)
+        #if rc:
+        #    newgrid = GDALGrid.load(tempfileg2)
+        #else:
+        #    raise Exception('ocean trimming failed')
+        #    print(se)
+    else:
+        raise Exception('ocean trimming failed')
+        print(se)
+
+    shutil.rmtree(tempdir)
+    return newgrid
 
 
 if __name__ == '__main__':
@@ -575,6 +642,7 @@ if __name__ == '__main__':
     mapdata_filepath = None
     web_template = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pelican', 'theme')
+    trimfile = None
 
     if os.path.exists(defaults):
         D = ConfigObj(defaults)
@@ -591,6 +659,8 @@ if __name__ == '__main__':
                 mapdata_filepath = D[key]
             elif key == 'web_template':
                 web_template = D[key]
+            elif key == 'trimfile':
+                trimfile = D[key]
 
     parser = argparse.ArgumentParser(
         description='Run ground failure models on input ShakeMap grid.')
@@ -623,7 +693,7 @@ if __name__ == '__main__':
         '-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
         help='Set file path to mapping input data (only needed if file '
              'paths in mapconfig are relative)',
-        default=mapdata_filepath)        
+        default=mapdata_filepath)
     parser.add_argument(
         '-o', '--output-filepath', metavar='outfilepath', nargs='?',
         default=output_filepath,
@@ -636,7 +706,9 @@ if __name__ == '__main__':
     parser.add_argument(
         '-u', '--uncertfile', metavar='uncertfile', nargs='?',
         help='single ShakeMap uncertainty.xml file', default=None)
-
+    parser.add_argument(
+        '-tr', '--trimfile', metavar='trimocean', nargs='?', default=trimfile,
+        help='Location of shapefile of land masses to use to trim areas over water')
 
     parser.add_argument(
         '-b', '--set-bounds', type=str,

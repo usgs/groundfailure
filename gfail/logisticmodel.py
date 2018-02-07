@@ -111,7 +111,7 @@ class LogisticModel(object):
             try:
                 self.slopefile = cmodel['slopefile']
             except:
-                print('Could not find slopefile term in config, no slope '
+                print('Slopefile term not specified in config, no slope '
                       'thresholds will be applied\n')
                 self.slopefile = None
         else:
@@ -182,14 +182,17 @@ class LogisticModel(object):
                                                        newymax, newdx, newdy, inside=True)
 
         # Find slope thresholds, if applicable
-        try:
-            self.slopemin = float(config[self.model]['slopemin'])
-            self.slopemax = float(config[self.model]['slopemax'])
-        except:
-            print('Could not find slopemin and/or slopemax in config, limits '
-                  'No slope thresholds will be applied.')
-            self.slopemin = 'none'
-            self.slopemax = 'none'
+        self.slopemin = 'none'
+        self.slopemax = 'none'
+        if slopefile is not None:
+            try:
+                self.slopemin = float(config[self.model]['slopemin'])
+                self.slopemax = float(config[self.model]['slopemax'])
+            except:
+                print('Could not find slopemin and/or slopemax in config, limits '
+                      'No slope thresholds will be applied.')
+                self.slopemin = 'none'
+                self.slopemax = 'none'
 
         # Make temporary directory for hdf5 pytables file storage
         self.tempdir = tempfile.mkdtemp()
@@ -358,9 +361,9 @@ class LogisticModel(object):
                 del(slope1)
                 del(slope)
             else:
-                # Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
-                nonzero = np.array([slope1 != 0.0])
-                self.nonzero = nonzero[0, :, :]
+                ## Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
+                #nonzero = np.array([slope1 != 0.0])
+                #self.nonzero = nonzero[0, :, :]
                 del(slope1)
 
         self.nuggets = [str(self.coeffs['b0'])]
@@ -543,12 +546,13 @@ class LogisticModel(object):
                 eqnmax = eqn.replace('P', 'Pmax')
                 Pmin = eval(eqnmin)
                 Pmax = eval(eqnmax)
+        P[np.isnan(P)] = 0.0
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
             #P[P==0.0] = float('nan')
-            P[np.isnan(P)] = 0.0
+            #P[np.isnan(P)] = 0.0
             if self.uncert is not None:
                 Pmin = Pmin * self.nonzero
                 Pmax = Pmax * self.nonzero
@@ -556,8 +560,6 @@ class LogisticModel(object):
                 #Pmax[Pmax==0.0] = float('nan')
                 Pmin[np.isnan(Pmin)] = 0.0
                 Pmax[np.isnan(Pmax)] = 0.0
-        else:
-            print('No slope file provided, slope thresholds not applied')
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
@@ -586,7 +588,7 @@ class LogisticModel(object):
             description['vs30max'] = float(self.config[self.model]['vs30max'])
         if 'minpgv' in self.config[self.model].keys():
             description['minpgv'] = float(self.config[self.model]['minpgv'])
-            
+
         Pgrid = Grid2D(P, self.geodict)
         rdict = collections.OrderedDict()
         rdict['model'] = {

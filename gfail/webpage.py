@@ -163,7 +163,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
                                                                   'bin_edges': list(lims[0]),
                                                                   'metadata': metadata,
-                                                                  'stats': stats,
+                                                                  'stats': dict(stats),
                                                                   'layer_on': on
                                                                   }
             il += 1
@@ -204,7 +204,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
                                                                   'bin_edges': list(lims[0]),
                                                                   'metadata': metadata,
-                                                                  'stats': stats,
+                                                                  'stats': dict(stats),
                                                                   'layer_on': on
                                                                   }
             iq += 1
@@ -311,6 +311,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
     web_file = os.path.join(outfolder, 'info.json')
     filenames.append(web_file)
+
     with open(web_file, 'w') as f:
         json.dump(web_dict, f)
 
