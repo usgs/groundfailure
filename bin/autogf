@@ -14,6 +14,10 @@ import tempfile
 import shutil
 import gfail.pdl as pdl
 import time
+import fiona
+from shapely.geometry import shape, box
+from shapely.strtree import STRtree
+from mpl_toolkits.basemap import Basemap
 
 #third party
 from impactutils.io.cmd import get_command_output
@@ -134,7 +138,7 @@ def main(args):
         if args.testrun:
             recentevents = testrecents
         else:
-            recentevents = getRecentEvents(thresh, args.feed, cursor=cursor)
+            recentevents = getRecentEvents(thresh, args.feed, cursor=cursor, landfile=args.landfile)
         for event in recentevents:
             empty = False
             update = event['update']
@@ -181,7 +185,7 @@ def main(args):
                 url = 'Failed to run'
                 jsonfeed = 'Failed to run'
             else:
-                
+
                 try:
                     infojsonfile = [filen for filen in filenames if 'info.json' in filen]
                     with open(infojsonfile[0], 'r') as fij:
@@ -261,7 +265,6 @@ def main(args):
                 cursor.execute("UPDATE shakemap SET sent_email = ? WHERE eventcode = ? AND version =?",
                                ('no files returned. %s' % utctime, event['eventcode'], event['version']))
                 db.commit()
-
 
             if event['finite_fault'] is not None:
                 finitefault = 1
@@ -349,11 +352,11 @@ def mailUsers(event, autoconfig, url, jsonfeed, update=False, change=''):
         props['subject'] = 'UPDATE to Ground Failure Model Results for %s' % (title)
         props['message'] = """
         Significant changes to Ground Failure models for ShakeMap v%i of %s (event id %s):\n%s
-        
+
         Model summary page: %s
 
         Event detail JSON feed: %s
-        
+
         You will only receive notification of updates if model outputs change significantly.
         For minor updates, find most recent results by checking the event detail json feed
         for an updated link.
@@ -452,6 +455,10 @@ def getProductInfo(shakemap, pager=None):
     edict['mag'] = float(shakemap['properties']['magnitude'])
     edict['location'] = shakemap['properties']['event-description']
     edict['url'] = shakemap['contents']['download/grid.xml']['url']
+    edict['bounds'] = {'xmin': float(shakemap['properties']['minimum-longitude']),
+                       'xmax': float(shakemap['properties']['maximum-longitude']),
+                       'ymin': float(shakemap['properties']['minimum-latitude']),
+                       'ymax': float(shakemap['properties']['maximum-latitude'])}
     if pager is not None:
         edict['alert'] = pager['properties']['alertlevel']
     else:
@@ -463,12 +470,15 @@ def getProductInfo(shakemap, pager=None):
     return edict
 
 
-def getRecentEvents(thresholds, feed, cursor=None):
+def getRecentEvents(thresholds, feed, cursor=None, landfile=None):
     """Finds recent events above thresholds.
     If cursor is connection to database, this will also search for any events
     that were previously run and have updated ShakeMaps that no longer exceed
     thresholds.
     """
+    landloaded = False
+    features = None
+
     fh = urllib.request.urlopen(feed)
     data = fh.read().decode('utf8')
     jdict = json.loads(data)
@@ -491,7 +501,7 @@ def getRecentEvents(thresholds, feed, cursor=None):
         jdict2 = json.loads(data)
         fh.close()
         shakemap = jdict2['properties']['products']['shakemap'][0]
-        
+
         if PAG:
             try:
                 pager = jdict2['properties']['products']['losspager'][0]
@@ -503,7 +513,7 @@ def getRecentEvents(thresholds, feed, cursor=None):
             pager = None
 
         edict = getProductInfo(shakemap, pager)
-        
+
         # First check if any are updates to events already in the database
         update = False
         prevermax = None
@@ -537,9 +547,35 @@ def getRecentEvents(thresholds, feed, cursor=None):
         if PAG:
             if 'eis' in thresholds and palert >= ALERTLEVELS.index(thresholds['eis']):
                 getShake = True
+                
+        # Check if ShakeMap is entirely in water
+        if landfile is not None and not update:
+            b = box(edict['bounds']['xmin'], edict['bounds']['ymin'],
+                    edict['bounds']['xmax'], edict['bounds']['ymax'])
+
+            if not landloaded:
+                bm = Basemap()
+                is_land = bm.is_land(edict['lat'], edict['lon'])
+                if not is_land:
+                    with fiona.open(landfile, 'r') as shapefile:
+                        features = [shape(feature["geometry"]) for feature in shapefile]
+                        landloaded = True
+
+            s = STRtree(features)
+            result = s.query(b)
+
+            on_land = False
+            for res in result:
+                if res.intersects(b): # Does not cross -180/180
+                    on_land = True
+                    break
+            if not on_land:
+                # No land in ShakeMap area, don't run
+                print('event %s - %s totally over water, skipping' % (edict['eventcode'], edict['location']))
+                continue
 
         if getShake or update:
-            
+
             # search for finitefault presence
             ff = False
             finft = None
@@ -556,7 +592,7 @@ def getRecentEvents(thresholds, feed, cursor=None):
                     f3.write(d)
                     finft = f3.name  # save name of geojson file
                     #print(f3.name)
-            
+
             edict['time'] = datetime.utcfromtimestamp(event['properties']['time']/1000)
             edict['title'] = event['properties']['title']
             edict['finite_fault'] = finft
@@ -673,7 +709,7 @@ def gf_transfer(eventdir, event_id, pdl_config=None, dry_run=False):
         if log['rc'] is True:
             print('Successful PDL transfer.')
             success = True
-    
+
             # Construct URL to index.html
             url_template = ('https://dev01-earthquake.cr.usgs.gov/archive'
                             '/product/[TYPE]/[ID]/[SOURCE]/[TIME]/html/index.html')
@@ -689,18 +725,18 @@ def gf_transfer(eventdir, event_id, pdl_config=None, dry_run=False):
                 '[ID]', eventid).replace(
                 '[SOURCE]', source).replace(
                 '[TIME]', timestamp)
-    
+
             # URL for event's detail feed
             feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
                     'query?eventid=[EVENTID]&format=geojson')
             feed = feed.replace('[EVENTID]', eventid)
-    
+
             # Print to screen
             print("Web page URL:")
             print(url)
             print("Event detail JSON feed:")
             print(feed)
-    
+
             # Save to file
             #with open("url.txt", "w") as f:
             #    f.write(url)
@@ -709,9 +745,9 @@ def gf_transfer(eventdir, event_id, pdl_config=None, dry_run=False):
             print('PDL transfer failed.')
             print(log['so'].decode())
             success = False
-    
+
         return success, url, feed
-        
+
 
 if __name__ == '__main__':
 
@@ -761,13 +797,16 @@ if __name__ == '__main__':
         '--feed', metavar='jsonfeed', nargs='?',
         default='day', help='Which jsonfeed to check, default day, other'
                             'options are week and hour')
+    parser.add_argument(
+        '-l', '--landfile', metavar='landfile', nargs='?',
+        default=None, help="Shapefile of earth's landmasses to omit oceanic events")
 
     # Binary
     parser.add_argument(
         '-t', '--testrun', action='store_true', default=False,
         help='Do a test run, will not transfer files (dry run)'
              'and will delete all files created')
-             
+
     parser.add_argument(
         '-w', '--webpage', action='store_true', default=False,
         help='Make web page')
@@ -775,7 +814,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--hdf5', action='store_true', default=False,
         help='Save hdf5 files')
-    
+
     parser.add_argument(
         '-pn', '--make-static-pngs', action='store_true', default=False,
         help='Make static plots for each model')
