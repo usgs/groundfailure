@@ -59,9 +59,9 @@ def test_zhu2015(tmpdir):
         target_file = os.path.join(datadir, 'loma_prieta', 'targets',
                                    '19891018000415_zhu_2015_model.tif')
     #    # To change target data:
-        test_grid.save(test_file)
-        cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
-        rc, so, se = get_command_output(cmd)
+        #test_grid.save(test_file)
+        #cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
+        #rc, so, se = get_command_output(cmd)
 
         target_grid = GDALGrid.load(target_file)
         target_data = target_grid.getData()
