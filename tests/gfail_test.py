@@ -78,7 +78,7 @@ def test_zhu2015(tmpdir):
     test_data[np.isnan(test_data)] = 0.0
 
     # Then do test
-    np.testing.assert_allclose(target_data, test_data, rtol=1e-2)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-2, atol=1e-2)
 
     # Remove backup and tempfile
     os.remove(default_file+'_bak')
