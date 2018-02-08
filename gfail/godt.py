@@ -13,6 +13,7 @@ import collections
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
+from gfail import logisticmodel as lm
 
 # third party imports
 import numpy as np
@@ -23,7 +24,7 @@ warnings.filterwarnings('ignore')
 
 def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
              displmodel=None, bounds=None, slopediv=100.,
-             codiv=10., numstd=None):
+             codiv=10., numstd=None, trimfile=None):
     """
     This function runs the Godt et al. (2008) global method for a given
     ShakeMap. The Factor of Safety is calculated using infinite slope analysis
@@ -70,6 +71,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             regular analysis).
         numstd (float): Number of +/- standard deviations to use if uncertainty
             is computed (uncertfile is not None).
+        trimfile (str): shapefile of earth's land masses to trim offshore areas
+            of model
 
     Returns:
         dict: Dictionary containing output and input layers (if
@@ -100,6 +103,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     frictionlref = 'unknown'
     modellref = 'unknown'
     modelsref = 'unknown'
+
+    # See if trimfile exists
+    if trimfile is not None:
+        if ~os.path.exists(trimfile):
+            print('trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
+            trimfile = None
+        if os.path.splitext(trimfile) != '.shp':
+            print('trimfile must be a shapefile, ocean will not be trimmed')
+            trimfile = None
 
     # Parse config
     try:    # May want to add error handling so if refs aren't given, just
@@ -153,7 +165,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
               'Continuing')
 
     sampledict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
-    
+
     # Do we need to subdivide baselayer?
     resample = False
     if 'divfactor' in config['godt_2008'].keys():
@@ -166,11 +178,11 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             newymax = sampledict.ymax + sampledict.dy/2. - sampledict.dy/(2.*divfactor) - sampledict.dy
             newdx = sampledict.dx/divfactor
             newdy = sampledict.dy/divfactor
-            
+
             sampledict = GeoDict.createDictFromBox(newxmin, newxmax, newymin,
                                                    newymax, newdx, newdy, inside=True)
             resample = True
-    
+
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
         if (sampledict.xmin > bounds['xmin'] or
                 sampledict.xmax < bounds['xmax'] or
@@ -191,7 +203,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
                                   resample=True, method='linear',
                                   adjust='bounds')
     elif resample:
-        shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict, 
+        shakemap = ShakeGrid.load(shakefile, samplegeodict=sampledict,
                                   resample=True, method='linear',
                                   adjust='bounds')
     else:
@@ -401,23 +413,31 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             'modeltype': 'Landslide'
         }
     }
+    PROBgrid = GDALGrid(PROB, shkgdict)
+    if trimfile is not None:
+        PROBgrid = lm.trim_ocean(PROBgrid, trimfile, nodata=float('nan'))
 
     maplayers['model'] = {
-        'grid': GDALGrid(PROB, shakemap.getGeoDict()),
+        'grid': PROBgrid,
         'label': 'Landslide Areal coverage',
         'type': 'output',
         'description': description
     }
 
     if uncertfile is not None:
+        PROBmingrid = GDALGrid(PROBmin, shkgdict)
+        PROBmaxgrid = GDALGrid(PROBmax, shkgdict)
+        if trimfile is not None:
+            PROBmingrid = lm.trim_ocean(PROBmingrid, trimfile, nodata=float('nan'))
+            PROBmaxgrid = lm.trim_ocean(PROBmaxgrid, trimfile, nodata=float('nan'))
         maplayers['modelmin'] = {
-            'grid': GDALGrid(PROBmin, shkgdict),
+            'grid': PROBmingrid,
             'label': 'Probability-%1.2fstd' % numstd,
             'type': 'output',
             'description': description
         }
         maplayers['modelmax'] = {
-            'grid': GDALGrid(PROBmax, shkgdict),
+            'grid': PROBmaxgrid,
             'label': 'Probability+%1.2fstd' % numstd,
             'type': 'output',
             'description': description

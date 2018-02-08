@@ -65,6 +65,7 @@ def test_zhu2015(tmpdir):
 
         target_grid = GDALGrid.load(target_file)
         target_data = target_grid.getData()
+
     except Exception as e:  # So that the defaults are always put back if something above fails
         print(e)
 

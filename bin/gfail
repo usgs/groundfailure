@@ -11,9 +11,7 @@ import urllib.parse
 import tempfile
 import re
 import shutil
-import rasterio
-import fiona
-import rasterio.mask
+
 
 # third party imports
 from mapio.shake import getHeaderData
@@ -30,6 +28,7 @@ from gfail.savelayers import savelayers
 from gfail.makemaps import (parseConfigLayers, parseMapConfig,
                             modelMap, interactiveMap)
 from gfail.webpage import makeWebpage
+
 
 def main(args):
     # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
@@ -164,7 +163,8 @@ def main(args):
                     uncertfile=args.uncertfile,
                     saveinputs=args.save_inputs,
                     bounds=bounds,
-                    numstd=float(args.std))
+                    numstd=float(args.std),
+                    trimfile=args.trimfile)
                 maplayers = lm.calculate()
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(
@@ -173,19 +173,14 @@ def main(args):
                     uncertfile=args.uncertfile,
                     saveinputs=args.save_inputs,
                     bounds=bounds,
-                    numstd=float(args.std))
+                    numstd=float(args.std),
+                    trimfile=args.trimfile)
             else:
                 print('Unknown model function specified in config for %s '
                       'model, skipping to next config' % modelfunc)
                 continue
             # time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
             # filename = ('%s_%s_%s' % (eventid, modelname, time1))
-
-            if args.trimfile is not None:
-                # Mask/zero out areas over water using trimfile
-                model_trim = trim_ocean(maplayers['model']['grid'],
-                                        args.trimfile, nodata=0.)
-                maplayers['model']['grid'] = model_trim
 
             if args.appendname is not None:
                 filename = ('%s_%s_%s' % (eventid, modelname, args.appendname))
@@ -288,7 +283,6 @@ def main(args):
                 filenames.append(filef)
                 filenames.append(filefh)
 
-
             if args.gis:
 
                 for key in maplayers:
@@ -316,7 +310,6 @@ def main(args):
                     os.remove(filen)
                     os.remove(fileh)
                     filenames.append(fileg)
-
 
         if args.make_webpage:
             outputs = makeWebpage(results, configs, args.web_template,
@@ -585,49 +578,6 @@ def write_floats(filename, grid2d):
             fmt = '%s = %s\n'
         f.write(fmt % (key, value))
     f.close()
-
-
-def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=0.):
-    """Use the mask (a shapefile) to trim offshore areas
-    """
-    tempdir = tempfile.mkdtemp()
-    tempfilen = os.path.join(tempdir, 'temp.bil')
-    tempfileg = os.path.join(tempdir, 'temp.tif')
-    tempfileg2 = os.path.join(tempdir, 'temp2.tif')
-    GDALGrid.copyFromGrid(grid2D).save(tempfilen)
-    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (tempfilen, tempfileg)
-    rc, so, se = get_command_output(cmd)
-    if rc:
-        with fiona.open(mask, 'r') as shapefile:
-            features = [feature["geometry"] for feature in shapefile]
-        with rasterio.open(tempfileg) as src:
-            out_image, out_transform = rasterio.mask.mask(src, features,
-                                                          all_touched=all_touched,
-                                                          crop=crop)
-            out_meta = src.meta.copy()
-        out_meta.update({"driver": "GTiff",
-                         "height": out_image.shape[1],
-                         "width": out_image.shape[2],
-                         "transform": out_transform})
-        with rasterio.open(tempfileg2, "w", **out_meta) as dest:
-            dest.write(out_image)
-        newgrid = GDALGrid.load(tempfileg2)
-        
-        
-        ##This method is too slow and doens't use all_touched
-        #cmd = 'gdalwarp -dstnodata 0.0 -cutline %s %s %s' % (mask, tempfileg, tempfileg2)
-        #rc, so, se = get_command_output(cmd)
-        #if rc:
-        #    newgrid = GDALGrid.load(tempfileg2)
-        #else:
-        #    raise Exception('ocean trimming failed')
-        #    print(se)
-    else:
-        raise Exception('ocean trimming failed')
-        print(se)
-
-    shutil.rmtree(tempdir)
-    return newgrid
 
 
 if __name__ == '__main__':

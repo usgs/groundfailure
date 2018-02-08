@@ -23,7 +23,11 @@ from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
-# from osgeo import gdal
+import fiona
+import rasterio.mask
+import rasterio
+
+from impactutils.io.cmd import get_command_output
 
 from gfail.temphdf import TempHdf
 
@@ -49,7 +53,8 @@ MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
 
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False,
-                 slopefile=None, bounds=None, numstd=1, slopemod=None):
+                 slopefile=None, bounds=None, numstd=1, slopemod=None,
+                 trimfile=None):
         """
         Set up the logistic model
         Args:
@@ -79,6 +84,7 @@ class LogisticModel(object):
                 degrees: e.g., ``np.arctan(slope) * 180. / np.pi`` or
                 ``slope/100.`` (note that this may be in the config file
                 already).
+            trimfile (str): shapefile of earth's landmasses to use to cut offshore areas
         """
         mnames = getLogisticModelNames(config)
         if len(mnames) == 0:
@@ -88,6 +94,7 @@ class LogisticModel(object):
             raise Exception('Config file contains more than one model which '
                             'is no longer allowed, update your config file '
                             'to the newer format')
+
         self.model = mnames[0]
         self.config = config
         cmodel = config[self.model]
@@ -121,6 +128,19 @@ class LogisticModel(object):
                 self.slopemod = cmodel['slopemod']
             except:
                 self.slopemod = None
+
+        # See if trimfile exists
+        if trimfile is not None:
+            if ~os.path.exists(trimfile):
+                print('trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
+                self.trimfile = None
+            elif os.path.splitext(trimfile) != '.shp':
+                print('trimfile must be a shapefile, ocean will not be trimmed')
+                self.trimfile = None
+            else:
+                self.trimfile = trimfile
+        else:
+            self.trimfile = None
 
         # Get month of event
         griddict, eventdict, specdict, fields, uncertainties = \
@@ -165,7 +185,7 @@ class LogisticModel(object):
         else:
             raise Exception('All predictor variable grids must be a valid '
                             'GMT or ESRI file type.')
-            
+
         # Do we need to subdivide baselayer?
         if 'divfactor' in self.config[self.model].keys():
             divfactor = float(self.config[self.model]['divfactor'])
@@ -177,7 +197,7 @@ class LogisticModel(object):
                 newymax = sampledict.ymax + sampledict.dy/2. - sampledict.dy/(2.*divfactor)
                 newdx = sampledict.dx/divfactor
                 newdy = sampledict.dy/divfactor
-                
+
                 sampledict = GeoDict.createDictFromBox(newxmin, newxmax, newymin,
                                                        newymax, newdx, newdy, inside=True)
 
@@ -339,7 +359,7 @@ class LogisticModel(object):
                 temp = GDALGrid.load(templyrname, sampledict, resample=False)
             else:
                 temp = GDALGrid.load(templyrname, sampledict, resample=True,
-                                     method=interp, doPadding=True) #nearest
+                                     method=interp, doPadding=True)
             flag = 0
             if self.slopemin == 'none' and self.slopemax == 'none':
                 flag = 1
@@ -501,7 +521,7 @@ class LogisticModel(object):
         if 'minpgv' in self.config[self.model].keys():
             pgv = self.shakemap.getSlice(None, None, None, None, name='pgv')
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
-            
+
         if 'minpga' in self.config[self.model].keys():
             pga = self.shakemap.getSlice(None, None, None, None, name='pga')
             P[pga < float(self.config[self.model]['minpga'])] = 0.0
@@ -534,7 +554,7 @@ class LogisticModel(object):
                     None, None, None, None, name='pgv')
                 Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
                 Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
-                
+
             if 'minpga' in self.config[self.model].keys():
                 pga = self.shakemap.getSlice(
                     None, None, None, None, name='pga')
@@ -546,20 +566,25 @@ class LogisticModel(object):
                 eqnmax = eqn.replace('P', 'Pmax')
                 Pmin = eval(eqnmin)
                 Pmax = eval(eqnmax)
-        P[np.isnan(P)] = 0.0
+
+            #Pmin[np.isnan(Pmin)] = 0.0
+            #Pmax[np.isnan(Pmax)] = 0.0
+
+        #P[np.isnan(P)] = 0.0
+
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
             #P[P==0.0] = float('nan')
-            P[np.isnan(P)] = 0.0
+            #P[np.isnan(P)] = 0.0
             if self.uncert is not None:
                 Pmin = Pmin * self.nonzero
                 Pmax = Pmax * self.nonzero
                 #Pmin[Pmin==0.0] = float('nan')
                 #Pmax[Pmax==0.0] = float('nan')
-                Pmin[np.isnan(Pmin)] = 0.0
-                Pmax[np.isnan(Pmax)] = 0.0
+                #Pmin[np.isnan(Pmin)] = 0.0
+                #Pmax[np.isnan(Pmax)] = 0.0
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
@@ -590,6 +615,8 @@ class LogisticModel(object):
             description['minpgv'] = float(self.config[self.model]['minpgv'])
 
         Pgrid = Grid2D(P, self.geodict)
+        if self.trimfile is not None:
+            Pgrid = trim_ocean(Pgrid, self.trimfile, nodata=float('nan'))  # Turn all offshore cells to nan
         rdict = collections.OrderedDict()
         rdict['model'] = {
             'grid': Pgrid,
@@ -599,8 +626,13 @@ class LogisticModel(object):
             'description': description
         }
         if self.uncert is not None:
+            Pmingrid = Grid2D(Pmin, self.geodict)
+            Pmaxgrid = Grid2D(Pmax, self.geodict)
+            if self.trimfile is not None:
+                Pmingrid = trim_ocean(Pmingrid, self.trimfile, nodata=float('nan'))
+                Pmaxgrid = trim_ocean(Pmaxgrid, self.trimfile, nodata=float('nan'))
             rdict['modelmin'] = {
-                'grid': Grid2D(Pmin, self.geodict),
+                'grid': Pmingrid,
                 'label': ('%s %s (-%0.1f std ground motion)'
                           % (self.modeltype.capitalize(),
                              units5.title(),
@@ -609,7 +641,7 @@ class LogisticModel(object):
                 'description': description
             }
             rdict['modelmax'] = {
-                'grid': Grid2D(Pmax, self.geodict),
+                'grid': Pmaxgrid,
                 'label': ('%s %s (+%0.1f std ground motion)'
                           % (self.modeltype.capitalize(),
                              units5.title(),
@@ -888,6 +920,40 @@ def validateTerms(cmodel, coeffs, layers):
             raise Exception(msg % tpl)
         terms[key] = term
     return (terms, timeField)
+
+
+def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=0.):
+    """Use the mask (a shapefile) to trim offshore areas
+    """
+    tempdir = tempfile.mkdtemp()
+    tempfilen = os.path.join(tempdir, 'temp.bil')
+    tempfileg = os.path.join(tempdir, 'temp.tif')
+    tempfileg2 = os.path.join(tempdir, 'temp2.tif')
+    GDALGrid.copyFromGrid(grid2D).save(tempfilen)
+    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (tempfilen, tempfileg)
+    rc, so, se = get_command_output(cmd)
+    if rc:
+        with fiona.open(mask, 'r') as shapefile:
+            features = [feature["geometry"] for feature in shapefile]
+        with rasterio.open(tempfileg) as src:
+            out_image, out_transform = rasterio.mask.mask(src, features,
+                                                          all_touched=all_touched,
+                                                          crop=crop)
+            out_meta = src.meta.copy()
+        out_meta.update({"driver": "GTiff",
+                         "height": out_image.shape[1],
+                         "width": out_image.shape[2],
+                         "transform": out_transform})
+        with rasterio.open(tempfileg2, "w", **out_meta) as dest:
+            dest.write(out_image)
+        newgrid = GDALGrid.load(tempfileg2)
+
+    else:
+        raise Exception('ocean trimming failed')
+        print(se)
+
+    shutil.rmtree(tempdir)
+    return newgrid
 
 
 def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
