@@ -126,33 +126,28 @@ def test_parseConfigLayers():
 #    makemaps.parseConfigLayers(tmp, config, keys=None)
 
 
-def test_modelMap(tempdir):
+def test_modelMap():
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
     # suptitle is None
     makemaps.modelMap(maplayers, shakefile, suptitle=None,
-                      savepdf=False, savepng=False,
-                      outputdir=tempdir)
+                      savepdf=False, savepng=False)  # outputdir=tempdir)
     # shakefile is None
     makemaps.modelMap(maplayers, suptitle=None,
-                      savepdf=False, savepng=False,
-                      outputdir=tempdir)
+                      savepdf=False, savepng=False)
     # scaletype == 'binned'
     makemaps.modelMap(maplayers, scaletype='binned',
-                      savepdf=False, savepng=False,
-                      outputdir=tempdir)
+                      savepdf=False, savepng=False)
     # scaletype == 'binned' and logscale=!False
     makemaps.modelMap(maplayers, scaletype='binned',
                       logscale=[False, False, True, True],
-                      savepdf=False, savepng=False,
-                      outputdir=tempdir)
+                      savepdf=False, savepng=False)
     # logscale=!False
     makemaps.modelMap(maplayers, logscale=[False, False, True, True],
-                      savepdf=False, savepng=False,
-                      outputdir=tempdir)
+                      savepdf=False, savepng=False)
 
 
-def test_zoom(tempdir):
+def test_zoom():
 
     # boundaries == 'zoom'
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
@@ -166,7 +161,7 @@ def test_zoom(tempdir):
     maplayers = lq.calculate()
 
     makemaps.modelMap(maplayers, boundaries='zoom', zthresh=0.3,
-                      savepdf=False, savepng=False, outputdir=tempdir)
+                      savepdf=False, savepng=False)
 
     # bounaries dictionary
     bounds = {'xmin': -122.54, 'xmax': -120.36,
@@ -177,12 +172,12 @@ def test_zoom(tempdir):
 
 if __name__ == "__main__":
     #td1 = tempfile.TemporaryDirectory()
-    td1 = os.path.join(datadir, 'temporary1')
-    if not os.path.exists(td1):
-        os.mkdir(td1)
+    #td1 = os.path.join(datadir, 'temporary1')
+    #if not os.path.exists(td1):
+    #    os.mkdir(td1)
     test_parseMapConfig()
     test_parseConfigLayers()
-    test_modelMap(td1)
-    test_zoom(td1)
+    test_modelMap()
+    test_zoom()
     # remove tempdir
-    shutil.rmtree(td1)
+    #shutil.rmtree(td1)

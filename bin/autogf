@@ -796,7 +796,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--feed', metavar='jsonfeed', nargs='?',
         default='day', help='Which jsonfeed to check, default day, other'
-                            'options are week and hour')
+                            'options are week and month')
     parser.add_argument(
         '-l', '--landfile', metavar='landfile', nargs='?',
         default=None, help="Shapefile of earth's landmasses to omit oceanic events")
