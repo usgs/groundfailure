@@ -41,6 +41,8 @@ def test_zhu2015(tmpdir):
         if not os.path.exists(p):
             os.makedirs(p)
 
+        # Clear paths
+        rc, so, se = get_command_output('gfail -reset')
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
@@ -73,16 +75,12 @@ def test_zhu2015(tmpdir):
     if os.path.exists(default_file+'_bak'):
         shutil.copy(default_file+'_bak', default_file)
 
-    # Convert all nans to zeros in both sets
-    target_data[np.isnan(target_data)] = 0.0
-    test_data[np.isnan(test_data)] = 0.0
-
-    # Then do test
-    np.testing.assert_allclose(target_data, test_data, rtol=1e-2, atol=1e-2)
-
     # Remove backup and tempfile
     os.remove(default_file+'_bak')
     shutil.rmtree(p)
+
+    # Then do test
+    np.testing.assert_allclose(target_data, test_data)
 
 
 def test_zhu2015_web(tmpdir):
@@ -112,6 +110,8 @@ def test_zhu2015_web(tmpdir):
             shutil.rmtree(p)
             os.makedirs(p)
 
+        # Clear paths
+        rc, so, se = get_command_output('gfail -reset')
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
@@ -139,7 +139,7 @@ def test_zhu2015_web(tmpdir):
     shutil.rmtree(p)
 
     # Then do test
-    assert '--property-alertLQ=green' in transfer_cmd
+    assert '--property-alertLQ=yellow' in transfer_cmd
     assert '--property-alertLS=yellow' in transfer_cmd
     assert '--type=groundfailure' in transfer_cmd
     assert '--property-title=Earthquake-Induced Ground Failure' in transfer_cmd

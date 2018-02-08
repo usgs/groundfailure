@@ -42,6 +42,8 @@ def test_autogf(tmpdir):
         if not os.path.exists(p):
             os.makedirs(p)
 
+        # Clear paths
+        rc, so, se = get_command_output('gfail -reset')
         # Modify gfail defaults
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
