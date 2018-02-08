@@ -77,3 +77,4 @@ if __name__ == "__main__":
     td1 = tempfile.TemporaryDirectory()
     test_autogf(td1)
     print('autogf tests passed')
+    shutil.rmtree(td1)

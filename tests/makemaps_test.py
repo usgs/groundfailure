@@ -11,6 +11,8 @@ import gfail.logisticmodel as LM
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
+import tempfile
+import shutil
 
 homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
@@ -125,28 +127,35 @@ def test_parseConfigLayers():
 #    makemaps.parseConfigLayers(tmp, config, keys=None)
 
 
-def test_modelMap():
+def test_modelMap(tempdir):
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
     # suptitle is None
+    tempdir = str(tempdir)
     makemaps.modelMap(maplayers, shakefile, suptitle=None,
-                      savepdf=False, savepng=False)
+                      savepdf=False, savepng=False,
+                      outputdir=tempdir)
     # shakefile is None
     makemaps.modelMap(maplayers, suptitle=None,
-                      savepdf=False, savepng=False)
+                      savepdf=False, savepng=False,
+                      outputdir=tempdir)
     # scaletype == 'binned'
     makemaps.modelMap(maplayers, scaletype='binned',
-                      savepdf=False, savepng=False)
+                      savepdf=False, savepng=False,
+                      outputdir=tempdir)
     # scaletype == 'binned' and logscale=!False
     makemaps.modelMap(maplayers, scaletype='binned',
                       logscale=[False, False, True, True],
-                      savepdf=False, savepng=False)
+                      savepdf=False, savepng=False,
+                      outputdir=tempdir)
     # logscale=!False
     makemaps.modelMap(maplayers, logscale=[False, False, True, True],
-                      savepdf=False, savepng=False)
+                      savepdf=False, savepng=False,
+                      outputdir=tempdir)
 
 
-def test_zoom():
+def test_zoom(tempdir):
+    tempdir = str(tempdir)
     # boundaries == 'zoom'
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
@@ -159,7 +168,7 @@ def test_zoom():
     maplayers = lq.calculate()
 
     makemaps.modelMap(maplayers, boundaries='zoom', zthresh=0.3,
-                      savepdf=False, savepng=False)
+                      savepdf=False, savepng=False, outputdir=tempdir)
 
     # bounaries dictionary
     bounds = {'xmin': -122.54, 'xmax': -120.36,
@@ -169,7 +178,10 @@ def test_zoom():
 
 
 if __name__ == "__main__":
+    td1 = tempfile.TemporaryDirectory()
     test_parseMapConfig()
     test_parseConfigLayers()
-    test_modelMap()
-    test_zoom()
+    test_modelMap(td1)
+    test_zoom(td1)
+    # remove tempdir
+    shutil.rmtree(str(td1))

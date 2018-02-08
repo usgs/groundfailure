@@ -42,7 +42,7 @@ def test_assess_models():
     maplayers2 = lm.calculate()
     # Change shakemap name so that it doesn't stomp on the other
     maplayers2['model']['description']['shakemap'] = '19891018000415_ver2'
-    
+
     #model_list = [maplayers1, maplayers2]
     #test_dict1 = assess_models.concatenateModels(model_list)
     #test_dict2 = assess_models.concatenateModels(model_list, astitle='model')

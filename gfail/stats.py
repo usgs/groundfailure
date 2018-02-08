@@ -131,7 +131,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         raise Exception('probability threshold must be equal or greater '
                         'than zero')
 
-    grid = grid2D.project(projection=projs)
+    grid = grid2D.project(projection=projs, method='bilinear')
     geodictRS = grid.getGeoDict()
     cell_area_km2 = geodictRS.dx * geodictRS.dy
     model = grid.getData()
