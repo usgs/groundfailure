@@ -11,7 +11,6 @@ import gfail.logisticmodel as LM
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
-import tempfile
 import shutil
 
 homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
@@ -131,7 +130,6 @@ def test_modelMap(tempdir):
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
     # suptitle is None
-    tempdir = str(tempdir)
     makemaps.modelMap(maplayers, shakefile, suptitle=None,
                       savepdf=False, savepng=False,
                       outputdir=tempdir)
@@ -155,7 +153,7 @@ def test_modelMap(tempdir):
 
 
 def test_zoom(tempdir):
-    tempdir = str(tempdir)
+
     # boundaries == 'zoom'
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
@@ -178,10 +176,11 @@ def test_zoom(tempdir):
 
 
 if __name__ == "__main__":
-    td1 = tempfile.TemporaryDirectory()
+    #td1 = tempfile.TemporaryDirectory()
+    td1 = os.path.join(datadir, 'temporary1')
     test_parseMapConfig()
     test_parseConfigLayers()
     test_modelMap(td1)
     test_zoom(td1)
     # remove tempdir
-    shutil.rmtree(str(td1))
+    shutil.rmtree(td1)
