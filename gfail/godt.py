@@ -106,10 +106,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     # See if trimfile exists
     if trimfile is not None:
-        if ~os.path.exists(trimfile):
+        if not os.path.exists(trimfile):
             print('trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
             trimfile = None
-        if os.path.splitext(trimfile) != '.shp':
+        if os.path.splitext(trimfile)[1] != '.shp':
             print('trimfile must be a shapefile, ocean will not be trimmed')
             trimfile = None
 

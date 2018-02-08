@@ -131,10 +131,10 @@ class LogisticModel(object):
 
         # See if trimfile exists
         if trimfile is not None:
-            if ~os.path.exists(trimfile):
+            if not os.path.exists(trimfile):
                 print('trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
                 self.trimfile = None
-            elif os.path.splitext(trimfile) != '.shp':
+            elif os.path.splitext(trimfile)[1] != '.shp':
                 print('trimfile must be a shapefile, ocean will not be trimmed')
                 self.trimfile = None
             else:
