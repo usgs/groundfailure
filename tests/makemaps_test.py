@@ -178,6 +178,8 @@ def test_zoom(tempdir):
 if __name__ == "__main__":
     #td1 = tempfile.TemporaryDirectory()
     td1 = os.path.join(datadir, 'temporary1')
+    if not os.path.exists(td1):
+        os.mkdir(td1)
     test_parseMapConfig()
     test_parseConfigLayers()
     test_modelMap(td1)
