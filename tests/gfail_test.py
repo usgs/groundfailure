@@ -73,12 +73,12 @@ def test_zhu2015(tmpdir):
     if os.path.exists(default_file+'_bak'):
         shutil.copy(default_file+'_bak', default_file)
 
+    # Then do test
+    np.testing.assert_allclose(target_data, test_data)
+
     # Remove backup and tempfile
     os.remove(default_file+'_bak')
     shutil.rmtree(p)
-
-    # Then do test
-    np.testing.assert_allclose(target_data, test_data)
 
 
 def test_zhu2015_web(tmpdir):
