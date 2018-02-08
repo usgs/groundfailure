@@ -73,6 +73,10 @@ def test_zhu2015(tmpdir):
     if os.path.exists(default_file+'_bak'):
         shutil.copy(default_file+'_bak', default_file)
 
+    # Convert all nans to zeros in both sets
+    target_data[np.isnan(target_data)] = 0.0
+    test_data[np.isnan(test_data)] = 0.0
+
     # Then do test
     np.testing.assert_allclose(target_data, test_data)
 

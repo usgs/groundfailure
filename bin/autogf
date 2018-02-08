@@ -547,7 +547,7 @@ def getRecentEvents(thresholds, feed, cursor=None, landfile=None):
         if PAG:
             if 'eis' in thresholds and palert >= ALERTLEVELS.index(thresholds['eis']):
                 getShake = True
-                
+
         # Check if ShakeMap is entirely in water
         if landfile is not None and not update:
             b = box(edict['bounds']['xmin'], edict['bounds']['ymin'],
@@ -566,7 +566,7 @@ def getRecentEvents(thresholds, feed, cursor=None, landfile=None):
 
             on_land = False
             for res in result:
-                if res.intersects(b): # Does not cross -180/180
+                if res.intersects(b):
                     on_land = True
                     break
             if not on_land:
