@@ -342,8 +342,8 @@ def main(args):
         for filen in filenames:
             print('%s' % filen)
 
-        if cleanup:
-            os.remove(shakefile)
+        #if cleanup:
+        #    os.remove(shakefile)
 
 
 def getGridURL(gridurl):
