@@ -163,7 +163,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
                                                                   'bin_edges': list(lims[0]),
                                                                   'metadata': metadata,
-                                                                  'stats': stats,
+                                                                  'stats': dict(stats),
                                                                   'layer_on': on
                                                                   }
             il += 1
@@ -204,7 +204,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
                                                                   'bin_edges': list(lims[0]),
                                                                   'metadata': metadata,
-                                                                  'stats': stats,
+                                                                  'stats': dict(stats),
                                                                   'layer_on': on
                                                                   }
             iq += 1
@@ -311,6 +311,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
     web_file = os.path.join(outfolder, 'info.json')
     filenames.append(web_file)
+
     with open(web_file, 'w') as f:
         json.dump(web_dict, f)
 
@@ -510,21 +511,24 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
                         edict['lat'], edict['lon'], edict['depth'])
         file1.write(writeline)
 
-        file1.write('<p>Last updated at: %s (UTC)</p>\n'
+        file1.write('<p>Last updated at: %s (UTC)<br>'
                     % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('<p>Based on ground motion estimates from '
-                    'ShakeMap version %1.1f %s</p>\n'
+        file1.write('Based on ground motion estimates from '
+                    'ShakeMap version %1.1f %s<br>'
                     % (smdict['shakemap_version'], faulttype))
+        file1.write('<a href=https://dev-earthquake.cr.usgs.gov/data/grdfailure/background.php>Scientific Background</a></p>')
+
         if alert:
             file1.write('<h2>Summary</h2>\n')
             file1.write('<p>%s</p>' % statement)
-            
+
         else:
             statement = None
             alertLS = None
             alertLQ = None
 
         file1.write('<hr>')
+
     shakesummary = {'magnitude': edict['magnitude'],
                     'shakemap_version': smdict['shakemap_version'],
                     'date': edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),

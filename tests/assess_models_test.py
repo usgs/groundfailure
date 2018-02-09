@@ -22,6 +22,8 @@ def test_assess_models():
     conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
                              'zhu_2015.ini')
     conf = ConfigObj(conf_file)
+    conf['zhu_2015']['slopefile'] = 'global_gted_maxslope_30c.flt'
+    conf['zhu_2015']['divfactor'] = '1.'
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
     conf = correct_config_filepaths(data_path, conf)
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
@@ -30,9 +32,12 @@ def test_assess_models():
     conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
                              'zhu_2017_coastal.ini')
     conf = ConfigObj(conf_file)
+    conf['zhu_2017_coastal']['slopefile'] = 'global_gted_maxslope_30c.flt'
+    conf['zhu_2017_coastal']['divfactor'] = '1.'
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
     conf = correct_config_filepaths(data_path, conf)
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
+
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     maplayers2 = lm.calculate()
     # Change shakemap name so that it doesn't stomp on the other

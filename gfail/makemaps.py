@@ -1263,10 +1263,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         if maskthreshes[k] is not None:
             dat[dat <= maskthreshes[k]] = float('nan')
 
-        if maskthreshes[k] is not None or clear_zero:
-            dat = np.ma.array(dat, mask=np.isnan(dat))
-        else:
-            dat[np.isnan(dat)] = 0.
+        #if maskthreshes[k] is not None or clear_zero:
+        dat = np.ma.array(dat, mask=np.isnan(dat))
+        #else:
+        #    dat[np.isnan(dat)] = 0.
 
         if logscale[k]:
             norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)

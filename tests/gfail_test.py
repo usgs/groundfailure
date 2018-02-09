@@ -40,30 +40,34 @@ def test_zhu2015(tmpdir):
             p = os.path.join(str(tmpdir), "sub")
         if not os.path.exists(p):
             os.makedirs(p)
-    
+
+        # Clear paths
+        rc, so, se = get_command_output('gfail -reset')
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
-    
+
         # Run model
         runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd" % (shakegrid)
         rc, so, se = get_command_output(runcmd)
-    
+
         # Read in the testing data
         test_file = os.path.join(p, '19891018000415',
                                  '19891018000415_zhu_2015_model.tif')
         test_grid = GDALGrid.load(test_file)
         test_data = test_grid.getData()
-    
+
         # Read in target file
         target_file = os.path.join(datadir, 'loma_prieta', 'targets',
                                    '19891018000415_zhu_2015_model.tif')
     #    # To change target data:
-    #    test_grid.save(test_file)
-    #    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
-    #    rc, so, se = get_command_output(cmd)
+        #test_grid.save(test_file)
+        #cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
+        #rc, so, se = get_command_output(cmd)
+
         target_grid = GDALGrid.load(target_file)
         target_data = target_grid.getData()
+
     except Exception as e:  # So that the defaults are always put back if something above fails
         print(e)
 
@@ -105,20 +109,22 @@ def test_zhu2015_web(tmpdir):
         else:
             shutil.rmtree(p)
             os.makedirs(p)
-    
+
+        # Clear paths
+        rc, so, se = get_command_output('gfail -reset')
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
-    
+
         # Run model
         conf = os.path.join(datadir, 'test_conf')
         runcmd = "gfail %s %s -w --alert" % (conf, shakegrid)
         rc, so, se = get_command_output(runcmd)
-    
+
         # Make PDL directory
         pdldir = os.path.join(p, '19891018000415')
         pdl.prepare_pdl_directory(pdldir)
-    
+
         # Transfer dry run
         transfer_cmd = pdl.transfer(pdldir, 'None', dryrun=True)
     except Exception as e:  # So that defaults are put back even if something goes wrong
@@ -133,7 +139,7 @@ def test_zhu2015_web(tmpdir):
     shutil.rmtree(p)
 
     # Then do test
-    assert '--property-alertLQ=green' in transfer_cmd
+    assert '--property-alertLQ=yellow' in transfer_cmd
     assert '--property-alertLS=yellow' in transfer_cmd
     assert '--type=groundfailure' in transfer_cmd
     assert '--property-title=Earthquake-Induced Ground Failure' in transfer_cmd

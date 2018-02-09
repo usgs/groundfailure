@@ -48,9 +48,9 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
     if statprobthresh is not None:
         grid = grid[grid > statprobthresh]
 
-    stats['Max'] = np.nanmax(grid)
-    stats['Median'] = np.nanmedian(grid)
-    stats['Std'] = np.nanstd(grid)
+    stats['Max'] = float(np.nanmax(grid))
+    stats['Median'] = float(np.nanmedian(grid))
+    stats['Std'] = float(np.nanstd(grid))
     Hagg = computeHagg(grid2D, probthresh=0.0, shakefile=shakefile,
                        shakethreshtype=shakethreshtype, shakethresh=shakethresh)
     if type(Hagg) != list and type(Hagg) != list:
@@ -59,10 +59,10 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
 
     for T, H in zip(shakethresh, Hagg):
         if T == 0.:
-            stats['Hagg'] = H
+            stats['Hagg'] = float(H)
         else:
             newkey = 'Hagg_%1.2fg' % (T/100.)
-            stats[newkey] = H
+            stats[newkey] = float(H)
 
     Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
                          shakethreshtype=shakethreshtype, shakethresh=0.0)
@@ -72,10 +72,10 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
 
     for T, P in zip(probthresh, Parea):
         if T == 0.:
-            stats['Parea'] = P
+            stats['Parea'] = float(P)
         else:
             newkey = 'Parea_%1.2f' % T
-            stats[newkey] = P
+            stats[newkey] = float(P)
 
     return stats
 
@@ -131,7 +131,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         raise Exception('probability threshold must be equal or greater '
                         'than zero')
 
-    grid = grid2D.project(projection=projs)
+    grid = grid2D.project(projection=projs, method='bilinear')
     geodictRS = grid.getGeoDict()
     cell_area_km2 = geodictRS.dx * geodictRS.dy
     model = grid.getData()

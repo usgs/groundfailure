@@ -22,7 +22,12 @@ def test_zhu2015():
                              'zhu_2015.ini')
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
+    # Check slopefile trimming
+    conf['zhu_2015']['slopefile'] = 'global_gted_maxslope_30c.flt'
     conf = correct_config_filepaths(data_path, conf)
+    # Run with divfactor of 1
+    conf['zhu_2015']['divfactor'] = '1.'
+
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     maplayers = lm.calculate()
@@ -30,8 +35,8 @@ def test_zhu2015():
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
     # To change target data:
-    # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2015.grd'))
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2015.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -49,6 +54,8 @@ def test_zhu_2017_general():
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
     conf = correct_config_filepaths(data_path, conf)
+    # Run with divfactor of 1
+    conf['zhu_2017_general']['divfactor'] = '1.'
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     maplayers = lm.calculate()
@@ -57,13 +64,34 @@ def test_zhu_2017_general():
     test_data = pgrid.getData()
 
     # To change target data:
-    # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'zhu2017_general.grd'))
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_general.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
                                'zhu2017_general.grd')
+    target_grid = GMTGrid.load(target_file)
+    target_data = target_grid.getData()
+
+    # Assert
+    np.testing.assert_allclose(target_data, test_data)
+
+    # Run with divfactor of 4
+    conf['zhu_2017_general']['divfactor'] = '4.'
+    shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
+    lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
+    maplayers = lm.calculate()
+
+    pgrid = maplayers['model']['grid']
+    test_data = pgrid.getData()
+
+    # To change target data:
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_general_div4.grd'))
+
+    # Load target
+    target_file = os.path.join(datadir, 'loma_prieta', 'targets',
+                               'zhu2017_general_div4.grd')
     target_grid = GMTGrid.load(target_file)
     target_data = target_grid.getData()
 
@@ -77,6 +105,8 @@ def test_zhu_2017_coastal():
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
     conf = correct_config_filepaths(data_path, conf)
+    # Run with divfactor of 1
+    conf['zhu_2017_coastal']['divfactor'] = '1.'
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     maplayers = lm.calculate()
@@ -85,9 +115,8 @@ def test_zhu_2017_coastal():
     test_data = pgrid.getData()
 
     # To change target data:
-    # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'zhu2017_coastal.grd'))
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_coastal.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -105,6 +134,8 @@ def test_nowicki_2014_global():
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
     conf = correct_config_filepaths(data_path, conf)
+    # Run with divfactor of 1
+    conf['nowicki_2014_global']['divfactor'] = '1.'
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     maplayers = lm.calculate()
@@ -113,9 +144,8 @@ def test_nowicki_2014_global():
     test_data = pgrid.getData()
 
     # To change target data:
-    # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'nowicki_2014_global.grd'))
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'nowicki_2014_global.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -141,9 +171,8 @@ def test_jessee_2017():
     test_data = pgrid.getData()
 
     # To change target data:
-    # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'jessee_2017.grd'))
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'jessee_2017.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -160,6 +189,7 @@ def test_godt_2008():
     conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
                              'godt_2008.ini')
     conf = ConfigObj(conf_file)
+    conf['godt_2008']['divfactor'] = '1.'
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
     conf = correct_config_filepaths(data_path, conf)
     shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')

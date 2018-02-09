@@ -42,6 +42,8 @@ def test_autogf(tmpdir):
         if not os.path.exists(p):
             os.makedirs(p)
 
+        # Clear paths
+        rc, so, se = get_command_output('gfail -reset')
         # Modify gfail defaults
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
@@ -77,3 +79,4 @@ if __name__ == "__main__":
     td1 = tempfile.TemporaryDirectory()
     test_autogf(td1)
     print('autogf tests passed')
+    shutil.rmtree(td1)

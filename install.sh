@@ -3,6 +3,7 @@
 echo "Path:"
 echo $PATH
 
+# Name of new environment (must also change this in .yml files)
 VENV=gf
 
 # Is the reset flag set?
