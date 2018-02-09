@@ -26,8 +26,6 @@ from mapio.geodict import GeoDict
 import fiona
 import rasterio.mask
 import rasterio
-from shapely.geometry import shape, box
-from shapely.strtree import STRtree
 
 from impactutils.io.cmd import get_command_output
 
@@ -926,40 +924,71 @@ def validateTerms(cmodel, coeffs, layers):
 
 def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=0.):
     """Use the mask (a shapefile) to trim offshore areas
-    TODO speed this up using STRtree
-    """
-    tempdir = tempfile.mkdtemp()
-    tempfilen = os.path.join(tempdir, 'temp.bil')
-    tempfileg = os.path.join(tempdir, 'temp.tif')
-    tempfileg2 = os.path.join(tempdir, 'temp2.tif')
-    GDALGrid.copyFromGrid(grid2D).save(tempfilen)
-    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (tempfilen, tempfileg)
-    rc, so, se = get_command_output(cmd)
-    if rc:
-        with fiona.open(mask, 'r') as shapefile:
-            features = [shape(feature["geometry"]) for feature in shapefile]
-        #gdict = grid2D.getGeoDict()
-        #b = box(gdict.xmin, gdict.ymin,
-        #        gdict.xmax, gdict.ymax)
-        #s = STRtree(features)
-        #result = s.query(b)
-        #polys = []
-        #for res in result:  # convert multipolygon to polygons
-        #    for poly in shape(res['geometry']):
-        #        polys.append(poly)
 
-        with rasterio.open(tempfileg) as src:
-            out_image, out_transform = rasterio.mask.mask(src, features,
+    Args:
+        grid2D: MapIO grid2D object of results that need trimming
+        mask: list of shapely polygon features already loaded in or string of file extension of shapefile to use
+            for clipping
+        all_touched (bool): if True, won't mask cells that touch any part of polygon edge
+        crop (bool): crop boundaries of raster to new masked area
+        invert (bool): if True, will mask areas that do not overlap with the polygon
+        nodata (flt): value to use as mask
+    """
+    gdict = grid2D.getGeoDict()
+
+    tempdir = tempfile.mkdtemp()
+    tempfile1 = os.path.join(tempdir, 'temp.tif')
+    tempfile2 = os.path.join(tempdir, 'temp2.tif')
+
+    # Get shapes ready
+    if type(mask) == str:
+        with fiona.open(mask, 'r') as shapefile:
+            hits = list(shapefile.items(bbox=(gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax)))
+            features = [feature[1]["geometry"] for feature in hits]
+            #hits = list(shapefile)
+            #features = [feature["geometry"] for feature in hits]
+    elif type(mask) == list:
+        features = mask
+    else:
+        raise Exception('mask is neither a link to a shapefile or a list of shapely shapes, cannot proceed')
+
+    tempfilen = os.path.join(tempdir, 'temp.bil')
+    tempfile1 = os.path.join(tempdir, 'temp.tif')
+    tempfile2 = os.path.join(tempdir, 'temp2.tif')
+    GDALGrid.copyFromGrid(grid2D).save(tempfilen)
+    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (tempfilen, tempfile1)
+    rc, so, se = get_command_output(cmd)
+
+    # #Convert grid2D to rasterio format
+    #
+    # source_crs = rasterio.crs.CRS.from_string(gdict.projection)
+    # src_transform = rasterio.Affine.from_gdal(gdict.xmin - gdict.dx/2.0,
+    #                                           gdict.dx, 0.0,  gdict.ymax + gdict.dy/2.0,
+    #                                           0.0, -1*gdict.dy)  # from mapio.grid2D
+    # with rasterio.open(tempfile1, 'w', driver='GTIff',
+    #                    height=gdict.ny,    # numpy of rows
+    #                    width=gdict.nx,     # number of columns
+    #                    count=1,                        # number of bands
+    #                    dtype=rasterio.dtypes.float64,  # this must match the dtype of our array
+    #                    crs=source_crs,
+    #                    transform=src_transform) as src_raster:
+    #     src_raster.write(grid2D.getData().astype(float), 1)  # optional second parameter is the band number to write to
+    #     #ndvi_raster.nodata = -1  # set the raster's nodata value
+
+    if rc:
+        with rasterio.open(tempfile1, 'r') as src_raster:
+            out_image, out_transform = rasterio.mask.mask(src_raster, features,
                                                           all_touched=all_touched,
                                                           crop=crop)
-            out_meta = src.meta.copy()
-        out_meta.update({"driver": "GTiff",
-                         "height": out_image.shape[1],
-                         "width": out_image.shape[2],
-                         "transform": out_transform})
-        with rasterio.open(tempfileg2, "w", **out_meta) as dest:
-            dest.write(out_image)
-        newgrid = GDALGrid.load(tempfileg2)
+            out_meta = src_raster.meta.copy()
+            out_meta.update({"driver": "GTiff",
+                             "height": out_image.shape[1],
+                             "width": out_image.shape[2],
+                             "transform": out_transform})
+            with rasterio.open(tempfile2, "w", **out_meta) as dest:
+                dest.write(out_image)
+
+        newgrid = GDALGrid.load(tempfile2)
 
     else:
         raise Exception('ocean trimming failed')

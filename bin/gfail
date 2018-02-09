@@ -151,6 +151,19 @@ def main(args):
         if args.make_webpage:
             results = []
 
+        # pre-read in ocean trimming file polygons so only do this step once
+        if args.trimfile is not None:
+            if not os.path.exists(args.trimfile):
+                print('trimfile defined does not exist: %s\nOcean will not be trimmed' % args.trimfile)
+                trimfile = None
+            elif os.path.splitext(args.trimfile)[1] != '.shp':
+                print('trimfile must be a shapefile, ocean will not be trimmed')
+                trimfile = None
+            else:
+                trimfile = args.trimfile
+        else:
+            trimfile = None
+
         # Loop over config files
         for conf in configs:
             modelname = conf.keys()[0]
@@ -164,7 +177,7 @@ def main(args):
                     saveinputs=args.save_inputs,
                     bounds=bounds,
                     numstd=float(args.std),
-                    trimfile=args.trimfile)
+                    trimfile=trimfile)
                 maplayers = lm.calculate()
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(
@@ -174,11 +187,12 @@ def main(args):
                     saveinputs=args.save_inputs,
                     bounds=bounds,
                     numstd=float(args.std),
-                    trimfile=args.trimfile)
+                    trimfile=trimfile)
             else:
                 print('Unknown model function specified in config for %s '
                       'model, skipping to next config' % modelfunc)
                 continue
+
             # time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
             # filename = ('%s_%s_%s' % (eventid, modelname, time1))
 
@@ -251,6 +265,7 @@ def main(args):
                     faultfile=args.finite_fault)
                 for filen in filenames1:
                     filenames.append(filen)
+
             if args.make_webpage:
                 # Compile into list of results for later
                 results.append(maplayers)
