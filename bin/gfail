@@ -10,7 +10,7 @@ import urllib.error
 import urllib.parse
 import tempfile
 import re
-import shutil
+import os
 
 
 # third party imports
@@ -328,7 +328,7 @@ def main(args):
             print('%s' % filen)
 
         if cleanup:
-            shutil.rm(shakefile)
+            os.remove(shakefile)
 
 
 def getGridURL(gridurl):

@@ -272,24 +272,19 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     # Read in the cohesion and friction files and duplicate layers so they
     # are same shape as slope structure
-    cohesion = np.repeat(
-        GDALGrid.load(cohesionfile,
-                      samplegeodict=shkgdict,
-                      resample=True,
-                      method='nearest').getData()[:, :, np.newaxis]/codiv,
-        7,
-        axis=2)
+    tempco = GDALGrid.load(cohesionfile,
+                           samplegeodict=shkgdict,
+                           resample=True,
+                           method='nearest')
+    tempco = tempco.getData()[:, :, np.newaxis]/codiv
+    cohesion = np.repeat(tempco, 7, axis=2)
     cohesion[cohesion == -999.9] = nodata_cohesion
     cohesion = np.nan_to_num(cohesion)
     cohesion[cohesion == 0] = nodata_cohesion
-    friction = np.repeat(
-        GDALGrid.load(frictionfile,
-                      samplegeodict=shkgdict,
-                      resample=True,
-                      method='nearest').getData().astype(float)[:, :,
-                                                                np.newaxis],
-        7,
-        axis=2)
+    tempfric = GDALGrid.load(frictionfile, samplegeodict=shkgdict,
+                             resample=True, method='nearest')
+    tempfric = tempfric.getData().astype(float)[:, :, np.newaxis]
+    friction = np.repeat(tempfric, 7, axis=2)
     friction[friction == -9999] = nodata_friction
     friction = np.nan_to_num(friction)
     friction[friction == 0] = nodata_friction
