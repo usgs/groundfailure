@@ -168,6 +168,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     # Do we need to subdivide baselayer?
     resample = False
+
     if 'divfactor' in config['godt_2008'].keys():
         divfactor = float(config['godt_2008']['divfactor'])
         if divfactor != 1.:
@@ -210,6 +211,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         shakemap = ShakeGrid.load(shakefile, adjust='res', resample=False)
 
     shkgdict = shakemap.getGeoDict()  # Get updated geodict
+
     t2 = shakemap.getEventDict()
     M = t2['magnitude']
     event_id = t2['event_id']

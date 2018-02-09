@@ -26,6 +26,8 @@ from mapio.geodict import GeoDict
 import fiona
 import rasterio.mask
 import rasterio
+from shapely.geometry import shape, box
+from shapely.strtree import STRtree
 
 from impactutils.io.cmd import get_command_output
 
@@ -924,6 +926,7 @@ def validateTerms(cmodel, coeffs, layers):
 
 def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=0.):
     """Use the mask (a shapefile) to trim offshore areas
+    TODO speed this up using STRtree
     """
     tempdir = tempfile.mkdtemp()
     tempfilen = os.path.join(tempdir, 'temp.bil')
@@ -934,7 +937,17 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=
     rc, so, se = get_command_output(cmd)
     if rc:
         with fiona.open(mask, 'r') as shapefile:
-            features = [feature["geometry"] for feature in shapefile]
+            features = [shape(feature["geometry"]) for feature in shapefile]
+        #gdict = grid2D.getGeoDict()
+        #b = box(gdict.xmin, gdict.ymin,
+        #        gdict.xmax, gdict.ymax)
+        #s = STRtree(features)
+        #result = s.query(b)
+        #polys = []
+        #for res in result:  # convert multipolygon to polygons
+        #    for poly in shape(res['geometry']):
+        #        polys.append(poly)
+
         with rasterio.open(tempfileg) as src:
             out_image, out_transform = rasterio.mask.mask(src, features,
                                                           all_touched=all_touched,

@@ -275,9 +275,10 @@ def main(args):
                 cursor.execute("UPDATE shakemap SET jsonfeed = ?, url = ?, finitefault=? WHERE eventcode = ? AND version =?",
                                (jsonfeed, url, finitefault, event['eventcode'], event['version']))
                 db.commit()
-                cursor.execute("UPDATE shakemap SET Hagg05LS = ?, Hagg05LQ = ?, Parea01LS = ?, Parea01LQ = ? WHERE eventcode = ? AND version =?",
-                               (LSsta[0], LQsta[0], LSsta[1], LQsta[1], event['eventcode'], event['version']))
-                db.commit()
+                if not empty:
+                    cursor.execute("UPDATE shakemap SET Hagg05LS = ?, Hagg05LQ = ?, Parea01LS = ?, Parea01LQ = ? WHERE eventcode = ? AND version =?",
+                                   (LSsta[0], LQsta[0], LSsta[1], LQsta[1], event['eventcode'], event['version']))
+                    db.commit()
 
             # Clean up finite fault temp geojson files
             if finitefault == 1:
