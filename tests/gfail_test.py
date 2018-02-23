@@ -81,7 +81,7 @@ def test_zhu2015(tmpdir):
     shutil.rmtree(p)
 
     # Then do test
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
 def test_zhu2015_web(tmpdir):
