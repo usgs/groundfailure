@@ -45,7 +45,7 @@ def test_zhu2015():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
 def test_zhu_2017_general():
@@ -74,7 +74,7 @@ def test_zhu_2017_general():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
     # Run with divfactor of 4
     conf['zhu_2017_general']['divfactor'] = '4.'
@@ -96,7 +96,7 @@ def test_zhu_2017_general():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
 def test_zhu_2017_coastal():
@@ -125,7 +125,7 @@ def test_zhu_2017_coastal():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
 def test_nowicki_2014_global():
@@ -154,7 +154,7 @@ def test_nowicki_2014_global():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
 def test_jessee_2017():
@@ -181,8 +181,7 @@ def test_jessee_2017():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data,
-                               rtol=1e-6)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
 def test_godt_2008():
@@ -199,8 +198,8 @@ def test_godt_2008():
     test_data = pgrid.getData()
 
     # To change target data:
-    # pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    # pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
+    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
     #     'godt_2008.grd'))
 
     # Load target
@@ -210,7 +209,7 @@ def test_godt_2008():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
 if __name__ == "__main__":

@@ -252,7 +252,7 @@ def test_checkTerm():
 
     term2 = 'MWextrajunk'
     term, tterm, timeField = LM.checkTerm(term2, layers)
-    assert term == "self.shakemap.edict['magnitude']extrajunk"
+    assert term == "self.eventdict['magnitude']extrajunk"
     assert tterm == 'extrajunk'
 
 
