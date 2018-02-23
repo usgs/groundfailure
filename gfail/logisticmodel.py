@@ -10,7 +10,6 @@ import os.path
 import re
 import collections
 import copy
-import subprocess
 # from scipy import sparse
 import shutil
 import tempfile
@@ -23,13 +22,9 @@ from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
-import fiona
-import rasterio.mask
-import rasterio
-
-from impactutils.io.cmd import get_command_output
 
 from gfail.temphdf import TempHdf
+from gfail.spatial import quickcut, trim_ocean
 
 # temporary until mapio is updated
 import warnings
@@ -216,25 +211,50 @@ class LogisticModel(object):
 
         # Make temporary directory for hdf5 pytables file storage
         self.tempdir = tempfile.mkdtemp()
-        # Apply to shakemap
-        # now load the shakemap, resampling and padding if necessary
-        start = timer()
-        temp = ShakeGrid.load(shakefile, samplegeodict=sampledict,
-                              resample=True, doPadding=True,
-                              adjust='res')
-        self.shakemap = TempHdf(temp, os.path.join(self.tempdir,
-                                                   'shakemap.hdf5'))
-        del(temp)
-        print('Shakemap loading: %1.1f sec' % (timer() - start))
 
-        # take uncertainties into account
+        # now load the shakemap, resampling and padding if necessary
+        temp = ShakeGrid.load(shakefile, adjust='res')
+        self.shakedict = temp.getShakeDict()
+        self.eventdict = temp.getEventDict()
+        self.shakemap = {}
+        for gm in ['pga', 'pgv']:  # Just read them both in, may need them for thresholds
+            junkfile = os.path.join(self.tempdir, 'temp.bil')
+            GDALGrid.copyFromGrid(temp.getLayer(gm)).save(junkfile)
+            if gm in self.interpolations.keys():
+                intermeth = self.interpolations[gm]
+            else:
+                intermeth = 'bilinear'
+            junkgrid = quickcut(junkfile, sampledict, precise=True,
+                       method=intermeth)
+            self.shakemap[gm] = TempHdf(junkgrid, os.path.join(self.tempdir, '%s.hdf5' % gm))
+            os.remove(junkfile)
+        del(temp)
+
+        # get updated geodict
+        sampledict = junkgrid.getGeoDict()
+
+        # take uncertainties into account, if available
         if uncertfile is not None:
+            self.uncert={}
             try:
-                temp = ShakeGrid.load(uncertfile, samplegeodict=sampledict,
-                                      resample=True, doPadding=True,
-                                      adjust='res')
-                self.uncert = TempHdf(temp, os.path.join(self.tempdir,
-                                                         'uncert.hdf5'))
+                temp = ShakeGrid.load(uncertfile)  # Only read in the ones that will be needed
+                for gm in self.gmused:
+                    if 'pgv' in gm:
+                        gmsimp = 'pgv'
+                    elif 'pga' in gm:
+                        gmsimp = 'pga'
+                    elif 'mmi' in gm:
+                        gmsimp = 'mmi'
+                    junkfile = os.path.join(self.tempdir, 'temp.bil')
+                    GDALGrid.copyFromGrid(temp.getLayer('std%s' % gmsimp)).save(junkfile)
+                    if gmsimp in self.interpolations.keys():
+                        intermeth = self.interpolations[gmsimp]
+                    else:
+                        intermeth = 'bilinear'
+                    junkgrid = quickcut(junkfile, sampledict, precise=True,
+                               method=intermeth)
+                    self.uncert['std' + gmsimp] = TempHdf(junkgrid, os.path.join(self.tempdir, 'std%s.hdf5' % gmsimp))
+                    os.remove(junkfile)
                 del(temp)
             except:
                 print('Could not read uncertainty file, ignoring '
@@ -262,53 +282,20 @@ class LogisticModel(object):
                             layerfile = lfile
                             ftype = getFileType(layerfile)
                             interp = self.interpolations[layername]
-                            if ftype == 'gmt':
-                                temp = GMTGrid.load(layerfile,
-                                                    sampledict,
-                                                    resample=True,
-                                                    method=interp,
-                                                    doPadding=True)
-                            elif ftype == 'esri':
-                                temp = GDALGrid.load(layerfile,
-                                                     sampledict,
-                                                     resample=True,
-                                                     method=interp,
-                                                     doPadding=True)
-                            else:
-                                msg = ('Layer %s (file %s) does not appear '
-                                       'to be a valid GMT or ESRI file.'
-                                       % (layername, layerfile))
-                                raise Exception(msg)
+                            temp = quickcut(layerfile, sampledict, precise=True,
+                                            method=interp)
                             self.layerdict[layername] = TempHdf(
                                 temp, os.path.join(self.tempdir,
                                                    '%s.hdf5' % layername))
                             del(temp)
             else:
                 interp = self.interpolations[layername]
-
-                # If resolution is too high, first create temporary geotiff
-                # snippet using gdal because mapio can't handle cutting high
-                # res files
-                templyrname = os.path.join(self.tempdir, '%s.tif' % layername)
-
-                # cut piece out quickly using gdal
-                newgdict = quickcut(layerfile, templyrname, sampledict,
-                                    extrasamp=5., method='nearest')
-
-                # Then load it in using mapio
-                if newgdict.isAligned(sampledict):
-                    temp = GDALGrid.load(templyrname,
-                                         sampledict,
-                                         resample=False)
-                else:
-                    temp = GDALGrid.load(templyrname,
-                                         sampledict,
-                                         resample=True,
-                                         method=interp,
-                                         doPadding=True)
-
+                temp = quickcut(layerfile, sampledict, precise=True, method=interp)
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
+                td = temp.getGeoDict()
+                if td != sampledict:
+                    raise Exception('Geodictionaries of resampled files do not match')
 
                 if layerfile == self.slopefile:
                     flag = 0
@@ -345,21 +332,8 @@ class LogisticModel(object):
 
         if didslope is False and self.slopefile is not None:
             # Slope didn't get read in yet
-
-            # If resolution is too high, first create temporary geotiff snippet
-            # using gdal because mapio can't handle cutting high res files.
-            templyrname = os.path.join(self.tempdir, 'tempslope.tif')
-
-            # Cut piece out quickly using gdal
-            newgdict = quickcut(self.slopefile, templyrname, sampledict,
-                                extrasamp=5., method='nearest')
-
-            # Then load it in using mapio
-            if newgdict.isAligned(sampledict):
-                temp = GDALGrid.load(templyrname, sampledict, resample=False)
-            else:
-                temp = GDALGrid.load(templyrname, sampledict, resample=True,
-                                     method=interp, doPadding=True)
+            temp = quickcut(self.slopefile, sampledict, precise=True,
+                            method='bilinear')
             flag = 0
             if self.slopemin == 'none' and self.slopemax == 'none':
                 flag = 1
@@ -403,62 +377,22 @@ class LogisticModel(object):
 
             # Find the term with the shakemap input and replace for these
             # nuggets.
-            for k, nug in enumerate(self.nuggets):
-                if ("self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='pga')" in nug):
-                    self.nugmin[k] = self.nugmin[k].replace(
-                        "self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='pga')",
-                        "(np.exp(np.log(self.shakemap.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='pga')) - "
-                        "self.numstd * self.uncert.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='stdpga')))")
-                    self.nugmax[k] = self.nugmax[k].replace(
-                        "self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='pga')",
-                        "(np.exp(np.log(self.shakemap.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='pga')) + "
-                        "self.numstd * self.uncert.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='stdpga')))")
-                elif ("self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='pgv')" in nug):
-                    self.nugmin[k] = self.nugmin[k].replace(
-                        "self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='pgv')",
-                        "(np.exp(np.log(self.shakemap.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='pgv')) - "
-                        "self.numstd * self.uncert.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='stdpgv')))")
-                    self.nugmax[k] = self.nugmax[k].replace(
-                        "self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='pgv')",
-                        "(np.exp(np.log(self.shakemap.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='pgv')) + "
-                        "self.numstd * self.uncert.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='stdpgv')))")
-                elif ("self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='mmi')" in nug):
-                    self.nugmin[k] = self.nugmin[k].replace(
-                        "self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='mmi')",
-                        "(np.exp(np.log(self.shakemap.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='mmi')) - "
-                        "self.numstd * self.uncert.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='stdmmi')))")
-                    self.nugmax[k] = self.nugmax[k].replace(
-                        "self.shakemap.getSlice(rowstart, rowend, colstart, "
-                        "colend, name='mmi')",
-                        "(np.exp(np.log(self.shakemap.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='mmi')) + "
-                        "self.numstd * self.uncert.getSlice(rowstart, "
-                        "rowend, colstart, colend, name='stdmmi')))")
+            for gm in ['pga', 'mmi', 'pgv']:
+                for k, nug in enumerate(self.nuggets):
+                    tempnug = "self.shakemap['%s'].getSlice(rowstart, rowend, colstart, colend, name='%s')" % (gm, gm)
+                    if tempnug in nug:
+                        newnug = "np.exp(np.log(%s) - self.numstd * self.uncert['std%s'].getSlice(rowstart, rowend, colstart, colend, name='std%s'))" % (tempnug, gm, gm)
+                        self.nugmin[k] = self.nugmin[k].replace(tempnug, newnug)
+                        newnug = "np.exp(np.log(%s) + self.numstd * self.uncert['std%s'].getSlice(rowstart, rowend, colstart, colend, name='std%s'))" % (tempnug, gm, gm)
+                        self.nugmax[k] = self.nugmax[k].replace(tempnug, newnug)
+
             self.equationmin = ' + '.join(self.nugmin)
             self.equationmax = ' + '.join(self.nugmax)
         else:
             self.equationmin = None
             self.equationmax = None
 
-        self.geodict = self.shakemap.getGeoDict()
+        self.geodict = sampledict
 
     def getEquations(self):
         """
@@ -498,10 +432,10 @@ class LogisticModel(object):
             `the description <https://github.com/usgs/groundfailure#api-for-model-output>`_
             of the structure.
         """
-
+        tk = list(self.shakemap.keys())[0]
         # Figure out what slices to do
         rowstarts, rowends, colstarts, colends = \
-            self.shakemap.getSliceDiv(rowmax, colmax)
+            self.shakemap[tk].getSliceDiv(rowmax, colmax)
 
         # Make empty matrix to fill
         X = np.empty([self.geodict.ny, self.geodict.nx])
@@ -519,11 +453,11 @@ class LogisticModel(object):
             P[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
 
         if 'minpgv' in self.config[self.model].keys():
-            pgv = self.shakemap.getSlice(None, None, None, None, name='pgv')
+            pgv = self.shakemap['pgv'].getSlice(None, None, None, None, name='pgv')
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
 
         if 'minpga' in self.config[self.model].keys():
-            pga = self.shakemap.getSlice(None, None, None, None, name='pga')
+            pga = self.shakemap['pga'].getSlice(None, None, None, None, name='pga')
             P[pga < float(self.config[self.model]['minpga'])] = 0.0
 
         if 'coverage' in self.config[self.model].keys():
@@ -550,13 +484,13 @@ class LogisticModel(object):
                 Pmax[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
 
             if 'minpgv' in self.config[self.model].keys():
-                pgv = self.shakemap.getSlice(
+                pgv = self.shakemap['pgv'].getSlice(
                     None, None, None, None, name='pgv')
                 Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
                 Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
 
             if 'minpga' in self.config[self.model].keys():
-                pga = self.shakemap.getSlice(
+                pga = self.shakemap['pgv'].getSlice(
                     None, None, None, None, name='pga')
                 Pmin[pga < float(self.config[self.model]['minpga'])] = 0.0
                 Pmax[pga < float(self.config[self.model]['minpga'])] = 0.0
@@ -595,17 +529,16 @@ class LogisticModel(object):
         else:
             units5 = 'probability'
 
-        temp = self.shakemap.getShakeDict()
         shakedetail = (
             '%s_ver%s'
-            % (temp['shakemap_id'],
-               temp['shakemap_version']))
+            % (self.shakedict['shakemap_id'],
+               self.shakedict['shakemap_version']))
         description = {
             'name': self.modelrefs['shortref'],
             'longref': self.modelrefs['longref'],
             'units': units5,
             'shakemap': shakedetail,
-            'event_id': self.shakemap.edict['event_id'],
+            'event_id': self.eventdict['event_id'],
             'parameters': {'slopemin': self.slopemin,
                            'slopemax': self.slopemax,
                            'modeltype': self.modeltype}}
@@ -687,8 +620,9 @@ class LogisticModel(object):
 
                 if getkey in rdict:
                     continue
+                
 
-                layer = self.shakemap.getSlice(
+                layer = self.shakemap[getkey].getSlice(
                     None, None, None, None, name=getkey)
                 rdict[getkey] = {
                     'grid': Grid2D(layer, self.geodict),
@@ -700,7 +634,7 @@ class LogisticModel(object):
                     }
                 }
                 if self.uncert is not None:
-                    uncertlayer = self.uncert.getSlice(
+                    uncertlayer = self.uncert[getkey].getSlice(
                         None, None, None, None, name='std'+getkey)
                     layer1 = np.exp(np.log(layer) - uncertlayer)
                     rdict[getkey + 'modelmin'] = {
@@ -922,132 +856,6 @@ def validateTerms(cmodel, coeffs, layers):
     return (terms, timeField)
 
 
-def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=0.):
-    """Use the mask (a shapefile) to trim offshore areas
-
-    Args:
-        grid2D: MapIO grid2D object of results that need trimming
-        mask: list of shapely polygon features already loaded in or string of file extension of shapefile to use
-            for clipping
-        all_touched (bool): if True, won't mask cells that touch any part of polygon edge
-        crop (bool): crop boundaries of raster to new masked area
-        invert (bool): if True, will mask areas that do not overlap with the polygon
-        nodata (flt): value to use as mask
-    """
-    gdict = grid2D.getGeoDict()
-
-    tempdir = tempfile.mkdtemp()
-    tempfile1 = os.path.join(tempdir, 'temp.tif')
-    tempfile2 = os.path.join(tempdir, 'temp2.tif')
-
-    # Get shapes ready
-    if type(mask) == str:
-        with fiona.open(mask, 'r') as shapefile:
-            hits = list(shapefile.items(bbox=(gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax)))
-            features = [feature[1]["geometry"] for feature in hits]
-            #hits = list(shapefile)
-            #features = [feature["geometry"] for feature in hits]
-    elif type(mask) == list:
-        features = mask
-    else:
-        raise Exception('mask is neither a link to a shapefile or a list of shapely shapes, cannot proceed')
-
-    tempfilen = os.path.join(tempdir, 'temp.bil')
-    tempfile1 = os.path.join(tempdir, 'temp.tif')
-    tempfile2 = os.path.join(tempdir, 'temp2.tif')
-    GDALGrid.copyFromGrid(grid2D).save(tempfilen)
-    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (tempfilen, tempfile1)
-    rc, so, se = get_command_output(cmd)
-
-    # #Convert grid2D to rasterio format
-    #
-    # source_crs = rasterio.crs.CRS.from_string(gdict.projection)
-    # src_transform = rasterio.Affine.from_gdal(gdict.xmin - gdict.dx/2.0,
-    #                                           gdict.dx, 0.0,  gdict.ymax + gdict.dy/2.0,
-    #                                           0.0, -1*gdict.dy)  # from mapio.grid2D
-    # with rasterio.open(tempfile1, 'w', driver='GTIff',
-    #                    height=gdict.ny,    # numpy of rows
-    #                    width=gdict.nx,     # number of columns
-    #                    count=1,                        # number of bands
-    #                    dtype=rasterio.dtypes.float64,  # this must match the dtype of our array
-    #                    crs=source_crs,
-    #                    transform=src_transform) as src_raster:
-    #     src_raster.write(grid2D.getData().astype(float), 1)  # optional second parameter is the band number to write to
-    #     #ndvi_raster.nodata = -1  # set the raster's nodata value
-
-    if rc:
-        with rasterio.open(tempfile1, 'r') as src_raster:
-            out_image, out_transform = rasterio.mask.mask(src_raster, features,
-                                                          all_touched=all_touched,
-                                                          crop=crop)
-            out_meta = src_raster.meta.copy()
-            out_meta.update({"driver": "GTiff",
-                             "height": out_image.shape[1],
-                             "width": out_image.shape[2],
-                             "transform": out_transform})
-            with rasterio.open(tempfile2, "w", **out_meta) as dest:
-                dest.write(out_image)
-
-        newgrid = GDALGrid.load(tempfile2)
-
-    else:
-        raise Exception('ocean trimming failed')
-        print(se)
-
-    shutil.rmtree(tempdir)
-    return newgrid
-
-
-def quickcut(filename, tempname, gdict, extrasamp=5, method='nearest'):
-    """
-    Use gdal to trim a large global file down quickly so mapio can read it
-    efficiently.
-    Using subprocess approach because ``gdal.Translate`` doesn't hang on the
-    command until the file is created which causes problems in the next steps.
-    Args:
-        filename (str): File path to original input file (raster).
-        tempname (str): File path to desired location of clipped part of
-            filename.
-        gdict (geodict): Geodictionary to cut around and align with.
-        extrasamp (int): Number of extra cells to cut around each edge of
-            geodict to have resampling buffer for future steps.
-        method (str): If resampling is necessary, method to use.
-    Returns:
-        dict: Geodict for new file that was cut and also creates the file in
-        the tempname location.
-    """
-    try:
-        filegdict = ShakeGrid.getFileGeoDict(filename, adjust='res')
-    except:
-        try:
-            filegdict = GDALGrid.getFileGeoDict(filename)
-        except:
-            try:
-                filegdict = GMTGrid.getFileGeoDict(filename)
-            except:
-                raise Exception('Cannot get geodict for %s' % filename)
-
-    filegdict = filegdict[0]
-    tempgdict = GeoDict.createDictFromBox(
-        gdict.xmin, gdict.xmax, gdict.ymin, gdict.ymax,
-        filegdict.dx, filegdict.dy, inside=True)
-    egdict = filegdict.getBoundsWithin(tempgdict)
-
-    ulx = egdict.xmin - extrasamp * egdict.dx
-    uly = egdict.ymax + extrasamp * egdict.dy
-    lrx = egdict.xmax + extrasamp * egdict.dx
-    lry = egdict.ymin - extrasamp * egdict.dy
-
-    with open(os.devnull, 'w') as devnull:
-        subprocess.call(
-            'gdal_translate -of GTiff -projwin %1.8f %1.8f %1.8f %1.8f '
-            '-r %s %s %s' % (ulx, uly, lrx, lry, method, filename, tempname),
-            shell=True, stdout=devnull)
-    newgdict = GDALGrid.getFileGeoDict(tempname)[0]
-    return newgdict
-    # TODO add error catching for subprocess call
-
-
 def validateInterpolations(cmodel, layers):
     interpolations = {}
     for key, value in cmodel['interpolations'].items():
@@ -1055,7 +863,7 @@ def validateInterpolations(cmodel, layers):
             raise Exception(
                 'Interpolation key %s does not match any names of layers'
                 % key)
-        methods = ['linear', 'nearest', 'cubic']
+        methods = ['linear', 'nearest', 'cubic', 'bilinear']
         if value not in methods:
             raise Exception(
                 'Interpolation method %s not in approved list of methods: %s'
@@ -1170,11 +978,11 @@ def checkTerm(term, layers):
     for sm_term in SM_GRID_TERMS:
         term = term.replace(
             sm_term,
-            "self.shakemap.getSlice(rowstart, rowend, "
-            "colstart, colend, name='%s')" % sm_term)
+            "self.shakemap['%s'].getSlice(rowstart, rowend, "
+            "colstart, colend, name='%s')" % (sm_term, sm_term))
 
     # replace the macro MW with the magnitude value from the shakemap
-    term = term.replace('MW', "self.shakemap.edict['magnitude']")
+    term = term.replace('MW', "self.eventdict['magnitude']")
 
     # term.replace('YEAR',"self.shakemap.getEventDict()['event_time'].year")
     # hasTime = False
