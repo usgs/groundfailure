@@ -74,7 +74,7 @@ def test_zhu_2017_general():
     target_data = target_grid.getData()
 
     # Assert
-    np.testing.assert_allclose(target_data, test_data)
+    np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
     # Run with divfactor of 4
     conf['zhu_2017_general']['divfactor'] = '4.'
