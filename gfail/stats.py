@@ -4,9 +4,14 @@
 # stdlib imports
 import numpy as np
 import collections
+import shutil
+import tempfile
+import os
 
 # local imports
 from mapio.shake import ShakeGrid
+from mapio.gdal import GDALGrid
+from gfail.spatial import quickcut
 
 # Make fonts readable and recognizable by illustrator
 import matplotlib as mpl
@@ -119,10 +124,13 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             if shaket < 0.:
                 raise Exception('shaking threshold must be equal or greater '
                                 'than zero')
+        tmpdir = tempfile.mkdtemp()
         # resample shakemap to grid2D
-        temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True,
-                              doPadding=True, adjust='res')
-        shk = temp.getLayer(shakethreshtype)
+        temp = ShakeGrid.load(shakefile)
+        junkfile = os.path.join(tmpdir, 'temp.bil')
+        GDALGrid.copyFromGrid(temp.getLayer(shakethreshtype)).save(junkfile)
+        shk = quickcut(junkfile, geodict, precise=True, method='bilinear')
+        shutil.rmtree(tmpdir)
         if shk.getGeoDict() != geodict:
             raise Exception('shakemap was not resampled to exactly the same '
                             'geodict as the model')
@@ -190,10 +198,14 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         if shakethresh < 0.:
             raise Exception('shaking threshold must be equal or greater '
                             'than zero')
+        tmpdir = tempfile.mkdtemp()
         # resample shakemap to grid2D
-        temp = ShakeGrid.load(shakefile, samplegeodict=geodict, resample=True,
-                              doPadding=True, adjust='res')
-        shk = temp.getLayer(shakethreshtype)
+        temp = ShakeGrid.load(shakefile)
+        junkfile = os.path.join(tmpdir, 'temp.bil')
+        GDALGrid.copyFromGrid(temp.getLayer(shakethreshtype)).save(junkfile)
+        shk = quickcut(junkfile, geodict, precise=True,
+                            method='bilinear')
+        shutil.rmtree(tmpdir)
         if shk.getGeoDict() != geodict:
             raise Exception('shakemap was not resampled to exactly the same '
                             'geodict as the model')

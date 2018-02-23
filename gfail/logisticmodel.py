@@ -213,7 +213,7 @@ class LogisticModel(object):
         self.tempdir = tempfile.mkdtemp()
 
         # now load the shakemap, resampling and padding if necessary
-        temp = ShakeGrid.load(shakefile, adjust='res')
+        temp = ShakeGrid.load(shakefile)#, adjust='res')
         self.shakedict = temp.getShakeDict()
         self.eventdict = temp.getEventDict()
         self.shakemap = {}

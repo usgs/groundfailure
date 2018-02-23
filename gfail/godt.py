@@ -167,7 +167,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
               'Continuing')
 
     # Figure out how/if need to cut anything
-    geodict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
+    geodict = ShakeGrid.getFileGeoDict(shakefile)#, adjust='res')
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
         if (geodict.xmin > bounds['xmin'] or
                 geodict.xmax < bounds['xmax'] or
@@ -207,7 +207,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     tmpdir = tempfile.mkdtemp()
     
     # Load in ShakeMap and get new geodictionary
-    temp = ShakeGrid.load(shakefile, adjust='res')
+    temp = ShakeGrid.load(shakefile) #, adjust='res')
     junkfile = os.path.join(tmpdir, 'temp.bil')
     GDALGrid.copyFromGrid(temp.getLayer('pga')).save(junkfile)
     pga = quickcut(junkfile, sampledict, precise=True, method='bilinear')
@@ -227,7 +227,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     # read in uncertainty if present
     if uncertfile is not None:
         try:
-            temp = ShakeGrid.load(uncertfile, adjust='res')
+            temp = ShakeGrid.load(uncertfile) #, adjust='res')
             GDALGrid.copyFromGrid(temp.getLayer('stdpga')).save(junkfile)
             uncertpga = quickcut(junkfile, sampledict, precise=True, method='bilinear')
             os.remove(junkfile)
