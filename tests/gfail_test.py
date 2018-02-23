@@ -76,7 +76,8 @@ def test_zhu2015(tmpdir):
         shutil.copy(default_file+'_bak', default_file)
 
     # Remove backup and tempfile
-    os.remove(default_file+'_bak')
+    if os.path.exists(default_file+'_bak'):
+        os.remove(default_file+'_bak')
     shutil.rmtree(p)
 
     # Then do test
