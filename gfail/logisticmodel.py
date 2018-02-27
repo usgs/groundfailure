@@ -105,6 +105,8 @@ class LogisticModel(object):
                        value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
         self.numstd = numstd
+        self.clips = validateClips(cmodel, self.layers, self.gmused)
+        
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to '
                             'one of the files in the layer section.')
@@ -226,6 +228,8 @@ class LogisticModel(object):
                 intermeth = 'bilinear'
             junkgrid = quickcut(junkfile, sampledict, precise=True,
                        method=intermeth)
+            if gm in self.clips:
+                junkgrid.setData(np.clip(junkgrid.getData(), self.clips[gm][0], self.clips[gm][1]))
             self.shakemap[gm] = TempHdf(junkgrid, os.path.join(self.tempdir, '%s.hdf5' % gm))
             os.remove(junkfile)
         del(temp)
@@ -253,6 +257,8 @@ class LogisticModel(object):
                         intermeth = 'bilinear'
                     junkgrid = quickcut(junkfile, sampledict, precise=True,
                                method=intermeth)
+                    if gmsimp in self.clips:
+                        junkgrid.setData(np.clip(junkgrid.getData(), self.clips[gmsimp][0], self.clips[gmsimp][1]))
                     self.uncert['std' + gmsimp] = TempHdf(junkgrid, os.path.join(self.tempdir, 'std%s.hdf5' % gmsimp))
                     os.remove(junkfile)
                 del(temp)
@@ -284,6 +290,8 @@ class LogisticModel(object):
                             interp = self.interpolations[layername]
                             temp = quickcut(layerfile, sampledict, precise=True,
                                             method=interp)
+                            if layername in self.clips:
+                                temp.setData(np.clip(temp.getData(), self.clips[layername][0], self.clips[layername][1]))
                             self.layerdict[layername] = TempHdf(
                                 temp, os.path.join(self.tempdir,
                                                    '%s.hdf5' % layername))
@@ -291,6 +299,8 @@ class LogisticModel(object):
             else:
                 interp = self.interpolations[layername]
                 temp = quickcut(layerfile, sampledict, precise=True, method=interp)
+                if layername in self.clips:
+                    temp.setData(np.clip(temp.getData(), self.clips[layername][0], self.clips[layername][1]))
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 td = temp.getGeoDict()
@@ -747,6 +757,35 @@ def validateCoefficients(cmodel):
         raise Exception('coefficients must include an intercept '
                         'coefficient named b0.')
     return coeffs
+
+
+def validateClips(cmodel, layers, gmused):
+    """
+    Ensures coefficients provided in model description are valid and outputs
+    a dictionary of the coefficients.
+    Args:
+        cmodel (dict): Sub-dictionary from config for specific model,
+            e.g.
+
+            .. code-block:: python
+
+                cmodel = config['test_model']
+
+    Returns:
+        dict: a dictionary of clip values for each layer (if exists)
+    """
+    clips = {}
+    if 'clip' in cmodel:
+        for key, value in cmodel['clip'].items():
+            if key not in layers:
+                if key not in gmused:
+                    x1 = [par for par in gmused if key in par]
+                    if len(x1)==0:
+                        raise Exception(
+                                'Clipping key %s does not match any names of layers'
+                                % key)
+            clips[key] = (float(value[0]), float(value[1]))
+    return clips
 
 
 def validateLayers(cmodel):

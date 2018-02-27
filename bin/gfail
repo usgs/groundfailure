@@ -62,12 +62,12 @@ def main(args):
                 os.makedirs(outdir)
 
         # download if is url
-        cleanup = False
+        #cleanup = False
         if not os.path.isfile(shakefile):
             if isURL(shakefile):
                 # getGridURL returns a named temporary file object
                 shakefile = getGridURL(shakefile)
-                cleanup = True  # Be sure to delete it after
+                #cleanup = True  # Be sure to delete it after
             else:
                 raise NameError('Could not find "%s" as a file or a valid url'
                                 % (shakefile))
@@ -80,8 +80,9 @@ def main(args):
                 os.makedirs(outfolder)
         else:
             outfolder = outdir
-
+        
         config = args.config
+        
         if args.config_filepath is not None:
             # only add config_filepath if full filepath not given and file
             # ext is .ini
@@ -91,6 +92,8 @@ def main(args):
 
         if os.path.splitext(config)[-1] == '.ini':
             temp = ConfigObj(config)
+            if len(temp) == 0:
+                raise Exception('Could not find specified .ini file: %s' % config)
             if args.data_path is not None:
                 temp = correct_config_filepaths(args.data_path, temp)
             configs = [temp]
@@ -118,7 +121,8 @@ def main(args):
                 except:
                     conffail.append(conf)
 
-        print('Running the following models:\n')
+        print('Running the following models:')
+
         for conf in configs:
             print('\t%s\n' % conf.keys()[0])
         if len(conffail) > 0:
@@ -169,7 +173,6 @@ def main(args):
 
         if args.finite_fault is not None:
             if os.path.splitext(args.finite_fault)[-1] == '.txt':
-                print('made it here')
                 ffault = text_to_json(args.finite_fault)
             elif os.path.splitext(args.finite_fault)[-1] == '.json':
                 ffault = args.finite_fault
