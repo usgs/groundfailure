@@ -11,6 +11,7 @@ import urllib.parse
 import tempfile
 import re
 import os
+import json
 
 
 # third party imports
@@ -163,6 +164,20 @@ def main(args):
                 trimfile = args.trimfile
         else:
             trimfile = None
+        
+        # Get finite fault ready, if exists
+
+        if args.finite_fault is not None:
+            if os.path.splitext(args.finite_fault)[-1] == '.txt':
+                print('made it here')
+                ffault = text_to_json(args.finite_fault)
+            elif os.path.splitext(args.finite_fault)[-1] == '.json':
+                ffault = args.finite_fault
+            else:
+                print('Could not read in finite fault, continuing without it')
+                ffault = None
+        else:
+            ffault = args.finite_fault
 
         # Loop over config files
         for conf in configs:
@@ -262,7 +277,7 @@ def main(args):
                     scaletype='continuous', lims=lims, logscale=logscale,
                     ALPHA=0.7, outputdir=outfolder, outfilename=filename,
                     tiletype='Stamen Terrain', separate=True,
-                    faultfile=args.finite_fault)
+                    faultfile=ffault)
                 for filen in filenames1:
                     filenames.append(filen)
 
@@ -330,7 +345,7 @@ def main(args):
             outputs = makeWebpage(results, configs, args.web_template,
                                   shakefile, outfolder=outfolder,
                                   includeAlert=args.alert, cleanup=True,
-                                  faultfile=args.finite_fault)
+                                  faultfile=ffault)
             filenames = filenames + outputs
 
         # Write shakefile to a file for use later
@@ -563,6 +578,73 @@ def get_bounds(shakefile, parameter='pga', threshold=2):
         boundaries1['ymax'] = ymax
 
     return boundaries1
+
+
+def text_to_json(textffile):
+    """
+    Simplification of text_to_json from shakelib.rupture.factory
+    """
+    with open(textffile, 'r') as f:
+        lines = f.readlines()
+    x = []
+    y = []
+    z = []
+    reference = ''
+    # convert to geojson
+    for line in lines:
+        sline = line.strip()
+        if sline.startswith('#'):
+            reference += sline.strip('#').strip('Source: ')
+            continue
+        if sline.startswith('>'):
+            if len(x):  # start of new line segment
+                x.append(np.nan)
+                y.append(np.nan)
+                z.append(np.nan)
+                continue
+            else:  # start of file
+                continue
+        if not len(sline.strip()):
+            continue
+        parts = sline.split()
+
+        y.append(float(parts[0]))
+        x.append(float(parts[1]))
+        if len(parts) >= 3:
+            z.append(float(parts[2]))
+        else:
+            print('Fault file has no depths, assuming zero depth')
+            z.append(0.0)
+        coords = []
+        poly = []
+        for lon, lat, dep in zip(x, y, z):
+            if np.isnan(lon):
+                coords.append(poly)
+                poly = []
+            else:
+                poly.append([lon, lat, dep])
+        if poly != []:
+            coords.append(poly)
+
+    d = {
+        "type": "FeatureCollection",
+        "metadata": {
+            'reference': reference
+        },
+        "features": [
+            {
+                "type": "Feature",
+                "properties": {
+                    "rupture type": "rupture extent"
+                },
+                "geometry": {
+                    "type": "MultiPolygon",
+                    "coordinates": [coords]
+                }
+            }
+        ]
+    }
+    return json.dumps(d)
 
 
 def write_floats(filename, grid2d):
