@@ -512,7 +512,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
         file1.write(writeline)
 
         file1.write('<p>Last updated at: %s (UTC)<br>'
-                    % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                    % datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('Based on ground motion estimates from '
                     'ShakeMap version %1.1f %s<br>'
                     % (smdict['shakemap_version'], faulttype))
