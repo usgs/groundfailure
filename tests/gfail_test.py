@@ -110,13 +110,13 @@ def test_zhu2015_web(tmpdir):
         else:
             shutil.rmtree(p)
             os.makedirs(p)
-
+    
         # Clear paths
         rc, so, se = get_command_output('gfail -reset')
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
-
+    
         # Run model
         conf = os.path.join(datadir, 'test_conf')
         runcmd = "gfail %s %s -w --alert" % (conf, shakegrid)
@@ -125,7 +125,7 @@ def test_zhu2015_web(tmpdir):
         # Make PDL directory
         pdldir = os.path.join(p, '19891018000415')
         pdl.prepare_pdl_directory(pdldir)
-
+    
         # Transfer dry run
         transfer_cmd = pdl.transfer(pdldir, 'None', dryrun=True)
     except Exception as e:  # So that defaults are put back even if something goes wrong

@@ -192,7 +192,7 @@ def main(args):
                         data = fij.read()
                     infodict = json.loads(data)
 
-                    LQstats = infodict['Liquefaction']['models']['Zhu and others (2017)']['stats']
+                    LQstats = infodict['Liquefaction']['models']['Zhu and others (2015)']['stats']
                     LSstats = infodict['Landslides']['models']['Nowicki and others (2014)']['stats']
                     LQsta = [LQstats['Hagg_0.05g'], LQstats['Parea_0.10']]
                     LSsta = [LSstats['Hagg_0.05g'], LSstats['Parea_0.10']]
