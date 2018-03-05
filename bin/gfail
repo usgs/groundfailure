@@ -301,8 +301,8 @@ def main(args):
                     # convert to geotif
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
-                    os.remove(filen)
-                    os.remove(fileh)
+                    #os.remove(filen)
+                    #os.remove(fileh)
                     filenames.append(fileg)
 
                 # Make binary output for ShakeCast
@@ -340,8 +340,8 @@ def main(args):
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
-                    os.remove(filen)
-                    os.remove(fileh)
+                    #os.remove(filen)
+                    #os.remove(fileh)
                     filenames.append(fileg)
 
         if args.make_webpage:
