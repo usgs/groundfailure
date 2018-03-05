@@ -77,8 +77,10 @@ def transfer(eventdir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     alert_json = json.load(open(alert_file))
     lq_alert = '"--property-alertLQ=%s" ' % alert_json['Liquefaction']['alert']
     ls_alert = '"--property-alertLS=%s" ' % alert_json['Landslides']['alert']
-    lq_hagg = '"--property-HaggLQ=%s" ' %alert_json['Liquefaction']['alertvalue'] #np.round(alert_json['Liquefaction']['alertvalue'], 0)
-    ls_hagg = '"--property-HaggLS=%s" ' %alert_json['Landslides']['alertvalue'] #np.round(alert_json['Landslides']['alertvalue'], 0)
+    # np.round(alert_json['Liquefaction']['alertvalue'], 0)
+    lq_hagg = '"--property-HaggLQ=%s" ' % alert_json['Liquefaction']['alertvalue']
+    # np.round(alert_json['Landslides']['alertvalue'], 0)
+    ls_hagg = '"--property-HaggLS=%s" ' % alert_json['Landslides']['alertvalue']
 
     # Construct PDL command
     pdl_cmd = ('java -jar %s ' % pdl_bin +
@@ -126,23 +128,26 @@ def prepare_pdl_directory(eventdir):
 
     # Put geotif files into pdl directory
     all_files = os.listdir(eventdir)
-    geotif_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.tif')]
+    geotif_files = [os.path.join(eventdir, a)
+                    for a in all_files if a.endswith('.tif')]
     for i in range(len(geotif_files)):
         src = geotif_files[i]
         tfile = os.path.basename(src)
         dst = os.path.join(pdl_dir, tfile)
-        shutil.move(src, dst)
+        shutil.copy(src, dst)
 
     # Put json files into pdl directory
-    json_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.json')]
+    json_files = [os.path.join(eventdir, a)
+                  for a in all_files if a.endswith('.json')]
     for i in range(len(json_files)):
         src = json_files[i]
         jfile = os.path.basename(src)
         dst = os.path.join(pdl_dir, jfile)
         shutil.copy(src, dst)
-        
+
     # Put hdf files into pdl directory
-    hdf_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.hdf5')]
+    hdf_files = [os.path.join(eventdir, a)
+                 for a in all_files if a.endswith('.hdf5')]
     for i in range(len(hdf_files)):
         src = hdf_files[i]
         hfile = os.path.basename(src)
@@ -150,8 +155,10 @@ def prepare_pdl_directory(eventdir):
         shutil.copy(src, dst)
 
     # Put binary ShakeCast files into pdl directory
-    flt_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.flt')]
-    flth_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.hdr')]
+    flt_files = [os.path.join(eventdir, a)
+                 for a in all_files if a.endswith('.flt')]
+    flth_files = [os.path.join(eventdir, a)
+                  for a in all_files if a.endswith('.hdr')]
     for f1, f2 in zip(flt_files, flth_files):
         src = f1
         f1file = os.path.basename(src)
@@ -161,7 +168,6 @@ def prepare_pdl_directory(eventdir):
         f2file = os.path.basename(src)
         dst = os.path.join(pdl_dir, f2file)
         shutil.copy(src, dst)
-
 
     # Make contents.xml
     contents = etree.Element("contents")
@@ -185,7 +191,7 @@ def prepare_pdl_directory(eventdir):
         fname = os.path.basename(geotif_files[i])
         spl = fname.split('_')
         ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model (geotiff)'
-        fid = '_'.join(spl[1:3])+"_gtiff"
+        fid = '_'.join(spl[1:3]) + "_gtiff"
         tif_files[i] = etree.SubElement(
             contents, "file",
             title=ftitle,
@@ -196,7 +202,7 @@ def prepare_pdl_directory(eventdir):
             tif_files[i], "format",
             href=fname,
             type='image/geotiff')
-        
+
     # Json files
     j_files = [None] * len(json_files)
     file_caps = [None] * len(json_files)
@@ -208,7 +214,7 @@ def prepare_pdl_directory(eventdir):
         else:
             spl = fname.split('_')
             ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Metadata'
-            fid = '_'.join(spl[1:3])+"_json"
+            fid = '_'.join(spl[1:3]) + "_json"
         j_files[i] = etree.SubElement(
             contents, "file",
             title=ftitle,
@@ -226,8 +232,9 @@ def prepare_pdl_directory(eventdir):
     for i in range(len(hdf_files)):
         fname = os.path.splitext(os.path.basename(hdf_files[i]))[0]
         spl = fname.split('_')
-        ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Results (All, hdf5)'
-        fid = '_'.join(spl[1:3])+"_hdf5"
+        ftitle = spl[1].capitalize() + ' ' + spl[2] + \
+            ' Model Results (All, hdf5)'
+        fid = '_'.join(spl[1:3]) + "_hdf5"
         h_files[i] = etree.SubElement(
             contents, "file",
             title=ftitle,
@@ -238,7 +245,7 @@ def prepare_pdl_directory(eventdir):
             h_files[i], "format",
             href=fname,
             type='application/x-hdf')
-        
+
     # Flt ShakeCast files
     f_files = [None] * len(flt_files)
     fh_files = [None] * len(flth_files)
@@ -248,7 +255,7 @@ def prepare_pdl_directory(eventdir):
         fname = os.path.splitext(os.path.basename(flt_files[i]))[0]
         spl = fname.split('_')
         ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model (flt)'
-        fid = '_'.join(spl[1:3])+"_flt"
+        fid = '_'.join(spl[1:3]) + "_flt"
         f_files[i] = etree.SubElement(
             contents, "file",
             title=ftitle,
@@ -264,7 +271,7 @@ def prepare_pdl_directory(eventdir):
         fname = os.path.splitext(os.path.basename(flth_files[i]))[0]
         spl = fname.split('_')
         ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model (flt header)'
-        fid = '_'.join(spl[1:3])+"_hdr"
+        fid = '_'.join(spl[1:3]) + "_hdr"
         fh_files[i] = etree.SubElement(
             contents, "file",
             title=ftitle,
