@@ -67,7 +67,7 @@ def main(args):
             if isURL(shakefile):
                 # getGridURL returns a named temporary file object
                 shakefile = getGridURL(shakefile)
-                #cleanup = True  # Be sure to delete it after
+                # cleanup = True  # Be sure to delete it after
             else:
                 raise NameError('Could not find "%s" as a file or a valid url'
                                 % (shakefile))
@@ -80,9 +80,9 @@ def main(args):
                 os.makedirs(outfolder)
         else:
             outfolder = outdir
-        
+
         config = args.config
-        
+
         if args.config_filepath is not None:
             # only add config_filepath if full filepath not given and file
             # ext is .ini
@@ -93,7 +93,8 @@ def main(args):
         if os.path.splitext(config)[-1] == '.ini':
             temp = ConfigObj(config)
             if len(temp) == 0:
-                raise Exception('Could not find specified .ini file: %s' % config)
+                raise Exception(
+                    'Could not find specified .ini file: %s' % config)
             if args.data_path is not None:
                 temp = correct_config_filepaths(args.data_path, temp)
             configs = [temp]
@@ -159,7 +160,8 @@ def main(args):
         # pre-read in ocean trimming file polygons so only do this step once
         if args.trimfile is not None:
             if not os.path.exists(args.trimfile):
-                print('trimfile defined does not exist: %s\nOcean will not be trimmed' % args.trimfile)
+                print(
+                    'trimfile defined does not exist: %s\nOcean will not be trimmed' % args.trimfile)
                 trimfile = None
             elif os.path.splitext(args.trimfile)[1] != '.shp':
                 print('trimfile must be a shapefile, ocean will not be trimmed')
@@ -168,7 +170,7 @@ def main(args):
                 trimfile = args.trimfile
         else:
             trimfile = None
-        
+
         # Get finite fault ready, if exists
 
         if args.finite_fault is not None:
@@ -296,13 +298,15 @@ def main(args):
                     fileg = os.path.join(outfolder, '%s_model.tif'
                                          % filename)
 
-                    GDALGrid.copyFromGrid(maplayers['model']['grid']).save(filen)
+                    GDALGrid.copyFromGrid(
+                        maplayers['model']['grid']).save(filen)
 
                     # convert to geotif
-                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
+                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
+                        filen, fileg)
                     rc, so, se = get_command_output(cmd)
-                    os.remove(filen)
-                    os.remove(fileh)
+                    # os.remove(filen)
+                    # os.remove(fileh)
                     filenames.append(fileg)
 
                 # Make binary output for ShakeCast
@@ -338,10 +342,11 @@ def main(args):
                                          % (filename, keyS))
 
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
-                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
+                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
+                        filen, fileg)
                     rc, so, se = get_command_output(cmd)
-                    os.remove(filen)
-                    os.remove(fileh)
+                    # os.remove(filen)
+                    # os.remove(fileh)
                     filenames.append(fileg)
 
         if args.make_webpage:
@@ -360,7 +365,7 @@ def main(args):
         for filen in filenames:
             print('%s' % filen)
 
-        #if cleanup:
+        # if cleanup:
         #    os.remove(shakefile)
 
 
@@ -820,7 +825,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--alert', action='store_true', default=False,
         help='Determine and report alert levels. Default is false')
-    #parser.add_argument('-e', '--exercise', action='store_true', default=False,
+    # parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 
     pargs = parser.parse_args()
