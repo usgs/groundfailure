@@ -22,6 +22,7 @@ dependencies:
 - markdown
 - matplotlib
 - numpy
+- obspy
 - pandas
 - paramiko
 - pelican
@@ -49,4 +50,5 @@ dependencies:
   - sphinx_rtd_theme
   - ./mapio.zip
   - ./impact-utils.zip
+
   
