@@ -75,6 +75,9 @@ source activate $VENV
 rm impact-utils.zip
 rm mapio.zip
 
+# Install libcomcat without dependencies
+pip install git+https://github.com/usgs/libcomcat.git
+
 # This package
 echo "Installing $VENV..."
 pip install -e .

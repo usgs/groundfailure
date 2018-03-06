@@ -14,6 +14,7 @@ import glob
 import json
 import collections
 from configobj import ConfigObj
+from libcomcat.search import get_event_by_id
 
 # temporary until mapio is updated
 import warnings
@@ -24,9 +25,9 @@ plt.switch_backend('agg')
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False, alertkey='Hagg_0.05g',
-                faultfile=None, shakethreshtype='pga',
+                faultfile=None, shakethreshtype='pga', point=False,
                 statlist=['Max', 'Std', 'Hagg_0.05g', 'Hagg_0.10g', 'Parea_0.10', 'Parea_0.30'],
-                probthresh=[0.1, 0.3], shakethresh=[5., 10.]):
+                probthresh=[0.1, 0.3], shakethresh=[5., 10.], statement=None):
     """
     Create a webpage that summarizes ground failure results (both landslides
         and liquefaction)
@@ -49,15 +50,22 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             interactive maps
         shakethreshtype (str, optional): Type of ground motion to use for stat thresholds,
             'pga', 'pgv', or 'mmi'
+        point (bool): True if it is known that the ShakeMap used a point source,
+            False does not assume anything about source type
         statlist (list): list of strings indicating which stats to show on webpage
         probthresh (float, optional): List of probability thresholds for which to compute
             Parea.
         shakethresh (list, optional): List of ground motion thresholds for which
             to compute Hagg, units corresponding to shakethreshtype.
+        statement (str): Text to include in the summary section of the web
+            page. Alert statements will be appended prior to this statement,
+            Point source warnings for >M7 will be appended after this statement.
+            If None, will use a generic explanatory statement.
 
     Returns:
         Folder where webpage files are located
      """
+    print('Creating webpages')
     # get event id
     event_id = maplayerlist[0]['model']['description']['event_id']
 
@@ -96,6 +104,15 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     outjsfileLQ = os.path.join(static, 'js', 'mapLQ.js')
     with open(outjsfileLQ, 'w') as f:
         f.write('\n')
+
+    if statement is None:
+        statement = ("Maps show where landslides and/or liquefaction "
+                     "are most likely to have occurred and their relative "
+                     "severity. These are global models intended to identify "
+                     "general trends in ground failure hazard and cannot "
+                     "identify specific occurrences of individual ground failures. "
+                     "As a result, some areas indicated may not have "
+                     "actually experienced ground failure and vice versa.")
 
     # Separate the LS and LQ models
 
@@ -214,61 +231,60 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                             "maplayer['model']['parameters']"
                             "['modeltype'] to ensure it is defined")
 
-        # Make interactive maps for each
-        if il > 0:
-            mapLS, filenameLS = makemaps.interactiveMap(
-                concLS, shakefile=shakemap, scaletype='binned',
-                colormaps=colLS, lims=limLS, clear_zero=False,
-                logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
-                mapid='LS', savefiles=True, outputdir=images,
-                sepcolorbar=True, floatcb=False, faultfile=faultfile)
-            filenameLS = filenameLS[0]
-        else:
-            filenameLS = None
+    # Make interactive maps for each
+    if il > 0:
+        mapLS, filenameLS = makemaps.interactiveMap(
+            concLS, shakefile=shakemap, scaletype='binned',
+            colormaps=colLS, lims=limLS, clear_zero=False,
+            logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
+            mapid='LS', savefiles=True, outputdir=images,
+            sepcolorbar=True, floatcb=False, faultfile=faultfile)
+        filenameLS = filenameLS[0]
+    else:
+        filenameLS = None
 
-        if iq > 0:
-            mapLQ, filenameLQ = makemaps.interactiveMap(
-                concLQ, shakefile=shakemap, scaletype='binned',
-                colormaps=colLQ, lims=limLQ, clear_zero=False,
-                logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
-                savefiles=True, mapid='LQ', outputdir=images,
-                sepcolorbar=True, floatcb=False, faultfile=faultfile)
-            filenameLQ = filenameLQ[0]
-        else:
-            filenameLQ = None
+    if iq > 0:
+        mapLQ, filenameLQ = makemaps.interactiveMap(
+            concLQ, shakefile=shakemap, scaletype='binned',
+            colormaps=colLQ, lims=limLQ, clear_zero=False,
+            logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
+            savefiles=True, mapid='LQ', outputdir=images,
+            sepcolorbar=True, floatcb=False, faultfile=faultfile)
+        filenameLQ = filenameLQ[0]
+    else:
+        filenameLQ = None
 
-        # Get alert levels
-        #TODO update to exact name of Hagg to use
-        if includeAlert:
-            try:
-                paramalertLS = lsmodels['Nowicki and others (2014)']['stats'][alertkey]
-            except:
-                paramalertLS = None
-
-            try:
-                paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkey]
-            except:
-                paramalertLQ = None
-
-            alertLS, alertLQ, statement = get_alert(paramalertLS, paramalertLQ)
-            topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
-            topfileLS = make_alert_img(alertLS, 'landslide', images)
-        else:
-            alertLS = None
-            alertLQ = None
-            statement = None
-            topfileLQ = None
-            topfileLS = None
+    # Get alert levels
+    #TODO update to exact name of Hagg to use
+    if includeAlert:
+        try:
+            paramalertLS = lsmodels['Nowicki and others (2014)']['stats'][alertkey]
+        except:
             paramalertLS = None
+
+        try:
+            paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkey]
+        except:
             paramalertLQ = None
+
+        alertLS, alertLQ, alertstatement = get_alert(paramalertLS, paramalertLQ)
+        topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
+        topfileLS = make_alert_img(alertLS, 'landslide', images)
+        statement = '%s<br>%s' % (alertstatement, statement)
+    else:
+        alertLS = None
+        alertLQ = None
+        topfileLQ = None
+        topfileLS = None
+        paramalertLS = None
+        paramalertLQ = None
 
     if faultfile is not None:
         finitefault = True
     else:
         finitefault = False
-    sks = write_summary(shakemap, pages, images,
-                        alert=includeAlert,
-                        alertLS=alertLS, alertLQ=alertLQ,
+
+    sks = write_summary(shakemap, pages, images, point=point,
                         statement=statement, finitefault=finitefault)
 
     # Create webpages for each type of ground motion
@@ -278,6 +294,13 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     write_individual(lqmodels, articles, 'Liquefaction',
                      interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
                      topimage=topfileLQ, statlist=statlist)
+    
+    # Try to get shakemap url
+    try:
+        event = get_event_by_id(sks['event_id'])
+        shakemapurl = event.url + '#shakemap'
+    except:
+        shakemapurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % sks['event_id']
 
     # Create info.json for website rendering and metadata purposes
     web_dict = {
@@ -290,20 +313,19 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             'date': sks['date'],
             'event_id': sks['event_id'],
             'event_url': sks['event_url'],
-            'shakemap_url': 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % sks['shakemap_id'],
+            'shakemap_url': shakemapurl,
             'shakemap_version': sks['shakemap_version'],
             'statement': sks['statement'],
-            'scibackground': 'url placeholder'
             },
         'Landslides': {
             'models': lsmodels,
-            'alert': sks['alertLS'],
+            'alert': alertLS,
             'alertkey': alertkey,
             'alertvalue': paramalertLS
             },
         'Liquefaction': {
             'models': lqmodels,
-            'alert': sks['alertLQ'],
+            'alert': alertLQ,
             'alertkey': alertkey,
             'alertvalue': paramalertLQ
             }
@@ -467,9 +489,8 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
             file1.write('<center><h3>No results</h3></center>')
 
 
-def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
-                  alertLS=None, alertLQ=None, statement=None,
-                  finitefault=False):
+def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
+                  finitefault=False, point=False):
     """
     Write markdown file summarizing event
 
@@ -486,12 +507,26 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
     """
     edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
     smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
+
     event_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % edict['event_id']
 
-    if finitefault:
+    # NEED TO ADD FIX HERE IN CASE NO FINITE FAULT FILE MODEL IS AVAILABLE BUT WAS USED IN SHAKEMAP
+    if finitefault and not point:
         faulttype = '(finite fault model)'
-    else:
+    elif point and not finitefault:
         faulttype = '(point source model)'
+        if edict['magnitude'] > 6.5:
+            statement = ('%s ShakeMap is currently approximating '
+                         'this earthquake as a point source. '
+                         'This may underestimate the extent of strong '
+                         'shaking for larger earthquakes. '
+                         'Please interpret Ground Failure results with '
+                         'caution until ShakeMap has been updated '
+                         'with a rupture model.') % statement
+    else:
+        faulttype = ''
+
+        
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
@@ -514,18 +549,14 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
         file1.write('<p>Last updated at: %s (UTC)<br>'
                     % datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('Based on ground motion estimates from '
-                    'ShakeMap version %1.1f %s<br>'
+                    'ShakeMap version %1.1f %s<br></p>'
                     % (smdict['shakemap_version'], faulttype))
-        file1.write('<a href=https://dev-earthquake.cr.usgs.gov/data/grdfailure/background.php>Scientific Background</a></p>')
+        statement = ('%s<br>Please refer to the <a href=https://dev-earthquake.cr.usgs.gov/data/grdfailure/background.php>Ground Failure Background</a>'
+                                 ' page for more details.' % statement)
 
-        if alert:
+        if statement is not None:
             file1.write('<h2>Summary</h2>\n')
             file1.write('<p>%s</p>' % statement)
-
-        else:
-            statement = None
-            alertLS = None
-            alertLQ = None
 
         file1.write('<hr>')
 
@@ -538,8 +569,6 @@ def write_summary(shakemap, outputdir, imgoutputdir, alert=False,
                     'name': 'Magnitude %1.1f - %s' % (edict['magnitude'],
                             edict['event_description']),
                     'statement': statement,
-                    'alertLS': alertLS,
-                    'alertLQ': alertLQ,
                     'event_id': edict['event_id'],
                     'shakemap_id': smdict['shakemap_id'],
                     'event_url': event_url
@@ -596,8 +625,8 @@ def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.],
     else:
         alertLQ = None
 
-    statement = ('Global ground failure models estimate that this earthquake '
-                 'likely triggered %s liquefaction and %s landsliding'
+    statement = ('Global ground failure models indicate that this earthquake '
+                 'likely triggered %s liquefaction and %s landsliding.'
                  % (get_word(alertLQ), get_word(alertLS)))
 
     return alertLS, alertLQ, statement
