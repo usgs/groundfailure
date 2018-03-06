@@ -115,8 +115,8 @@ class LogisticModel(object):
             try:
                 self.slopefile = cmodel['slopefile']
             except:
-                print('Slopefile not specified in config, no slope '
-                      'thresholds will be applied\n')
+                #print('Slopefile not specified in config, no slope '
+                #      'thresholds will be applied\n')
                 self.slopefile = None
         else:
             self.slopefile = slopefile
@@ -337,7 +337,7 @@ class LogisticModel(object):
                     didslope = True
                 del(temp)
 
-            print('Loading of layer %s: %1.1f sec'
+            print('Loading %s layer: %1.1f sec'
                   % (layername, timer() - start))
 
         if didslope is False and self.slopefile is not None:

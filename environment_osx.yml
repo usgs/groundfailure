@@ -110,6 +110,7 @@ dependencies:
 - notebook=5.2.2
 - numexpr=2.6.4
 - numpy=1.14.0
+- obspy=1.1.0
 - olefile=0.44
 - openblas=0.2.20
 - openjpeg=2.1.2

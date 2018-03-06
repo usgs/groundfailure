@@ -131,7 +131,7 @@ def prepare_pdl_directory(eventdir):
         src = geotif_files[i]
         tfile = os.path.basename(src)
         dst = os.path.join(pdl_dir, tfile)
-        shutil.move(src, dst)
+        shutil.copy(src, dst)
 
     # Put json files into pdl directory
     json_files = [os.path.join(eventdir, a) for a in all_files if a.endswith('.json')]

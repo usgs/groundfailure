@@ -20,6 +20,7 @@ from mapio.gdal import GDALGrid
 import numpy as np
 from impactutils.io.cmd import get_command_output
 from mapio.shake import ShakeGrid
+from libcomcat.search import get_event_by_id
 
 # local imports
 from gfail.conf import correct_config_filepaths
@@ -44,7 +45,7 @@ def main(args):
     if args.reset_default_paths:
         reset_default_paths()
         return
-
+    
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
         shakefile = args.shakefile
@@ -73,6 +74,9 @@ def main(args):
                                 % (shakefile))
                 return
         eventid = getHeaderData(shakefile)[0]['event_id']
+
+        # Get entire path so won't break if running gfail with relative path
+        shakefile = os.path.abspath(shakefile)
 
         if args.unnest_folder:
             outfolder = os.path.join(outdir, eventid)
@@ -121,14 +125,14 @@ def main(args):
                 except:
                     conffail.append(conf)
 
-        print('Running the following models:')
+        print('\nRunning the following models:')
 
         for conf in configs:
-            print('\t%s\n' % conf.keys()[0])
+            print('\t%s' % conf.keys()[0])
         if len(conffail) > 0:
             print('Could not find or read in the following config files:\n')
             for conf in conffail:
-                print('\t%s\n' % conf)
+                print('\t%s' % conf)
             print('\nContinuing...\n')
 
         if args.set_bounds is not None:
@@ -171,21 +175,56 @@ def main(args):
         
         # Get finite fault ready, if exists
 
+        ffault = None
+        point = True
         if args.finite_fault is not None:
-            if os.path.splitext(args.finite_fault)[-1] == '.txt':
-                ffault = text_to_json(args.finite_fault)
-            elif os.path.splitext(args.finite_fault)[-1] == '.json':
-                ffault = args.finite_fault
-            else:
-                print('Could not read in finite fault, continuing without it')
+            point = False
+            try:
+                if os.path.splitext(args.finite_fault)[-1] == '.txt':
+                    ffault = text_to_json(args.finite_fault)
+                elif os.path.splitext(args.finite_fault)[-1] == '.json':
+                    ffault = args.finite_fault
+                else:
+                    print('Could not read in finite fault, will try to download from comcat')
+                    ffault = None
+            except:
+                print('Could not read in finite fault, will try to download from comcat')
+                ffault = None 
+
+        if ffault is None:
+            # Try to get finite fault file, if it exists
+            try:
+                event = get_event_by_id(eventid)
+                temp = event.getProducts('shakemap')[0]
+                with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
+                    temp.getContent('info.json', filename=f.name)
+                with open(f.name) as fh:
+                    data = fh.read()
+                testjd = json.loads(data)
+                os.remove(f.name)
+                if 'faultfiles' in testjd['input']['event_information']:
+                    ffilename = testjd['input']['event_information']['faultfiles']
+                    if len(ffilename) > 0:
+                        # Download the file
+                        with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
+                            temp.getContent(ffilename, filename=f.name)
+                        ffault = text_to_json(f.name)
+                        os.remove(f.name)
+                        point = False
+                    else:
+                        point = True
+
+            except Exception as e:
+                print(e)
+                print('Unable to determine source type, not assuming finite'
+                      ' fault nor point source')
                 ffault = None
-        else:
-            ffault = args.finite_fault
+                point = False
 
         # Loop over config files
         for conf in configs:
             modelname = conf.keys()[0]
-            print('Now running %s' % modelname)
+            print('\nNow running %s:' % modelname)
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
                 lm = LM.LogisticModel(
@@ -301,8 +340,8 @@ def main(args):
                     # convert to geotif
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
-                    os.remove(filen)
-                    os.remove(fileh)
+                    #os.remove(filen)
+                    #os.remove(fileh)
                     filenames.append(fileg)
 
                 # Make binary output for ShakeCast
@@ -340,15 +379,15 @@ def main(args):
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                     cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
                     rc, so, se = get_command_output(cmd)
-                    os.remove(filen)
-                    os.remove(fileh)
+                    #os.remove(filen)
+                    #os.remove(fileh)
                     filenames.append(fileg)
 
         if args.make_webpage:
             outputs = makeWebpage(results, configs, args.web_template,
                                   shakefile, outfolder=outfolder,
                                   includeAlert=args.alert, cleanup=True,
-                                  faultfile=ffault)
+                                  faultfile=ffault, point=point)
             filenames = filenames + outputs
 
         # Write shakefile to a file for use later

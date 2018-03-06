@@ -73,7 +73,7 @@ def main(args):
     if args.make_static_pngs:
         gfail_flags += ' -pn'
 
-    if not args.webpage and not args.hdf5:
+    if not args.webpage and not args.hdf5 and args.eventdir is None:
         print('No outputs specified, saving static plots')
         gfail_flags = '-pn'
 
@@ -214,31 +214,32 @@ def main(args):
                                 # Send mail if any changes from 0 to a value or vice versa
                                 if (np.round(Hagg05LS) == 0. and np.round(LSsta[0]) > 0.) or (np.round(Hagg05LS) > 0. and np.round(LSsta[0]) == 0.):
                                     sig = True
-                                    change += '\n\t* Landslide aggregate hazard (>5%%g) changed from %1.0f to %1.0f.' % (Hagg05LS, LSsta[0])
+                                    change += '\n\t* Landslide aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LS, LSsta[0])
                                 if (np.round(Hagg05LQ) == 0. and np.round(LQsta[0]) > 0.) or (np.round(Hagg05LQ) > 0. and np.round(LQsta[0]) == 0.):
                                     sig = True
-                                    change += '\n\t* Liquefaction aggregate hazard (>5%%g) changed from %1.0f to %1.0f.' % (Hagg05LQ, LQsta[0])
+                                    change += '\n\t* Liquefaction aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LQ, LQsta[0])
                                 if (np.round(Parea01LS) == 0. and np.round(LSsta[1]) > 0.) or (np.round(Parea01LS) > 0. and np.round(LSsta[1]) == 0.):
                                     sig = True
-                                    change += '\n\t* Landslide area of probability >0.1 changed from %1.0f to %1.0f.' % (Parea01LS, LSsta[1])
+                                    change += '\n\t* Landslide area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LS, LSsta[1])
                                 if (np.round(Parea01LQ) == 0. and np.round(LQsta[1]) > 0.) or (np.round(Parea01LQ) > 0. and np.round(LQsta[1]) == 0.):
                                     sig = True
-                                    change += '\n\t* Liquefaction area of probability >0.1 changed from %1.0f to %1.0f.' % (Parea01LQ, LQsta[1])
+                                    change += '\n\t* Liquefaction area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LQ, LQsta[1])
                                 if not sig:
-                                    changeperc = []
-                                    changereason = []
-                                    changeperc.append(np.abs(Hagg05LS-LSsta[0])/Hagg05LS)
-                                    changereason.append('\n\t* Landslide aggregate hazard (>5%%g) changed from %1.0f to %1.0f.' % (Hagg05LS, LSsta[0]))
-                                    changeperc.append(np.abs(Hagg05LQ-LQsta[0])/Hagg05LQ)
-                                    changereason.append('\n\t* Liquefaction aggregate hazard (>5%%g) changed from %1.0f to %1.0f.' % (Hagg05LQ, LQsta[0]))
-                                    changeperc.append(np.abs(Parea01LS-LSsta[1])/Parea01LS)
-                                    changereason.append('\n\t* Landslide area of probability >0.1 changed from %1.0f to %1.0f.' % (Parea01LS, LSsta[1]))
-                                    changeperc.append(np.abs(Parea01LQ-LQsta[1])/Parea01LQ)
-                                    changereason.append('\n\t* Liquefaction area of probability >0.1 changed from %1.0f to %1.0f.' % (Parea01LQ, LQsta[1]))
-                                    for perc, reas in zip(changeperc, changereason):
-                                        if perc >= changethresh:
-                                            sig = True
-                                            change += reas
+                                    if np.round(Hagg05LS) > 1. and np.round(Parea01LS) > 1. and np.round(Hagg05LQ) > 1. and np.round(Parea01LQ) > 1.:
+                                        changeperc = []
+                                        changereason = []
+                                        changeperc.append(np.abs(Hagg05LS-LSsta[0])/Hagg05LS)
+                                        changereason.append('\n\t* Landslide aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LS, LSsta[0]))
+                                        changeperc.append(np.abs(Hagg05LQ-LQsta[0])/Hagg05LQ)
+                                        changereason.append('\n\t* Liquefaction aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LQ, LQsta[0]))
+                                        changeperc.append(np.abs(Parea01LS-LSsta[1])/Parea01LS)
+                                        changereason.append('\n\t* Landslide area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LS, LSsta[1]))
+                                        changeperc.append(np.abs(Parea01LQ-LQsta[1])/Parea01LQ)
+                                        changereason.append('\n\t* Liquefaction area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LQ, LQsta[1]))
+                                        for perc, reas in zip(changeperc, changereason):
+                                            if perc >= changethresh:
+                                                sig = True
+                                                change += reas
                                 if not sig:
                                     mail = False
 
