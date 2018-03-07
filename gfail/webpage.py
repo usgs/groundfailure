@@ -14,7 +14,13 @@ import glob
 import json
 import collections
 from configobj import ConfigObj
-from libcomcat.search import get_event_by_id
+import numpy as np
+
+from datetime import timedelta
+from libcomcat.search import get_event_by_id, search
+from libcomcat.classes import VersionOption
+from mapio.shake import getHeaderData
+
 
 # temporary until mapio is updated
 import warnings
@@ -106,12 +112,12 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         f.write('\n')
 
     if statement is None:
-        statement = ("Maps show where landslides and/or liquefaction "
+        statement = ("Models show where landslides and liquefaction "
                      "are most likely to have occurred and their relative "
                      "severity. These are global models intended to identify "
                      "general trends in ground failure hazard and cannot "
-                     "identify specific occurrences of individual ground failures. "
-                     "As a result, some areas indicated may not have "
+                     "identify specific individual occurrences. "
+                     "Some areas indicated may not have "
                      "actually experienced ground failure and vice versa.")
 
     # Separate the LS and LQ models
@@ -284,8 +290,17 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     else:
         finitefault = False
 
-    sks = write_summary(shakemap, pages, images, point=point,
-                        statement=statement, finitefault=finitefault)
+    # Try to get urls
+    try:
+        info1, detail, temp = get_event_comcat(shakemap)
+        eventurl = detail.url
+        shakemapurl = detail.url + '#shakemap'
+    except:
+        shakemapurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % event_id
+        eventurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % event_id
+
+    sks = write_summary(shakemap, pages, images, point=point, event_url=eventurl,
+                        statement=statement, finitefault=finitefault, shake_url=shakemapurl)
 
     # Create webpages for each type of ground motion
     write_individual(lsmodels, articles, 'Landslides',
@@ -295,12 +310,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                      interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
                      topimage=topfileLQ, statlist=statlist)
     
-    # Try to get shakemap url
-    try:
-        event = get_event_by_id(sks['event_id'])
-        shakemapurl = event.url + '#shakemap'
-    except:
-        shakemapurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % sks['event_id']
+
 
     # Create info.json for website rendering and metadata purposes
     web_dict = {
@@ -312,7 +322,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             'name': sks['name'],
             'date': sks['date'],
             'event_id': sks['event_id'],
-            'event_url': sks['event_url'],
+            'event_url': eventurl,
             'shakemap_url': shakemapurl,
             'shakemap_version': sks['shakemap_version'],
             'statement': sks['statement'],
@@ -490,7 +500,8 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
 
 
 def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
-                  finitefault=False, point=False):
+                  finitefault=False, point=False, event_url=None,
+                  shake_url=None):
     """
     Write markdown file summarizing event
 
@@ -508,7 +519,10 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
     edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
     smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
 
-    event_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % edict['event_id']
+    if event_url is None:
+        event_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % edict['event_id']
+    if shake_url is None:
+        shake_url = event_url + '#shakemap'
 
     # NEED TO ADD FIX HERE IN CASE NO FINITE FAULT FILE MODEL IS AVAILABLE BUT WAS USED IN SHAKEMAP
     if finitefault and not point:
@@ -516,7 +530,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
     elif point and not finitefault:
         faulttype = '(point source model)'
         if edict['magnitude'] > 6.5:
-            statement = ('%s ShakeMap is currently approximating '
+            statement = ('%s<br>ShakeMap is currently approximating '
                          'this earthquake as a point source. '
                          'This may underestimate the extent of strong '
                          'shaking for larger earthquakes. '
@@ -549,9 +563,9 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
         file1.write('<p>Last updated at: %s (UTC)<br>'
                     % datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('Based on ground motion estimates from '
-                    'ShakeMap version %1.1f %s<br></p>'
-                    % (smdict['shakemap_version'], faulttype))
-        statement = ('%s<br>Please refer to the <a href=https://dev-earthquake.cr.usgs.gov/data/grdfailure/background.php>Ground Failure Background</a>'
+                    '<a href=%s>ShakeMap</a> version %1.1f %s<br></p>'
+                    % (shake_url, smdict['shakemap_version'], faulttype))
+        statement = ('%s<br>Refer to the <a href=https://dev-earthquake.cr.usgs.gov/data/grdfailure/background.php>Ground Failure Background</a>'
                                  ' page for more details.' % statement)
 
         if statement is not None:
@@ -685,3 +699,50 @@ def make_alert_img(color, type1, outfolder):
         fig.savefig(outfilename, transparent=True)
         plt.close()
     return outfilename
+
+
+def get_event_comcat(shakefile, timewindow=60, degwindow=0.1, magwindow=0.2):
+    header_dicts = getHeaderData(shakefile)
+    grid_dict = header_dicts[0]
+    event_dict = header_dicts[1]
+    version = grid_dict['shakemap_version']
+    try:
+        eid = event_dict['event_id']
+        net = 'us'
+        if 'event_network' in event_dict:
+            net = event_dict['event_network']
+        if not eid.startswith(net):
+            eid = net + eid
+        detail = get_event_by_id(eid, includesuperseded=True)
+    except:
+        lat = event_dict['lat']
+        lon = event_dict['lon']
+        mag = event_dict['magnitude']
+        time = event_dict['event_timestamp']
+        starttime = time - timedelta(seconds=timewindow)
+        endtime = time + timedelta(seconds=timewindow)
+        minlat = lat - degwindow
+        minlon = lon - degwindow
+        maxlat = lat + degwindow
+        maxlon = lon + degwindow
+        minmag = max(0, mag-magwindow)
+        maxmag = min(10, mag+magwindow)
+        events = search(starttime=starttime,
+                        endtime=endtime,
+                        minmagnitude=minmag,
+                        maxmagnitude=maxmag,
+                        minlatitude=minlat,
+                        minlongitude=minlon,
+                        maxlatitude=maxlat,
+                        maxlongitude=maxlon)
+        if not len(events):
+            return None
+        detail = events[0].getDetailEvent()
+    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)  
+    # Find the right version
+    vers = [allv.version for allv in allversions]
+    idx = np.where(np.array(vers)==version)[0][0]
+    shakemap = allversions[idx]
+    infobytes, url = shakemap.getContentBytes('info.json')
+    info = json.loads(infobytes.decode('utf-8'))
+    return info, detail, shakemap

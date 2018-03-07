@@ -29,7 +29,7 @@ from gfail.godt import godt2008
 from gfail.savelayers import savelayers
 from gfail.makemaps import (parseConfigLayers, parseMapConfig,
                             modelMap, interactiveMap)
-from gfail.webpage import makeWebpage
+from gfail.webpage import makeWebpage, get_event_comcat
 
 
 def main(args):
@@ -194,14 +194,7 @@ def main(args):
         if ffault is None:
             # Try to get finite fault file, if it exists
             try:
-                event = get_event_by_id(eventid)
-                temp = event.getProducts('shakemap')[0]
-                with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
-                    temp.getContent('info.json', filename=f.name)
-                with open(f.name) as fh:
-                    data = fh.read()
-                testjd = json.loads(data)
-                os.remove(f.name)
+                testjd, detail, temp = get_event_comcat(shakefile)
                 if 'faultfiles' in testjd['input']['event_information']:
                     ffilename = testjd['input']['event_information']['faultfiles']
                     if len(ffilename) > 0:
@@ -216,8 +209,8 @@ def main(args):
 
             except Exception as e:
                 print(e)
-                print('Unable to determine source type, not assuming finite'
-                      ' fault nor point source')
+                print('Unable to determine source type, unknown if finite'
+                      ' fault or point source')
                 ffault = None
                 point = False
 
