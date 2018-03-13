@@ -57,6 +57,7 @@ def test_autogf(tmpdir):
         """ % (gconfig, config)
 
         rc, so, se = get_command_output(agfcmd)
+        #print(agfcmd)
         temp = so.decode().split('\n')[-2]
     except Exception as e:  # To make sure defaults are replaced
         print(e)

@@ -228,6 +228,7 @@ def main(args):
                     bounds=bounds,
                     numstd=float(args.std),
                     trimfile=trimfile)
+
                 maplayers = lm.calculate()
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(

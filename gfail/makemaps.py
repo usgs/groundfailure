@@ -11,6 +11,7 @@ import matplotlib as mpl
 from matplotlib.colors import LightSource, LogNorm, Normalize
 import re
 from matplotlib.colorbar import ColorbarBase
+import matplotlib.colors as colors
 
 # third party imports
 import matplotlib.cm as cm
@@ -985,7 +986,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                    outfilename=None, tiletype='Stamen Terrain',
                    smcontourfile=None, faultfile=None, separate=True,
                    onkey=None, sepcolorbar=False, floatcb=True,
-                   savefiles=True, mapid=None, clear_zero=False):
+                   savefiles=True, mapid=None, clear_zero=False, sync=False):
     """
     This function creates interactive html plots of mapio grid layers
     (e.g. liquefaction or landslide models with their input layers).
@@ -1071,6 +1072,8 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             'max', 'median', or 'mean'. NOT IMPLEMENTED YET.
         smcontourfile (str): File extension to shakemap contour file to plot
             NOT FUNCTIONAL YET.
+        sync (bool): If False, each map will use it's own colorbar. If a grid layer shortref is specified (e.g. 'Nowicki and others (2014)'), all maps will
+            have colorbars synced to the colors of the one specified, but they must all have the same number of bins
 
     Returns:
         * Interactive plot (html file) of all grids listed in plotorder
@@ -1144,6 +1147,23 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
     cbars = []
     removelater = []
 
+    # Get reference colorbar, if specified
+    if sync:
+        sync, colorlist, reflims = setupsync(sync, plotorder, lims, colormaps, defaultcolormap)
+        if sync:
+            if logscale is not False:
+                if not np.array_equal(logscale, np.repeat(False, len(plotorder))):
+                    logscale = np.repeat(False, len(plotorder)) # Also has to be linear
+                    print('Logscale for synced colorbars not implemented, changing to linear')
+            if not sepcolorbar:
+                sepcolorbar = True
+                print('Changing to separate colorbar, embedded colorbar not implemented for sync')
+            scaletype = 'binned'  # scaletype has to be binned for sync
+    else:
+        sync = False
+        colorlist = None
+        reflims = None
+
     for k, key in enumerate(plotorder):
 
         # Get simplified name of key for file naming
@@ -1189,106 +1209,17 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
         dat = grid.getData().copy()
 
-        # Find order of range to know how to scale
-        if np.nanmax(dat) > 0.:
-            minnonzero = np.nanmin(dat[dat > 0.])
-        else:
-            minnonzero = 0.0001
-
         if clear_zero:
             dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
-
-        if scaletype.lower() == 'binned':
-            order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
-            if logscale[k]:
-                clev = np.logspace(np.floor(np.log10(minnonzero)),
-                                   np.ceil(np.log10(np.nanmax(dat))), 2*order+1)
-                # Adjust to colorbar levels
-
-                dat[dat < clev[0]] = clev[0]
-                for j, level in enumerate(clev[:-1]):
-                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
-                        (clev[j] + clev[j+1])/2.
-                # So colorbar saturates at top
-                dat[dat > clev[-1]] = clev[-1]
-                vmin = np.log10(clev[0])
-                vmax = np.log10(clev[-1])
-            else:
-                if lims[k] is None:
-                    if order < 1.:
-                        scal = 10**-order
-                    else:
-                        scal = 1.
-                    clev = (np.linspace(np.floor(scal*minnonzero),
-                                        np.ceil(scal*np.nanmax(dat)),
-                                        6))/scal
-                else:
-                    clev = lims[k]
-
-                # Adjust to colorbar levels
-                dat[dat < clev[0]] = clev[0]
-                for j, level in enumerate(clev[:-1]):
-                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
-                        (clev[j] + clev[j+1])/2.
-                # So colorbar saturates at top
-                dat[dat > clev[-1]] = clev[-1]
-                vmin = clev[0]
-                vmax = clev[-1]
-
-        else:
-
-            if lims[k] is None:
-                if logscale[k]:
-                    order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
-                    clev = np.logspace(np.floor(np.log10(minnonzero)),
-                                       np.ceil(np.log10(np.nanmax(dat))), order+1)
-                    vmin = np.log10(clev[0])
-                    vmax = np.log10(clev[-1])
-                else:
-                    vmin = np.nanmin(dat)
-                    vmax = np.nanmax(dat)
-                    clev = np.linspace(vmin, vmax, 6)
-            else:
-                if logscale[k]:
-                    order = np.ceil(np.log10(lims[k][-1])) - np.floor(np.log10(minnonzero))
-                    clev = np.logspace(np.floor(np.log10(minnonzero)),
-                                       np.ceil(np.log10(lims[k][-1])), order+1)
-                    vmin = np.log10(clev[0])
-                    vmax = np.log10(clev[-1])
-                else:
-                    vmin = lims[k][0]
-                    vmax = lims[k][-1]
-                    clev = np.linspace(vmin, vmax, 6)
-
+            
         if maskthreshes[k] is not None:
             dat[dat <= maskthreshes[k]] = float('nan')
 
-        #if maskthreshes[k] is not None or clear_zero:
-        dat = np.ma.array(dat, mask=np.isnan(dat))
-        #else:
-        #    dat[np.isnan(dat)] = 0.
-
-        if logscale[k]:
-            norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
-        else:
-            norm = Normalize(vmin=vmin, vmax=vmax)
-
-        # turn data into an RGBA image
-        # adjust data so scaled between vmin and vmax and between 0 and 1
-        cmap = palette
-
-        if logscale[k]:
-            dat1 = np.log10(dat.copy())
-            dat1[dat1 < vmin] = vmin  # saturate at ends
-            dat1[dat1 > vmax] = vmax
-            dat1 = (dat1 - vmin)/(vmax-vmin)
-            rgba_img = cmap(dat1)
-        else:
-            dat1 = dat.copy()
-            dat1[dat1 < vmin] = vmin  # saturate at ends
-            dat1[dat1 > vmax] = vmax
-            dat1 = (dat1 - vmin)/(vmax-vmin)
-            rgba_img = cmap(dat1)
+        # Make changes needed to get desired colorbar
+        clev, vmin, vmax, rgba_img, cmap, norm = correct4colorbar(dat, lims[k],
+                                                                  logscale[k], scaletype,
+                                                                  palette, colorlist=colorlist,
+                                                                  synclims=reflims)
 
         gd = grid.getGeoDict()
         minlat = gd.ymin - gd.dy/2.
@@ -1298,12 +1229,16 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
         # Make colorbar figure
         if sepcolorbar:
-            if vmax <= 1.:
+            if clev[1] < 0.01:
+                cbfmt = '%1.3f'
+            elif clev[1] < 0.1:
                 cbfmt = '%1.2f'
-            elif vmax > 1. and vmax < 5.:
+            elif clev[1] < 1. and vmax < 5:
                 cbfmt = '%1.1f'
             elif vmax >= 5.:  # (vmax - vmin) > len(clev):
                 cbfmt = '%1.0f'
+            else:
+                cbfmt = None
 
             if logscale[k]:  # override previous choice if logscale
                 cbfmt = None  # '%1.0e'
@@ -1313,15 +1248,21 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 ax = plt.gca()
             else:
                 if k == 0:
-                    fig, axes = plt.subplots(len(plotorder), 1, figsize=(4., 0.8*len(plotorder)))
+                    fig, axes = plt.subplots(len(plotorder), 1, figsize=(6., 0.9*len(plotorder)))
                 ax = axes[k]
 
             if scaletype.lower() == 'binned':
-                newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1]))  # Modify so colorbar uses full expanse of colorbar
-                cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                             orientation='horizontal', format=cbfmt, extend='both',
-                             extendfrac=0.15, ticks=newclev, boundaries=newclev,
-                             spacing='proportional'))
+                if sync:
+                    cbars.append(ColorbarBase(ax, cmap=cmap, norm=norm,
+                                 orientation='horizontal', format=cbfmt, extend='both',
+                                 extendfrac=0.15, ticks=clev[1:-1], boundaries=clev,
+                                 spacing='uniform'))
+                else:
+                    newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1]))  # Modify so colorbar uses full expanse of colorbar
+                    cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
+                                 orientation='horizontal', format=cbfmt, extend='both',
+                                 extendfrac=0.15, ticks=newclev, boundaries=newclev,
+                                 spacing='proportional'))
             else:
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
                              orientation='horizontal', extend='both',
@@ -1499,6 +1440,168 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         maps = map1
 
     return maps, filenames
+
+
+def setupsync(sync, plotorder, lims, colormaps, defaultcolormap):
+    if not sync:
+        return False, None, None
+        
+    elif sync in plotorder:
+        k = [indx for indx, key in enumerate(plotorder) if key in sync][0]
+        # Make sure lims exist and all have the same number of bins'
+        #try:
+        lim1 = np.array(lims[k])
+        sum1 = 0
+        for lim in lims:
+            if lim is None:
+                sum1 +=1
+                continue
+            if len(lim) != len(lim1):
+                sum1 += 1
+                continue
+        if sum1 > 0:
+            print('Cannot sync colorbars, different number of bins or lims not specified')
+            sync = False
+            return sync, None, None
+
+        cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
+        if colormaps[k] is not None:
+            palette1 = colormaps[k]
+        else:
+            palette1 = defaultcolormap
+        #palette1.set_bad(clear_color, alpha=0.0)
+        scalarMap = cm.ScalarMappable(norm=cNorm, cmap=palette1)
+        midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
+        colorlist = []
+        for value in midpts:
+            colorlist.append(scalarMap.to_rgba(value))
+        sync = True
+#        except Exception as e:
+#            sync = False
+#            colorlist = None
+#            lim1 = None
+#            print('Cannot sync colorbars, %s' % e)
+    else:
+        print('Cannot sync colorbars, different number of bins or lims not specified')
+        sync = False
+        colorlist = None
+        lim1 = None
+    return sync, colorlist, lim1
+
+
+def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None, synclims=None):
+    dat = dat.copy()
+    if np.nanmax(dat) > 0.:
+        minnonzero = np.nanmin(dat[dat > 0.])
+    else:
+        minnonzero = 0.0001
+        
+    if scaletype.lower() == 'binned':
+        order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
+        datcop = dat.copy()
+        if synclims is not None:
+            clev = gridlims # will change all data values to midpoints of sync template
+            datcop[dat < gridlims[0]] = synclims[0]
+            for j, level in enumerate(clev[:-1]):
+                datcop[(dat >= gridlims[j]) & (dat < gridlims[j+1])] = \
+                    (synclims[j] + synclims[j+1])/2.
+            # So colorbar saturates at top
+            datcop[dat > gridlims[-1]] = synclims[-1]
+            cmap = colors.ListedColormap(colorlist)
+            norm = mpl.colors.BoundaryNorm(clev, cmap.N)
+            datcop = np.ma.array(datcop, mask=np.isnan(dat))
+            vmin = clev[0]
+            vmax = clev[-1]
+            rgba_img = cmap(datcop)
+
+        else:
+            cmap = palette
+            if logscale:
+                clev = np.logspace(np.floor(np.log10(minnonzero)),
+                                   np.ceil(np.log10(np.nanmax(dat))), 2*order+1)
+                vmin = np.log10(clev[0])
+                vmax = np.log10(clev[-1])
+                dat[dat < clev[0]] = clev[0]
+                for j, level in enumerate(clev[:-1]):
+                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
+                        (clev[j] + clev[j+1])/2.
+                # So colorbar saturates at top
+                dat[dat > clev[-1]] = clev[-1]
+                dat = np.ma.array(dat, mask=np.isnan(dat))
+                norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
+                dat = np.log10(dat.copy())
+            
+            else:
+                #import pdb; pdb.set_trace()
+                if gridlims is None:
+                    if order < 1.:
+                        scal = 10**-order
+                    else:
+                        scal = 1.
+                    if np.nanmax(dat) < 0.5:
+                        clev = (np.linspace(np.floor(scal*minnonzero),
+                                            0.5*np.ceil(scal*np.nanmax(dat)),
+                                            6))/scal
+                    else:
+                        clev = (np.linspace(np.floor(scal*minnonzero),
+                                            np.ceil(scal*np.nanmax(dat)),
+                                            6))/scal
+                else:
+                    clev = gridlims
+                    # Adjust uppermost clev to make the best use of the colorbar
+                    clev[-1] = np.nanmax(dat) + 0.1 * np.nanmax(dat)
+                vmin = clev[0]
+                vmax = clev[-1]
+                dat[dat < clev[0]] = clev[0]
+                for j, level in enumerate(clev[:-1]):
+                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
+                        (clev[j] + clev[j+1])/2.
+                # So colorbar saturates at top
+                dat[dat > clev[-1]] = clev[-1]
+                dat = np.ma.array(dat, mask=np.isnan(dat))
+                norm = Normalize(vmin=vmin, vmax=vmax)
+            dat1 = (dat - vmin)/(vmax-vmin)  # Normalize by vmin and vmax so colorbar matches
+            rgba_img = cmap(dat1)
+
+    else:
+    
+        if gridlims is None:
+            if logscale:
+                order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
+                clev = np.logspace(np.floor(np.log10(minnonzero)),
+                                   np.ceil(np.log10(np.nanmax(dat))), order+1)
+                vmin = np.log10(clev[0])
+                vmax = np.log10(clev[-1])
+                norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
+                dat = np.log10(dat.copy())
+            else:
+                vmin = np.nanmin(dat)
+                vmax = np.nanmax(dat)
+                clev = np.linspace(vmin, vmax, 6)
+                norm = Normalize(vmin=vmin, vmax=vmax)
+
+        else:
+            if logscale:
+                order = np.ceil(np.log10(gridlims[-1])) - np.floor(np.log10(minnonzero))
+                clev = np.logspace(np.floor(np.log10(minnonzero)),
+                                   np.ceil(np.log10(gridlims[-1])), order+1)
+                vmin = np.log10(clev[0])
+                vmax = np.log10(clev[-1])
+                norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
+                dat = np.log10(dat)
+                
+            else:
+                vmin = gridlims[0]
+                vmax = gridlims[-1]
+                clev = np.linspace(vmin, vmax, 6)
+                norm = Normalize(vmin=vmin, vmax=vmax)
+        dat[dat < vmin] = vmin  # saturate at ends
+        dat[dat > vmax] = vmax
+        cmap = palette
+        dat1 = (dat - vmin)/(vmax-vmin)  # Normalize by vmin and vmax so colorbar matches
+        rgba_img = cmap(dat1)
+        
+    return clev, vmin, vmax, rgba_img, cmap, norm
 
 
 def parseMapConfig(config, fileext=None):

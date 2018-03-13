@@ -536,6 +536,8 @@ class LogisticModel(object):
                 units5 = 'relative hazard'
             else:
                 units5 = 'areal coverage'
+        elif 'Zhu' in self.modelrefs['shortref']:
+            units5 = 'areal coverage'
         else:
             units5 = 'probability'
 

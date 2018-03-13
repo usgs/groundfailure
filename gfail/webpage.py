@@ -244,7 +244,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             colormaps=colLS, lims=limLS, clear_zero=False,
             logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
             mapid='LS', savefiles=True, outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile)
+            sepcolorbar=True, floatcb=False, faultfile=faultfile,
+            sync='Nowicki and others (2014)')
         filenameLS = filenameLS[0]
     else:
         filenameLS = None
@@ -255,7 +256,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             colormaps=colLQ, lims=limLQ, clear_zero=False,
             logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
             savefiles=True, mapid='LQ', outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile)
+            sepcolorbar=True, floatcb=False, faultfile=faultfile,
+            sync='Zhu and others (2015)')
         filenameLQ = filenameLQ[0]
     else:
         filenameLQ = None
@@ -465,7 +467,7 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                             '</div></center>\n' % id1)
 
                 cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
-                file1.write('<center><img src="images%s" width="300" '
+                file1.write('<center><img src="images%s" width="410" '
                             'href="images%s"/></center>\n'
                             % (cbname, cbname))
                 if staticmap is not None:
@@ -570,7 +572,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
 
         if statement is not None:
             file1.write('<h2>Summary</h2>\n')
-            file1.write('<p>%s</p>' % statement)
+            file1.write('<p align="left">%s</p>' % statement)
 
         file1.write('<hr>')
 
