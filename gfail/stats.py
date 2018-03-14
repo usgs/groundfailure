@@ -7,6 +7,7 @@ import collections
 import shutil
 import tempfile
 import os
+from configobj import ConfigObj
 
 # local imports
 from mapio.shake import ShakeGrid
@@ -16,9 +17,10 @@ from gfail.spatial import quickcut
 # Make fonts readable and recognizable by illustrator
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
-mpl.rcParams['font.sans-serif'] = ['Arial',
-                                   'Bitstream Vera Serif',
-                                   'sans-serif']
+mpl.rcParams['font.sans-serif'] = [
+    'Arial',
+    'Bitstream Vera Serif',
+    'sans-serif']
 
 
 def computeStats(grid2D, probthresh=0.0, shakefile=None,
@@ -37,8 +39,8 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi. Used for Hagg computation
-        statprobthresh: Optional, Float, Exclude any values less than or equal to this value in
-            calculation of regular stats (max, median, std)
+        statprobthresh: Optional, Float, Exclude any values less than or equal
+            to this value in calculation of regular stats (max, median, std)
 
     Returns:
         Dictionary with the following keys:
@@ -56,8 +58,10 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
     stats['Max'] = float(np.nanmax(grid))
     stats['Median'] = float(np.nanmedian(grid))
     stats['Std'] = float(np.nanstd(grid))
+
     Hagg = computeHagg(grid2D, probthresh=0.0, shakefile=shakefile,
-                       shakethreshtype=shakethreshtype, shakethresh=shakethresh)
+                       shakethreshtype=shakethreshtype,
+                       shakethresh=shakethresh)
     if type(Hagg) != list and type(Hagg) != list:
         shakethresh = [shakethresh]
         Hagg = [Hagg]
@@ -66,7 +70,7 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
         if T == 0.:
             stats['Hagg'] = float(H)
         else:
-            newkey = 'Hagg_%1.2fg' % (T/100.)
+            newkey = 'Hagg_%1.2fg' % (T / 100.)
             stats[newkey] = float(H)
 
     Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
@@ -81,6 +85,13 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
         else:
             newkey = 'Parea_%1.2f' % T
             stats[newkey] = float(P)
+
+    default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    defaults = ConfigObj(default_file)
+    pop_file = defaults['pop_file']
+    exp_dict = get_exposures(grid2D, pop_file)
+    for k, v in exp_dict.items():
+        stats[k] = v
 
     return stats
 
@@ -204,7 +215,7 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         junkfile = os.path.join(tmpdir, 'temp.bil')
         GDALGrid.copyFromGrid(temp.getLayer(shakethreshtype)).save(junkfile)
         shk = quickcut(junkfile, geodict, precise=True,
-                            method='bilinear')
+                       method='bilinear')
         shutil.rmtree(tmpdir)
         if shk.getGeoDict() != geodict:
             raise Exception('shakemap was not resampled to exactly the same '
@@ -233,3 +244,40 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     if len(Parea) == 1:
         Parea = Parea[0]
     return Parea
+
+
+def get_exposures(grid, pop_file):
+    """
+    Get exposure-based statistics.
+
+    Args:
+        grid: Model grid.
+        pop_file (str):  Path to the landscan population grid.
+
+    Returns:
+        dict: Dictionary with enties for poplulation-based aggregate hazard.
+    """
+    popdict, t = GDALGrid.getFileGeoDict(pop_file)
+    mod_dict = grid.getGeoDict()
+
+    sampledict = popdict.getBoundsWithin(mod_dict)
+    popgrid_mod = GDALGrid.load(pop_file, samplegeodict=sampledict,
+                                resample=False, doPadding=True,
+                                padValue=np.nan)
+    pop_mod_data = popgrid_mod.getData()
+
+    grid2 = grid.interpolateToGrid(sampledict, method='nearest')
+    mod_prob = np.nan_to_num(grid2.getData())
+
+    exp_pop = np.nansum(mod_prob * pop_mod_data)
+    exp_t10 = np.nansum(pop_mod_data[mod_prob > 0.10])
+    exp_t20 = np.nansum(pop_mod_data[mod_prob > 0.20])
+    exp_t30 = np.nansum(pop_mod_data[mod_prob > 0.30])
+
+    out_dict = {
+        'exp_pop': float(exp_pop),
+        'exp_t10': float(exp_t10),
+        'exp_t20': float(exp_t20),
+        'exp_t30': float(exp_t30)
+    }
+    return out_dict
