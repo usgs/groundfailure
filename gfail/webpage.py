@@ -30,43 +30,48 @@ plt.switch_backend('agg')
 
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
-                includeunc=False, cleanup=True, includeAlert=False, alertkey='Hagg_0.05g',
-                faultfile=None, shakethreshtype='pga', point=False,
-                statlist=['Max', 'Std', 'Hagg_0.05g', 'Hagg_0.10g', 'Parea_0.10', 'Parea_0.30'],
-                probthresh=[0.1, 0.3], shakethresh=[5., 10.], statement=None):
+                includeunc=False, cleanup=True, includeAlert=False,
+                alertkey='Hagg_0.05g', faultfile=None, shakethreshtype='pga',
+                point=False,
+                statlist=['Max', 'Std', 'Hagg_0.05g',
+                          'Hagg_0.10g', 'Parea_0.10', 'Parea_0.30'],
+                probthresh=[0.01, 0.03, 0.05, 0.1, 0.3],
+                shakethresh=[5., 10.], statement=None):
     """
     Create a webpage that summarizes ground failure results (both landslides
         and liquefaction)
 
     Args:
-        maplayerlist (list): list of model output structures to include
+        maplayerlist (list): list of model output structures to include.
         configs (list): list of paths to config files corresponding to each
-            of the models in maplayerlist in the same order
+            of the models in maplayerlist in the same order.
         web_template (str): Path to location of pelican template
-            (final folder should be "theme")
-        shakemap (str): path to shakemap .xml file for the current event
-        outfolder (str, optional): path to folder where output should be placed
-        includeunc (bool, optional): include uncertainty, NOT IMPLEMENTED
+            (final folder should be "theme").
+        shakemap (str): path to shakemap .xml file for the current event.
+        outfolder (str, optional): path to folder where output should be
+            placed.
+        includeunc (bool, optional): include uncertainty, NOT IMPLEMENTED.
         cleanup (bool, optional): cleanup all unneeded intermediate files that
             pelican creates, default True.
-        includeAlert (bool, optional): if True, computes and reports alert level, default
-            False
+        includeAlert (bool, optional): if True, computes and reports alert
+            level, default False.
         alertkey (str): stat key used for alert calculation
         faultfile (str, optional): GeoJson file of finite fault to display on
             interactive maps
-        shakethreshtype (str, optional): Type of ground motion to use for stat thresholds,
-            'pga', 'pgv', or 'mmi'
-        point (bool): True if it is known that the ShakeMap used a point source,
-            False does not assume anything about source type
-        statlist (list): list of strings indicating which stats to show on webpage
-        probthresh (float, optional): List of probability thresholds for which to compute
-            Parea.
-        shakethresh (list, optional): List of ground motion thresholds for which
-            to compute Hagg, units corresponding to shakethreshtype.
+        shakethreshtype (str, optional): Type of ground motion to use for stat
+            thresholds, 'pga', 'pgv', or 'mmi'
+        point (bool): True if it is known that the ShakeMap used a point
+            source, False does not assume anything about source type.
+        statlist (list): list of strings indicating which stats to show on
+            webpage.
+        probthresh (float, optional): List of probability thresholds for which
+            to compute Parea.
+        shakethresh (list, optional): List of ground motion thresholds for
+            which to compute Hagg, units corresponding to shakethreshtype.
         statement (str): Text to include in the summary section of the web
             page. Alert statements will be appended prior to this statement,
-            Point source warnings for >M7 will be appended after this statement.
-            If None, will use a generic explanatory statement.
+            Point source warnings for >M7 will be appended after this
+            statement. If None, will use a generic explanatory statement.
 
     Returns:
         Folder where webpage files are located
@@ -112,13 +117,14 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         f.write('\n')
 
     if statement is None:
-        statement = ("Models show where landslides and liquefaction "
-                     "are most likely to have occurred and their relative "
-                     "severity. These are global models intended to identify "
-                     "general trends in ground failure hazard and cannot "
-                     "identify specific individual occurrences. "
-                     "Some areas indicated may not have "
-                     "actually experienced ground failure and vice versa.")
+        statement = (
+            "Models show where landslides and liquefaction "
+            "are most likely to have occurred and their relative "
+            "severity. These are global models intended to identify "
+            "general trends in ground failure hazard and cannot "
+            "identify specific individual occurrences. "
+            "Some areas indicated may not have "
+            "actually experienced ground failure and vice versa.")
 
     # Separate the LS and LQ models
 
@@ -157,7 +163,9 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             if 'godt' in maplayer['model']['description']['name'].lower():
                 statprobthresh = None
             else:
-                statprobthresh = 0.0  # Since logistic models can't equal one, need to eliminate placeholder zeros before computing stats
+                # Since logistic models can't equal one, need to eliminate
+                # placeholder zeros before computing stats
+                statprobthresh = 0.0
 
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
@@ -183,12 +191,13 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             with open(outfilebase + '.json', mode='w') as f3:
                 f3.write(metad2)
 
-            lsmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
-                                                                  'bin_edges': list(lims[0]),
-                                                                  'metadata': metadata,
-                                                                  'stats': dict(stats),
-                                                                  'layer_on': on
-                                                                  }
+            lsmodels[maplayer['model']['description']['name']] = {
+                'geotiff_file': os.path.basename(outfilebase) + '.tif',
+                'bin_edges': list(lims[0]),
+                'metadata': metadata,
+                'stats': dict(stats),
+                'layer_on': on
+            }
             il += 1
             filenames.append(outfilebase + '.tif')
         elif 'liquefaction' in mdict['parameters']['modeltype'].lower():
@@ -224,12 +233,13 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             with open(outfilebase + '.json', mode='w') as f3:
                 f3.write(metad2)
 
-            lqmodels[maplayer['model']['description']['name']] = {'geotiff_file': os.path.basename(outfilebase) + '.tif',
-                                                                  'bin_edges': list(lims[0]),
-                                                                  'metadata': metadata,
-                                                                  'stats': dict(stats),
-                                                                  'layer_on': on
-                                                                  }
+            lqmodels[maplayer['model']['description']['name']] = {
+                'geotiff_file': os.path.basename(outfilebase) + '.tif',
+                'bin_edges': list(lims[0]),
+                'metadata': metadata,
+                'stats': dict(stats),
+                'layer_on': on
+            }
             iq += 1
             filenames.append(outfilebase + '.tif')
         else:
@@ -263,7 +273,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         filenameLQ = None
 
     # Get alert levels
-    #TODO update to exact name of Hagg to use
+    # TODO update to exact name of Hagg to use
     if includeAlert:
         try:
             paramalertLS = lsmodels['Nowicki and others (2014)']['stats'][alertkey]
@@ -275,7 +285,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         except:
             paramalertLQ = None
 
-        alertLS, alertLQ, alertstatement = get_alert(paramalertLS, paramalertLQ)
+        alertLS, alertLQ, alertstatement = get_alert(
+            paramalertLS, paramalertLQ)
         topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
         topfileLS = make_alert_img(alertLS, 'landslide', images)
         statement = '%s<br>%s' % (alertstatement, statement)
@@ -311,8 +322,6 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     write_individual(lqmodels, articles, 'Liquefaction',
                      interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
                      topimage=topfileLQ, statlist=statlist)
-    
-
 
     # Create info.json for website rendering and metadata purposes
     web_dict = {
@@ -328,20 +337,20 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             'shakemap_url': shakemapurl,
             'shakemap_version': sks['shakemap_version'],
             'statement': sks['statement'],
-            },
+        },
         'Landslides': {
             'models': lsmodels,
             'alert': alertLS,
             'alertkey': alertkey,
             'alertvalue': paramalertLS
-            },
+        },
         'Liquefaction': {
             'models': lqmodels,
             'alert': alertLQ,
             'alertkey': alertkey,
             'alertvalue': paramalertLQ
-            }
         }
+    }
 
     web_file = os.path.join(outfolder, 'info.json')
     filenames.append(web_file)
@@ -394,7 +403,8 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
 
     Args:
         concatmods (float or list): Ordered dictionary of models with
-            fields required for write_individual populated (stats in particular)
+            fields required for write_individual populated (stats in
+            particular)
         outputdir (str): Path to output directory.
         modeltype (str): 'Landslides' for landslide model, otherwise it is
             a liquefaction model.
@@ -414,7 +424,7 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
     if len(concatmods) > 0:
         # If single model and not in list form, turn into lists
         modelnames = [key for key, value in concatmods.items()]
-        #TODO Extract stats
+        # TODO Extract stats
         stattable = collections.OrderedDict()
         stattable['Model'] = modelnames
         if statlist is None:
@@ -454,7 +464,8 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                         for sc in scs:
                             if 'var' in str(sc):
                                 temp = str(sc)
-                                temp = temp.strip('<script>').strip('</script>')
+                                temp = temp.strip(
+                                    '<script>').strip('</script>')
                                 with open(outjsfile, 'a') as f2:
                                     f2.write(temp)
                 # Embed and link to fullscreen
@@ -477,7 +488,8 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                                    staticmap.split('images')[-1]))
 
                 file1.write('<hr>\n')
-                file1.write('<center><h3>%s Summary</h3></center>' % modeltype.title())
+                file1.write('<center><h3>%s Summary</h3></center>' %
+                            modeltype.title())
                 file1.write('<table style="width:100%">')
                 file1.write('<tr><th>Model</th>')
                 for st in statlist:
@@ -513,7 +525,8 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
         imgoutputdir (str): path to folder where images should be placed
             and linked
         HaggLS (float, optional): Aggregate hazard of preferred landslide model
-        HaggLQ (float, optional): Aggregate hazard of preferred liquefaction model
+        HaggLQ (float, optional): Aggregate hazard of preferred liquefaction
+            model
 
     Returns:
         Markdown file
@@ -526,7 +539,8 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
     if shake_url is None:
         shake_url = event_url + '#shakemap'
 
-    # NEED TO ADD FIX HERE IN CASE NO FINITE FAULT FILE MODEL IS AVAILABLE BUT WAS USED IN SHAKEMAP
+    # NEED TO ADD FIX HERE IN CASE NO FINITE FAULT FILE MODEL IS AVAILABLE
+    # BUT WAS USED IN SHAKEMAP
     if finitefault and not point:
         faulttype = '(finite fault model)'
     elif point and not finitefault:
@@ -542,7 +556,6 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
     else:
         faulttype = ''
 
-        
     with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
@@ -567,8 +580,9 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
         file1.write('Based on ground motion estimates from '
                     '<a href=%s>ShakeMap</a> version %1.1f %s<br></p>'
                     % (shake_url, smdict['shakemap_version'], faulttype))
-        statement = ('%s<br>Refer to the <a href=https://dev-earthquake.cr.usgs.gov/data/grdfailure/background.php>Ground Failure Background</a>'
-                                 ' page for more details.' % statement)
+        statement = ('%s<br>Refer to the <a href=https://dev-earthquake.cr.usgs.gov/data/'
+                     'grdfailure/background.php>Ground Failure Background</a>'
+                     ' page for more details.' % statement)
 
         if statement is not None:
             file1.write('<h2>Summary</h2>\n')
@@ -583,7 +597,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
                     'lon': edict['lon'],
                     'depth': edict['depth'],
                     'name': 'Magnitude %1.1f - %s' % (edict['magnitude'],
-                            edict['event_description']),
+                                                      edict['event_description']),
                     'statement': statement,
                     'event_id': edict['event_id'],
                     'shakemap_id': smdict['shakemap_id'],
@@ -703,7 +717,7 @@ def make_alert_img(color, type1, outfolder):
     return outfilename
 
 
-def get_event_comcat(shakefile, timewindow=60, degwindow=0.1, magwindow=0.2):
+def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     header_dicts = getHeaderData(shakefile)
     grid_dict = header_dicts[0]
     event_dict = header_dicts[1]
@@ -727,8 +741,8 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.1, magwindow=0.2):
         minlon = lon - degwindow
         maxlat = lat + degwindow
         maxlon = lon + degwindow
-        minmag = max(0, mag-magwindow)
-        maxmag = min(10, mag+magwindow)
+        minmag = max(0, mag - magwindow)
+        maxmag = min(10, mag + magwindow)
         events = search(starttime=starttime,
                         endtime=endtime,
                         minmagnitude=minmag,
@@ -740,10 +754,10 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.1, magwindow=0.2):
         if not len(events):
             return None
         detail = events[0].getDetailEvent()
-    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)  
+    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
     # Find the right version
     vers = [allv.version for allv in allversions]
-    idx = np.where(np.array(vers)==version)[0][0]
+    idx = np.where(np.array(vers) == version)[0][0]
     shakemap = allversions[idx]
     infobytes, url = shakemap.getContentBytes('info.json')
     info = json.loads(infobytes.decode('utf-8'))
