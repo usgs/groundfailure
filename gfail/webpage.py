@@ -31,7 +31,10 @@ plt.switch_backend('agg')
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False,
-                alertkey='Hagg_0.05g', faultfile=None, shakethreshtype='pga',
+                alertkeyLS='Hagg_0.05g',
+                alertkeyLQ='exp_t10',
+                faultfile=None,
+                shakethreshtype='pga',
                 point=False,
                 statlist=['Max', 'Std', 'Hagg_0.05g',
                           'Hagg_0.10g', 'Parea_0.10', 'Parea_0.30'],
@@ -55,7 +58,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             pelican creates, default True.
         includeAlert (bool, optional): if True, computes and reports alert
             level, default False.
-        alertkey (str): stat key used for alert calculation
+        alertkeyLS (str): stat key used for landslide alert calculation
+        alertkeyLQ (str): stat key used for liquefaction alert calculation
         faultfile (str, optional): GeoJson file of finite fault to display on
             interactive maps
         shakethreshtype (str, optional): Type of ground motion to use for stat
@@ -276,12 +280,12 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     # TODO update to exact name of Hagg to use
     if includeAlert:
         try:
-            paramalertLS = lsmodels['Nowicki and others (2014)']['stats'][alertkey]
+            paramalertLS = lsmodels['Nowicki and others (2014)']['stats'][alertkeyLS]
         except:
             paramalertLS = None
 
         try:
-            paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkey]
+            paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkeyLQ]
         except:
             paramalertLQ = None
 
@@ -341,13 +345,13 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         'Landslides': {
             'models': lsmodels,
             'alert': alertLS,
-            'alertkey': alertkey,
+            'alertkey': alertkeyLS,
             'alertvalue': paramalertLS
         },
         'Liquefaction': {
             'models': lqmodels,
             'alert': alertLQ,
-            'alertkey': alertkey,
+            'alertkey': alertkeyLQ,
             'alertvalue': paramalertLQ
         }
     }
@@ -607,8 +611,9 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
     return shakesummary
 
 
-def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.],
-              binLQ=[70., 500., 1200.]):
+def get_alert(HaggLS, HaggLQ,
+              binLS=[100., 850., 4000.],
+              binLQ=[1e3, 1e5, 6e5]):
     """
     Get alert levels
 
