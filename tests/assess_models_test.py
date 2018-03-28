@@ -63,7 +63,7 @@ def test_assess_models():
     gdict = maplayers2['model']['grid'].getGeoDict()
     cov_grid = assess_models.convert2Coverage(gdict, fake_inv, numdiv=10.0)
     np.testing.assert_allclose(
-        np.mean(cov_grid.getData()), 0.015701195703069205)
+        np.mean(cov_grid.getData()), 0.0156938840377)
     prob_grid = assess_models.convert2Prob(gdict, fake_inv,
                                            mustContainCenter=True)
     np.testing.assert_allclose(
@@ -88,7 +88,7 @@ def test_assess_models():
 #    np.testing.assert_allclose(temp[4]['Brier_yes'], 0.78778928086125)
 
     rho = assess_models.normXcorr(maplayers2['model']['grid'], prob_grid)
-    np.testing.assert_allclose(rho, 0.24711406794308216)
+    np.testing.assert_allclose(rho, 0.28353941219)
 
 
 if __name__ == "__main__":

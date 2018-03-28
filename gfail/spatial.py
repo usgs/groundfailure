@@ -140,12 +140,22 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
 
     filegdict = filegdict[0]
 
+    # Get the right methods for mapio (method) and gdal (method2)
     if method == 'linear':
-        method = 'bilinear'
+        method2 = 'bilinear'
     if method == 'nearest':
-        method = 'near'
-    if not precise:
-        # Try to cut without resampling
+        method2 = 'near'
+    if method == 'bilinear':
+        method = 'linear'
+        method2 = 'bilinear'
+    if method == 'near':
+        method = 'nearest'
+        method2 = 'near'
+    else:
+        method2 = method
+    
+    if filegdict != gdict:
+        # First cut without resampling
         tempgdict = GeoDict.createDictFromBox(
             gdict.xmin, gdict.xmax, gdict.ymin, gdict.ymax,
             filegdict.dx, filegdict.dy, inside=True)
@@ -155,9 +165,9 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         uly = egdict.ymax + extrasamp * egdict.dy
         lrx = egdict.xmax + extrasamp * egdict.dx
         lry = egdict.ymin - extrasamp * egdict.dy
-
+    
         cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f %1.8f \
-        %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method, filename, tempname)
+        %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2, filename, tempname)
         rc, so, se = get_command_output(cmd)
         if not rc:
             raise Exception(se.decode())
@@ -165,24 +175,34 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             if verbose:
                 print(so.decode())
 
-    if precise:
-        cmd = 'gdalwarp -s_srs EPSG:4326 -te %1.8f %1.8f %1.8f %1.8f -tr \
-               %1.8f, %1.8f -r %s -tap %s %s' % (gdict.xmin,
-                gdict.ymin, gdict.xmax, gdict.ymax, gdict.dx, gdict.dy,
-                method, filename, tempname)
-        rc, so, se = get_command_output(cmd)
-        if not rc:
-            raise Exception(se.decode())
+        newgrid2d = GDALGrid.load(tempname)
+        if precise:
+            # Resample to exact geodictionary
+            newgrid2d = newgrid2d.interpolateToGrid(gdict, method=method)
+        if cleanup:
+            os.remove(tempname)
+            
+        if deltemp:
+            shutil.rmtree(tempdir)
+
+#    if precise:
+#        cmd = 'gdalwarp -s_srs EPSG:4326 -te %1.8f %1.8f %1.8f %1.8f -tr \
+#               %1.8f, %1.8f -r %s -tap %s %s' % (gdict.xmin,
+#                gdict.ymin, gdict.xmax, gdict.ymax, gdict.dx, gdict.dy,
+#                method, filename, tempname)
+#        rc, so, se = get_command_output(cmd)
+#        if not rc:
+#            raise Exception(se.decode())
+#        else:
+#            if verbose:
+#                print(so.decode())
+    else:
+        ftype = GMTGrid.getFileType(filename)
+        if ftype != 'unknown':
+            newgrid2d = GMTGrid.load(filename)
+        elif filename.endswith('.xml'):
+            newgrid2d = ShakeGrid.load(filename)
         else:
-            if verbose:
-                print(so.decode())
-
-    newgrid2d = GDALGrid.load(tempname)
-
-    if cleanup:
-        os.remove(tempname)
-        
-    if deltemp:
-        shutil.rmtree(tempdir)
+            newgrid2d = GDALGrid.load(filename)
 
     return newgrid2d

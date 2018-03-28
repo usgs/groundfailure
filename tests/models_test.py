@@ -199,8 +199,7 @@ def test_godt_2008():
 
     # To change target data:
     #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets',
-    #     'godt_2008.grd'))
+    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'godt_2008.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
