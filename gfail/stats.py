@@ -13,6 +13,8 @@ from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
 from gfail.spatial import quickcut
 
+from configobj import ConfigObj
+
 # Make fonts readable and recognizable by illustrator
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
@@ -36,7 +38,7 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
         shakethreshtype: Optional, Type of ground motion to use for
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
-            pga, cm/s for pgv, float for mmi. Used for Hagg computation
+            pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation
         statprobthresh: Optional, Float, Exclude any values less than or equal to this value in
             calculation of regular stats (max, median, std)
 
@@ -81,6 +83,14 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
         else:
             newkey = 'Parea_%1.2f' % T
             stats[newkey] = float(P)
+
+    default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    defaults = ConfigObj(default_file)
+    pop_file = defaults['pop_file']
+    exp_dict = get_exposures(grid2D, pop_file, shakethreshtype=shakethreshtype,
+                             shakethresh=shakethresh)
+    for k, v in exp_dict.items():
+        stats[k] = v
 
     return stats
 
@@ -233,3 +243,66 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     if len(Parea) == 1:
         Parea = Parea[0]
     return Parea
+
+
+def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
+                  shakethresh=None):
+    """
+    Get exposure-based statistics.
+
+    Args:
+        grid: Model grid.
+        pop_file (str):  Path to the landscan population grid.
+        shakefile: Optional, path to shakemap file to use for ground motion
+            threshold.
+        shakethreshtype: Optional, Type of ground motion to use for
+            shakethresh, 'pga', 'pgv', or 'mmi'.
+        shakethresh: Optional, Float or list of shaking thresholds in %g for
+            pga, cm/s for pgv, float for mmi.
+
+    Returns:
+        dict: Dictionary with enties for poplulation-based aggregate hazard.
+    """
+    mod_dict = grid.getGeoDict()
+    # Cut out area from population file
+    popcut = quickcut(pop_file, mod_dict, precise=False, method='nearest')
+    popdict = popcut.getGeoDict()
+    
+    # Resample model grid so as to be the nearest integer multiple of popdict
+    
+
+    popgrid_mod = GDALGrid.load(pop_file, samplegeodict=sampledict,
+                                resample=False, doPadding=True,
+                                padValue=np.nan)
+    pop_mod_data = popgrid_mod.getData()
+    
+    grid2 = grid.interpolateToGrid(sampledict, method='nearest')
+    mod_prob = np.nan_to_num(grid2.getData())
+
+    exp_pop = np.nansum(mod_prob * pop_mod_data)
+    exp_t10 = np.nansum(pop_mod_data[mod_prob > 0.10])
+    exp_t20 = np.nansum(pop_mod_data[mod_prob > 0.20])
+    exp_t30 = np.nansum(pop_mod_data[mod_prob > 0.30])
+
+
+
+    if shakefile is not None:
+        for shaket in shakethresh:
+            modcop = model.copy()
+            shkgrid = shk.project(projection=projs)
+            shkdat = shkgrid.getData()
+            # use -1 to avoid nan errors and warnings, will always be thrown
+            # out because default is 0.
+            shkdat[np.isnan(shkdat)] = -1.
+            modcop[shkdat < shaket] = -1.
+            Hagg.append(np.sum(modcop[modcop >= probthresh] * cell_area_km2))
+    else:
+        Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+
+    out_dict = {
+        'exp_pop': float(exp_pop),
+        'exp_t10': float(exp_t10),
+        'exp_t20': float(exp_t20),
+        'exp_t30': float(exp_t30)
+    }
+    return out_dict
