@@ -224,6 +224,10 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
 #    return R * delt
 
 def haversine(lat1, lat2, lon1, lon2):
+    """
+    Estimate distance in km from pair of coordinates
+    Uses code from https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
+    """
     # convert decimal degrees to radians 
     lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
     # haversine formula 
@@ -233,17 +237,3 @@ def haversine(lat1, lat2, lon1, lon2):
     c = 2 * math.asin(np.sqrt(a)) 
     km = 6371 * c
     return km
-
-#def haversine(lat1, lat2, lon1, lon2):
-#    """
-#    From http://www.movable-type.co.uk/scripts/latlong.html
-#    """
-#    R = 6371. # radius of earth in km
-#    p1 = math.radians(lat1)
-#    p2 = math.radians(lat2)
-#    delp = math.radians(lat2-lat1)
-#    deld = math.radians(lon2-lon1)
-#    
-#    a = math.sin(delp/2)**2. + math.cos(p1) * math.cos(p2) * math.sin(deld/2)**2
-#    c = 2. * math.atan2(np.sqrt(a), np.sqrt(1.-a))
-#    return R * c
