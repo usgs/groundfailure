@@ -8,10 +8,14 @@ import shutil
 import tempfile
 import os
 
+
 # local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
-from gfail.spatial import quickcut
+from mapio.geodict import GeoDict
+from gfail.spatial import quickcut, haversine
+from mapio.grid2d import Grid2D
+from skimage.measure import block_reduce
 
 from configobj import ConfigObj
 
@@ -263,46 +267,75 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     Returns:
         dict: Dictionary with enties for poplulation-based aggregate hazard.
     """
-    mod_dict = grid.getGeoDict()
+    popfile = '/Users/kallstadt/SecondaryHazards/Datasets/Landscan_population/lspop2013.flt'
+    shakefile = '/Users/kallstadt/SecondaryHazards/TestEvents/Nepal/us20002926_atlas_1_grid.xml'
+    #modfile = '/Users/kallstadt/SecondaryHazards/Codes/outputs/20150425061125/20150425061125_godt_2008_model.tif'
+    modfile = '/Users/kallstadt/SecondaryHazards/Codes/outputs/20150425061125/20150425061125_jessee_2017_model.tif'
+    
+    shakethreshtype = 'pga'
+    shakethresh = [0., 10.]
+    
+    grid = GDALGrid.load(modfile)
+    
+    mdict = grid.getGeoDict()
+    
     # Cut out area from population file
-    popcut = quickcut(pop_file, mod_dict, precise=False, method='nearest')
-    popdict = popcut.getGeoDict()
+    popcut = quickcut(popfile, mdict, precise=False, extrasamp=2., method='nearest')
+    pdict = popcut.getGeoDict()
+    
+    # Pad grid with nans to beyond extent of pdict
+    pad_dict = {}
+    pad_dict['padleft'] = int(np.abs(np.ceil((mdict.xmin - pdict.xmin)/mdict.dx)))
+    pad_dict['padright'] = int(np.abs(np.ceil((pdict.xmax - mdict.xmax)/mdict.dx)))
+    pad_dict['padbottom'] = int(np.abs(np.ceil((mdict.ymin - pdict.ymin)/mdict.dy)))
+    pad_dict['padtop'] = int(np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
+    padgrid, mdict2 = Grid2D.padGrid(grid.getData(), mdict, pad_dict)  # padds with inf
+    padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
+    padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
     
     # Resample model grid so as to be the nearest integer multiple of popdict
+    factor = np.round(pdict.dx/mdict2.dx)
     
-
-    popgrid_mod = GDALGrid.load(pop_file, samplegeodict=sampledict,
-                                resample=False, doPadding=True,
-                                padValue=np.nan)
-    pop_mod_data = popgrid_mod.getData()
+    # Create geodictionary that is a factor of X higher res but otherwise identical
+    ndict = GeoDict.createDictFromBox(
+        pdict.xmin, pdict.xmax, pdict.ymin, pdict.ymax,
+        pdict.dx/factor, pdict.dy/factor)
     
-    grid2 = grid.interpolateToGrid(sampledict, method='nearest')
-    mod_prob = np.nan_to_num(grid2.getData())
-
-    exp_pop = np.nansum(mod_prob * pop_mod_data)
-    exp_t10 = np.nansum(pop_mod_data[mod_prob > 0.10])
-    exp_t20 = np.nansum(pop_mod_data[mod_prob > 0.20])
-    exp_t30 = np.nansum(pop_mod_data[mod_prob > 0.30])
-
-
-
+    # Resample
+    grid2 = padgrid.interpolate2(ndict, method='linear')
+    
+    # Get proportion of each cell that has values
+    areas_prop = block_reduce(~np.isnan(grid2.getData().copy()), block_size=(int(factor), int(factor)),
+                       cval=float('nan'),func=np.sum)
+    
+    # Get actual area of each cell
+    #convert dy and dx from deg to km using haversine formula
+    ymins = np.arange(pdict.ymin, pdict.ymax + pdict.dy, pdict.dy)
+    xmins = np.arange(pdict.xmin, pdict.xmax + pdict.dx, pdict.dx)
+    
+    cellarea = np.empty((len(ymins), len(xmins)))
+    for i in range(len(ymins)):
+        for j in range(len(xmins)):
+            tempx = haversine(ymins[i], ymins[i], xmins[j], xmins[j] + pdict.dx)
+            tempy = haversine(ymins[i], ymins[i]+pdict.dy, xmins[j], xmins[j])
+            cellarea[i, j] = tempx * tempy
+    
+    # Now block reduce to same geodict as popfile
+    modresamp = block_reduce(grid2.getData().copy(), block_size=(int(factor), int(factor)),
+                       cval=float('nan'),func=np.nanmean)
+    
+    exp_pop = []
     if shakefile is not None:
+        # Resample shakefile to population grid
+        shakemap = ShakeGrid.load(shakefile, pdict, resample=True, doPadding=True,
+                                  padValue=0.)
+        shkdat = shakemap.getLayer(shakethreshtype).getData()
         for shaket in shakethresh:
-            modcop = model.copy()
-            shkgrid = shk.project(projection=projs)
-            shkdat = shkgrid.getData()
-            # use -1 to avoid nan errors and warnings, will always be thrown
-            # out because default is 0.
-            shkdat[np.isnan(shkdat)] = -1.
-            modcop[shkdat < shaket] = -1.
-            Hagg.append(np.sum(modcop[modcop >= probthresh] * cell_area_km2))
+            threshmult = shkdat > shaket
+            threshmult = threshmult.astype(float)
+            exp_pop.append(np.nansum(areas_prop * cellarea * modresamp * threshmult))
+    
     else:
-        Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
-
-    out_dict = {
-        'exp_pop': float(exp_pop),
-        'exp_t10': float(exp_t10),
-        'exp_t20': float(exp_t20),
-        'exp_t30': float(exp_t30)
-    }
+        exp_pop = np.nansum(areas_prop * cellarea * modresamp)
+        
     return out_dict

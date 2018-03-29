@@ -10,6 +10,8 @@ import fiona
 import shutil
 import rasterio
 import rasterio.mask
+import math
+import numpy as np
 
 from mapio.gdal import GDALGrid
 from mapio.shake import ShakeGrid
@@ -95,7 +97,7 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=
 
 
 def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
-             precise=True, cleanup=True, verbose=False):
+             precise=True, cleanup=True, verbose=False, shakelayer=None):
     """
     Use gdal to trim a large global file down quickly so mapio can read it
     efficiently.
@@ -206,3 +208,42 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             newgrid2d = GDALGrid.load(filename)
 
     return newgrid2d
+
+
+#def haversine(lat1, lat2, lon1, lon2):
+#    """
+#    """
+#    R = 6371. # radius of earth in km
+#    #delp = math.radians(np.abs(lat2-lat1))
+#    deld = math.radians(np.abs(lon2-lon1))
+#    
+#    delt = math.acos(math.sin(math.radians(lat1)) * math.sin(math.radians(lat2)) + \
+#                     math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) \
+#                     * math.cos(deld))
+#    
+#    return R * delt
+
+def haversine(lat1, lat2, lon1, lon2):
+    # convert decimal degrees to radians 
+    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+    # haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(np.sqrt(a)) 
+    km = 6371 * c
+    return km
+
+#def haversine(lat1, lat2, lon1, lon2):
+#    """
+#    From http://www.movable-type.co.uk/scripts/latlong.html
+#    """
+#    R = 6371. # radius of earth in km
+#    p1 = math.radians(lat1)
+#    p2 = math.radians(lat2)
+#    delp = math.radians(lat2-lat1)
+#    deld = math.radians(lon2-lon1)
+#    
+#    a = math.sin(delp/2)**2. + math.cos(p1) * math.cos(p2) * math.sin(deld/2)**2
+#    c = 2. * math.atan2(np.sqrt(a), np.sqrt(1.-a))
+#    return R * c
