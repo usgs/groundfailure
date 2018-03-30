@@ -144,7 +144,7 @@ def test_zhu2015_web(tmpdir):
 
     # Then do test
     assert '--property-alertLQ=yellow' in transfer_cmd
-    assert '--property-alertLS=yellow' in transfer_cmd
+    assert '--property-alertLS=orange' in transfer_cmd
     assert '--type=groundfailure' in transfer_cmd
     assert '--property-title=Earthquake-Induced Ground Failure' in transfer_cmd
     assert '--eventsourcecode=19891018000415' in transfer_cmd

@@ -461,7 +461,10 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
         # put stats in
         for i, mod in enumerate(modelnames):
             for st in statlist:
-                stattable[st].append(concatmods[mod]['stats'][st])
+                try:
+                    stattable[st].append(concatmods[mod]['stats'][st])
+                except:
+                    stattable[st].append(float('nan'))
 
     if outjsfile is None:
         outjsfile = 'map.js'
