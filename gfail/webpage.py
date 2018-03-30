@@ -31,11 +31,10 @@ plt.switch_backend('agg')
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False,
-                alertkey='Hagg_0.05g', faultfile=None, shakethreshtype='pga',
-                point=False,
-                statlist=['Max', 'Std', 'Hagg_0.05g',
-                          'Hagg_0.10g', 'Parea_0.10', 'Parea_0.30'],
-                probthresh=[0.01, 0.03, 0.05, 0.1, 0.3],
+                alertkeyHAZ='Hagg_0.10g', alertkeyPOP='exp_pop_0.10g', faultfile=None,
+                shakethreshtype='pga', point=False, pop_file=None,
+                statlist=['Max', 'Std', 'Hagg_0.10g', 'exp_pop_0.10g'],
+                probthresh=None,
                 shakethresh=[5., 10.], statement=None):
     """
     Create a webpage that summarizes ground failure results (both landslides
@@ -62,6 +61,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             thresholds, 'pga', 'pgv', or 'mmi'
         point (bool): True if it is known that the ShakeMap used a point
             source, False does not assume anything about source type.
+        pop_file (str): Path to population file used for statistics
         statlist (list): list of strings indicating which stats to show on
             webpage.
         probthresh (float, optional): List of probability thresholds for which
@@ -118,13 +118,12 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
     if statement is None:
         statement = (
-            "Models show where landslides and liquefaction "
-            "are most likely to have occurred and their relative "
-            "severity. These are global models intended to identify "
-            "general trends in ground failure hazard and cannot "
-            "identify specific individual occurrences. "
-            "Some areas indicated may not have "
-            "actually experienced ground failure and vice versa.")
+            "This product provides an early understanding of the "
+            "landslides and liquefaction that may have been triggered "
+            "by this earthquake until first responders and experts "
+            "are able to survey the actual damage that has occurred. "
+            "Results provide regional estimates and "
+            "do not predict specific occurrences.")
 
     # Separate the LS and LQ models
 
@@ -171,7 +170,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                                  probthresh=probthresh,
                                  shakefile=shakemap,
                                  shakethresh=shakethresh,
-                                 statprobthresh=statprobthresh)
+                                 statprobthresh=statprobthresh,
+                                 pop_file=pop_file)
 
             if il == 0:
                 on = True
@@ -276,20 +276,29 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     # TODO update to exact name of Hagg to use
     if includeAlert:
         try:
-            paramalertLS = lsmodels['Nowicki and others (2014)']['stats'][alertkey]
+            paramalertLS = lsmodels['Nowicki Jessee (2017)']['stats'][alertkeyHAZ]
         except:
             paramalertLS = None
+        try:
+            parampopLS = lsmodels['Nowicki Jessee (2017)']['stats'][alertkeyPOP]
+        except:
+            parampopLS = None
 
         try:
-            paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkey]
+            paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkeyHAZ]
         except:
             paramalertLQ = None
 
-        alertLS, alertLQ, alertstatement = get_alert(
-            paramalertLS, paramalertLQ)
-        topfileLQ = make_alert_img(alertLQ, 'liquefaction', images)
-        topfileLS = make_alert_img(alertLS, 'landslide', images)
-        statement = '%s<br>%s' % (alertstatement, statement)
+        try:
+            parampopLQ = lqmodels['Zhu and others (2017)']['stats'][alertkeyPOP]
+        except:
+            parampopLQ = None
+
+        alertLS, popalertLS, alertLQ, popalertLQ, alertstatementLS, alertstatementLQ = get_alert(
+            paramalertLS, paramalertLQ, parampopLS, parampopLQ)
+        topfileLQ = make_alert_img(alertLQ, popalertLQ, 'liquefaction', images)
+        topfileLS = make_alert_img(alertLS, popalertLS, 'landslide', images)
+        #statement = '%s<br>%s' % (alertstatementLQ, statement)
     else:
         alertLS = None
         alertLQ = None
@@ -297,6 +306,10 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         topfileLS = None
         paramalertLS = None
         paramalertLQ = None
+        parampopLS = None
+        parampopLQ = None
+        alertstatementLS = None
+        alertstatementLQ = None
 
     if faultfile is not None:
         finitefault = True
@@ -318,10 +331,12 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     # Create webpages for each type of ground motion
     write_individual(lsmodels, articles, 'Landslides',
                      interactivehtml=filenameLS, outjsfile=outjsfileLS,
-                     topimage=topfileLS, statlist=statlist)
+                     topimage=topfileLS, statlist=statlist,
+                     statement=alertstatementLS)
     write_individual(lqmodels, articles, 'Liquefaction',
                      interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
-                     topimage=topfileLQ, statlist=statlist)
+                     topimage=topfileLQ, statlist=statlist,
+                     statement=alertstatementLQ)
 
     # Create info.json for website rendering and metadata purposes
     web_dict = {
@@ -341,14 +356,19 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         'Landslides': {
             'models': lsmodels,
             'alert': alertLS,
-            'alertkey': alertkey,
-            'alertvalue': paramalertLS
+            'alertkeyHAZ': alertkeyHAZ,
+            'alertvalueHAZ': paramalertLS,
+            'alertkeyPOP': alertkeyPOP,
+            'alertvaluePOP': parampopLS,
+            
         },
         'Liquefaction': {
             'models': lqmodels,
             'alert': alertLQ,
-            'alertkey': alertkey,
-            'alertvalue': paramalertLQ
+            'alertkeyHAZ': alertkeyHAZ,
+            'alertvalueHAZ': paramalertLQ,
+            'alertkeyPOP': alertkeyPOP,
+            'alertvaluePOP': parampopLQ
         }
     }
 
@@ -397,7 +417,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
 def write_individual(concatmods, outputdir, modeltype, topimage=None,
                      staticmap=None, interactivehtml=None,
-                     outjsfile=None, statlist=None):
+                     outjsfile=None, statlist=None, statement=None):
     """
     Write markdown file for landslides or liquefaction.
 
@@ -446,12 +466,16 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
         file1.write('title: %s\n' % modeltype.title())
         file1.write('date: %s\n'
                     % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('<center><h2>%s</h2></center>' % modeltype.title())
+        file1.write('<h2>%s</h2>' % modeltype.title())
 
         if len(concatmods) > 0:
+            
+            if statement is not None:
+                file1.write('<p>%s</p>\n' % statement)
+                
             if topimage is not None:
-                file1.write('<center><img src="images%s" width="250" '
-                            'href="images%s"/></center>\n'
+                file1.write('<img src="images%s" width="250" '
+                            'href="images%s"/>\n'
                             % (topimage.split('images')[-1],
                                topimage.split('images')[-1]))
             if interactivehtml is not None:
@@ -470,8 +494,8 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                                     f2.write(temp)
                 # Embed and link to fullscreen
                 fileloc = interactivehtml.split('images')[-1]
-                file1.write('<center><a href="images%s">Click here for full '
-                            'interactive map</a></center>\n'
+                file1.write('<br><a href="images%s">Full '
+                            'interactive map</a>\n'
                             % fileloc)
 
                 file1.write('<center><div class="folium-map" id="map_%s">'
@@ -488,20 +512,43 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                                    staticmap.split('images')[-1]))
 
                 file1.write('<hr>\n')
-                file1.write('<center><h3>%s Summary</h3></center>' %
+                file1.write('<h3>%s Model Summary Statistics</h3>' %
                             modeltype.title())
                 file1.write('<table style="width:100%">')
                 file1.write('<tr><th>Model</th>')
+                file1.write('<th>Output Type</th>')
+
                 for st in statlist:
-                    file1.write('<th>%s</th>' % st)
+                    #if 'Hagg_' in st:
+                    #    thresh = float(st.split('_')[-1].replace('g',''))
+                    #    titl = 'Aggregate Hazard (km^2)' % (100.*thresh,)
+                    if 'Hagg' in st:
+                        titl = 'Aggregate Hazard (km^2)'
+                    #elif 'exp_pop_' in st:
+                    #    thresh = float(st.split('_')[-1].replace('g',''))
+                    #    titl = 'People at risk (>%2.0f g)' % (100.*thresh,)
+                    elif 'exp_pop' in st:
+                        titl = 'People at risk'
+                    elif 'Max' in st:
+                        titl = 'Maximum probability'
+                    elif 'Std' in st:
+                        titl = 'Standard deviation'
+                    
+                    file1.write('<th>%s</th>' % titl)
                 file1.write('\n')
 
                 # Write each row
                 for i, mod in enumerate(modelnames):
                     file1.write('<tr>')
                     file1.write('<td>%s</td>' % mod.title())
+                    # Get output type
+                    if '2014' in mod:
+                        type1 = 'Probability of any occurrence in cell'
+                    else:
+                        type1 = 'Proportion of area affected'
+                    file1.write('<td>%s</td>' % type1)
                     for st in statlist:
-                        if 'hagg' in st.lower() or 'parea' in st.lower():
+                        if 'hagg' in st.lower() or 'exp' in st.lower() or 'parea' in st.lower():
                             file1.write('<td>%1.0f</td>' % stattable[st][i])
                         else:
                             file1.write('<td>%1.2f</td>' % stattable[st][i])
@@ -510,7 +557,7 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
 
                 file1.write('</table>')
         else:
-            file1.write('<center><h3>No results</h3></center>')
+            file1.write('<h3>No results</h3>')
 
 
 def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
@@ -552,7 +599,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
                          'shaking for larger earthquakes. '
                          'Please interpret Ground Failure results with '
                          'caution until ShakeMap has been updated '
-                         'with a rupture model.') % statement
+                         'with a fault model.') % statement
     else:
         faulttype = ''
 
@@ -560,22 +607,22 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
         file1.write('title: summary\n')
         file1.write('date: 2017-06-09\n')
         file1.write('modified: 2017-06-09\n')
-        file1.write('<h1>Ground Failure</h1>\n')
+        file1.write('<h1 align="left">Ground Failure</h1>\n')
         if 'scenario' in smdict['shakemap_event_type'].lower():
-            file1.write('<h2><a href=%s>Magnitude %1.1f Scenario Earthquake - %s</a></h2>\n'
+            file1.write('<h2 align="left"><a href=%s>Magnitude %1.1f Scenario Earthquake - %s</a></h2>\n'
                         % (event_url, edict['magnitude'],
                            edict['event_description']))
         else:
-            file1.write('<h2><a href=%s>Magnitude %1.1f - %s</a></h2>\n'
+            file1.write('<h2 align="left"><a href=%s>Magnitude %1.1f - %s</a></h2>\n'
                         % (event_url, edict['magnitude'],
                            edict['event_description']))
 
-        writeline = '<h3> %s (UTC) | %1.4f&#176,  %1.4f&#176 | %1.1f km depth</h3>\n' \
+        writeline = '<h3 align="left"> %s (UTC) | %1.4f&#176,  %1.4f&#176 | %1.1f km depth</h3>\n' \
                     % (edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
                         edict['lat'], edict['lon'], edict['depth'])
         file1.write(writeline)
 
-        file1.write('<p>Last updated at: %s (UTC)<br>'
+        file1.write('<p align="left">Last updated at: %s (UTC)<br>'
                     % datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
         file1.write('Based on ground motion estimates from '
                     '<a href=%s>ShakeMap</a> version %1.1f %s<br></p>'
@@ -585,7 +632,7 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
                      ' page for more details.' % statement)
 
         if statement is not None:
-            file1.write('<h2>Summary</h2>\n')
+            file1.write('<h2 align="left">Summary</h2>\n')
             file1.write('<p align="left">%s</p>' % statement)
 
         file1.write('<hr>')
@@ -607,19 +654,24 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
     return shakesummary
 
 
-def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.],
-              binLQ=[70., 500., 1200.]):
+def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
+              hazbinLS=[1., 10., 100.], popbinLS=[100, 1000, 10000],
+              hazbinLQ=[10., 100., 1000.], popbinLQ=[100, 1000, 10000]):
     """
     Get alert levels
 
     Args:
-        HaggLS (float): Aggregate hazard (km2) of preferred landslide model
-        HaggLQ (float): Aggregate hazard (km2) of preferred liquefaction model
-        binLS (list, optional): 3 element list of bin edges for landslide alert
-            between Green and Yellow, Yellow and Orange, and Orange and Red.
-        binLQ (list, optional): 3 element list of bin edges for liquefaction
+        paramalertLS (float): Hazard statistic of preferred landslide model
+        paramalertLQ (float): Hazard statistic of preferred liquefaction model
+        parampopLS (float): Exposure statistic of preferred landslide model
+        parampopLQ (float): Exposure statistic of preferred liquefaction model
+        hazbinLS (list): 3 element list of bin edges for landslide 
+            hazard alert between Green and Yellow, Yellow and Orange, and Orange and Red.
+        popbinLS (list): same as above but for population exposure
+        hazbinLQ (list): 3 element list of bin edges for liquefaction hazard
             alert between Green and Yellow, Yellow and Orange, and Orange
             and Red.
+        popbinLQ (list): same as above but for population exposure
 
     Returns:
         Returns:
@@ -629,37 +681,73 @@ def get_alert(HaggLS, HaggLQ, binLS=[100., 850., 4000.],
                 * statement is a sentence describing the ground failure hazard
                     based on the alert levels (str)
     """
-    if HaggLS is None:
+    if paramalertLS is None:
         alertLS = None
-    elif HaggLS < binLS[0]:
+    elif paramalertLS < hazbinLS[0]:
         alertLS = 'green'
-    elif HaggLS >= binLS[0] and HaggLS < binLS[1]:
+    elif paramalertLS >= hazbinLS[0] and paramalertLS < hazbinLS[1]:
         alertLS = 'yellow'
-    elif HaggLS >= binLS[1] and HaggLS < binLS[2]:
+    elif paramalertLS >= hazbinLS[1] and paramalertLS < hazbinLS[2]:
         alertLS = 'orange'
-    elif HaggLS > binLS[2]:
+    elif paramalertLS > hazbinLS[2]:
         alertLS = 'red'
     else:
         alertLS = None
 
-    if HaggLQ is None:
+    if parampopLS is None:
+        popalertLS = None
+    elif parampopLS < popbinLS[0]:
+        popalertLS = 'green'
+    elif parampopLS >= popbinLS[0] and parampopLS < popbinLS[1]:
+        popalertLS = 'yellow'
+    elif parampopLS >= popbinLS[1] and parampopLS < popbinLS[2]:
+        popalertLS = 'orange'
+    elif parampopLS > popbinLS[2]:
+        popalertLS = 'red'
+    else:
+        popalertLS = None
+
+    if paramalertLQ is None:
         alertLQ = None
-    elif HaggLQ < binLQ[0]:
+    elif paramalertLQ < hazbinLQ[0]:
         alertLQ = 'green'
-    elif HaggLQ >= binLQ[0] and HaggLQ < binLQ[1]:
+    elif paramalertLQ >= hazbinLQ[0] and paramalertLQ < hazbinLQ[1]:
         alertLQ = 'yellow'
-    elif HaggLQ >= binLQ[1] and HaggLQ < binLQ[2]:
+    elif paramalertLQ >= hazbinLQ[1] and paramalertLQ < hazbinLQ[2]:
         alertLQ = 'orange'
-    elif HaggLQ > binLQ[2]:
+    elif paramalertLQ > hazbinLQ[2]:
         alertLQ = 'red'
     else:
         alertLQ = None
 
-    statement = ('Global ground failure models indicate that this earthquake '
-                 'likely triggered %s liquefaction and %s landsliding.'
-                 % (get_word(alertLQ), get_word(alertLS)))
+    if parampopLQ is None:
+        popalertLQ = None
+    elif parampopLQ < popbinLQ[0]:
+        popalertLQ = 'green'
+    elif parampopLQ >= popbinLQ[0] and parampopLQ < popbinLQ[1]:
+        popalertLQ = 'yellow'
+    elif parampopLQ >= popbinLQ[1] and parampopLQ < popbinLQ[2]:
+        popalertLQ = 'orange'
+    elif parampopLQ > popbinLQ[2]:
+        popalertLQ = 'red'
+    else:
+        popalertLQ = None
 
-    return alertLS, alertLQ, statement
+    if alertLS is not None:
+        statementLS = ('Landslide hazard for this event is expected to be '
+                     '%s with %s population at risk.'
+                     % (get_word(alertLS), get_word(popalertLS)))
+    else:
+        statementLS = None
+
+    if alertLQ is not None:
+        statementLQ = ('Liquefaction hazard for this event is expected to be '
+                     '%s with %s population at risk.'
+                     % (get_word(alertLQ), get_word(popalertLQ)))
+    else:
+        statementLQ = None
+
+    return alertLS, popalertLS, alertLQ, popalertLQ, statementLS, statementLQ
 
 
 def get_word(color):
@@ -673,21 +761,21 @@ def get_word(color):
         str: Phrase or word desribing hazard level.
     """
     if color is None:
-        word = 'unknown levels of'
+        word = 'unknown'
     elif color in 'green':
         word = 'little to no'
     elif color in 'yellow':
-        word = 'localized'
+        word = 'limited'
     elif color in 'orange':
-        word = 'substantial'
+        word = 'significant'
     elif color in 'red':
         word = 'extensive'
     else:
-        word = 'unknown levels of'
+        word = 'unknown'
     return word
 
 
-def make_alert_img(color, type1, outfolder):
+def make_alert_img(colorHAZ, colorPOP, type1, outfolder):
     """
     Construct alert image.
 
@@ -699,17 +787,22 @@ def make_alert_img(color, type1, outfolder):
     Returns:
         str: Output file name.
     """
-    if color is None:
+    if colorHAZ is None:
         outfilename = None
     else:
         fig = plt.figure(figsize=(6, 1.8))
         ax = fig.add_subplot(111)
-        ax.add_artist(plt.Circle((0.4, 0.3), 0.15, facecolor=color,
+        ax.add_artist(plt.Rectangle((0.1, 0.5), 0.2, 0.2, facecolor=colorHAZ,
                                  edgecolor='black', lw=1))
-        ax.text(0.7, 0.25, '%s alert %s' % (type1.title(), color), fontsize=25)
+        #ax.text(0.1, 0.8, type1.title(), fontsize=25)
+        ax.text(0.35, 0.52, 'Hazard %s' % colorHAZ, fontsize=25)
+        ax.add_artist(plt.Rectangle((0.1, 0.2), 0.2, 0.2, facecolor=colorPOP,
+                                 edgecolor='black', lw=1))
+        ax.text(0.35, 0.22, 'Population exposure %s' % colorPOP, fontsize=25)
+        
         ax.axis('off')
         ax.set_xlim([0, 2.0])
-        ax.set_ylim([0., 0.6])
+        ax.set_ylim([0., 0.8])
         plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
         outfilename = os.path.join(outfolder, '%s_alert.png' % type1)
         fig.savefig(outfilename, transparent=True)
