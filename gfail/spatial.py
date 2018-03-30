@@ -97,7 +97,7 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=
 
 
 def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
-             precise=True, cleanup=True, verbose=False, shakelayer=None):
+             precise=True, cleanup=True, verbose=False):
     """
     Use gdal to trim a large global file down quickly so mapio can read it
     efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)
@@ -158,7 +158,7 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         # First cut without resampling
         tempgdict = GeoDict.createDictFromBox(
             gdict.xmin, gdict.xmax, gdict.ymin, gdict.ymax,
-            filegdict.dx, filegdict.dy, inside=False)
+            filegdict.dx, filegdict.dy, inside=True)
 
         try:
             egdict = filegdict.getBoundsWithin(tempgdict)
