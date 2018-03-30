@@ -77,8 +77,8 @@ def transfer(eventdir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     alert_json = json.load(open(alert_file))
     lq_alert = '"--property-alertLQ=%s" ' % alert_json['Liquefaction']['alert']
     ls_alert = '"--property-alertLS=%s" ' % alert_json['Landslides']['alert']
-    lq_hagg = '"--property-HaggLQ=%s" ' %alert_json['Liquefaction']['alertvalue'] #np.round(alert_json['Liquefaction']['alertvalue'], 0)
-    ls_hagg = '"--property-HaggLS=%s" ' %alert_json['Landslides']['alertvalue'] #np.round(alert_json['Landslides']['alertvalue'], 0)
+    lq_hagg = '"--property-HaggLQ=%s" ' %alert_json['Liquefaction']['alertvalueHAZ'] #np.round(alert_json['Liquefaction']['alertvalue'], 0)
+    ls_hagg = '"--property-HaggLS=%s" ' %alert_json['Landslides']['alertvalueHAZ'] #np.round(alert_json['Landslides']['alertvalue'], 0)
 
     # Construct PDL command
     pdl_cmd = ('java -jar %s ' % pdl_bin +

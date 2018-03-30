@@ -40,10 +40,10 @@ tablecols = [('id', 'integer primary key'),
              ('finitefault', 'integer'),
              ('url', 'text'),
              ('jsonfeed', 'text'),
-             ('Hagg05LS', 'real'),
-             ('Parea01LS', 'real'),
-             ('Hagg05LQ', 'real'),
-             ('Parea01LQ', 'real')]
+             ('HaggLS', 'real'),
+             ('ExpPopLS', 'real'),
+             ('HaggLQ', 'real'),
+             ('ExpPopLQ', 'real')]
 
 TABLES = {'shakemap': OrderedDict(tablecols)}
 
@@ -192,10 +192,10 @@ def main(args):
                         data = fij.read()
                     infodict = json.loads(data)
 
-                    LQstats = infodict['Liquefaction']['models']['Zhu and others (2015)']['stats']
-                    LSstats = infodict['Landslides']['models']['Nowicki and others (2014)']['stats']
-                    LQsta = [LQstats['Hagg_0.05g'], LQstats['Parea_0.10']]
-                    LSsta = [LSstats['Hagg_0.05g'], LSstats['Parea_0.10']]
+                    LQstats = infodict['Liquefaction']['models']['Zhu and others (2017)']['stats']
+                    LSstats = infodict['Landslides']['models']['Nowicki Jessee (2017)']['stats']
+                    LQsta = [LQstats['Hagg_0.10g'], LQstats['exp_pop_0.10g']]
+                    LSsta = [LSstats['Hagg_0.10g'], LSstats['exp_pop_0.10g']]
                     if update and mail:
                         
                         if sendthresh is not None:
@@ -207,35 +207,35 @@ def main(args):
                                 sig = False
                                 # Get previous versions values
 
-                                cursor.execute("SELECT Hagg05LS, Parea01LS, Hagg05LQ, Parea01LQ FROM shakemap WHERE eventcode = ? and version = ?",
+                                cursor.execute("SELECT HaggLS, ExpPopLS, HaggLQ, ExpPopLQ FROM shakemap WHERE eventcode = ? and version = ?",
                                                (event['eventcode'], str(prevermax)))
                                 temp = cursor.fetchone()
-                                Hagg05LS, Parea01LS, Hagg05LQ, Parea01LQ = temp
+                                HaggLS, ExpPopLS, HaggLQ, ExpPopLQ = temp
                                 # Send mail if any changes from 0 to a value or vice versa
-                                if (np.round(Hagg05LS) == 0. and np.round(LSsta[0]) > 0.) or (np.round(Hagg05LS) > 0. and np.round(LSsta[0]) == 0.):
+                                if (np.round(HaggLS) == 0. and np.round(LSsta[0]) > 0.) or (np.round(HaggLS) > 0. and np.round(LSsta[0]) == 0.):
                                     sig = True
-                                    change += '\n\t* Landslide aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LS, LSsta[0])
-                                if (np.round(Hagg05LQ) == 0. and np.round(LQsta[0]) > 0.) or (np.round(Hagg05LQ) > 0. and np.round(LQsta[0]) == 0.):
+                                    change += '\n\t* Landslide aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (HaggLS, LSsta[0])
+                                if (np.round(HaggLQ) == 0. and np.round(LQsta[0]) > 0.) or (np.round(HaggLQ) > 0. and np.round(LQsta[0]) == 0.):
                                     sig = True
-                                    change += '\n\t* Liquefaction aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LQ, LQsta[0])
-                                if (np.round(Parea01LS) == 0. and np.round(LSsta[1]) > 0.) or (np.round(Parea01LS) > 0. and np.round(LSsta[1]) == 0.):
+                                    change += '\n\t* Liquefaction aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (HaggLQ, LQsta[0])
+                                if (np.round(ExpPopLS) == 0. and np.round(LSsta[1]) > 0.) or (np.round(ExpPopLS) > 0. and np.round(LSsta[1]) == 0.):
                                     sig = True
-                                    change += '\n\t* Landslide area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LS, LSsta[1])
-                                if (np.round(Parea01LQ) == 0. and np.round(LQsta[1]) > 0.) or (np.round(Parea01LQ) > 0. and np.round(LQsta[1]) == 0.):
+                                    change += '\n\t* Landslide area of probability >0.1 changed from %1.1f to %1.1f.' % (ExpPopLS, LSsta[1])
+                                if (np.round(ExpPopLQ) == 0. and np.round(LQsta[1]) > 0.) or (np.round(ExpPopLQ) > 0. and np.round(LQsta[1]) == 0.):
                                     sig = True
-                                    change += '\n\t* Liquefaction area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LQ, LQsta[1])
+                                    change += '\n\t* Liquefaction area of probability >0.1 changed from %1.1f to %1.1f.' % (ExpPopLQ, LQsta[1])
                                 if not sig:
-                                    if np.round(Hagg05LS) > 1. and np.round(Parea01LS) > 1. and np.round(Hagg05LQ) > 1. and np.round(Parea01LQ) > 1.:
+                                    if np.round(HaggLS) > 1. and np.round(ExpPopLS) > 1. and np.round(HaggLQ) > 1. and np.round(ExpPopLQ) > 1.:
                                         changeperc = []
                                         changereason = []
-                                        changeperc.append(np.abs(Hagg05LS-LSsta[0])/Hagg05LS)
-                                        changereason.append('\n\t* Landslide aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LS, LSsta[0]))
-                                        changeperc.append(np.abs(Hagg05LQ-LQsta[0])/Hagg05LQ)
-                                        changereason.append('\n\t* Liquefaction aggregate hazard (>5%%g) changed from %1.1f to %1.1f.' % (Hagg05LQ, LQsta[0]))
-                                        changeperc.append(np.abs(Parea01LS-LSsta[1])/Parea01LS)
-                                        changereason.append('\n\t* Landslide area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LS, LSsta[1]))
-                                        changeperc.append(np.abs(Parea01LQ-LQsta[1])/Parea01LQ)
-                                        changereason.append('\n\t* Liquefaction area of probability >0.1 changed from %1.1f to %1.1f.' % (Parea01LQ, LQsta[1]))
+                                        changeperc.append(np.abs(HaggLS-LSsta[0])/HaggLS)
+                                        changereason.append('\n\t* Landslide aggregate hazard changed from %1.1f to %1.1f.' % (HaggLS, LSsta[0]))
+                                        changeperc.append(np.abs(HaggLQ-LQsta[0])/HaggLQ)
+                                        changereason.append('\n\t* Liquefaction aggregate hazard (changed from %1.1f to %1.1f.' % (HaggLQ, LQsta[0]))
+                                        changeperc.append(np.abs(ExpPopLS-LSsta[1])/ExpPopLS)
+                                        changereason.append('\n\t* Population exposed to landslides changed from %1.1f to %1.1f.' % (ExpPopLS, LSsta[1]))
+                                        changeperc.append(np.abs(ExpPopLQ-LQsta[1])/ExpPopLQ)
+                                        changereason.append('\n\t* Population exposed to liquefaction changed from %1.1f to %1.1f.' % (ExpPopLQ, LQsta[1]))
                                         for perc, reas in zip(changeperc, changereason):
                                             if perc >= changethresh:
                                                 sig = True

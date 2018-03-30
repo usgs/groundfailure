@@ -302,6 +302,8 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     else:
         alertLS = None
         alertLQ = None
+        popalertLS = None
+        popalertLQ = None
         topfileLQ = None
         topfileLS = None
         paramalertLS = None
@@ -356,6 +358,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         'Landslides': {
             'models': lsmodels,
             'alert': alertLS,
+            'popalert': popalertLS,
             'alertkeyHAZ': alertkeyHAZ,
             'alertvalueHAZ': paramalertLS,
             'alertkeyPOP': alertkeyPOP,
@@ -365,6 +368,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
         'Liquefaction': {
             'models': lqmodels,
             'alert': alertLQ,
+            'popalert': popalertLQ,
             'alertkeyHAZ': alertkeyHAZ,
             'alertvalueHAZ': paramalertLQ,
             'alertkeyPOP': alertkeyPOP,
