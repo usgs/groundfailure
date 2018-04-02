@@ -16,6 +16,7 @@ homedir = os.path.dirname(os.path.abspath(__file__))
 upone = os.path.join(homedir, os.pardir)
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
+changetarget = False  # Turn to True if need to recompute target data
 
 def test_zhu2015():
     conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
@@ -34,9 +35,11 @@ def test_zhu2015():
 
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
-    # To change target data:
-    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2015.grd'))
+    
+    if changetarget:
+        # To change target data:
+        pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+        pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2015.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -63,9 +66,10 @@ def test_zhu_2017_general():
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
 
-    # To change target data:
-    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_general.grd'))
+    if changetarget:
+        # To change target data:
+        pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+        pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_general.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -85,9 +89,10 @@ def test_zhu_2017_general():
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
 
-    # To change target data:
-    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_general_div4.grd'))
+    if changetarget:
+        # To change target data:
+        pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+        pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_general_div4.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -114,9 +119,10 @@ def test_zhu_2017_coastal():
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
 
-    # To change target data:
-    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_coastal.grd'))
+    if changetarget:
+        # To change target data:
+        pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+        pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'zhu2017_coastal.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -143,9 +149,10 @@ def test_nowicki_2014_global():
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
 
-    # To change target data:
-    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'nowicki_2014_global.grd'))
+    if changetarget:
+        # To change target data:
+        pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+        pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'nowicki_2014_global.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -170,9 +177,10 @@ def test_jessee_2017():
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
 
-    # To change target data:
-    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'jessee_2017.grd'))
+    if changetarget:
+        # To change target data:
+        pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+        pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'jessee_2017.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
@@ -197,9 +205,10 @@ def test_godt_2008():
     pgrid = maplayers['model']['grid']
     test_data = pgrid.getData()
 
-    # To change target data:
-    #pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
-    #pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'godt_2008.grd'))
+    if changetarget:
+        # To change target data:
+        pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
+        pgrd.save(os.path.join(datadir, 'loma_prieta', 'targets', 'godt_2008.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',

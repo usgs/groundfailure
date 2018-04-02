@@ -1254,18 +1254,18 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             if scaletype.lower() == 'binned':
                 if sync:
                     cbars.append(ColorbarBase(ax, cmap=cmap, norm=norm,
-                                 orientation='horizontal', format=cbfmt, extend='both',
+                                 orientation='horizontal', format=cbfmt, extend='neither',
                                  extendfrac=0.15, ticks=clev[1:-1], boundaries=clev,
                                  spacing='uniform'))
                 else:
                     newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1]))  # Modify so colorbar uses full expanse of colorbar
                     cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                                 orientation='horizontal', format=cbfmt, extend='both',
+                                 orientation='horizontal', format=cbfmt, extend='neither',
                                  extendfrac=0.15, ticks=newclev, boundaries=newclev,
                                  spacing='proportional'))
             else:
                 cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                             orientation='horizontal', extend='both',
+                             orientation='horizontal', extend='neither',
                              format=cbfmt, ticks=clev))
             if logscale[k]:
                 cbars[k].ax.tick_params(labelsize=8)

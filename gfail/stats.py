@@ -8,10 +8,16 @@ import shutil
 import tempfile
 import os
 
+
 # local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
+from mapio.geodict import GeoDict
 from gfail.spatial import quickcut
+from mapio.grid2d import Grid2D
+from skimage.measure import block_reduce
+
+from configobj import ConfigObj
 
 # Make fonts readable and recognizable by illustrator
 import matplotlib as mpl
@@ -21,9 +27,9 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
                                    'sans-serif']
 
 
-def computeStats(grid2D, probthresh=0.0, shakefile=None,
+def computeStats(grid2D, probthresh=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
-                 statprobthresh=None):
+                 statprobthresh=None, pop_file=None):
     """
     Compute summary stats of a ground failure model output.
 
@@ -36,7 +42,7 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
         shakethreshtype: Optional, Type of ground motion to use for
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
-            pga, cm/s for pgv, float for mmi. Used for Hagg computation
+            pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation
         statprobthresh: Optional, Float, Exclude any values less than or equal to this value in
             calculation of regular stats (max, median, std)
 
@@ -68,19 +74,36 @@ def computeStats(grid2D, probthresh=0.0, shakefile=None,
         else:
             newkey = 'Hagg_%1.2fg' % (T/100.)
             stats[newkey] = float(H)
+            
+    if probthresh is not None:
+        Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
+                             shakethreshtype=shakethreshtype, shakethresh=0.0)
+        if type(Parea) != list and type(Parea) != np.ndarray:
+            probthresh = [probthresh]
+            Parea = [Parea]
+    
+        for T, P in zip(probthresh, Parea):
+            if T == 0.:
+                stats['Parea'] = float(P)
+            else:
+                newkey = 'Parea_%1.2f' % T
+                stats[newkey] = float(P)
 
-    Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
-                         shakethreshtype=shakethreshtype, shakethresh=0.0)
-    if type(Parea) != list and type(Parea) != np.ndarray:
-        probthresh = [probthresh]
-        Parea = [Parea]
+    if pop_file is None:
+        try:
+            # Try to find population file in .gfail_defaults
+            default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+            defaults = ConfigObj(default_file)
+            pop_file = defaults['popfile']
+        except:
+            print('No population file specified nor found in .gfail_defaults, skipping exp_pop')
 
-    for T, P in zip(probthresh, Parea):
-        if T == 0.:
-            stats['Parea'] = float(P)
-        else:
-            newkey = 'Parea_%1.2f' % T
-            stats[newkey] = float(P)
+    if pop_file is not None:
+        exp_dict = get_exposures(grid2D, pop_file, shakefile=shakefile,
+                                 shakethreshtype=shakethreshtype,
+                                 shakethresh=shakethresh)
+        for k, v in exp_dict.items():
+            stats[k] = v
 
     return stats
 
@@ -233,3 +256,76 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     if len(Parea) == 1:
         Parea = Parea[0]
     return Parea
+
+
+def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
+                  shakethresh=None):
+    """
+    Get exposure-based statistics.
+
+    Args:
+        grid: Model grid.
+        pop_file (str):  Path to the landscan population grid.
+        shakefile (str): Optional, path to shakemap file to use for ground motion
+            threshold.
+        shakethreshtype(str): Optional, Type of ground motion to use for
+            shakethresh, 'pga', 'pgv', or 'mmi'.
+        shakethresh: Optional, Float or list of shaking thresholds in %g for
+            pga, cm/s for pgv, float for mmi.
+
+    Returns:
+        dict: Dictionary with enties for poplulation-based aggregate hazard.
+    """
+
+    mdict = grid.getGeoDict()
+    
+    # Cut out area from population file
+    popcut = quickcut(pop_file, mdict, precise=False, extrasamp=2., method='nearest')
+    popdat = popcut.getData()
+    pdict = popcut.getGeoDict()
+    
+    # Pad grid with nans to beyond extent of pdict
+    pad_dict = {}
+    pad_dict['padleft'] = int(np.abs(np.ceil((mdict.xmin - pdict.xmin)/mdict.dx)))
+    pad_dict['padright'] = int(np.abs(np.ceil((pdict.xmax - mdict.xmax)/mdict.dx)))
+    pad_dict['padbottom'] = int(np.abs(np.ceil((mdict.ymin - pdict.ymin)/mdict.dy)))
+    pad_dict['padtop'] = int(np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
+    padgrid, mdict2 = Grid2D.padGrid(grid.getData(), mdict, pad_dict)  # padds with inf
+    padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
+    padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
+    
+    # Resample model grid so as to be the nearest integer multiple of popdict
+    factor = np.round(pdict.dx/mdict2.dx)
+    
+    # Create geodictionary that is a factor of X higher res but otherwise identical
+    ndict = GeoDict.createDictFromBox(
+        pdict.xmin, pdict.xmax, pdict.ymin, pdict.ymax,
+        pdict.dx/factor, pdict.dy/factor)
+    
+    # Resample
+    grid2 = padgrid.interpolate2(ndict, method='linear')
+    
+    # Get proportion of each cell that has values (to account properly for any nans)
+    prop = block_reduce(~np.isnan(grid2.getData().copy()), block_size=(int(factor), int(factor)),
+                       cval=float('nan'),func=np.sum)/(factor**2.)
+    
+    # Now block reduce to same geodict as popfile
+    modresamp = block_reduce(grid2.getData().copy(), block_size=(int(factor), int(factor)),
+                       cval=float('nan'),func=np.nanmean)
+    
+    exp_pop = {}
+    if shakefile is not None:
+        # Resample shakefile to population grid
+        shakemap = ShakeGrid.load(shakefile, resample=False) #, doPadding=True, padValue=0.)
+        shakemap = shakemap.getLayer(shakethreshtype)
+        shakemap = shakemap.interpolate2(pdict)
+        shkdat = shakemap.getData()
+        for shaket in shakethresh:
+            threshmult = shkdat > shaket
+            threshmult = threshmult.astype(float)
+            exp_pop['exp_pop_%1.2fg' % (shaket/100.,)] = np.nansum(popdat * prop * modresamp * threshmult)
+    
+    else:
+        exp_pop['exp_pop_0.00g'] = np.nansum(popdat * prop * modresamp)
+        
+    return exp_pop

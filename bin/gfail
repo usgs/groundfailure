@@ -20,7 +20,7 @@ from mapio.gdal import GDALGrid
 import numpy as np
 from impactutils.io.cmd import get_command_output
 from mapio.shake import ShakeGrid
-from libcomcat.search import get_event_by_id
+#from libcomcat.search import get_event_by_id
 
 # local imports
 from gfail.conf import correct_config_filepaths
@@ -220,9 +220,7 @@ def main(args):
             print('\nNow running %s:' % modelname)
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
-                lm = LM.LogisticModel(
-                    shakefile,
-                    conf,
+                lm = LM.LogisticModel(shakefile, conf,
                     uncertfile=args.uncertfile,
                     saveinputs=args.save_inputs,
                     bounds=bounds,
@@ -231,9 +229,7 @@ def main(args):
 
                 maplayers = lm.calculate()
             elif modelfunc == 'godt2008':
-                maplayers = godt2008(
-                    shakefile,
-                    conf,
+                maplayers = godt2008(shakefile, conf,
                     uncertfile=args.uncertfile,
                     saveinputs=args.save_inputs,
                     bounds=bounds,
@@ -381,7 +377,7 @@ def main(args):
             outputs = makeWebpage(results, configs, args.web_template,
                                   shakefile, outfolder=outfolder,
                                   includeAlert=args.alert, cleanup=True,
-                                  faultfile=ffault, point=point)
+                                  faultfile=ffault, point=point, pop_file=popfile)
             filenames = filenames + outputs
 
         # Write shakefile to a file for use later
@@ -498,6 +494,16 @@ def set_default_paths(args):
             else:
                 print('Path given for mapdata_filepath does not exist: %s'
                       % args.mapdata_filepath)
+    if args.popfile is not None:
+        if args.popfile == 'reset':
+            D.pop('popfile')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.popfile):
+                D.update({'popfile': args.popfile})
+            else:
+                print('Path given for population file does not exist: %s'
+                      % args.popfile)
     if args.web_template is not None:
         if args.web_template == 'reset':
             D.pop('web_template')
@@ -723,6 +729,7 @@ if __name__ == '__main__':
     config_filepath = None
     mapconfig = None
     mapdata_filepath = None
+    popfile = None
     web_template = os.path.join(
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pelican', 'theme')
     trimfile = None
@@ -776,6 +783,11 @@ if __name__ == '__main__':
         '-md', '--mapdata-filepath', metavar='mapdatapath', nargs='?',
         help='Set file path to mapping input data (only needed if file '
              'paths in mapconfig are relative)',
+        default=mapdata_filepath)
+    parser.add_argument(
+        '-pf', '--popfile', metavar='popfile', nargs='?',
+        help='Set file path to population file used to '
+             'compute model statistics',
         default=mapdata_filepath)
     parser.add_argument(
         '-o', '--output-filepath', metavar='outfilepath', nargs='?',

@@ -88,7 +88,7 @@ def test_assess_models():
 #    np.testing.assert_allclose(temp[4]['Brier_yes'], 0.78778928086125)
 
     rho = assess_models.normXcorr(maplayers2['model']['grid'], prob_grid)
-    np.testing.assert_allclose(rho, 0.28353941219)
+    np.testing.assert_allclose(rho, 0.2664561602930469)
 
 
 if __name__ == "__main__":

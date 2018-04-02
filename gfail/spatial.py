@@ -10,6 +10,8 @@ import fiona
 import shutil
 import rasterio
 import rasterio.mask
+import math
+import numpy as np
 
 from mapio.gdal import GDALGrid
 from mapio.shake import ShakeGrid
@@ -98,7 +100,7 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
              precise=True, cleanup=True, verbose=False):
     """
     Use gdal to trim a large global file down quickly so mapio can read it
-    efficiently.
+    efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)
     Using subprocess approach because ``gdal.Translate`` doesn't hang on the
     command until the file is created which causes problems in the next steps.
     Args:
@@ -116,16 +118,14 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
     Returns:
         newgrid2d: New grid2D layer 
     """
+
     try:
-        filegdict = ShakeGrid.getFileGeoDict(filename, adjust='res')
+        filegdict = GDALGrid.getFileGeoDict(filename)
     except:
         try:
-            filegdict = GDALGrid.getFileGeoDict(filename)
+            filegdict = GMTGrid.getFileGeoDict(filename)
         except:
-            try:
-                filegdict = GMTGrid.getFileGeoDict(filename)
-            except:
-                raise Exception('Cannot get geodict for %s' % filename)
+            raise Exception('Cannot get geodict for %s' % filename)
 
     if tempname is None:
         tempdir = tempfile.mkdtemp()
@@ -159,15 +159,19 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         tempgdict = GeoDict.createDictFromBox(
             gdict.xmin, gdict.xmax, gdict.ymin, gdict.ymax,
             filegdict.dx, filegdict.dy, inside=True)
-        egdict = filegdict.getBoundsWithin(tempgdict)
-    
-        ulx = egdict.xmin - extrasamp * egdict.dx
-        uly = egdict.ymax + extrasamp * egdict.dy
-        lrx = egdict.xmax + extrasamp * egdict.dx
-        lry = egdict.ymin - extrasamp * egdict.dy
-    
-        cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f %1.8f \
-        %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2, filename, tempname)
+
+        try:
+            egdict = filegdict.getBoundsWithin(tempgdict)
+        
+            ulx = egdict.xmin - extrasamp * egdict.dx
+            uly = egdict.ymax + extrasamp * egdict.dy
+            lrx = egdict.xmax + extrasamp * egdict.dx
+            lry = egdict.ymin - extrasamp * egdict.dy
+        
+            cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f %1.8f \
+            %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2, filename, tempname)
+        except:  # When ShakeMap is being loaded, sometimes they won't align right because it's already cut to the area, so just load the whole file in
+            cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -r %s %s %s' % (method2, filename, tempname)
         rc, so, se = get_command_output(cmd)
         if not rc:
             raise Exception(se.decode())
@@ -178,7 +182,7 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         newgrid2d = GDALGrid.load(tempname)
         if precise:
             # Resample to exact geodictionary
-            newgrid2d = newgrid2d.interpolateToGrid(gdict, method=method)
+            newgrid2d = newgrid2d.interpolate2(gdict, method=method)
         if cleanup:
             os.remove(tempname)
             
@@ -206,3 +210,19 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             newgrid2d = GDALGrid.load(filename)
 
     return newgrid2d
+
+
+#def haversine(lat1, lat2, lon1, lon2):
+#    """
+#    Estimate distance in km from pair of coordinates
+#    Uses code from https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
+#    """
+#    # convert decimal degrees to radians 
+#    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
+#    # haversine formula 
+#    dlon = lon2 - lon1 
+#    dlat = lat2 - lat1 
+#    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+#    c = 2 * math.asin(np.sqrt(a)) 
+#    km = 6371 * c
+#    return km
