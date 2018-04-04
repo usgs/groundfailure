@@ -5,7 +5,8 @@ python:
     
 install:
     # Install gf-p and requirements
-    - bash install.sh -t
+    - bash install.sh
+    - . ~/.bashrc
     - conda activate gf
     - pwd
     - cp .gfail_defaults_travis /home/travis/.gfail_defaults
