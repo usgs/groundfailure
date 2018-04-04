@@ -33,25 +33,23 @@ if [ ! "$conda" ] ; then
 fi
 
 # Source bash startup file
-if [ -f $HOME/.bash_profile ]; then
-    echo 'Sourcing .bash_profile'
-    . $HOME/.bash_profile
-    cat $HOME/.bash_profile
-    echo ""
-fi
+#if [ -f $HOME/.bash_profile ]; then
+#    echo 'Sourcing .bash_profile'
+#    . $HOME/.bash_profile
+#    cat $HOME/.bash_profile
+#    echo ""
+#fi
 
-if [ -f $HOME/.bashrc ]; then
-    echo 'Sourcing .bashrc'
-    . $HOME/.bashrc
-    cat $HOME/.bashrc
-    echo ""
-fi
+#if [ -f $HOME/.bashrc ]; then
+#    echo 'Sourcing .bashrc'
+#    . $HOME/.bashrc
+#    cat $HOME/.bashrc
+#    echo ""
+#fi
 
-# For some reason, the above sourcing does not work on travis but does
-# work on our Scientific Linux servers, so we need to do some following
-# specially for travis:
+# Need this to get conda into path
 if [ $travis == 1 ]; then
-    . /home/travis/miniconda/etc/profile.d/conda.sh
+    . $HOME/miniconda/etc/profile.d/conda.sh
 fi
 
 echo "PATH:"
