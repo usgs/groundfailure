@@ -8,7 +8,7 @@ install:
     - bash install.sh -t
     - export PATH="$HOME/miniconda/bin:$PATH"
     - export PATH="$HOME/miniconda/lib:$PATH"
-    - source activate gf
+    - conda activate gf
     - pwd
     - cp .gfail_defaults_travis /home/travis/.gfail_defaults
 before_script:
