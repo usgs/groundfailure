@@ -51,11 +51,12 @@ fi
 # work on our Scientific Linux servers, so we need to do some following
 # specially for travis:
 if [ $travis == 1 ]; then
-    . /home/travis/miniconda3/etc/profile.d/conda.sh
+    . /home/travis/miniconda/etc/profile.d/conda.sh
 fi
 
 echo "PATH:"
 echo $PATH
+echo ""
 
 # Choose an environment file based on platform
 unamestr=`uname`
