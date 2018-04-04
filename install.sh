@@ -48,9 +48,7 @@ fi
 #fi
 
 # Need this to get conda into path
-if [ $travis == 1 ]; then
-    . $HOME/miniconda/etc/profile.d/conda.sh
-fi
+. $HOME/miniconda/etc/profile.d/conda.sh
 
 echo "PATH:"
 echo $PATH
