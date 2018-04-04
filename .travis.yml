@@ -5,6 +5,7 @@ install:
     # Install gf and requirements
     - bash install.sh -t
     - . /home/travis/miniconda/etc/profile.d/conda.sh
+    - conda info --envs
     - conda activate gf
     - pwd
     - cp .gfail_defaults_travis /home/travis/.gfail_defaults
