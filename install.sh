@@ -6,25 +6,57 @@ echo $PATH
 # Name of new environment (must also change this in .yml files)
 VENV=gf
 
-# Is the reset flag set?
+# Are the reset/travis flags set?
 reset=0
-while getopts r FLAG; do
+travis=0
+while getopts rt FLAG; do
   case $FLAG in
     r)
-        reset=1
-        
-      ;;
+        reset=1;;
+    t)
+	travis=1;;
   esac
 done
 
+
 # Is conda installed?
-conda=$(which conda)
+conda=$_CONDA_EXE
+
+# If not, install miniconda
 if [ ! "$conda" ] ; then
-    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-        -O miniconda.sh;
+    echo "No conda detected, installing miniconda"
+    curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+         -o miniconda.sh;
+    echo "Install directory: $HOME/miniconda"
     bash miniconda.sh -f -b -p $HOME/miniconda
-    export PATH="$HOME/miniconda/bin:$PATH"
+    rm -f miniconda.sh
 fi
+
+# Source bash startup file
+if [ -f $HOME/.bash_profile ]; then
+    echo 'Sourcing .bash_profile'
+    . $HOME/.bash_profile
+    cat $HOME/.bash_profile
+    echo ""
+fi
+
+if [ -f $HOME/.bashrc ]; then
+    echo 'Sourcing .bashrc'
+    . $HOME/.bashrc
+    cat $HOME/.bashrc
+    echo ""
+fi
+
+# For some reason, the above sourcing does not work on travis but does
+# work on our Scientific Linux servers, so we need to do some following
+# specially for travis:
+if [ $travis == 1 ]; then
+    . /home/travis/miniconda/etc/profile.d/conda.sh
+fi
+
+echo "PATH:"
+echo $PATH
+echo ""
 
 # Choose an environment file based on platform
 unamestr=`uname`
@@ -42,45 +74,21 @@ if [ $reset == 1 ]; then
     env_file=environment.yml
 fi
 
-# Turn off whatever other virtual environment user might be in
-source deactivate
-
-# Download dependencies not in conda or pypi
-curl --max-time 60 --retry 3 -L \
-    https://github.com/usgs/earthquake-impact-utils/archive/master.zip -o impact-utils.zip
-curl --max-time 60 --retry 3 -L \
-    https://github.com/usgs/MapIO/archive/master.zip -o mapio.zip
-
+# Start in conda base environment
+echo "Activate base virtual environment"
+conda activate base
 
 # Create a conda virtual environment
-echo "Creating the $VENV virtual environment:"
+echo "Creating the $VENV virtual environment"
 conda env create -f $env_file --force
-
-# Bail out at this point if the conda create command fails.
-# Clean up zip files we've downloaded
-if [ $? -ne 0 ]; then
-    echo "Failed to create conda environment.  Resolve any conflicts, then try again."
-    echo "Cleaning up zip files..."
-    rm impact-utils.zip
-    rm mapio.zip
-    exit
-fi
-
 
 # Activate the new environment
 echo "Activating the $VENV virtual environment"
-source activate $VENV
-
-# Clean up downloaded packages
-rm impact-utils.zip
-rm mapio.zip
-
-# Install libcomcat without dependencies
-pip install git+https://github.com/usgs/libcomcat.git
+conda activate $VENV
 
 # This package
-echo "Installing $VENV..."
+echo "Installing $VENV"
 pip install -e .
 
 # Tell the user they have to activate this environment
-echo "Type 'source activate $VENV' to use this new virtual environment."
+echo "Type 'conda activate $VENV' to use this new virtual environment."
