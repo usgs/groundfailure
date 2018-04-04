@@ -32,10 +32,14 @@ fi
 if [ -f $HOME/.bash_profile ]; then
     echo 'Sourcing .bash_profile'
     . $HOME/.bash_profile
+    cat $HOME/.bash_profile
+    echo ""
 fi
 if [ -f $HOME/.bashrc ]; then
-    echo 'Sourcing .bash_profile'
+    echo 'Sourcing .bashrc'
     . $HOME/.bashrc
+    cat $HOME/.bashrc
+    echo ""
 fi
 
 echo "PATH:"

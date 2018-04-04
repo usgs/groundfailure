@@ -1,8 +1,6 @@
 language: python
 sudo: false
-python:
-    - "3.5"
-    
+
 install:
     # Install gf and requirements
     - bash install.sh
