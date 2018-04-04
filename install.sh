@@ -17,14 +17,23 @@ while getopts r FLAG; do
   esac
 done
 
-# Is conda installed?
-conda=$(which conda)
-if [ ! "$conda" ] ; then
-    wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-        -O miniconda.sh;
-    bash miniconda.sh -f -b -p $HOME/miniconda
-    export PATH="$HOME/miniconda/bin:$PATH"
+# Source bash startup file, not sure why it doesn't do this automatically
+if [ -f ~/.bash_profile ]; then
+    . ~/.bash_profile
 fi
+if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+fi
+
+# Is conda installed?
+conda=$_CONDA_EXE
+if [ ! "$conda" ] ; then
+    echo "No conda detected, installing miniconda..."
+    curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+        -o miniconda.sh;
+    bash miniconda.sh -f -b -p $HOME/miniconda
+fi
+
 
 # Choose an environment file based on platform
 unamestr=`uname`
@@ -42,45 +51,20 @@ if [ $reset == 1 ]; then
     env_file=environment.yml
 fi
 
-# Turn off whatever other virtual environment user might be in
-source deactivate
-
-# Download dependencies not in conda or pypi
-curl --max-time 60 --retry 3 -L \
-    https://github.com/usgs/earthquake-impact-utils/archive/master.zip -o impact-utils.zip
-curl --max-time 60 --retry 3 -L \
-    https://github.com/usgs/MapIO/archive/master.zip -o mapio.zip
-
+# Start in conda base environment
+conda activate base
 
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment:"
 conda env create -f $env_file --force
 
-# Bail out at this point if the conda create command fails.
-# Clean up zip files we've downloaded
-if [ $? -ne 0 ]; then
-    echo "Failed to create conda environment.  Resolve any conflicts, then try again."
-    echo "Cleaning up zip files..."
-    rm impact-utils.zip
-    rm mapio.zip
-    exit
-fi
-
-
 # Activate the new environment
 echo "Activating the $VENV virtual environment"
-source activate $VENV
-
-# Clean up downloaded packages
-rm impact-utils.zip
-rm mapio.zip
-
-# Install libcomcat without dependencies
-pip install git+https://github.com/usgs/libcomcat.git
+conda activate $VENV
 
 # This package
 echo "Installing $VENV..."
 pip install -e .
 
 # Tell the user they have to activate this environment
-echo "Type 'source activate $VENV' to use this new virtual environment."
+echo "Type 'conda activate $VENV' to use this new virtual environment."

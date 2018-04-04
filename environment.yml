@@ -2,8 +2,6 @@ name: gf
 channels:
 - conda-forge
 - defaults
-- digitalglobe
-- ioos
 dependencies:
 - affine
 - basemap
@@ -16,15 +14,12 @@ dependencies:
 - folium
 - gdal
 - h5py
-- ipython
-- jupyter
 - lxml
 - markdown
 - matplotlib
 - numpy
 - obspy
 - pandas
-- paramiko
 - pelican
 - pytables
 - pytest
@@ -38,17 +33,12 @@ dependencies:
 - scikit-image
 - shapely
 - sphinx
+- mapio
+- impactutils
+- libcomcat
 - pip:
   - et-xmlfile
-  - ipython-genutils
-  - jupyter-client
-  - jupyter-console
-  - jupyter-core
   - prompt-toolkit
   - sphinx-argparse
   - sphinxcontrib-napoleon
   - sphinx_rtd_theme
-  - ./mapio.zip
-  - ./impact-utils.zip
-
-  
