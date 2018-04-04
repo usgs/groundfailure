@@ -17,24 +17,25 @@ while getopts r FLAG; do
   esac
 done
 
-# Source bash startup file, not sure why it doesn't do this automatically
-if [ -f ~/.bash_profile ]; then
-    . ~/.bash_profile
-fi
-if [ -f ~/.bashrc ]; then
-    . ~/.bashrc
-fi
-
 # Is conda installed?
 conda=$_CONDA_EXE
 if [ ! "$conda" ] ; then
-    echo "No conda detected, installing miniconda..."
+    echo "No conda detected, installing miniconda"
     curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
         -o miniconda.sh;
     bash miniconda.sh -f -b -p $HOME/miniconda
     rm -f miniconda.sh
 fi
 
+# Source bash startup file
+if [ -f $HOME/.bash_profile ]; then
+    echo 'Sourcing .bash_profile'
+    . $HOME/.bash_profile
+fi
+if [ -f $HOME/.bashrc ]; then
+    echo 'Sourcing .bash_profile'
+    . $HOME/.bashrc
+fi
 
 # Choose an environment file based on platform
 unamestr=`uname`
@@ -53,10 +54,11 @@ if [ $reset == 1 ]; then
 fi
 
 # Start in conda base environment
+echo "Activate base virtual environment"
 conda activate base
 
 # Create a conda virtual environment
-echo "Creating the $VENV virtual environment:"
+echo "Creating the $VENV virtual environment"
 conda env create -f $env_file --force
 
 # Activate the new environment
@@ -64,7 +66,7 @@ echo "Activating the $VENV virtual environment"
 conda activate $VENV
 
 # This package
-echo "Installing $VENV..."
+echo "Installing $VENV"
 pip install -e .
 
 # Tell the user they have to activate this environment

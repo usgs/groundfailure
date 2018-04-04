@@ -4,7 +4,7 @@ python:
     - "3.5"
     
 install:
-    # Install gf-p and requirements
+    # Install gf and requirements
     - bash install.sh
     - . ~/.bashrc
     - conda activate gf
