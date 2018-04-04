@@ -4,7 +4,7 @@ sudo: false
 install:
     # Install gf and requirements
     - bash install.sh -t
-    - . /home/travis/miniconda3/etc/profile.d/conda.sh
+    - . /home/travis/miniconda/etc/profile.d/conda.sh
     - conda activate gf
     - pwd
     - cp .gfail_defaults_travis /home/travis/.gfail_defaults
