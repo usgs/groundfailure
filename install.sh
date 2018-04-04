@@ -22,7 +22,8 @@ conda=$_CONDA_EXE
 if [ ! "$conda" ] ; then
     echo "No conda detected, installing miniconda"
     curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-        -o miniconda.sh;
+         -o miniconda.sh;
+    echo "Install directory: $HOME/miniconda"
     bash miniconda.sh -f -b -p $HOME/miniconda
     rm -f miniconda.sh
 fi
@@ -36,6 +37,9 @@ if [ -f $HOME/.bashrc ]; then
     echo 'Sourcing .bash_profile'
     . $HOME/.bashrc
 fi
+
+echo "PATH:"
+echo $PATH
 
 # Choose an environment file based on platform
 unamestr=`uname`
