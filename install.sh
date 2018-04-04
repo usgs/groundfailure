@@ -32,6 +32,7 @@ if [ ! "$conda" ] ; then
     curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
         -o miniconda.sh;
     bash miniconda.sh -f -b -p $HOME/miniconda
+    rm -f miniconda.sh
 fi
 
 
