@@ -6,25 +6,15 @@ echo $PATH
 # Name of new environment (must also change this in .yml files)
 VENV=gf
 
-# Is the reset flag set?
+# Are the reset/travis flags set?
 reset=0
-while getopts r FLAG; do
+travis=0
+while getopts rt FLAG; do
   case $FLAG in
     r)
-        reset=1
-        
-      ;;
-  esac
-done
-
-# Is the travis flag set?
-travis=0
-while getopts t FLAG; do
-  case $FLAG in
+        reset=1;;
     t)
-        travis=1
-        
-      ;;
+	travis=1;;
   esac
 done
 
