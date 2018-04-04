@@ -17,8 +17,22 @@ while getopts r FLAG; do
   esac
 done
 
+# Is the travis flag set?
+travis=0
+while getopts t FLAG; do
+  case $FLAG in
+    t)
+        travis=1
+        
+      ;;
+  esac
+done
+
+
 # Is conda installed?
 conda=$_CONDA_EXE
+
+# If not, install miniconda
 if [ ! "$conda" ] ; then
     echo "No conda detected, installing miniconda"
     curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
@@ -35,11 +49,19 @@ if [ -f $HOME/.bash_profile ]; then
     cat $HOME/.bash_profile
     echo ""
 fi
+
 if [ -f $HOME/.bashrc ]; then
     echo 'Sourcing .bashrc'
     . $HOME/.bashrc
     cat $HOME/.bashrc
     echo ""
+fi
+
+# For some reason, the above sourcing does not work on travis but does
+# work on our Scientific Linux servers, so we need to do some following
+# specially for travis:
+if [ $travis == 1 ]; then
+    . /home/travis/miniconda3/etc/profile.d/conda.sh
 fi
 
 echo "PATH:"
