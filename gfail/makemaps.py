@@ -1149,12 +1149,13 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
     # Get reference colorbar, if specified
     if sync:
-        sync, colorlist, reflims = setupsync(sync, plotorder, lims, colormaps, defaultcolormap)
+        sync, colorlist, reflims = setupsync(sync, plotorder, lims, colormaps,
+                                             defaultcolormap, logscale=logscale)
         if sync:
-            if logscale is not False:
-                if not np.array_equal(logscale, np.repeat(False, len(plotorder))):
-                    logscale = np.repeat(False, len(plotorder)) # Also has to be linear
-                    print('Logscale for synced colorbars not implemented, changing to linear')
+            #if logscale is not False:
+            #    if not np.array_equal(logscale, np.repeat(False, len(plotorder))):
+            #        logscale = np.repeat(False, len(plotorder)) # Also has to be linear
+            #        print('Logscale for synced colorbars not implemented, changing to linear')
             if not sepcolorbar:
                 sepcolorbar = True
                 print('Changing to separate colorbar, embedded colorbar not implemented for sync')
@@ -1442,7 +1443,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
     return maps, filenames
 
 
-def setupsync(sync, plotorder, lims, colormaps, defaultcolormap):
+def setupsync(sync, plotorder, lims, colormaps, defaultcolormap, logscale=None):
+    """
+    sync(str): shortref of model to sync other models to
+    """
     if not sync:
         return False, None, None
         
@@ -1450,6 +1454,8 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap):
         k = [indx for indx, key in enumerate(plotorder) if key in sync][0]
         # Make sure lims exist and all have the same number of bins'
         #try:
+        if logscale is not None:
+            logs = logscale[k]
         lim1 = np.array(lims[k])
         sum1 = 0
         for lim in lims:
@@ -1490,6 +1496,8 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap):
 
 
 def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None, synclims=None):
+    """
+    """
     dat = dat.copy()
     if np.nanmax(dat) > 0.:
         minnonzero = np.nanmin(dat[dat > 0.])
