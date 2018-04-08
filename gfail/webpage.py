@@ -31,7 +31,8 @@ plt.switch_backend('agg')
 
 def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 includeunc=False, cleanup=True, includeAlert=False,
-                alertkeyHAZ='Hagg_0.10g', alertkeyPOP='exp_pop_0.10g', faultfile=None,
+                alertkeyHAZ='Hagg_0.10g', alertkeyPOP='exp_pop_0.10g',
+                faultfile=None,
                 shakethreshtype='pga', point=False, pop_file=None,
                 statlist=['Max', 'Std', 'Hagg_0.10g', 'exp_pop_0.10g'],
                 probthresh=None,
@@ -75,7 +76,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
 
     Returns:
         Folder where webpage files are located
-     """
+    """
     print('Creating webpages')
     # get event id
     event_id = maplayerlist[0]['model']['description']['event_id']
@@ -363,7 +364,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             'alertvalueHAZ': paramalertLS,
             'alertkeyPOP': alertkeyPOP,
             'alertvaluePOP': parampopLS,
-            
+
         },
         'Liquefaction': {
             'models': lqmodels,
@@ -476,10 +477,10 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
         file1.write('<h2>%s</h2>' % modeltype.title())
 
         if len(concatmods) > 0:
-            
+
             if statement is not None:
                 file1.write('<p>%s</p>\n' % statement)
-                
+
             if topimage is not None:
                 file1.write('<img src="images%s" width="250" '
                             'href="images%s"/>\n'
@@ -526,12 +527,12 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                 file1.write('<th>Output Type</th>')
 
                 for st in statlist:
-                    #if 'Hagg_' in st:
+                    # if 'Hagg_' in st:
                     #    thresh = float(st.split('_')[-1].replace('g',''))
                     #    titl = 'Aggregate Hazard (km^2)' % (100.*thresh,)
                     if 'Hagg' in st:
                         titl = 'Aggregate Hazard (km^2)'
-                    #elif 'exp_pop_' in st:
+                    # elif 'exp_pop_' in st:
                     #    thresh = float(st.split('_')[-1].replace('g',''))
                     #    titl = 'People at risk (>%2.0f g)' % (100.*thresh,)
                     elif 'exp_pop' in st:
@@ -540,7 +541,7 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
                         titl = 'Maximum probability'
                     elif 'Std' in st:
                         titl = 'Standard deviation'
-                    
+
                     file1.write('<th>%s</th>' % titl)
                 file1.write('\n')
 
@@ -742,15 +743,15 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
 
     if alertLS is not None:
         statementLS = ('Landslide hazard for this event is expected to be '
-                     '%s with %s population at risk.'
-                     % (get_word(alertLS), get_word(popalertLS)))
+                       '%s with %s population at risk.'
+                       % (get_word(alertLS), get_word(popalertLS)))
     else:
         statementLS = None
 
     if alertLQ is not None:
         statementLQ = ('Liquefaction hazard for this event is expected to be '
-                     '%s with %s population at risk.'
-                     % (get_word(alertLQ), get_word(popalertLQ)))
+                       '%s with %s population at risk.'
+                       % (get_word(alertLQ), get_word(popalertLQ)))
     else:
         statementLQ = None
 
@@ -800,13 +801,13 @@ def make_alert_img(colorHAZ, colorPOP, type1, outfolder):
         fig = plt.figure(figsize=(6, 1.8))
         ax = fig.add_subplot(111)
         ax.add_artist(plt.Rectangle((0.1, 0.5), 0.2, 0.2, facecolor=colorHAZ,
-                                 edgecolor='black', lw=1))
+                                    edgecolor='black', lw=1))
         #ax.text(0.1, 0.8, type1.title(), fontsize=25)
         ax.text(0.35, 0.52, 'Hazard %s' % colorHAZ, fontsize=25)
         ax.add_artist(plt.Rectangle((0.1, 0.2), 0.2, 0.2, facecolor=colorPOP,
-                                 edgecolor='black', lw=1))
+                                    edgecolor='black', lw=1))
         ax.text(0.35, 0.22, 'Population exposure %s' % colorPOP, fontsize=25)
-        
+
         ax.axis('off')
         ax.set_xlim([0, 2.0])
         ax.set_ylim([0., 0.8])
