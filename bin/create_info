@@ -118,6 +118,11 @@ def main(event_dir):
     if point and event_dict['magnitude'] > 6.5:
         rupture_warning = True
 
+
+    # Need to find png files and get extents
+    jessee_extent = [0, 1, 0, 1]
+    zhu_extent = [0, 1, 0, 1]
+    
     # Create info.json for website rendering and metadata purposes
     info_dict = {
         'Summary': {
@@ -132,24 +137,71 @@ def main(event_dir):
             'shakemap_version': sm_dict['shakemap_version'],
             'rupture_warning': rupture_warning
         },
-        'Landslides': {
-            'model': '"Nowicki Jessee (2017)',
+        'Landslides': [{
+            'model': 'Nowicki Jessee (2017)',
+            'filename': 'jessee_2017.png',
+            'extent': jessee_extent,
+            'preferred': True,
             'hazard_alert': ls_haz_alert,
             'population_alert': ls_pop_alert,
             'hazard_alert_parameter': 'Hagg_0.10g',
             'hazard_alert_value': ls_haz_level,
             'population_alert_parameter': 'exp_pop_0.10g',
             'population_alert_value': ls_pop_level,
-        },
-        'Liquefaction': {
+            'bin_edges': [
+                0,
+                0.005,
+                0.008,
+                0.01,
+                0.02,
+                0.03,
+                0.08,
+                0.1,
+                1.0
+            ],
+            'bin_colors':[
+                '#f4f4c7',
+                '#e6e37a',
+                '#e6c528',
+                '#e77b02',
+                '#e13c41',
+                '#6f2ca3',
+                '#3b26a2',
+                '#17174c'
+            ]
+        }],
+        'Liquefaction': [{
             'model': 'Zhu et al., 2017',
+            'filename': 'zhu_2017.png',
+            'extent': zhu_extent,
             'hazard_alert': lq_haz_alert,
             'population_alert': lq_pop_alert,
             'hazard_alert_parameter': 'Hagg_0.10g',
             'hazard_alert_value': lq_haz_level,
             'population_alert_parameter': 'exp_pop_0.10g',
-            'population_alert_value': lq_pop_level
-        }
+            'population_alert_value': lq_pop_level,
+            'bin_edges': [
+                0,
+                0.05,
+                0.08,
+                0.1,
+                0.12,
+                0.16,
+                0.22,
+                0.3,
+                1.0
+            ],
+            'bin_colors':[
+                '#f4f4c7',
+                '#e6e37a',
+                '#e6c528',
+                '#e77b02',
+                '#e13c41',
+                '#6f2ca3',
+                '#3b26a2',
+                '#17174c'
+            ]
+        }]
     }
 
     info_file = os.path.join(event_dir, 'info2.json')
