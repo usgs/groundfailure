@@ -13,6 +13,7 @@ from gfail.stats import computeStats
 from gfail.webpage import get_alert
 from gfail.webpage import get_event_comcat
 
+from impactutils.textformat.text import set_num_precision
 
 def main(event_dir):
     """
@@ -40,6 +41,27 @@ def main(event_dir):
         lq_mod = loadlayers(lq_file)
     else:
         raise OSError("Preferred liquefaction model result not found.")
+
+    # Read in extents
+    ls_extent_file = [f for f in files if 'jessee_2017_extent.json' in f]
+    if len(ls_mod_file) == 1:
+        ls_file = os.path.join(event_dir, ls_extent_file[0])
+        with open(ls_file) as f:
+            jessee_extent = json.load(f)
+    else:
+        raise OSError("Landslide extent not found.")
+    lq_extent_file = [f for f in files if 'zhu_2017_extent.json' in f]
+    if len(lq_mod_file) == 1:
+        lq_file = os.path.join(event_dir, lq_extent_file[0])
+        with open(lq_file) as f:
+            zhu_extent = json.load(f)
+    else:
+        raise OSError("Landslide extent not found.")
+
+    # Read in colors
+    with open(os.path.join(event_dir, 'colors.json')) as f:
+        color_dict = json.load(f)
+
 
     # Read in default paths to get location of the population grid
     default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
@@ -119,10 +141,6 @@ def main(event_dir):
         rupture_warning = True
 
 
-    # Need to find png files and get extents
-    jessee_extent = [0, 1, 0, 1]
-    zhu_extent = [0, 1, 0, 1]
-    
     # Create info.json for website rendering and metadata purposes
     info_dict = {
         'Summary': {
@@ -135,7 +153,8 @@ def main(event_dir):
             'lon': event_dict['lon'],
             'event_url': event_url,
             'shakemap_version': sm_dict['shakemap_version'],
-            'rupture_warning': rupture_warning
+            'rupture_warning': rupture_warning,
+            'point_source': point
         },
         'Landslides': [{
             'model': 'Nowicki Jessee (2017)',
@@ -148,27 +167,8 @@ def main(event_dir):
             'hazard_alert_value': ls_haz_level,
             'population_alert_parameter': 'exp_pop_0.10g',
             'population_alert_value': ls_pop_level,
-            'bin_edges': [
-                0,
-                0.005,
-                0.008,
-                0.01,
-                0.02,
-                0.03,
-                0.08,
-                0.1,
-                1.0
-            ],
-            'bin_colors':[
-                '#f4f4c7',
-                '#e6e37a',
-                '#e6c528',
-                '#e77b02',
-                '#e13c41',
-                '#6f2ca3',
-                '#3b26a2',
-                '#17174c'
-            ]
+            'bin_edges': color_dict['bin_edges'],
+            'bin_colors': color_dict['bin_colors']
         }],
         'Liquefaction': [{
             'model': 'Zhu et al., 2017',
@@ -180,27 +180,8 @@ def main(event_dir):
             'hazard_alert_value': lq_haz_level,
             'population_alert_parameter': 'exp_pop_0.10g',
             'population_alert_value': lq_pop_level,
-            'bin_edges': [
-                0,
-                0.05,
-                0.08,
-                0.1,
-                0.12,
-                0.16,
-                0.22,
-                0.3,
-                1.0
-            ],
-            'bin_colors':[
-                '#f4f4c7',
-                '#e6e37a',
-                '#e6c528',
-                '#e77b02',
-                '#e13c41',
-                '#6f2ca3',
-                '#3b26a2',
-                '#17174c'
-            ]
+            'bin_edges': color_dict['bin_edges'],
+            'bin_colors': color_dict['bin_colors']
         }]
     }
 
@@ -209,6 +190,7 @@ def main(event_dir):
         json.dump(info_dict, f)
 
 
+        
 if __name__ == '__main__':
     desc = '''
     Create info.json for an event's ground failure result. The code
