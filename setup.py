@@ -17,6 +17,7 @@ setup(name='groundfailure',
       scripts=[
           'bin/gfail',
           'bin/autogf',
-          'bin/create_info'
+          'bin/create_info',
+          'bin/create_png'
       ],
       )
