@@ -34,8 +34,7 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                 alertkeyHAZ='Hagg_0.10g', alertkeyPOP='exp_pop_0.10g', faultfile=None,
                 shakethreshtype='pga', point=False, pop_file=None,
                 statlist=['Max', 'Std', 'Hagg_0.10g', 'exp_pop_0.10g'],
-                probthresh=None,
-                shakethresh=[5., 10.], statement=None):
+                probthresh=None, shakethresh=[5., 10.], statement=None):
     """
     Create a webpage that summarizes ground failure results (both landslides
         and liquefaction)
@@ -255,7 +254,11 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
             mapid='LS', savefiles=True, outputdir=images,
             sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Nowicki and others (2014)')
+            sync='Nowicki Jessee (2017)')
+        makemaps.createColorsJson(concLS, colormaps=colLS,
+                     lims=limLS, logscale=logLS, alpha=0.7,
+                     outputdir=outfolder, outfilename='colorsLS.json',
+                     sync='Nowicki Jessee (2017)')
         filenameLS = filenameLS[0]
     else:
         filenameLS = None
@@ -267,7 +270,11 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
             savefiles=True, mapid='LQ', outputdir=images,
             sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Zhu and others (2015)')
+            sync='Zhu and others (2017)')
+        makemaps.createColorsJson(concLQ, colormaps=colLQ,
+                     lims=limLQ, logscale=logLQ, alpha=0.7,
+                     outputdir=outfolder, outfilename='colorsLQ.json',
+                     sync='Zhu and others (2017)')
         filenameLQ = filenameLQ[0]
     else:
         filenameLQ = None

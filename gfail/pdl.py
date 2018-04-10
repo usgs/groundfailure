@@ -205,6 +205,12 @@ def prepare_pdl_directory(eventdir):
         if fname in 'info.json':
             ftitle = 'Info'
             fid = 'info_json'
+        elif fname in 'colorsLS.json':
+            ftitle = 'LS Colors'
+            fid = 'colorsLS_json'
+        elif fname in 'colorsLQ.json':
+            ftitle = 'LQ Colors'
+            fid = 'colorsLQ_json'
         else:
             spl = fname.split('_')
             ftitle = spl[1].capitalize() + ' ' + spl[2] + ' Model Metadata'

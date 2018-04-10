@@ -12,6 +12,7 @@ from matplotlib.colors import LightSource, LogNorm, Normalize
 import re
 from matplotlib.colorbar import ColorbarBase
 import matplotlib.colors as colors
+import json
 
 # third party imports
 import matplotlib.cm as cm
@@ -807,7 +808,7 @@ def modelMap(grids, shakefile=None,
         if scaletype.lower() == 'binned':
             cbar = fig.colorbar(panelhandle, spacing='proportional',
                                 ticks=clev, boundaries=clev, fraction=0.036,
-                                pad=0.04, format=cbfmt, extend='both',
+                                pad=0.04, format=cbfmt, extend='neither',
                                 norm=logsc)
 
         else:
@@ -1035,7 +1036,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             be set to max(array).
         logscale (list): None, single boolean value, or Nx1 list of booleans
             defining whether to use a log scale or not for each layer.
-        ALPHA (float): Transparency for mapping, if there is a hillshade that
+        alpha (float): Transparency for mapping, if there is a hillshade that
             will plot below each layer, it is recommended to set this to at
             least 0.7.
         isScenario (bool): Is this a scenario?
@@ -1072,8 +1073,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             'max', 'median', or 'mean'. NOT IMPLEMENTED YET.
         smcontourfile (str): File extension to shakemap contour file to plot
             NOT FUNCTIONAL YET.
-        sync (bool): If False, each map will use it's own colorbar. If a grid layer shortref is specified (e.g. 'Nowicki and others (2014)'), all maps will
-            have colorbars synced to the colors of the one specified, but they must all have the same number of bins
+        sync: If False, each map will use it's own colorbar.
+            If a grid layer shortref is specified (e.g. 'Nowicki and others (2014)'),
+            all maps will have colorbars synced to the colors of the one
+            specified, but they must all have the same number of bins
 
     Returns:
         * Interactive plot (html file) of all grids listed in plotorder
@@ -1149,12 +1152,9 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
     # Get reference colorbar, if specified
     if sync:
-        sync, colorlist, reflims = setupsync(sync, plotorder, lims, colormaps, defaultcolormap)
+        sync, colorlist, reflims = setupsync(sync, plotorder, lims, colormaps,
+                                             defaultcolormap, logscale=logscale)
         if sync:
-            if logscale is not False:
-                if not np.array_equal(logscale, np.repeat(False, len(plotorder))):
-                    logscale = np.repeat(False, len(plotorder)) # Also has to be linear
-                    print('Logscale for synced colorbars not implemented, changing to linear')
             if not sepcolorbar:
                 sepcolorbar = True
                 print('Changing to separate colorbar, embedded colorbar not implemented for sync')
@@ -1216,10 +1216,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             dat[dat <= maskthreshes[k]] = float('nan')
 
         # Make changes needed to get desired colorbar
-        clev, vmin, vmax, rgba_img, cmap, norm = correct4colorbar(dat, lims[k],
-                                                                  logscale[k], scaletype,
-                                                                  palette, colorlist=colorlist,
-                                                                  synclims=reflims)
+        outputs = correct4colorbar(dat, lims[k], logscale[k], scaletype,
+                                   palette, colorlist=colorlist,
+                                   synclims=reflims)
+        clev, vmin, vmax, rgba_img, cmap, norm, colorlist = outputs
 
         gd = grid.getGeoDict()
         minlat = gd.ymin - gd.dy/2.
@@ -1442,14 +1442,26 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
     return maps, filenames
 
 
-def setupsync(sync, plotorder, lims, colormaps, defaultcolormap):
+def setupsync(sync, plotorder, lims, colormaps, defaultcolormap, logscale=None,
+              alpha=None):
+    """Get colors that will be used for all colorbars from reference grid
+
+    
+    sync(str): shortref of model to sync other models to
+    """
+
     if not sync:
         return False, None, None
         
     elif sync in plotorder:
         k = [indx for indx, key in enumerate(plotorder) if key in sync][0]
         # Make sure lims exist and all have the same number of bins'
-        #try:
+
+        if logscale is not None:
+            logs = logscale[k]
+        else:
+            logs = False
+
         lim1 = np.array(lims[k])
         sum1 = 0
         for lim in lims:
@@ -1463,24 +1475,24 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap):
             print('Cannot sync colorbars, different number of bins or lims not specified')
             sync = False
             return sync, None, None
-
-        cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
+        
         if colormaps[k] is not None:
             palette1 = colormaps[k]
         else:
             palette1 = defaultcolormap
         #palette1.set_bad(clear_color, alpha=0.0)
+        if logs:
+            cNorm = colors.LogNorm(vmin=lim1[0], vmax=lim1[-1])
+            midpts = np.sqrt(lim1[1:] * lim1[:-1]) #geometric mean for midpoints
+        else:
+            cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
+            midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
         scalarMap = cm.ScalarMappable(norm=cNorm, cmap=palette1)
-        midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
         colorlist = []
         for value in midpts:
-            colorlist.append(scalarMap.to_rgba(value))
+            colorlist.append(scalarMap.to_rgba(value, alpha=alpha))
         sync = True
-#        except Exception as e:
-#            sync = False
-#            colorlist = None
-#            lim1 = None
-#            print('Cannot sync colorbars, %s' % e)
+
     else:
         print('Cannot sync colorbars, different number of bins or lims not specified')
         sync = False
@@ -1489,7 +1501,16 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap):
     return sync, colorlist, lim1
 
 
-def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None, synclims=None):
+def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None,
+                     synclims=None, alpha=None):
+    """Create rgba layer for plotting along with all the info needed to create
+    a separate colorbar
+    
+    Args:
+        
+    Returns:
+        
+    """
     dat = dat.copy()
     if np.nanmax(dat) > 0.:
         minnonzero = np.nanmin(dat[dat > 0.])
@@ -1500,19 +1521,16 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
         order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
         datcop = dat.copy()
         if synclims is not None:
-            clev = gridlims # will change all data values to midpoints of sync template
-            datcop[dat < gridlims[0]] = synclims[0]
-            for j, level in enumerate(clev[:-1]):
-                datcop[(dat >= gridlims[j]) & (dat < gridlims[j+1])] = \
-                    (synclims[j] + synclims[j+1])/2.
-            # So colorbar saturates at top
-            datcop[dat > gridlims[-1]] = synclims[-1]
+            clev = gridlims
+            datcop[dat < gridlims[0]] = gridlims[0]
+            datcop[dat > gridlims[-1]] = gridlims[-1]
             cmap = colors.ListedColormap(colorlist)
             norm = mpl.colors.BoundaryNorm(clev, cmap.N)
             datcop = np.ma.array(datcop, mask=np.isnan(dat))
             vmin = clev[0]
             vmax = clev[-1]
-            rgba_img = cmap(datcop)
+            scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+            rgba_img = scalarMap.to_rgba(datcop, alpha=alpha)
 
         else:
             cmap = palette
@@ -1524,15 +1542,15 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
                 dat[dat < clev[0]] = clev[0]
                 for j, level in enumerate(clev[:-1]):
                     dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
-                        (clev[j] + clev[j+1])/2.
+                        np.sqrt(clev[j] * clev[j+1])  # geometric mean
                 # So colorbar saturates at top
                 dat[dat > clev[-1]] = clev[-1]
                 dat = np.ma.array(dat, mask=np.isnan(dat))
                 norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
                 dat = np.log10(dat.copy())
+                midpts = np.sqrt(clev[1:] * clev[:-1]) #geometric mean for midpoints
             
             else:
-                #import pdb; pdb.set_trace()
                 if gridlims is None:
                     if order < 1.:
                         scal = 10**-order
@@ -1560,11 +1578,17 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
                 dat[dat > clev[-1]] = clev[-1]
                 dat = np.ma.array(dat, mask=np.isnan(dat))
                 norm = Normalize(vmin=vmin, vmax=vmax)
+                midpts = (clev[1:] - clev[:-1])/2 + clev[:-1]
             dat1 = (dat - vmin)/(vmax-vmin)  # Normalize by vmin and vmax so colorbar matches
-            rgba_img = cmap(dat1)
+            scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+            rgba_img = scalarMap.to_rgba(dat1, alpha=alpha)
+            # make colorlist
+            colorlist = []
+            for value in midpts:
+                colorlist.append(scalarMap.to_rgba(value, alpha=alpha))
 
     else:
-    
+        colorlist = None
         if gridlims is None:
             if logscale:
                 order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
@@ -1599,9 +1623,136 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
         dat[dat > vmax] = vmax
         cmap = palette
         dat1 = (dat - vmin)/(vmax-vmin)  # Normalize by vmin and vmax so colorbar matches
-        rgba_img = cmap(dat1)
+        scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+        rgba_img = scalarMap.to_rgba(dat1, alpha=alpha)
         
-    return clev, vmin, vmax, rgba_img, cmap, norm
+    return clev, vmin, vmax, rgba_img, cmap, norm, colorlist
+
+
+def createColorsJson(grids, plotorder=None, colormaps=None,
+                     lims=None, logscale=False, alpha=None,
+                     outputdir=None, outfilename=None, sync=False):
+    """Create colors.json that gives the colorbar and bin limit information
+    
+    Only for binned colorbars
+    
+    Args:
+        grids (dict): Dictionary of N layers and metadata formatted like:
+
+            .. code-block:: python
+
+                maplayers['layer name']=
+                {
+                    'grid': mapio grid2D object,
+                    'label': 'label for colorbar and top line of subtitle',
+                    'type': 'output or input to model',
+                    'description': 'detailed description for subtitle'
+                }
+
+            Layer names must be unique.
+        plotorder (list): List of keys describing the order to plot the grids,
+            if None and grids is an ordered dictionary, it will use the order
+            of the dictionary, otherwise it will choose order which may be
+            somewhat random but it will always put a probability grid first.
+        colormaps (list): List of strings of matplotlib colormaps
+            (e.g. cm.autumn_r) corresponding to plotorder or order of
+            dictionary if plotorder is None. The list can contain both strings
+            and None e.g. colormaps = ['cm.autumn', None, None, 'cm.jet'] and
+            None's will default to default colormap.
+        lims (list): None or Nx1 list of tuples or numpy arrays corresponding
+            to plotorder defining the limits for saturating the colorbar
+            (vmin, vmax) if scaletype is continuous or the bins to use (clev)
+            if scaletype if binned. The list can contain tuples, arrays, and
+            Nones, e.g. lims = [(0., 10.), None, (0.1, 1.5),
+            np.linspace(0., 1.5, 15)]. When None is specified, the program will
+            estimate the limits, when an array is specified but the scale
+            type is continuous, vmin will be set to min(array) and vmax will
+            be set to max(array).
+        logscale (list): None, single boolean value, or Nx1 list of booleans
+            defining whether to use a log scale or not for each layer.
+        alpha (float): Transparency for mapping, if there is a hillshade that
+            will plot below each layer, it is recommended to set this to at
+            least 0.7.
+        outputdir (str): File path for outputting figures, if edict is defined,
+            a subfolder based on the event id will be created in this folder.
+            If None, will use current directory.
+        outfilename (str): File name for output without any file extensions.
+        sync: If False, each map will use it's own colorbar.
+            If a grid layer shortref is specified (e.g. 'Nowicki and others (2014)'),
+            all maps will have colorbars synced to the colors of the one
+            specified, but they must all have the same number of bins
+
+    Returns:
+        Location of json file containing colorbar information
+    """
+    if plotorder is None:
+        if type(grids) == list:
+            plotorder = [m.keys() for m in grids]
+        else:
+            plotorder = grids.keys()
+
+    if type(logscale) != list:
+        logscale = np.repeat(logscale, len(plotorder))
+
+    if lims is None:
+        lims = np.repeat(None, len(plotorder))
+    elif len(lims) != len(plotorder):
+        print('length of lims not equal to length of plotorder,\
+              setting lims as None for all layers')
+        lims = np.repeat(None, len(plotorder))
+
+    defaultcolormap = cm.CMRmap_r
+
+    if colormaps is None:
+        colormaps = np.repeat(defaultcolormap, len(plotorder))
+    elif len(colormaps) != len(plotorder):
+        print('length of colormaps not equal to length of plotorder,\
+              setting colormaps to default or %s for all layers' % defaultcolormap)
+        colormaps = np.repeat(defaultcolormap, len(plotorder))
+
+    # Get output file location
+    if outputdir is None:
+        print('No output location given, using current directory '
+              'for outputs\n')
+        outputdir = os.getcwd()
+        
+    if outfilename is None:
+        outfilename = 'colors.json'
+    if os.path.splitext(outfilename)[-1] != '.json':
+        outfilename = outfilename + '.json'
+
+    if not os.path.isdir(outputdir):
+        os.makedirs(outputdir)
+
+    if sync:
+        sync, colorlist, reflims = setupsync(sync, plotorder, lims, colormaps,
+                                             defaultcolormap, logscale=logscale)
+    else:
+        sync = False
+        colorlist = None
+        reflims = None
+        
+    colordict = {}
+    
+    for k, key in enumerate(plotorder):
+        if colormaps[k] is not None:
+            palette = colormaps[k]
+        else:
+            palette = defaultcolormap
+
+        grid = grids[key]['grid']
+        dat = grid.getData().copy()
+        outputs = correct4colorbar(dat, lims[k], logscale[k], 'binned',
+                                   palette, colorlist=colorlist,
+                                   synclims=reflims, alpha=alpha)
+        clev, vmin, vmax, rgba_img, cmap, norm, colorlist = outputs
+        colordict[key] = {'bin_edges': list(clev), 'bin_colors': list(colorlist)}
+    cd2 = json.dumps(colordict)
+    outfile = os.path.join(outputdir, outfilename)
+    with open(outfile, mode='w') as f3:
+        f3.write(cd2)
+    return outfile
+        
 
 
 def parseMapConfig(config, fileext=None):
