@@ -255,6 +255,10 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             mapid='LS', savefiles=True, outputdir=images,
             sepcolorbar=True, floatcb=False, faultfile=faultfile,
             sync='Nowicki Jessee (2017)')
+        makemaps.createColorsJson(concLS, colormaps=colLS,
+                     lims=limLS, logscale=logLS, alpha=0.7,
+                     outputdir=outfolder, outfilename='colorsLS.json',
+                     sync='Nowicki Jessee (2017)')
         filenameLS = filenameLS[0]
     else:
         filenameLS = None
@@ -266,7 +270,11 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
             logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
             savefiles=True, mapid='LQ', outputdir=images,
             sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Zhu and others (2015)')
+            sync='Zhu and others (2017)')
+        makemaps.createColorsJson(concLQ, colormaps=colLQ,
+                     lims=limLQ, logscale=logLQ, alpha=0.7,
+                     outputdir=outfolder, outfilename='colorsLQ.json',
+                     sync='Zhu and others (2017)')
         filenameLQ = filenameLQ[0]
     else:
         filenameLQ = None
