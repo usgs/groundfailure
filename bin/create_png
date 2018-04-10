@@ -20,9 +20,11 @@ def main(event_dir):
         event_dir (srt): Directory containing ground failure results.
     """
 
-    # Find the definitely of the colors
-    with open(os.path.join(event_dir, 'colors.json')) as f:
-        color_dict = json.load(f)
+    # Find the color definitiions
+    with open(os.path.join(event_dir, 'colorsLS.json')) as f:
+        ls_color_dict = json.load(f)
+    with open(os.path.join(event_dir, 'colorsLQ.json')) as f:
+        lq_color_dict = json.load(f)
 
     # Read in the "preferred" model for landslides
     files = os.listdir(event_dir)
@@ -43,11 +45,12 @@ def main(event_dir):
     ]
     with open(os.path.join(event_dir, 'jessee_2017_extent.json'), 'w') as f:
         json.dump(ls_extent, f)
-    levels = color_dict['bin_edges']
+    levels = ls_color_dict['Nowicki Jessee (2017)']['bin_edges']
     lmin = levels[0]
     lmax = levels[-1]
     ls_data2 = np.clip(ls_data, lmin, lmax)
-    cmap = mpl.colors.ListedColormap(color_dict['bin_colors'])
+    cmap = mpl.colors.ListedColormap(
+        ls_color_dict['Nowicki Jessee (2017)']['bin_colors'])
     norm = mpl.colors.BoundaryNorm(levels, cmap.N)
     ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
     rgba_img = cmap(norm(ls_data2))
@@ -77,11 +80,12 @@ def main(event_dir):
     ]
     with open(os.path.join(event_dir, 'zhu_2017_extent.json'), 'w') as f:
         json.dump(lq_extent, f)
-    levels = color_dict['bin_edges']
+    levels = lq_color_dict['Zhu and others (2017)']['bin_edges']
     lmin = levels[0]
     lmax = levels[-1]
     lq_data2 = np.clip(lq_data, lmin, lmax)
-    cmap = mpl.colors.ListedColormap(color_dict['bin_colors'])
+    cmap = mpl.colors.ListedColormap(
+        lq_color_dict['Zhu and others (2017)']['bin_colors'])
     norm = mpl.colors.BoundaryNorm(levels, cmap.N)
     lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
     rgba_img = cmap(norm(lq_data2))
@@ -95,7 +99,9 @@ def main(event_dir):
 
 if __name__ == '__main__':
     desc = '''
-
+    This program creates the transparent PNG file for displaying the model
+    results on the interactive map. The extents of the PNG file associated
+    with each model are given in the info.json file.
     '''
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('-e', '--event_dir',

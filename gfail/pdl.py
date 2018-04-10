@@ -52,14 +52,12 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     mag = info_dict['Summary']['magnitude']
     time_stamp = info_dict['Summary']['time']
     code = info_dict['Summary']['code']
-    eventsourcecode = info_dict['Summary']['net']
+    eventsourcecode = info_dict['Summary']['code']
     eventsource = info_dict['Summary']['net']
 
     pdl_type = 'groundfailure'
 
     # PDL properties
-    title = '"--property-title=Earthquake-Induced Ground Failure"'
-
     lq_haz_alert = '"--property-lq_haz_alert=%s" ' % \
                    info_dict['Liquefaction'][0]['hazard_alert']
     ls_haz_alert = '"--property-ls_haz_alert=%s" ' % \
@@ -79,29 +77,29 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
                          info_dict['Landslides'][0]['population_alert_value']
 
     # Construct PDL command
-    pdl_cmd = ('java -jar %s ' % pdl_bin +
-               '--send --configFile=%s ' % pdl_conf +
-               '--source=%s ' % source +
-               '--eventsource=%s ' % eventsource +
-               '--code=%s ' % code +
-               '--eventsourcecode=%s ' % eventsourcecode +
-               '--latitude=%s ' % lat +
-               '--longitude=%s ' % lon +
-               '--magnitude=%s ' % mag +
-               '--depth=%s ' % dep +
-               '--eventtime=%s ' % time_stamp +
-               '--type=%s ' % pdl_type +
-               '--directory=%s ' % pdl_dir +
-               title + " " +
-               lq_haz_alert + " " +
-               ls_haz_alert + " " +
-               lq_pop_alert + " " +
-               ls_pop_alert + " " +
-               lq_haz_alert_level + " " +
-               ls_haz_alert_level + " " +
-               lq_pop_alert_level + " " +
-               ls_pop_alert_level
-               )
+    pdl_cmd = (
+        'java -jar %s ' % pdl_bin +
+        '--send --configFile=%s ' % pdl_conf +
+        '--source=%s ' % source +
+        '--eventsource=%s ' % eventsource +
+        '--code=%s ' % code +
+        '--eventsourcecode=%s ' % eventsourcecode +
+        '--latitude=%s ' % lat +
+        '--longitude=%s ' % lon +
+        '--magnitude=%s ' % mag +
+        '--depth=%s ' % dep +
+        '--eventtime=%s ' % time_stamp +
+        '--type=%s ' % pdl_type +
+        '--directory=%s ' % pdl_dir +
+        lq_haz_alert + " " +
+        ls_haz_alert + " " +
+        lq_pop_alert + " " +
+        ls_pop_alert + " " +
+        lq_haz_alert_level + " " +
+        ls_haz_alert_level + " " +
+        lq_pop_alert_level + " " +
+        ls_pop_alert_level
+    )
 
     if not dryrun:
         rc, so, se = get_command_output(pdl_cmd)

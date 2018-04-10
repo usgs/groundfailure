@@ -59,9 +59,11 @@ def main(event_dir):
     else:
         raise OSError("Landslide extent not found.")
 
-    # Read in colors
-    with open(os.path.join(event_dir, 'colors.json')) as f:
-        color_dict = json.load(f)
+    # Find the color definitiions
+    with open(os.path.join(event_dir, 'colorsLS.json')) as f:
+        ls_color_dict = json.load(f)
+    with open(os.path.join(event_dir, 'colorsLQ.json')) as f:
+        lq_color_dict = json.load(f)
 
     # Read in default paths to get location of the population grid
     default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
@@ -168,11 +170,14 @@ def main(event_dir):
                 set_num_precision(ls_pop_level, 2, 'int'),
             'hazard_alert_parameter': 'Hagg_0.10g',
             'population_alert_parameter': 'exp_pop_0.10g',
-            'bin_edges': color_dict['bin_edges'],
-            'bin_colors': color_dict['bin_colors']
+            'bin_edges': ls_color_dict['Nowicki Jessee (2017)']['bin_edges'],
+            'bin_colors': ls_color_dict['Nowicki Jessee (2017)']['bin_colors'],
+            'probability_max': ls_stats['Max'],
+            'probability_std': ls_stats['Std'],
+            'units': "coverage"
         }],
         'Liquefaction': [{
-            'model': 'Zhu et al., 2017',
+            'model': 'Zhu et al. (2017)',
             'filename': 'zhu_2017.png',
             'extent': zhu_extent,
             'hazard_alert': lq_haz_alert,
@@ -183,8 +188,11 @@ def main(event_dir):
                 set_num_precision(lq_pop_level, 2, 'int'),
             'hazard_alert_parameter': 'Hagg_0.10g',
             'population_alert_parameter': 'exp_pop_0.10g',
-            'bin_edges': color_dict['bin_edges'],
-            'bin_colors': color_dict['bin_colors']
+            'bin_edges': lq_color_dict['Zhu and others (2017)']['bin_edges'],
+            'bin_colors': lq_color_dict['Zhu and others (2017)']['bin_colors'],
+            'probability_max': lq_stats['Max'],
+            'probability_std': lq_stats['Std'],
+            'units': "coverage"
         }]
     }
 
