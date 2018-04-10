@@ -172,8 +172,8 @@ def main(event_dir):
             'population_alert_parameter': 'exp_pop_0.10g',
             'bin_edges': ls_color_dict['Nowicki Jessee (2017)']['bin_edges'],
             'bin_colors': ls_color_dict['Nowicki Jessee (2017)']['bin_colors'],
-            'probability_max': ls_stats['Max'],
-            'probability_std': ls_stats['Std'],
+            'probability_max': "%.2f" % ls_stats['Max'],
+            'probability_std': "%.2f" % ls_stats['Std'],
             'units': "coverage"
         }],
         'Liquefaction': [{
@@ -190,8 +190,8 @@ def main(event_dir):
             'population_alert_parameter': 'exp_pop_0.10g',
             'bin_edges': lq_color_dict['Zhu and others (2017)']['bin_edges'],
             'bin_colors': lq_color_dict['Zhu and others (2017)']['bin_colors'],
-            'probability_max': lq_stats['Max'],
-            'probability_std': lq_stats['Std'],
+            'probability_max': "%.2f" % lq_stats['Max'],
+            'probability_std': "%.2f" % lq_stats['Std'],
             'units': "coverage"
         }]
     }
