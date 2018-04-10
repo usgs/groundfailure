@@ -15,6 +15,7 @@ from gfail.webpage import get_event_comcat
 
 from impactutils.textformat.text import set_num_precision
 
+
 def main(event_dir):
     """
     Create info.json for ground failure product.
@@ -61,7 +62,6 @@ def main(event_dir):
     # Read in colors
     with open(os.path.join(event_dir, 'colors.json')) as f:
         color_dict = json.load(f)
-
 
     # Read in default paths to get location of the population grid
     default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
@@ -140,7 +140,6 @@ def main(event_dir):
     if point and event_dict['magnitude'] > 6.5:
         rupture_warning = True
 
-
     # Create info.json for website rendering and metadata purposes
     info_dict = {
         'Summary': {
@@ -163,8 +162,10 @@ def main(event_dir):
             'preferred': True,
             'hazard_alert': ls_haz_alert,
             'population_alert': ls_pop_alert,
-            'hazard_alert_value': set_num_precision(ls_haz_level, 2, 'float'),
-            'population_alert_value': set_num_precision(ls_pop_level, 2, 'int'),
+            'hazard_alert_value':
+                set_num_precision(ls_haz_level, 2, 'float'),
+            'population_alert_value':
+                set_num_precision(ls_pop_level, 2, 'int'),
             'hazard_alert_parameter': 'Hagg_0.10g',
             'population_alert_parameter': 'exp_pop_0.10g',
             'bin_edges': color_dict['bin_edges'],
@@ -176,8 +177,10 @@ def main(event_dir):
             'extent': zhu_extent,
             'hazard_alert': lq_haz_alert,
             'population_alert': lq_pop_alert,
-            'hazard_alert_value': set_num_precision(lq_haz_level, 2, 'float'),
-            'population_alert_value': set_num_precision(lq_pop_level, 2, 'int'),
+            'hazard_alert_value':
+                set_num_precision(lq_haz_level, 2, 'float'),
+            'population_alert_value':
+                set_num_precision(lq_pop_level, 2, 'int'),
             'hazard_alert_parameter': 'Hagg_0.10g',
             'population_alert_parameter': 'exp_pop_0.10g',
             'bin_edges': color_dict['bin_edges'],
@@ -190,7 +193,6 @@ def main(event_dir):
         json.dump(info_dict, f)
 
 
-        
 if __name__ == '__main__':
     desc = '''
     Create info.json for an event's ground failure result. The code

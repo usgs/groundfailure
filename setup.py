@@ -18,6 +18,7 @@ setup(name='groundfailure',
           'bin/gfail',
           'bin/autogf',
           'bin/create_info',
-          'bin/create_png'
+          'bin/create_png',
+          'bin/gfail_transfer'
       ],
       )
