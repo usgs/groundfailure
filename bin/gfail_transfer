@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import json
+import argparse
+
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+import gfail.pdl as pdl
+
+# event_dir = '/Users/emthompson/data/ground_failure/output/20110221235143'
+
+
+def main(event_dir, pdl_conf, dry_run):
+    """
+    Transfer results to comcat.
+
+    Args:
+        event_dir (srt): Directory containing ground failure results.
+        pdl_conf (str): Path to PDL config file.
+        dry_run (bool): Dry run means do not transfer.
+    """
+
+    success, url, jsonfeed = gf_transfer(
+        event_dir, pdl_conf, dry_run)
+    print("Success: %s" % success)
+    print("url: %s" % url)
+
+
+def gf_transfer(event_dir, pdl_config=None, dry_run=False):
+    """
+    Transfer ground failure results to dev server.
+    """
+
+    print('Preparing directory to transfer %s...'
+          % event_dir)
+    pdl.prepare_pdl_directory(event_dir)
+
+    if pdl_config is None:
+        print('PDL directory prepared, no pdl_config '
+              'provided so no files were sent')
+        return (True, None, None)
+    else:
+        # Transfer
+        print('Transferring...')
+        log = pdl.transfer(event_dir, pdl_config, dryrun=dry_run)
+        print('done.')
+        if log['rc'] is True:
+            print('Successful PDL transfer.')
+            success = True
+
+            # Construct URL to index.html
+            url_template = ('https://dev01-earthquake.cr.usgs.gov/'
+                            'archive/product/[TYPE]/[ID]/[SOURCE]/[TIME]'
+                            '/html/index.html')
+            se_lines = log['se'].decode().split("\n")
+            info_line = [l for l in se_lines if 'send complete Socket' in l][0]
+            info = info_line.split(':')
+            timestamp = info[-1].replace("'", "")
+            eventid = info[-2]
+            ptype = info[-3]
+            source = info[-4]
+            url = url_template.replace(
+                '[TYPE]', ptype).replace(
+                '[ID]', eventid).replace(
+                '[SOURCE]', source).replace(
+                '[TIME]', timestamp)
+
+            # URL for event's detail feed
+            feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
+                    'query?eventid=[EVENTID]&format=geojson')
+            feed = feed.replace('[EVENTID]', eventid)
+
+            # Print to screen
+            print("Web page URL:")
+            print(url)
+            print("Event detail JSON feed:")
+            print(feed)
+
+        else:
+            print('PDL transfer failed.')
+            print(log['so'].decode())
+            success = False
+
+        return success, url, feed
+
+
+if __name__ == '__main__':
+    desc = '''
+
+    '''
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument('-e', '--event_dir',
+                        help='Directory containing ground failure results for '
+                             'this event.',
+                        required=True)
+    parser.add_argument('-c', '--config',
+                        help='Path to PDL config file.',
+                        required=True)
+    parser.add_argument('-d', '--dryrun',
+                        help='Path to PDL config file.',
+                        required=False, type=bool, default=False)
+    args = parser.parse_args()
+    main(args.event_dir, args.config, args.dryrun)
