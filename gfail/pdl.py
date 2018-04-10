@@ -139,12 +139,14 @@ def prepare_pdl_directory(event_dir):
         src = os.path.join(event_dir, png_files[i])
         tfile = os.path.basename(src)
         dst = os.path.join(pdl_dir, tfile)
-        shutil.copy(src, dst)
+        if os.path.exists(src):
+            shutil.copy(src, dst)
 
     # Put json file into pdl directory (for now copy info2.json to info.json)
     src = os.path.join(event_dir, 'info2.json')
     dst = os.path.join(pdl_dir, 'info.json')
-    shutil.copy(src, dst)
+    if os.path.exists(src):
+        shutil.copy(src, dst)
 
     # Put hdf files into pdl directory
     hdf_files = [os.path.join(event_dir, a)
