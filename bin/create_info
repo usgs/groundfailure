@@ -163,10 +163,10 @@ def main(event_dir):
             'preferred': True,
             'hazard_alert': ls_haz_alert,
             'population_alert': ls_pop_alert,
+            'hazard_alert_value': set_num_precision(ls_haz_level, 2, 'float'),
+            'population_alert_value': set_num_precision(ls_pop_level, 2, 'int'),
             'hazard_alert_parameter': 'Hagg_0.10g',
-            'hazard_alert_value': ls_haz_level,
             'population_alert_parameter': 'exp_pop_0.10g',
-            'population_alert_value': ls_pop_level,
             'bin_edges': color_dict['bin_edges'],
             'bin_colors': color_dict['bin_colors']
         }],
@@ -176,10 +176,10 @@ def main(event_dir):
             'extent': zhu_extent,
             'hazard_alert': lq_haz_alert,
             'population_alert': lq_pop_alert,
+            'hazard_alert_value': set_num_precision(lq_haz_level, 2, 'float'),
+            'population_alert_value': set_num_precision(lq_pop_level, 2, 'int'),
             'hazard_alert_parameter': 'Hagg_0.10g',
-            'hazard_alert_value': lq_haz_level,
             'population_alert_parameter': 'exp_pop_0.10g',
-            'population_alert_value': lq_pop_level,
             'bin_edges': color_dict['bin_edges'],
             'bin_colors': color_dict['bin_colors']
         }]
