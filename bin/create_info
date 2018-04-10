@@ -1,0 +1,220 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import os
+import argparse
+import json
+from configobj import ConfigObj
+
+from mapio.shake import ShakeGrid
+
+from gfail.savelayers import loadlayers
+from gfail.stats import computeStats
+from gfail.webpage import get_alert
+from gfail.webpage import get_event_comcat
+
+from impactutils.textformat.text import set_num_precision
+
+
+def main(event_dir):
+    """
+    Create info.json for ground failure product.
+
+    Args:
+        event_dir (srt): Directory containing ground failure results.
+    """
+
+    # Find the shakemap grid.xml file
+    with open(os.path.join(event_dir, 'shakefile.txt'), 'r') as f:
+        shakefile = f.read()
+
+    # Read in the "preferred" model for landslides and liquefaction
+    files = os.listdir(event_dir)
+    ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
+    if len(ls_mod_file) == 1:
+        ls_file = os.path.join(event_dir, ls_mod_file[0])
+        ls_mod = loadlayers(ls_file)
+    else:
+        raise OSError("Preferred landslide model result not found.")
+    lq_mod_file = [f for f in files if 'zhu_2017_general.hdf5' in f]
+    if len(lq_mod_file) == 1:
+        lq_file = os.path.join(event_dir, lq_mod_file[0])
+        lq_mod = loadlayers(lq_file)
+    else:
+        raise OSError("Preferred liquefaction model result not found.")
+
+    # Read in extents
+    ls_extent_file = [f for f in files if 'jessee_2017_extent.json' in f]
+    if len(ls_mod_file) == 1:
+        ls_file = os.path.join(event_dir, ls_extent_file[0])
+        with open(ls_file) as f:
+            jessee_extent = json.load(f)
+    else:
+        raise OSError("Landslide extent not found.")
+    lq_extent_file = [f for f in files if 'zhu_2017_extent.json' in f]
+    if len(lq_mod_file) == 1:
+        lq_file = os.path.join(event_dir, lq_extent_file[0])
+        with open(lq_file) as f:
+            zhu_extent = json.load(f)
+    else:
+        raise OSError("Landslide extent not found.")
+
+    # Find the color definitiions
+    with open(os.path.join(event_dir, 'colorsLS.json')) as f:
+        ls_color_dict = json.load(f)
+    with open(os.path.join(event_dir, 'colorsLQ.json')) as f:
+        lq_color_dict = json.load(f)
+
+    # Read in default paths to get location of the population grid
+    default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    defaults = ConfigObj(default_file)
+    pop_file = defaults['popfile']
+
+    # Landslide alert statistics
+    ls_stats = computeStats(
+        ls_mod['model']['grid'],
+        probthresh=None,
+        shakefile=shakefile,
+        shakethresh=10.0,
+        shakethreshtype='pga',
+        statprobthresh=None,
+        pop_file=pop_file)
+
+    # Liquefaction alert statistics
+    lq_stats = computeStats(
+        lq_mod['model']['grid'],
+        probthresh=None,
+        shakefile=shakefile,
+        shakethresh=10.0,
+        shakethreshtype='pga',
+        statprobthresh=None,
+        pop_file=pop_file)
+
+    # Get alert levels
+    ls_haz_level = ls_stats['Hagg_0.10g']
+    lq_haz_level = lq_stats['Hagg_0.10g']
+    ls_pop_level = ls_stats['exp_pop_0.10g']
+    lq_pop_level = lq_stats['exp_pop_0.10g']
+
+    # Convert levels into categories
+    alert_info = get_alert(ls_haz_level, lq_haz_level,
+                           ls_pop_level, lq_pop_level)
+    # Unpack info (I think we are now assuming that the statements will be
+    # constructed on the website and so we don't need them here)
+    ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert, _, _ = alert_info
+
+    # Try to get event info
+    event_dict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
+    sm_dict = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+    base_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/'
+    try:
+        # Hopefully this will eventually be more reliable once we get the
+        # comcat info directly from the shakemap grid, rather than rely on
+        # magnitude/location/time association.
+        shakemap_info, detail, temp = get_event_comcat(shakefile)
+        event_url = detail.url
+        code = detail['code']
+        net = detail['net']
+        time = detail['time']
+
+        # ---------------------------------------------------------------------
+        # Finite fault stuff:
+        #    Other sections of the code do some relatively complicated stuff to
+        #    try to sort out the finite fault. Here, I'm just simplifying it so
+        #    that it checks comcat for a finite fault file.
+        # ---------------------------------------------------------------------
+        fault_file = shakemap_info['input']['event_information']['faultfiles']
+        if len(fault_file) > 0:
+            point = False
+        else:
+            point = True
+
+    except:
+        # Hopefully we can eventually remove this....
+        event_url = '%s%s#executive' % (base_url, event_dict['event_id'])
+        code = 'unknown'
+        net = 'unknown'
+        time = -999
+        point = False
+
+    # Shoudl we display the warning about point source?
+    rupture_warning = False
+    if point and event_dict['magnitude'] > 6.5:
+        rupture_warning = True
+
+    # Create info.json for website rendering and metadata purposes
+    info_dict = {
+        'Summary': {
+            'code': code,
+            'net': net,
+            'magnitude': event_dict['magnitude'],
+            'depth': event_dict['depth'],
+            'time': time,
+            'lat': event_dict['lat'],
+            'lon': event_dict['lon'],
+            'event_url': event_url,
+            'shakemap_version': sm_dict['shakemap_version'],
+            'rupture_warning': rupture_warning,
+            'point_source': point
+        },
+        'Landslides': [{
+            'model': 'Nowicki Jessee (2017)',
+            'filename': 'jessee_2017.png',
+            'extent': jessee_extent,
+            'preferred': True,
+            'hazard_alert': ls_haz_alert,
+            'population_alert': ls_pop_alert,
+            'hazard_alert_value':
+                set_num_precision(ls_haz_level, 2, 'float'),
+            'population_alert_value':
+                set_num_precision(ls_pop_level, 2, 'int'),
+            'hazard_alert_parameter': 'Hagg_0.10g',
+            'population_alert_parameter': 'exp_pop_0.10g',
+            'bin_edges': ls_color_dict['Nowicki Jessee (2017)']['bin_edges'],
+            'bin_colors': ls_color_dict['Nowicki Jessee (2017)']['bin_colors'],
+            'probability_max': "%.2f" % ls_stats['Max'],
+            'probability_std': "%.2f" % ls_stats['Std'],
+            'units': "coverage"
+        }],
+        'Liquefaction': [{
+            'model': 'Zhu et al. (2017)',
+            'filename': 'zhu_2017.png',
+            'extent': zhu_extent,
+            'hazard_alert': lq_haz_alert,
+            'population_alert': lq_pop_alert,
+            'hazard_alert_value':
+                set_num_precision(lq_haz_level, 2, 'float'),
+            'population_alert_value':
+                set_num_precision(lq_pop_level, 2, 'int'),
+            'hazard_alert_parameter': 'Hagg_0.10g',
+            'population_alert_parameter': 'exp_pop_0.10g',
+            'bin_edges': lq_color_dict['Zhu and others (2017)']['bin_edges'],
+            'bin_colors': lq_color_dict['Zhu and others (2017)']['bin_colors'],
+            'probability_max': "%.2f" % lq_stats['Max'],
+            'probability_std': "%.2f" % lq_stats['Std'],
+            'units': "coverage"
+        }]
+    }
+
+    info_file = os.path.join(event_dir, 'info2.json')
+    with open(info_file, 'w') as f:
+        json.dump(info_dict, f)
+
+
+if __name__ == '__main__':
+    desc = '''
+    Create info.json for an event's ground failure result. The code
+    looks in the event directory for the model results (in hdf5 format)
+    that are output by the 'gfail' program.
+
+    Note: the file is temporarily named "info2.json" since "info.json"
+    is also created by another script and I don't want to delete that
+    until we are sure that this file is sufficient.
+    '''
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument('-e', '--event_dir',
+                        help='Directory containing ground failure results for '
+                             'this event.',
+                        required=True)
+    args = parser.parse_args()
+    main(args.event_dir)

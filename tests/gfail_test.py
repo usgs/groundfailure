@@ -101,7 +101,7 @@ def test_zhu2015_web(tmpdir):
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
     if os.path.exists(default_file):
-        shutil.copy(default_file, default_file+'_bak')
+        shutil.copy(default_file, default_file + '_bak')
 
     try:
         try:
@@ -113,18 +113,33 @@ def test_zhu2015_web(tmpdir):
         else:
             shutil.rmtree(p)
             os.makedirs(p)
-    
+
         # Clear paths
         rc, so, se = get_command_output('gfail -reset')
+
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
     
+        with open(default_file, "a") as f:
+            f.write("popfile = %s"
+                    % os.path.join(datadir, 'loma_prieta/lspop2016_lp.flt'))
+
         # Run model
         conf = os.path.join(datadir, 'test_conf')
-        runcmd = "gfail %s %s -w --alert" % (conf, shakegrid)
+        runcmd = "gfail %s %s -w --hdf5 --alert" % (conf, shakegrid)
         rc, so, se = get_command_output(runcmd)
 
+        event_dir = os.path.join(p, '19891018000415')
+
+        # Make png
+        cmd = 'create_png -e %s' % event_dir
+        rc, so, se = get_command_output(cmd)
+        
+        # Make info
+        cmd = 'create_info -e %s' % event_dir
+        rc, so, se = get_command_output(cmd)
+        
         # Make PDL directory
         pdldir = os.path.join(p, '19891018000415')
         pdl.prepare_pdl_directory(pdldir)
@@ -143,11 +158,10 @@ def test_zhu2015_web(tmpdir):
     shutil.rmtree(p)
 
     # Then do test
-    assert '--property-alertLQ=yellow' in transfer_cmd
-    assert '--property-alertLS=orange' in transfer_cmd
-    assert '--type=groundfailure' in transfer_cmd
-    assert '--property-title=Earthquake-Induced Ground Failure' in transfer_cmd
-    assert '--eventsourcecode=19891018000415' in transfer_cmd
+    assert '--property-lq_pop_alert=red' in transfer_cmd
+    assert '--property-ls_pop_alert=orange' in transfer_cmd
+    assert '--property-lq_pop_alert_level=15000' in transfer_cmd
+    assert '--property-ls_pop_alert_level=1400' in transfer_cmd
 
 
 if __name__ == "__main__":
