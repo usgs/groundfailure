@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
-"""
-TODO:
-    - Add max probability to product properties
-    - Potentially add more files (e.g., png, pdf)
-"""
+
 import os
 import json
 import shutil
@@ -91,13 +87,13 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         '--eventtime=%s ' % time_stamp +
         '--type=%s ' % pdl_type +
         '--directory=%s ' % pdl_dir +
-        lq_haz_alert + " " +
-        ls_haz_alert + " " +
-        lq_pop_alert + " " +
-        ls_pop_alert + " " +
-        lq_haz_alert_level + " " +
-        ls_haz_alert_level + " " +
-        lq_pop_alert_level + " " +
+        lq_haz_alert +
+        ls_haz_alert +
+        lq_pop_alert +
+        ls_pop_alert +
+        lq_haz_alert_level +
+        ls_haz_alert_level +
+        lq_pop_alert_level +
         ls_pop_alert_level
     )
 
