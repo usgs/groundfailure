@@ -278,7 +278,7 @@ def main(args):
                                (jsonfeed, url, finitefault, event['eventcode'], event['version']))
                 db.commit()
                 if not empty:
-                    cursor.execute("UPDATE shakemap SET Hagg05LS = ?, Hagg05LQ = ?, Parea01LS = ?, Parea01LQ = ? WHERE eventcode = ? AND version =?",
+                    cursor.execute("UPDATE shakemap SET HaggLS = ?, HaggLQ = ?, ExpPopLS = ?, ExpPopLQ = ? WHERE eventcode = ? AND version =?",
                                    (LSsta[0], LQsta[0], LSsta[1], LQsta[1], event['eventcode'], event['version']))
                     db.commit()
 

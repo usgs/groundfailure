@@ -45,7 +45,7 @@ def main(args):
     if args.reset_default_paths:
         reset_default_paths()
         return
-    
+
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
         shakefile = args.shakefile

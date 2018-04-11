@@ -63,7 +63,8 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
     stats['Median'] = float(np.nanmedian(grid))
     stats['Std'] = float(np.nanstd(grid))
     Hagg = computeHagg(grid2D, probthresh=0.0, shakefile=shakefile,
-                       shakethreshtype=shakethreshtype, shakethresh=shakethresh)
+                       shakethreshtype=shakethreshtype,
+                       shakethresh=shakethresh)
     if type(Hagg) != list and type(Hagg) != list:
         shakethresh = [shakethresh]
         Hagg = [Hagg]
@@ -74,14 +75,14 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
         else:
             newkey = 'Hagg_%1.2fg' % (T/100.)
             stats[newkey] = float(H)
-            
+
     if probthresh is not None:
         Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
                              shakethreshtype=shakethreshtype, shakethresh=0.0)
         if type(Parea) != list and type(Parea) != np.ndarray:
             probthresh = [probthresh]
             Parea = [Parea]
-    
+
         for T, P in zip(probthresh, Parea):
             if T == 0.:
                 stats['Parea'] = float(P)
@@ -92,11 +93,13 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
     if pop_file is None:
         try:
             # Try to find population file in .gfail_defaults
-            default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+            default_file = os.path.join(
+                os.path.expanduser('~'), '.gfail_defaults')
             defaults = ConfigObj(default_file)
             pop_file = defaults['popfile']
         except:
-            print('No population file specified nor found in .gfail_defaults, skipping exp_pop')
+            print('No population file specified nor found in .gfail_defaults, '
+                  'skipping exp_pop')
 
     if pop_file is not None:
         exp_dict = get_exposures(grid2D, pop_file, shakefile=shakefile,
@@ -227,7 +230,7 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         junkfile = os.path.join(tmpdir, 'temp.bil')
         GDALGrid.copyFromGrid(temp.getLayer(shakethreshtype)).save(junkfile)
         shk = quickcut(junkfile, geodict, precise=True,
-                            method='bilinear')
+                       method='bilinear')
         shutil.rmtree(tmpdir)
         if shk.getGeoDict() != geodict:
             raise Exception('shakemap was not resampled to exactly the same '
@@ -266,8 +269,8 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     Args:
         grid: Model grid.
         pop_file (str):  Path to the landscan population grid.
-        shakefile (str): Optional, path to shakemap file to use for ground motion
-            threshold.
+        shakefile (str): Optional, path to shakemap file to use for ground
+            motion threshold.
         shakethreshtype(str): Optional, Type of ground motion to use for
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
@@ -278,54 +281,66 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     """
 
     mdict = grid.getGeoDict()
-    
+
     # Cut out area from population file
-    popcut = quickcut(pop_file, mdict, precise=False, extrasamp=2., method='nearest')
+    popcut = quickcut(pop_file, mdict, precise=False,
+                      extrasamp=2., method='nearest')
     popdat = popcut.getData()
     pdict = popcut.getGeoDict()
-    
+
     # Pad grid with nans to beyond extent of pdict
     pad_dict = {}
-    pad_dict['padleft'] = int(np.abs(np.ceil((mdict.xmin - pdict.xmin)/mdict.dx)))
-    pad_dict['padright'] = int(np.abs(np.ceil((pdict.xmax - mdict.xmax)/mdict.dx)))
-    pad_dict['padbottom'] = int(np.abs(np.ceil((mdict.ymin - pdict.ymin)/mdict.dy)))
-    pad_dict['padtop'] = int(np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
-    padgrid, mdict2 = Grid2D.padGrid(grid.getData(), mdict, pad_dict)  # padds with inf
+    pad_dict['padleft'] = int(
+        np.abs(np.ceil((mdict.xmin - pdict.xmin)/mdict.dx)))
+    pad_dict['padright'] = int(
+        np.abs(np.ceil((pdict.xmax - mdict.xmax)/mdict.dx)))
+    pad_dict['padbottom'] = int(
+        np.abs(np.ceil((mdict.ymin - pdict.ymin)/mdict.dy)))
+    pad_dict['padtop'] = int(
+        np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
+    padgrid, mdict2 = Grid2D.padGrid(
+        grid.getData(), mdict, pad_dict)  # padds with inf
     padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
     padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
-    
+
     # Resample model grid so as to be the nearest integer multiple of popdict
     factor = np.round(pdict.dx/mdict2.dx)
-    
-    # Create geodictionary that is a factor of X higher res but otherwise identical
+
+    # Create geodictionary that is a factor of X higher res but otherwise
+    # identical
     ndict = GeoDict.createDictFromBox(
         pdict.xmin, pdict.xmax, pdict.ymin, pdict.ymax,
         pdict.dx/factor, pdict.dy/factor)
-    
+
     # Resample
     grid2 = padgrid.interpolate2(ndict, method='linear')
-    
-    # Get proportion of each cell that has values (to account properly for any nans)
-    prop = block_reduce(~np.isnan(grid2.getData().copy()), block_size=(int(factor), int(factor)),
-                       cval=float('nan'),func=np.sum)/(factor**2.)
-    
+
+    # Get proportion of each cell that has values (to account properly
+    # for any nans)
+    prop = block_reduce(~np.isnan(grid2.getData().copy()),
+                        block_size=(int(factor), int(factor)),
+                        cval=float('nan'), func=np.sum)/(factor**2.)
+
     # Now block reduce to same geodict as popfile
-    modresamp = block_reduce(grid2.getData().copy(), block_size=(int(factor), int(factor)),
-                       cval=float('nan'),func=np.nanmean)
-    
+    modresamp = block_reduce(grid2.getData().copy(),
+                             block_size=(int(factor), int(factor)),
+                             cval=float('nan'), func=np.nanmean)
+
     exp_pop = {}
     if shakefile is not None:
         # Resample shakefile to population grid
-        shakemap = ShakeGrid.load(shakefile, resample=False) #, doPadding=True, padValue=0.)
+        # , doPadding=True, padValue=0.)
+        shakemap = ShakeGrid.load(shakefile, resample=False)
         shakemap = shakemap.getLayer(shakethreshtype)
         shakemap = shakemap.interpolate2(pdict)
         shkdat = shakemap.getData()
         for shaket in shakethresh:
             threshmult = shkdat > shaket
             threshmult = threshmult.astype(float)
-            exp_pop['exp_pop_%1.2fg' % (shaket/100.,)] = np.nansum(popdat * prop * modresamp * threshmult)
-    
+            exp_pop['exp_pop_%1.2fg' % (shaket/100.,)] = np.nansum(
+                popdat * prop * modresamp * threshmult)
+
     else:
         exp_pop['exp_pop_0.00g'] = np.nansum(popdat * prop * modresamp)
-        
+
     return exp_pop

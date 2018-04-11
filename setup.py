@@ -8,9 +8,17 @@ setup(name='groundfailure',
       author_email='kallstadt@usgs.gov,mhearne@usgs.gov,emthompson@usgs.gov,kbiegel@usgs.gov',
       url='http://github.com/usgs/groundfailure',
       packages=['gfail'],
-      package_data={'groundfailure':
-                    ['configspec.ini',
-                     os.path.join('tests', 'data', '*'),
-                     ]},
-      scripts=['bin/gfail', 'bin/autogf'],
+      package_data={
+          'groundfailure': [
+              'configspec.ini',
+              os.path.join('tests', 'data', '*'),
+          ]
+      },
+      scripts=[
+          'bin/gfail',
+          'bin/autogf',
+          'bin/create_info',
+          'bin/create_png',
+          'bin/gfail_transfer'
+      ],
       )

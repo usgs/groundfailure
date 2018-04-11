@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import argparse
+
+import gfail.pdl as pdl
+
+
+def main(event_dir, pdl_conf, dry_run):
+    """
+    Transfer results to comcat.
+
+    Args:
+        event_dir (srt): Directory containing ground failure results.
+        pdl_conf (str): Path to PDL config file.
+        dry_run (bool): Dry run means do not transfer.
+    """
+
+    success, jsonfeed = gf_transfer(event_dir, pdl_conf, dry_run)
+
+
+def gf_transfer(event_dir, pdl_config=None, dry_run=False):
+    """
+    Transfer ground failure results to dev server.
+
+    Args:
+        event_dir (str): Path to event directory.
+        pdl_config (str): Path to PDL config file.
+        dry_run (bool): True suppresss transfer but data is assesmbled for
+            the transfer.
+
+    Returns: Tuple of:
+        - Success: bool for whether transfer was successful.
+        - feed: link to json feed for product.
+    """
+
+    print('Preparing directory to transfer %s...'
+          % event_dir)
+    pdl.prepare_pdl_directory(event_dir)
+
+    if pdl_config is None:
+        print('PDL directory prepared, no pdl_config '
+              'provided so no files were sent')
+        return (True, None, None)
+    else:
+        # Transfer
+        print('Transferring...')
+        log = pdl.transfer(event_dir, pdl_config, dryrun=dry_run)
+
+        if log['rc'] is True:
+            print('Successful PDL transfer.')
+            success = True
+
+            # Construct URL to index.html
+            se_lines = log['se'].decode().split("\n")
+            info_line = [l for l in se_lines if 'send complete Socket' in l][0]
+            info = info_line.split(':')
+            eventid = info[-2]
+            source = info[-4]
+
+            # URL for event's detail feed
+            feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
+                    'query?eventid=[EVENTID]&format=geojson')
+            feed = feed.replace('[EVENTID]', source+eventid)
+
+            # Print to screen
+            print("Event detail JSON feed:")
+            print(feed)
+
+        else:
+            print('PDL transfer failed.')
+            print(log['so'].decode())
+            success = False
+
+        return success, feed
+
+
+if __name__ == '__main__':
+    desc = '''
+
+    '''
+    parser = argparse.ArgumentParser(description=desc)
+    parser.add_argument('-e', '--event_dir',
+                        help='Directory containing ground failure results for '
+                             'this event.',
+                        required=True)
+    parser.add_argument('-c', '--config',
+                        help='Path to PDL config file.',
+                        required=True)
+    parser.add_argument('-d', '--dryrun',
+                        help='Path to PDL config file.',
+                        required=False, type=bool, default=False)
+    args = parser.parse_args()
+    main(args.event_dir, args.config, args.dryrun)
