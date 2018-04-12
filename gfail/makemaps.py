@@ -6,7 +6,6 @@ import gc
 import math
 import glob
 import copy
-import datetime
 import matplotlib as mpl
 from matplotlib.colors import LightSource, LogNorm, Normalize
 import re
@@ -14,6 +13,7 @@ from matplotlib.colorbar import ColorbarBase
 import matplotlib.colors as colors
 import shutil
 import collections
+from datetime import datetime
 #from configobj import ConfigObj
 
 # third party imports
@@ -957,7 +957,7 @@ def modelMap(grids, shakefile=None,
         eventid = ''
 
     if outfilename is None:
-        time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
+        time1 = datetime.utcnow().strftime('%d%b%Y_%H%M')
         outfile = os.path.join(outfolder,
                                '%s_%s_%s.pdf'
                                % (eventid, suptitle, time1))
