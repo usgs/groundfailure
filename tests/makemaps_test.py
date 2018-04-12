@@ -11,7 +11,8 @@ import gfail.logisticmodel as LM
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
-import shutil
+#import shutil
+import gfail.utilities as utilities
 
 homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
@@ -85,40 +86,40 @@ modelLQ = {
 def test_parseMapConfig():
     config = mapconfig
     # fileext is None
-    makemaps.parseMapConfig(config)
+    utilities.parseMapConfig(config)
     # 'ocean' in config, oceanref = config['ocean']['shortref'] fails
     del config['ocean']['shortref']
-    makemaps.parseMapConfig(config)
+    utilities.parseMapConfig(config)
     # 'cities' in config, cityref = config['cities']['shortref'] fails
     del config['cities']['shortref']
-    makemaps.parseMapConfig(config)
+    utilities.parseMapConfig(config)
     # Give an invalid city file
     config = mapconfig
     config['cities']['file'] = os.path.join(datadir,
                                             'loma_prieta/mapping_inputs/gmted_global_hillshade.grd.aux.xml')
-    makemaps.parseMapConfig(config)
+    utilities.parseMapConfig(config)
     # 'alpha' in config['colors']
     config = mapconfig
     config['colors']['alpha'] = 0.5
-    makemaps.parseMapConfig(config)
+    utilities.parseMapConfig(config)
 
 
 def test_parseConfigLayers():
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
-    makemaps.parseConfigLayers(maplayers, config, keys=None)
+    utilities.parseConfigLayers(maplayers, config, keys=None)
     # no lims
     del config['test_model']['display_options']['lims']
-    makemaps.parseConfigLayers(maplayers, config, keys=None)
+    utilities.parseConfigLayers(maplayers, config, keys=None)
     # no colors
     del config['test_model']['display_options']['colors']
-    makemaps.parseConfigLayers(maplayers, config, keys=None)
+    utilities.parseConfigLayers(maplayers, config, keys=None)
     # no logscale
     del config['test_model']['display_options']['logscale']
-    makemaps.parseConfigLayers(maplayers, config, keys=None)
+    utilities.parseConfigLayers(maplayers, config, keys=None)
     # no maskthresholds
     del config['test_model']['display_options']['maskthresholds']
-    makemaps.parseConfigLayers(maplayers, config, keys=None)
+    utilities.parseConfigLayers(maplayers, config, keys=None)
     # plotorder[0] != 'model' --- causes error
 #    tmp = collections.OrderedDict()
 #    tmp['vs30'] = maplayers['vs30']

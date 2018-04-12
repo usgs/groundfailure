@@ -1,100 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os
-import json
 import argparse
-
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-
-from gfail.savelayers import loadlayers
-
-
-def main(event_dir):
-    """
-    Creates transparent PNG file for website.
-
-    Args:
-        event_dir (srt): Directory containing ground failure results.
-    """
-
-    # Find the color definitiions
-    with open(os.path.join(event_dir, 'colorsLS.json')) as f:
-        ls_color_dict = json.load(f)
-    with open(os.path.join(event_dir, 'colorsLQ.json')) as f:
-        lq_color_dict = json.load(f)
-
-    # Read in the "preferred" model for landslides
-    files = os.listdir(event_dir)
-    ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
-    if len(ls_mod_file) == 1:
-        ls_file = os.path.join(event_dir, ls_mod_file[0])
-        ls_mod = loadlayers(ls_file)
-    else:
-        raise OSError("Preferred landslide model result not found.")
-    ls_grid = ls_mod['model']['grid']
-    ls_data = ls_grid.getData()
-    ls_geodict = ls_grid.getGeoDict()
-    ls_extent = [
-        ls_geodict.xmin - 0.5*ls_geodict.dx,
-        ls_geodict.xmax + 0.5*ls_geodict.dx,
-        ls_geodict.ymin - 0.5*ls_geodict.dy,
-        ls_geodict.ymax + 0.5*ls_geodict.dy,
-    ]
-    with open(os.path.join(event_dir, 'jessee_2017_extent.json'), 'w') as f:
-        json.dump(ls_extent, f)
-    levels = ls_color_dict['Nowicki Jessee (2017)']['bin_edges']
-    lmin = levels[0]
-    lmax = levels[-1]
-    ls_data2 = np.clip(ls_data, lmin, lmax)
-    cmap = mpl.colors.ListedColormap(
-        ls_color_dict['Nowicki Jessee (2017)']['bin_colors'])
-    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-    ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
-    rgba_img = cmap(norm(ls_data2))
-    plt.imsave(os.path.join(event_dir, 'jessee_2017.png'),
-               rgba_img,
-               vmin=lmin,
-               vmax=lmax,
-               cmap=cmap
-               )
-
-    # Read in the "preferred" model for liquefaction
-    files = os.listdir(event_dir)
-    lq_mod_file = [f for f in files if 'zhu_2017_general.hdf5' in f]
-    if len(lq_mod_file) == 1:
-        lq_file = os.path.join(event_dir, lq_mod_file[0])
-        lq_mod = loadlayers(lq_file)
-    else:
-        raise OSError("Preferred landslide model result not found.")
-    lq_grid = lq_mod['model']['grid']
-    lq_data = lq_grid.getData()
-    lq_geodict = lq_grid.getGeoDict()
-    lq_extent = [
-        lq_geodict.xmin - 0.5*lq_geodict.dx,
-        lq_geodict.xmax + 0.5*lq_geodict.dx,
-        lq_geodict.ymin - 0.5*lq_geodict.dy,
-        lq_geodict.ymax + 0.5*lq_geodict.dy,
-    ]
-    with open(os.path.join(event_dir, 'zhu_2017_extent.json'), 'w') as f:
-        json.dump(lq_extent, f)
-    levels = lq_color_dict['Zhu and others (2017)']['bin_edges']
-    lmin = levels[0]
-    lmax = levels[-1]
-    lq_data2 = np.clip(lq_data, lmin, lmax)
-    cmap = mpl.colors.ListedColormap(
-        lq_color_dict['Zhu and others (2017)']['bin_colors'])
-    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-    lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
-    rgba_img = cmap(norm(lq_data2))
-    plt.imsave(os.path.join(event_dir, 'zhu_2017.png'),
-               rgba_img,
-               vmin=lmin,
-               vmax=lmax,
-               cmap=cmap
-               )
+from gfail.webpage import create_png
 
 
 if __name__ == '__main__':
@@ -109,4 +17,4 @@ if __name__ == '__main__':
                              'this event.',
                         required=True)
     args = parser.parse_args()
-    main(args.event_dir)
+    create_png(args.event_dir)

@@ -1,25 +1,21 @@
 #!/usr/bin/env python
 
-import os
-import matplotlib.pyplot as plt
-from mapio.shake import ShakeGrid
-from gfail import makemaps
-from gfail.stats import computeStats
-from impactutils.io.cmd import get_command_output
-from shutil import copy
-from datetime import datetime
-from bs4 import BeautifulSoup
-import shutil
-import glob
-import json
-import collections
-from configobj import ConfigObj
-import numpy as np
 
-from datetime import timedelta
-from libcomcat.search import get_event_by_id, search
-from libcomcat.classes import VersionOption
-from mapio.shake import getHeaderData
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import json
+import numpy as np
+import os
+from configobj import ConfigObj
+from gfail.makemaps import setupsync
+from gfail.utilities import parseConfigLayers
+from gfail.stats import computeStats
+from mapio.shake import ShakeGrid
+import matplotlib.cm as cm
+
+from impactutils.textformat.text import set_num_precision
+
+from gfail.utilities import get_event_comcat, loadlayers
 
 
 # temporary until mapio is updated
@@ -28,110 +24,46 @@ warnings.filterwarnings('ignore')
 
 plt.switch_backend('agg')
 
+DFCOLORS = [[0.9403921568627451, 0.9403921568627451, 0.7019607843137254, 0.7],
+            [0.9, 0.781764705882353, 0.18470588235294128, 0.7],
+            [0.92, 0.45, 0.03, 0.7],
+            [0.7552941176470588, 0.21941176470588236, 0.36411764705882355, 0.7],
+            [0.35882352941176465, 0.15980392156862744, 0.7009803921568627, 0.7],
+            [0.11764705882352941, 0.11764705882352941, 0.39215686274509803, 0.7]]
 
-def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
-                includeunc=False, cleanup=True, includeAlert=False,
-                alertkeyHAZ='Hagg_0.10g', alertkeyPOP='exp_pop_0.10g',
-                faultfile=None,
-                shakethreshtype='pga', point=False, pop_file=None,
-                statlist=['Max', 'Std', 'Hagg_0.10g', 'exp_pop_0.10g'],
-                probthresh=None, shakethresh=[5., 10.], statement=None):
-    """
-    Create a webpage that summarizes ground failure results (both landslides
-        and liquefaction)
+DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
+        
 
+def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
+           shakethreshtype='pga', probthresh=None, shakethresh=10.,
+           prefLS='Nowicki Jessee (2017)', prefLQ='Zhu and others (2017)',
+           pop_file=None):
+    """Create all files needed for product page creation
+    Assumes gfail has been run already with -w flag
+    
     Args:
-        maplayerlist (list): list of model output structures to include.
-        configs (list): list of paths to config files corresponding to each
-            of the models in maplayerlist in the same order.
-        web_template (str): Path to location of pelican template
-            (final folder should be "theme").
-        shakemap (str): path to shakemap .xml file for the current event.
-        outfolder (str, optional): path to folder where output should be
-            placed.
-        includeunc (bool, optional): include uncertainty, NOT IMPLEMENTED.
-        cleanup (bool, optional): cleanup all unneeded intermediate files that
-            pelican creates, default True.
-        includeAlert (bool, optional): if True, computes and reports alert
-            level, default False.
-        alertkey (str): stat key used for alert calculation
-        faultfile (str, optional): GeoJson file of finite fault to display on
-            interactive maps
-        shakethreshtype (str, optional): Type of ground motion to use for stat
-            thresholds, 'pga', 'pgv', or 'mmi'
-        point (bool): True if it is known that the ShakeMap used a point
-            source, False does not assume anything about source type.
-        pop_file (str): Path to population file used for statistics
-        statlist (list): list of strings indicating which stats to show on
-            webpage.
-        probthresh (float, optional): List of probability thresholds for which
-            to compute Parea.
-        shakethresh (list, optional): List of ground motion thresholds for
-            which to compute Hagg, units corresponding to shakethreshtype.
-        statement (str): Text to include in the summary section of the web
-            page. Alert statements will be appended prior to this statement,
-            Point source warnings for >M7 will be appended after this
-            statement. If None, will use a generic explanatory statement.
-
-    Returns:
-        Folder where webpage files are located
+        
     """
-    print('Creating webpages')
-    # get event id
     event_id = maplayerlist[0]['model']['description']['event_id']
+
+    if pop_file is None:
+        # Read in default paths to get location of the population grid
+        default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+        defaults = ConfigObj(default_file)
+        pop_file = defaults['popfile']
 
     if outfolder is None:
         outfolder = os.path.join(os.getcwd(), event_id)
-    fullout = os.path.join(outfolder, 'temp')
-    finalout = os.path.join(outfolder, 'webpage')
-    content = os.path.join(fullout, 'content')
-    articles = os.path.join(content, 'articles')
-    pages = os.path.join(content, 'pages')
-    images = os.path.join(content, 'images')
-    theme = web_template
-    static = os.path.join(theme, 'static')
-    if not os.path.exists(outfolder):
-        os.mkdir(outfolder)
-    if not os.path.exists(fullout):
-        os.mkdir(fullout)
-    if not os.path.exists(content):
-        os.mkdir(content)
-    if not os.path.exists(images):
-        os.mkdir(images)
-    if not os.path.exists(pages):
-        os.mkdir(pages)
-    if not os.path.exists(articles):
-        os.mkdir(articles)
-    if os.path.exists(finalout):
-        shutil.rmtree(finalout)
-
-    peliconf = os.path.join(fullout, 'pelicanconf.py')
-    copy(os.path.join(os.path.dirname(web_template),
-                      'pelicanconf.py'),
-         peliconf)
-    outjsfileLS = os.path.join(static, 'js', 'mapLS.js')
-    with open(outjsfileLS, 'w') as f:
-        f.write('\n')
-    outjsfileLQ = os.path.join(static, 'js', 'mapLQ.js')
-    with open(outjsfileLQ, 'w') as f:
-        f.write('\n')
-
-    if statement is None:
-        statement = (
-            "This product provides an early understanding of the "
-            "landslides and liquefaction that may have been triggered "
-            "by this earthquake until first responders and experts "
-            "are able to survey the actual damage that has occurred. "
-            "Results provide regional estimates and "
-            "do not predict specific occurrences.")
-
+        
+    filenames = []
+        
     # Separate the LS and LQ models
 
-    concLS = collections.OrderedDict()
-    concLQ = collections.OrderedDict()
+    concLS = []
+    concLQ = []
 
-    lsmodels = {}
-    lqmodels = {}
+    lsmodels = []
+    lqmodels = []
     logLS = []
     limLS = []
     colLS = []
@@ -139,25 +71,18 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
     limLQ = []
     colLQ = []
 
-    il = 0
-    iq = 0
-
-    filenames = []
-
     for conf, maplayer in zip(configs, maplayerlist):
         mdict = maplayer['model']['description']
-        config = ConfigObj(conf)
-        filename = '%s_%s' % (event_id, config.keys()[0])
-        outfilebase = os.path.join(outfolder, filename)
+        #config = ConfigObj(conf)
 
         if 'landslide' in mdict['parameters']['modeltype'].lower():
             title = maplayer['model']['description']['name']
             plotorder, logscale, lims, colormaps, maskthreshes = \
-                makemaps.parseConfigLayers(maplayer, conf, keys=['model'])
+                parseConfigLayers(maplayer, conf, keys=['model'])
             logLS.append(logscale[0])
             limLS.append(lims[0])
             colLS.append(colormaps[0])
-            concLS[title] = maplayer['model']
+            concLS.append(title)
 
             if 'godt' in maplayer['model']['description']['name'].lower():
                 statprobthresh = None
@@ -171,12 +96,9 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                                  shakefile=shakemap,
                                  shakethresh=shakethresh,
                                  statprobthresh=statprobthresh,
-                                 pop_file=pop_file)
+                                 pop_file=pop_file,
+                                 shakethreshtype=shakethreshtype)
 
-            if il == 0:
-                on = True
-            else:
-                on = False
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
                 inputs = {}
@@ -186,38 +108,49 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                         newkey = maplayer[key]['label']
                         inputs[newkey] = maplayer[key]['description']
                 metadata['inputs'] = inputs
-            metad2 = json.dumps(metadata)
-            filenames.append(outfilebase + '.json')
-            with open(outfilebase + '.json', mode='w') as f3:
-                f3.write(metad2)
 
-            lsmodels[maplayer['model']['description']['name']] = {
-                'geotiff_file': os.path.basename(outfilebase) + '.tif',
-                'bin_edges': list(lims[0]),
-                'metadata': metadata,
-                'stats': dict(stats),
-                'layer_on': on
-            }
-            il += 1
-            filenames.append(outfilebase + '.tif')
+            if title == prefLS:
+                on = True
+                ls_haz_alert, ls_pop_alert, _, _ = get_alert(stats['Hagg_0.10g'], 0.,
+                                                             stats['exp_pop_0.10g'], 0.)
+            else:
+                on = False
+                ls_haz_alert = None
+                ls_pop_alert = None
+
+            edict = dict(model=metadata['name'],  preferred=on,
+                         probability_max=float("%.2f" % stats['Max']),
+                         probability_std=float("%.2f" % stats['Std']),
+                         units=metadata['units'], bin_edges=list(lims[0]),
+                         bin_colors=[], filename=[], extent=[],
+                         hazard_alert_value=stats['Hagg_0.10g'],
+                         populate_alert_value=stats['exp_pop_0.10g'],
+                         hazard_alert_parameter='Hagg_0.10g',
+                         population_alert_parameter='exp_pop_0.10g',
+                         parameters=metadata['parameters'],
+                         longref=metadata['longref'],
+                         hazard_alert=ls_haz_alert,
+                         population_alert=ls_pop_alert,)
+            
+            lsmodels.append(edict)
+
         elif 'liquefaction' in mdict['parameters']['modeltype'].lower():
             title = maplayer['model']['description']['name']
             plotorder, logscale, lims, colormaps, maskthreshes = \
-                makemaps.parseConfigLayers(maplayer, conf, keys=['model'])
+                parseConfigLayers(maplayer, conf, keys=['model'])  
             logLQ.append(logscale[0])
             limLQ.append(lims[0])
             colLQ.append(colormaps[0])
-            concLQ[title] = maplayer['model']
+            concLQ.append(title)
 
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
                                  shakefile=shakemap,
-                                 shakethresh=shakethresh)
+                                 shakethresh=shakethresh,
+                                 statprobthresh=statprobthresh,
+                                 pop_file=pop_file,
+                                 shakethreshtype=shakethreshtype)
 
-            if iq == 0:
-                on = True
-            else:
-                on = False
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
                 inputs = {}
@@ -227,446 +160,443 @@ def makeWebpage(maplayerlist, configs, web_template, shakemap, outfolder=None,
                         newkey = maplayer[key]['label']
                         inputs[newkey] = maplayer[key]['description']
                 metadata['inputs'] = inputs
-            # Save metadata separately for each model
-            metad2 = json.dumps(metadata)
-            filenames.append(outfilebase + '.json')
-            with open(outfilebase + '.json', mode='w') as f3:
-                f3.write(metad2)
 
-            lqmodels[maplayer['model']['description']['name']] = {
-                'geotiff_file': os.path.basename(outfilebase) + '.tif',
-                'bin_edges': list(lims[0]),
-                'metadata': metadata,
-                'stats': dict(stats),
-                'layer_on': on
-            }
-            iq += 1
-            filenames.append(outfilebase + '.tif')
+            if title == prefLQ:
+                on = True
+                _, _, lq_haz_alert, lq_pop_alert = get_alert(0., stats['Hagg_0.10g'],
+                                                             0., stats['exp_pop_0.10g'])
+            else:
+                on = False
+                lq_haz_alert = None
+                lq_pop_alert = None
+
+            edict = dict(model=metadata['name'],  preferred=on,
+                         probability_max=float("%.2f" % stats['Max']),
+                         probability_std=float("%.2f" % stats['Std']),
+                         units=metadata['units'], bin_edges=list(lims[0]),
+                         bin_colors=[], filename=[], extent=[],
+                         hazard_alert_value=stats['Hagg_0.10g'],
+                         populate_alert_value=stats['exp_pop_0.10g'],
+                         hazard_alert_parameter='Hagg_0.10g',
+                         population_alert_parameter='exp_pop_0.10g',
+                         parameters=metadata['parameters'],
+                         longref=metadata['longref'],
+                         hazard_alert=lq_haz_alert,
+                         population_alert=lq_pop_alert,)
+
+            lqmodels.append(edict)
+
         else:
             raise Exception("model type is undefined, check "
                             "maplayer['model']['parameters']"
                             "['modeltype'] to ensure it is defined")
+    defaultcolormap = cm.CMRmap_r
 
-    # Make interactive maps for each
-    if il > 0:
-        mapLS, filenameLS = makemaps.interactiveMap(
-            concLS, shakefile=shakemap, scaletype='binned',
-            colormaps=colLS, lims=limLS, clear_zero=False,
-            logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
-            mapid='LS', savefiles=True, outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Nowicki Jessee (2017)')
-        makemaps.createColorsJson(concLS, colormaps=colLS,
-                     lims=limLS, logscale=logLS, alpha=0.7,
-                     outputdir=outfolder, outfilename='colorsLS.json',
-                     sync='Nowicki Jessee (2017)')
-        filenameLS = filenameLS[0]
+    # Get colors and stuff into dictionaries
+    sync, colorlistLS, reflims = setupsync(prefLS, concLS, limLS, colLS,
+                                           defaultcolormap, logscale=logLS,
+                                           alpha=alpha)
+    
+    if reflims is None:
+        raise Exception('Check input config files, they must all have the '
+                        'same number of bin edges')
     else:
-        filenameLS = None
+        # Stuff colors into dictionary
+        for ls in lsmodels:
+            ls['bin_colors'] = list(colorlistLS)
+        
 
-    if iq > 0:
-        mapLQ, filenameLQ = makemaps.interactiveMap(
-            concLQ, shakefile=shakemap, scaletype='binned',
-            colormaps=colLQ, lims=limLQ, clear_zero=False,
-            logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
-            savefiles=True, mapid='LQ', outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Zhu and others (2017)')
-        makemaps.createColorsJson(concLQ, colormaps=colLQ,
-                     lims=limLQ, logscale=logLQ, alpha=0.7,
-                     outputdir=outfolder, outfilename='colorsLQ.json',
-                     sync='Zhu and others (2017)')
-        filenameLQ = filenameLQ[0]
+    sync, colorlistLQ, reflims = setupsync(prefLQ, concLQ, limLQ, colLQ,
+                                           defaultcolormap, logscale=logLQ,
+                                           alpha=alpha)
+    if reflims is None:
+        raise Exception('Check input config files, they must all have the '
+                        'same number of bin edges')
     else:
-        filenameLQ = None
-
-    # Get alert levels
-    # TODO update to exact name of Hagg to use
-    if includeAlert:
-        try:
-            paramalertLS = lsmodels['Nowicki Jessee (2017)']['stats'][alertkeyHAZ]
-        except:
-            paramalertLS = None
-        try:
-            parampopLS = lsmodels['Nowicki Jessee (2017)']['stats'][alertkeyPOP]
-        except:
-            parampopLS = None
-
-        try:
-            paramalertLQ = lqmodels['Zhu and others (2017)']['stats'][alertkeyHAZ]
-        except:
-            paramalertLQ = None
-
-        try:
-            parampopLQ = lqmodels['Zhu and others (2017)']['stats'][alertkeyPOP]
-        except:
-            parampopLQ = None
-
-        alertLS, popalertLS, alertLQ, popalertLQ, alertstatementLS, alertstatementLQ = get_alert(
-            paramalertLS, paramalertLQ, parampopLS, parampopLQ)
-        topfileLQ = make_alert_img(alertLQ, popalertLQ, 'liquefaction', images)
-        topfileLS = make_alert_img(alertLS, popalertLS, 'landslide', images)
-        #statement = '%s<br>%s' % (alertstatementLQ, statement)
-    else:
-        alertLS = None
-        alertLQ = None
-        popalertLS = None
-        popalertLQ = None
-        topfileLQ = None
-        topfileLS = None
-        paramalertLS = None
-        paramalertLQ = None
-        parampopLS = None
-        parampopLQ = None
-        alertstatementLS = None
-        alertstatementLQ = None
-
-    if faultfile is not None:
-        finitefault = True
-    else:
-        finitefault = False
-
-    # Try to get urls
-    try:
-        info1, detail, temp = get_event_comcat(shakemap)
-        eventurl = detail.url
-        shakemapurl = detail.url + '#shakemap'
-    except:
-        shakemapurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % event_id
-        eventurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % event_id
-
-    sks = write_summary(shakemap, pages, images, point=point, event_url=eventurl,
-                        statement=statement, finitefault=finitefault, shake_url=shakemapurl)
-
-    # Create webpages for each type of ground motion
-    write_individual(lsmodels, articles, 'Landslides',
-                     interactivehtml=filenameLS, outjsfile=outjsfileLS,
-                     topimage=topfileLS, statlist=statlist,
-                     statement=alertstatementLS)
-    write_individual(lqmodels, articles, 'Liquefaction',
-                     interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
-                     topimage=topfileLQ, statlist=statlist,
-                     statement=alertstatementLQ)
-
-    # Create info.json for website rendering and metadata purposes
-    web_dict = {
-        'Summary': {
-            'magnitude': sks['magnitude'],
-            'depth': sks['depth'],
-            'lat': sks['lat'],
-            'lon': sks['lon'],
-            'name': sks['name'],
-            'date': sks['date'],
-            'event_id': sks['event_id'],
-            'event_url': eventurl,
-            'shakemap_url': shakemapurl,
-            'shakemap_version': sks['shakemap_version'],
-            'statement': sks['statement'],
-        },
-        'Landslides': {
-            'models': lsmodels,
-            'alert': alertLS,
-            'popalert': popalertLS,
-            'alertkeyHAZ': alertkeyHAZ,
-            'alertvalueHAZ': paramalertLS,
-            'alertkeyPOP': alertkeyPOP,
-            'alertvaluePOP': parampopLS,
-
-        },
-        'Liquefaction': {
-            'models': lqmodels,
-            'alert': alertLQ,
-            'popalert': popalertLQ,
-            'alertkeyHAZ': alertkeyHAZ,
-            'alertvalueHAZ': paramalertLQ,
-            'alertkeyPOP': alertkeyPOP,
-            'alertvaluePOP': parampopLQ
-        }
-    }
-
-    web_file = os.path.join(outfolder, 'info.json')
-    filenames.append(web_file)
-
-    with open(web_file, 'w') as f:
-        json.dump(web_dict, f)
-
-    # run website
-    retcode, stdout, stderr = get_command_output(
-        ('pelican -s %s -o %s -t %s')
-        % (peliconf, os.path.join(fullout, 'output'), theme))
-    print(stderr)
-
-    if cleanup:  # delete everything except what is needed to make website
-        files = glob.glob(os.path.join(fullout, '*'))
-        for filen in files:
-            if os.path.basename(filen) not in 'output':
-                if os.path.isdir(filen):
-                    shutil.rmtree(filen)
-                else:
-                    os.remove(filen)
-            else:
-                ofiles = glob.glob(os.path.join(fullout, 'output', '*'))
-                for ofilen in ofiles:
-                    if os.path.basename(ofilen) not in "index.htmlimagestheme":
-                        if os.path.isdir(ofilen):
-                            shutil.rmtree(ofilen)
-                        else:
-                            os.remove(ofilen)
-        shutil.copytree(os.path.join(fullout, 'output'), finalout)
-        shutil.rmtree(fullout)
-        # Get rid of mapLS.js and mapLQ.js files from theme directory
-        try:
-            os.remove(os.path.join(theme, 'static', 'js', 'mapLQ.js'))
-        except Exception as e:
-            print(e)
-        try:
-            os.remove(os.path.join(theme, 'static', 'js', 'mapLS.js'))
-        except Exception as e:
-            print(e)
-    filenames.append(finalout)
+        # Stuff colors into dictionary
+        for lq in lqmodels:
+            lq['bin_colors'] = list(colorlistLQ)
+    
+    # Create invisible pngs
+    out = create_png(outfolder, lsmodels=lsmodels, lqmodels=lqmodels)
+    filenames += out
+    
+    # Create info.json
+    out = create_info(outfolder, lsmodels=lsmodels, lqmodels=lqmodels)
+    filenames += out
+    
     return filenames
 
 
-def write_individual(concatmods, outputdir, modeltype, topimage=None,
-                     staticmap=None, interactivehtml=None,
-                     outjsfile=None, statlist=None, statement=None):
+def create_png(event_dir, lsmodels=None, lqmodels=None):
     """
-    Write markdown file for landslides or liquefaction.
+    Creates transparent PNG file for website.
 
     Args:
-        concatmods (float or list): Ordered dictionary of models with
-            fields required for write_individual populated (stats in
-            particular)
-        outputdir (str): Path to output directory.
-        modeltype (str): 'Landslides' for landslide model, otherwise it is
-            a liquefaction model.
-        topimage (str, optional): Path to image for top of page.
-        staticmap (str, optional): Path to static map.
-        interactivehtml (str, optional): Path to interactive map file.
-        outjsfile (str, optional): Path for output javascript file.
-        stats (list): List of stats keys to include in the table, if None,
-            it will include all of them
+        event_dir (srt): Directory containing ground failure results.
     """
-
-    if modeltype == 'Landslides':
-        id1 = 'LS'
-    else:
-        id1 = 'LQ'
-
-    if len(concatmods) > 0:
-        # If single model and not in list form, turn into lists
-        modelnames = [key for key, value in concatmods.items()]
-        # TODO Extract stats
-        stattable = collections.OrderedDict()
-        stattable['Model'] = modelnames
-        if statlist is None:
-            statlist = list(concatmods[modelnames[0]]['stats'].keys())
-
-        # initialize empty lists for each
-        for st in statlist:
-            stattable[st] = []
-
-        # put stats in
-        for i, mod in enumerate(modelnames):
-            for st in statlist:
-                try:
-                    stattable[st].append(concatmods[mod]['stats'][st])
-                except:
-                    stattable[st].append(float('nan'))
-
-    if outjsfile is None:
-        outjsfile = 'map.js'
-
-    with open(os.path.join(outputdir, modeltype + '.md'), 'w') as file1:
-        file1.write('title: %s\n' % modeltype.title())
-        file1.write('date: %s\n'
-                    % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('<h2>%s</h2>' % modeltype.title())
-
-        if len(concatmods) > 0:
-
-            if statement is not None:
-                file1.write('<p>%s</p>\n' % statement)
-
-            if topimage is not None:
-                file1.write('<img src="images%s" width="250" '
-                            'href="images%s"/>\n'
-                            % (topimage.split('images')[-1],
-                               topimage.split('images')[-1]))
-            if interactivehtml is not None:
-                # Extract js and move to map.js
-                with open(interactivehtml) as f:
-                    soup = BeautifulSoup(f, 'html.parser')
-                    soup.prettify(encoding='utf-8')
-                    scs = soup.find_all('script')
-                    if scs is not None:
-                        for sc in scs:
-                            if 'var' in str(sc):
-                                temp = str(sc)
-                                temp = temp.strip(
-                                    '<script>').strip('</script>')
-                                with open(outjsfile, 'a') as f2:
-                                    f2.write(temp)
-                # Embed and link to fullscreen
-                fileloc = interactivehtml.split('images')[-1]
-                file1.write('<br><a href="images%s">Full '
-                            'interactive map</a>\n'
-                            % fileloc)
-
-                file1.write('<center><div class="folium-map" id="map_%s">'
-                            '</div></center>\n' % id1)
-
-                cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
-                file1.write('<center><img src="images%s" width="410" '
-                            'href="images%s"/></center>\n'
-                            % (cbname, cbname))
-                if staticmap is not None:
-                    file1.write('<center><img src="images%s" width="450" '
-                                'href="images%s"/></center>\n'
-                                % (staticmap.split('images')[-1],
-                                   staticmap.split('images')[-1]))
-
-                file1.write('<hr>\n')
-                file1.write('<h3>%s Model Summary Statistics</h3>' %
-                            modeltype.title())
-                file1.write('<table style="width:100%">')
-                file1.write('<tr><th>Model</th>')
-                file1.write('<th>Output Type</th>')
-
-                for st in statlist:
-                    # if 'Hagg_' in st:
-                    #    thresh = float(st.split('_')[-1].replace('g',''))
-                    #    titl = 'Aggregate Hazard (km^2)' % (100.*thresh,)
-                    if 'Hagg' in st:
-                        titl = 'Aggregate Hazard (km^2)'
-                    # elif 'exp_pop_' in st:
-                    #    thresh = float(st.split('_')[-1].replace('g',''))
-                    #    titl = 'People at risk (>%2.0f g)' % (100.*thresh,)
-                    elif 'exp_pop' in st:
-                        titl = 'People at risk'
-                    elif 'Max' in st:
-                        titl = 'Maximum probability'
-                    elif 'Std' in st:
-                        titl = 'Standard deviation'
-
-                    file1.write('<th>%s</th>' % titl)
-                file1.write('\n')
-
-                # Write each row
-                for i, mod in enumerate(modelnames):
-                    file1.write('<tr>')
-                    file1.write('<td>%s</td>' % mod.title())
-                    # Get output type
-                    if '2014' in mod:
-                        type1 = 'Probability of any occurrence in cell'
-                    else:
-                        type1 = 'Proportion of area affected'
-                    file1.write('<td>%s</td>' % type1)
-                    for st in statlist:
-                        if 'hagg' in st.lower() or 'exp' in st.lower() or 'parea' in st.lower():
-                            file1.write('<td>%1.0f</td>' % stattable[st][i])
-                        else:
-                            file1.write('<td>%1.2f</td>' % stattable[st][i])
-
-                    file1.write('</tr>\n')
-
-                file1.write('</table>')
+    filenames = []
+    files = os.listdir(event_dir)
+    if lsmodels is None:
+        # Read in the "preferred" model for landslides
+        ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
+        if len(ls_mod_file) == 1:
+            ls_file = os.path.join(event_dir, ls_mod_file[0])
+            ls_mod = loadlayers(ls_file)
+            levels = DFBINS
+            colors1 = DFCOLORS
         else:
-            file1.write('<h3>No results</h3>')
+            raise OSError("Preferred landslide model result not found.")
+    else:
+        for lsm in lsmodels:
+            if lsm['preferred']:
+                levels = lsm['bin_edges']
+                colors1 = lsm['bin_colors']
+                shortname = lsm['model']
+                if 'Jessee (2017)' in shortname:
+                    filesnippet = 'jessee_2017'
+                elif 'Nowicki and others (2014)' in shortname:
+                    filesnippet = 'nowicki_2014_global'
+                elif 'godt' in shortname.lower():
+                    filesnippet = 'godt_2008'
+        fsh = '%s.hdf5' % filesnippet
+        ls_mod_file = [f for f in files if fsh in f]
+        if len(ls_mod_file) == 1:
+            ls_file = os.path.join(event_dir, ls_mod_file[0])
+            ls_mod = loadlayers(ls_file)
+        else:
+            raise OSError("Preferred landslide model result not found.")
+
+    ls_grid = ls_mod['model']['grid']
+    ls_data = ls_grid.getData()
+    ls_geodict = ls_grid.getGeoDict()
+    ls_extent = [
+        ls_geodict.xmin - 0.5*ls_geodict.dx,
+        ls_geodict.xmax + 0.5*ls_geodict.dx,
+        ls_geodict.ymin - 0.5*ls_geodict.dy,
+        ls_geodict.ymax + 0.5*ls_geodict.dy,
+    ]
+    filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
+    filenames.append(filen)
+    with open(filen, 'w') as f:
+        json.dump(ls_extent, f)
+
+    lmin = levels[0]
+    lmax = levels[-1]
+    ls_data2 = np.clip(ls_data, lmin, lmax)
+    cmap = mpl.colors.ListedColormap(colors1)
+    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+    ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
+    rgba_img = cmap(norm(ls_data2))
+    filen = os.path.join(event_dir, '%s.png' % filesnippet)
+    plt.imsave(filen,
+               rgba_img,
+               vmin=lmin,
+               vmax=lmax,
+               cmap=cmap
+               )
+
+    if lqmodels is None:
+        # read in preferred model for liquefaction if none specified
+        lq_mod_file = [f for f in files if 'zhu_2017_general.hdf5' in f]
+        if len(lq_mod_file) == 1:
+            lq_file = os.path.join(event_dir, lq_mod_file[0])
+            lq_mod = loadlayers(lq_file)
+        else:
+            raise OSError("Preferred liquefaction model result not found.")
+    else:
+        for lqm in lqmodels:
+            if lqm['preferred']:
+                levels = lqm['bin_edges']
+                colors1 = lqm['bin_colors']
+                shortname = lqm['model']
+                if 'Zhu and others (2017)' in shortname:
+                    filesnippet = 'zhu_2017_general'
+                elif 'Zhu and others (2015)' in shortname:
+                    filesnippet = 'zhu_2015'
+
+        fsh = '%s.hdf5' % filesnippet
+        lq_mod_file = [f for f in files if fsh in f]
+        if len(lq_mod_file) == 1:
+            lq_file = os.path.join(event_dir, lq_mod_file[0])
+            lq_mod = loadlayers(lq_file)
+        else:
+            raise OSError("Preferred liquefaction model result not found.")
+
+    lq_grid = lq_mod['model']['grid']
+    lq_data = lq_grid.getData()
+    lq_geodict = lq_grid.getGeoDict()
+    lq_extent = [
+        lq_geodict.xmin - 0.5*lq_geodict.dx,
+        lq_geodict.xmax + 0.5*lq_geodict.dx,
+        lq_geodict.ymin - 0.5*lq_geodict.dy,
+        lq_geodict.ymax + 0.5*lq_geodict.dy,
+    ]
+    filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
+    filenames.append(filen)
+    with open(filen, 'w') as f:
+        json.dump(lq_extent, f)
+
+    lmin = levels[0]
+    lmax = levels[-1]
+    lq_data2 = np.clip(lq_data, lmin, lmax)
+    cmap = mpl.colors.ListedColormap(colors1)
+    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+    lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
+    rgba_img = cmap(norm(lq_data2))
+    filen = os.path.join(event_dir, '%s.png' % filesnippet)
+    plt.imsave(filen,
+               rgba_img,
+               vmin=lmin,
+               vmax=lmax,
+               cmap=cmap
+               )
+    filenames.append(filen)
+
+    return filenames
 
 
-def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
-                  finitefault=False, point=False, event_url=None,
-                  shake_url=None):
-    """
-    Write markdown file summarizing event
+def create_info(event_dir, lsmodels=None, lqmodels=None):
+    """Create info.json for ground failure product.
 
     Args:
-        shakemap (str): path to shakemap .xml file for the current event
-        outputdir (str): path to folder where output should be placed
-        imgoutputdir (str): path to folder where images should be placed
-            and linked
-        HaggLS (float, optional): Aggregate hazard of preferred landslide model
-        HaggLQ (float, optional): Aggregate hazard of preferred liquefaction
-            model
-
-    Returns:
-        Markdown file
+        event_dir (srt): Directory containing ground failure results.
     """
-    edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
-    smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
+    filenames = []
+    # Find the shakemap grid.xml file
+    with open(os.path.join(event_dir, 'shakefile.txt'), 'r') as f:
+        shakefile = f.read()
+    
+    files = os.listdir(event_dir)
 
-    if event_url is None:
-        event_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % edict['event_id']
-    if shake_url is None:
-        shake_url = event_url + '#shakemap'
+    if lsmodels is None or lqmodels is None:
 
-    # NEED TO ADD FIX HERE IN CASE NO FINITE FAULT FILE MODEL IS AVAILABLE
-    # BUT WAS USED IN SHAKEMAP
-    if finitefault and not point:
-        faulttype = '(finite fault model)'
-    elif point and not finitefault:
-        faulttype = '(point source model)'
-        if edict['magnitude'] > 6.5:
-            statement = ('%s<br>ShakeMap is currently approximating '
-                         'this earthquake as a point source. '
-                         'This may underestimate the extent of strong '
-                         'shaking for larger earthquakes. '
-                         'Please interpret Ground Failure results with '
-                         'caution until ShakeMap has been updated '
-                         'with a fault model.') % statement
-    else:
-        faulttype = ''
-
-    with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
-        file1.write('title: summary\n')
-        file1.write('date: 2017-06-09\n')
-        file1.write('modified: 2017-06-09\n')
-        file1.write('<h1 align="left">Ground Failure</h1>\n')
-        if 'scenario' in smdict['shakemap_event_type'].lower():
-            file1.write('<h2 align="left"><a href=%s>Magnitude %1.1f Scenario Earthquake - %s</a></h2>\n'
-                        % (event_url, edict['magnitude'],
-                           edict['event_description']))
+        # Read in the "preferred" model for landslides and liquefaction
+        ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
+        if len(ls_mod_file) == 1:
+            ls_file = os.path.join(event_dir, ls_mod_file[0])
+            ls_mod = loadlayers(ls_file)
         else:
-            file1.write('<h2 align="left"><a href=%s>Magnitude %1.1f - %s</a></h2>\n'
-                        % (event_url, edict['magnitude'],
-                           edict['event_description']))
+            raise OSError("Preferred landslide model result not found.")
+        lq_mod_file = [f for f in files if 'zhu_2017_general.hdf5' in f]
+        if len(lq_mod_file) == 1:
+            lq_file = os.path.join(event_dir, lq_mod_file[0])
+            lq_mod = loadlayers(lq_file)
+        else:
+            raise OSError("Preferred liquefaction model result not found.")
+    
+        # Read in extents
+        ls_extent_file = [f for f in files if 'jessee_2017_extent.json' in f]
+        if len(ls_mod_file) == 1:
+            ls_file = os.path.join(event_dir, ls_extent_file[0])
+            with open(ls_file) as f:
+                jessee_extent = json.load(f)
+        else:
+            raise OSError("Landslide extent not found.")
+        lq_extent_file = [f for f in files if 'zhu_2017_extent.json' in f]
+        if len(lq_mod_file) == 1:
+            lq_file = os.path.join(event_dir, lq_extent_file[0])
+            with open(lq_file) as f:
+                zhu_extent = json.load(f)
+        else:
+            raise OSError("Landslide extent not found.")
 
-        writeline = '<h3 align="left"> %s (UTC) | %1.4f&#176,  %1.4f&#176 | %1.1f km depth</h3>\n' \
-                    % (edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
-                        edict['lat'], edict['lon'], edict['depth'])
-        file1.write(writeline)
+        # Read in default paths to get location of the population grid
+        default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+        defaults = ConfigObj(default_file)
+        pop_file = defaults['popfile']
+    
+        # Landslide alert statistics
+        ls_stats = computeStats(
+            ls_mod['model']['grid'],
+            probthresh=None,
+            shakefile=shakefile,
+            shakethresh=10.0,
+            shakethreshtype='pga',
+            statprobthresh=None,
+            pop_file=pop_file)
+    
+        # Liquefaction alert statistics
+        lq_stats = computeStats(
+            lq_mod['model']['grid'],
+            probthresh=None,
+            shakefile=shakefile,
+            shakethresh=10.0,
+            shakethreshtype='pga',
+            statprobthresh=None,
+            pop_file=pop_file)
+    
+        # Get alert levels
+        ls_haz_level = ls_stats['Hagg_0.10g']
+        lq_haz_level = lq_stats['Hagg_0.10g']
+        ls_pop_level = ls_stats['exp_pop_0.10g']
+        lq_pop_level = lq_stats['exp_pop_0.10g']
 
-        file1.write('<p align="left">Last updated at: %s (UTC)<br>'
-                    % datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('Based on ground motion estimates from '
-                    '<a href=%s>ShakeMap</a> version %1.1f %s<br></p>'
-                    % (shake_url, smdict['shakemap_version'], faulttype))
-        statement = ('%s<br>Refer to the <a href=https://dev-earthquake.cr.usgs.gov/data/'
-                     'grdfailure/background.php>Ground Failure Background</a>'
-                     ' page for more details.' % statement)
+        # If hazard alert level is less than 0.1, zero it out
+        # (due to rounding to 2 sig digits later, this can give
+        #  overly precise results, e.g., 0.000012 if we don't clip,
+        #  but this doesn't happen with pop alerts because they are
+        #  integers)
+        if ls_haz_level < 0.1:
+            ls_haz_level = 0.0
+        if lq_haz_level < 0.1:
+            lq_haz_level = 0.0
+    
+        # Convert levels into categories
+        alert_info = get_alert(ls_haz_level, lq_haz_level,
+                               ls_pop_level, lq_pop_level)
+        # Unpack info (I think we are now assuming that the statements will be
+        # constructed on the website and so we don't need them here)
+        ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert = alert_info
+        
+        if lsmodels is None:
+            lsmodels = [{
+                'model': 'Nowicki Jessee (2017)',
+                'filename': 'jessee_2017.png',
+                'extent': jessee_extent,
+                'preferred': True,
+                'hazard_alert': ls_haz_alert,
+                'population_alert': ls_pop_alert,
+                'hazard_alert_value':
+                    set_num_precision(ls_haz_level, 2, 'float'),
+                'population_alert_value':
+                    set_num_precision(ls_pop_level, 2, 'int'),
+                'hazard_alert_parameter': 'Hagg_0.10g',
+                'population_alert_parameter': 'exp_pop_0.10g',
+                'bin_edges': DFBINS,
+                'bin_colors': DFCOLORS,
+                'probability_max': float("%.2f" % ls_stats['Max']),
+                'probability_std': float("%.2f" % ls_stats['Std']),
+                'units': "coverage"
+                }]
+        if lqmodels is None:
+            lqmodels = [{
+                'model': 'Zhu and others (2017)',
+                'filename': 'zhu_2017.png',
+                'extent': zhu_extent,
+                'preferred': True,
+                'hazard_alert': lq_haz_alert,
+                'population_alert': lq_pop_alert,
+                'hazard_alert_value':
+                    set_num_precision(lq_haz_level, 2, 'float'),
+                'population_alert_value':
+                    set_num_precision(lq_pop_level, 2, 'int'),
+                'hazard_alert_parameter': 'Hagg_0.10g',
+                'population_alert_parameter': 'exp_pop_0.10g',
+                'bin_edges': DFBINS,
+                'bin_colors': DFCOLORS,
+                'probability_max': float("%.2f" % lq_stats['Max']),
+                'probability_std': float("%.2f" % lq_stats['Std']),
+                'units': "coverage"
+                }]
+    else:
+        # Get all info from dictionaries of preferred events, add in extent and filename
+        for lsm in lsmodels:
+            # Add extent and filename for preferred model
+            if lsm['preferred']:
+                shortname = lsm['model']
+                if 'Jessee (2017)' in shortname:
+                    filesnippet = 'jessee_2017'
+                elif 'Nowicki and others (2014)' in shortname:
+                    filesnippet = 'nowicki_2014_global'
+                elif 'godt' in shortname.lower():
+                    filesnippet = 'godt_2008'
+                # Read in extents
+                flnm = '%s_extent.json' % filesnippet
+                ls_extent_file = [f for f in files if flnm in f]
+                if len(ls_extent_file) == 1:
+                    ls_file = os.path.join(event_dir, ls_extent_file[0])
+                    with open(ls_file) as f:
+                        ls_extent = json.load(f)
+                else:
+                    raise OSError("Landslide extent not found.")
+                lsm['extent'] = ls_extent
+                lsm['filename'] = flnm
+                
+        
+        for lqm in lqmodels:
+            if lqm['preferred']:
+                shortname = lqm['model']
+                if 'Zhu and others (2017)' in shortname:
+                    filesnippet = 'zhu_2017_general'
+                elif 'Zhu and others (2015)' in shortname:
+                    filesnippet = 'zhu_2015'
+                # Read in extents
+                flnm = '%s_extent.json' % filesnippet
+                lq_extent_file = [f for f in files if flnm in f]
+                if len(lq_extent_file) == 1:
+                    lq_file = os.path.join(event_dir, lq_extent_file[0])
+                    with open(lq_file) as f:
+                        lq_extent = json.load(f)
+                else:
+                    raise OSError("Liquefaction extent not found.")
+                lqm['extent'] = lq_extent
+                lqm['filename'] = flnm
+        
+    # Try to get event info
+    event_dict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
+    sm_dict = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+    base_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/'
+    try:
+        # Hopefully this will eventually be more reliable once we get the
+        # comcat info directly from the shakemap grid, rather than rely on
+        # magnitude/location/time association.
+        shakemap_info, detail, temp = get_event_comcat(shakefile)
+        event_url = detail.url
+        code = detail['code']
+        net = detail['net']
+        time = detail['time']
 
-        if statement is not None:
-            file1.write('<h2 align="left">Summary</h2>\n')
-            file1.write('<p align="left">%s</p>' % statement)
+        # ---------------------------------------------------------------------
+        # Finite fault stuff:
+        #    Other sections of the code do some relatively complicated stuff to
+        #    try to sort out the finite fault. Here, I'm just simplifying it so
+        #    that it checks comcat for a finite fault file.
+        # ---------------------------------------------------------------------
+        fault_file = shakemap_info['input']['event_information']['faultfiles']
+        if len(fault_file) > 0:
+            point = False
+        else:
+            point = True
 
-        file1.write('<hr>')
+    except:
+        # Hopefully we can eventually remove this....
+        event_url = '%s%s#executive' % (base_url, event_dict['event_id'])
+        code = 'unknown'
+        net = 'unknown'
+        time = -999
+        point = False
 
-    shakesummary = {'magnitude': edict['magnitude'],
-                    'shakemap_version': smdict['shakemap_version'],
-                    'date': edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
-                    'lat': edict['lat'],
-                    'lon': edict['lon'],
-                    'depth': edict['depth'],
-                    'name': 'Magnitude %1.1f - %s' % (edict['magnitude'],
-                                                      edict['event_description']),
-                    'statement': statement,
-                    'event_id': edict['event_id'],
-                    'shakemap_id': smdict['shakemap_id'],
-                    'event_url': event_url
-                    }
+    # Should we display the warning about point source?
+    rupture_warning = False
+    if point and event_dict['magnitude'] > 6.5:
+        rupture_warning = True
 
-    return shakesummary
+    # Create info.json for website rendering and metadata purposes
+    info_dict = {
+        'Summary': {
+            'code': code,
+            'net': net,
+            'magnitude': event_dict['magnitude'],
+            'depth': event_dict['depth'],
+            'time': time,
+            'lat': event_dict['lat'],
+            'lon': event_dict['lon'],
+            'event_url': event_url,
+            'shakemap_version': sm_dict['shakemap_version'],
+            'rupture_warning': rupture_warning,
+            'point_source': point
+        },
+        'Landslides': lsmodels,
+        'Liquefaction': lqmodels
+
+    }
+
+    info_file = os.path.join(event_dir, 'info.json')
+    with open(info_file, 'w') as f:
+        json.dump(info_dict, f)
+    filenames.append(info_file)
+    return filenames
 
 
 def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
@@ -690,11 +620,12 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
 
     Returns:
         Returns:
-            tuple: alertLS, alertLQ, statement, where
-                * alertLS is the landslide alert level (str)
-                * alertLQ is the liquefaction alert level (str)
-                * statement is a sentence describing the ground failure hazard
-                    based on the alert levels (str)
+            tuple: alertLS, popalertLS, alertLQ, popalertLQ, where
+                * alertLS is the landslide hazard alert level (str)
+                * popalertLS is the landslide population alert level (str)
+                * alertLQ is the liquefaction hazard alert level (str)
+                * popalertLQ is the liquefaction population alert level (str)
+
     """
     if paramalertLS is None:
         alertLS = None
@@ -748,125 +679,4 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
     else:
         popalertLQ = None
 
-    if alertLS is not None:
-        statementLS = ('Landslide hazard for this event is expected to be '
-                       '%s with %s population at risk.'
-                       % (get_word(alertLS), get_word(popalertLS)))
-    else:
-        statementLS = None
-
-    if alertLQ is not None:
-        statementLQ = ('Liquefaction hazard for this event is expected to be '
-                       '%s with %s population at risk.'
-                       % (get_word(alertLQ), get_word(popalertLQ)))
-    else:
-        statementLQ = None
-
-    return alertLS, popalertLS, alertLQ, popalertLQ, statementLS, statementLQ
-
-
-def get_word(color):
-    """
-    Get the alert-based word describing the hazard level.
-
-    Args:
-        color (str): Alert level; either 'green', 'yellow', 'orange', or 'red'.
-
-    Returns:
-        str: Phrase or word desribing hazard level.
-    """
-    if color is None:
-        word = 'unknown'
-    elif color in 'green':
-        word = 'little to no'
-    elif color in 'yellow':
-        word = 'limited'
-    elif color in 'orange':
-        word = 'significant'
-    elif color in 'red':
-        word = 'extensive'
-    else:
-        word = 'unknown'
-    return word
-
-
-def make_alert_img(colorHAZ, colorPOP, type1, outfolder):
-    """
-    Construct alert image.
-
-    Args:
-        color (str): Alert color.
-        type1 (str): Alert type, indicating landslide vs liquefaction.
-        outfolder (str): Path for output file.
-
-    Returns:
-        str: Output file name.
-    """
-    if colorHAZ is None:
-        outfilename = None
-    else:
-        fig = plt.figure(figsize=(6, 1.8))
-        ax = fig.add_subplot(111)
-        ax.add_artist(plt.Rectangle((0.1, 0.5), 0.2, 0.2, facecolor=colorHAZ,
-                                    edgecolor='black', lw=1))
-        #ax.text(0.1, 0.8, type1.title(), fontsize=25)
-        ax.text(0.35, 0.52, 'Hazard %s' % colorHAZ, fontsize=25)
-        ax.add_artist(plt.Rectangle((0.1, 0.2), 0.2, 0.2, facecolor=colorPOP,
-                                    edgecolor='black', lw=1))
-        ax.text(0.35, 0.22, 'Population exposure %s' % colorPOP, fontsize=25)
-
-        ax.axis('off')
-        ax.set_xlim([0, 2.0])
-        ax.set_ylim([0., 0.8])
-        plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
-        outfilename = os.path.join(outfolder, '%s_alert.png' % type1)
-        fig.savefig(outfilename, transparent=True)
-        plt.close()
-    return outfilename
-
-
-def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
-    header_dicts = getHeaderData(shakefile)
-    grid_dict = header_dicts[0]
-    event_dict = header_dicts[1]
-    version = grid_dict['shakemap_version']
-    try:
-        eid = event_dict['event_id']
-        net = 'us'
-        if 'event_network' in event_dict:
-            net = event_dict['event_network']
-        if not eid.startswith(net):
-            eid = net + eid
-        detail = get_event_by_id(eid, includesuperseded=True)
-    except:
-        lat = event_dict['lat']
-        lon = event_dict['lon']
-        mag = event_dict['magnitude']
-        time = event_dict['event_timestamp']
-        starttime = time - timedelta(seconds=timewindow)
-        endtime = time + timedelta(seconds=timewindow)
-        minlat = lat - degwindow
-        minlon = lon - degwindow
-        maxlat = lat + degwindow
-        maxlon = lon + degwindow
-        minmag = max(0, mag - magwindow)
-        maxmag = min(10, mag + magwindow)
-        events = search(starttime=starttime,
-                        endtime=endtime,
-                        minmagnitude=minmag,
-                        maxmagnitude=maxmag,
-                        minlatitude=minlat,
-                        minlongitude=minlon,
-                        maxlatitude=maxlat,
-                        maxlongitude=maxlon)
-        if not len(events):
-            return None
-        detail = events[0].getDetailEvent()
-    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
-    # Find the right version
-    vers = [allv.version for allv in allversions]
-    idx = np.where(np.array(vers) == version)[0][0]
-    shakemap = allversions[idx]
-    infobytes, url = shakemap.getContentBytes('info.json')
-    info = json.loads(infobytes.decode('utf-8'))
-    return info, detail, shakemap
+    return alertLS, popalertLS, alertLQ, popalertLQ

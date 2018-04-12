@@ -20,9 +20,11 @@ from shapely.strtree import STRtree
 from mpl_toolkits.basemap import Basemap
 
 #third party
-from impactutils.io.cmd import get_command_output
+#from impactutils.io.cmd import get_command_output
 #from impactutils.transfer.emailsender import EmailSender
 from impactutils.transfer.factory import get_sender_class
+from gfail.gfailrun import run_gfail
+from gfail.utilities import text_to_json
 
 #dictionary containing table definitions and column definitions column:type
 tablecols = [('id', 'integer primary key'),
@@ -64,14 +66,6 @@ def main(args):
     args = validateArgs(args)
 
     config = configparser.ConfigParser()
-
-    gfail_flags = ''
-    if args.webpage:
-        gfail_flags += '-w'
-    if args.hdf5:
-        gfail_flags += ' --hdf5'
-    if args.make_static_pngs:
-        gfail_flags += ' -pn'
 
     if not args.webpage and not args.hdf5 and args.eventdir is None:
         print('No outputs specified, saving static plots')
@@ -165,14 +159,33 @@ def main(args):
                                      finitefault, url, jsonfeed)
                 cursor.execute(insertquery)
                 db.commit()
-
-            filenames, url, jsonfeed = runGF(gfail_flags,
-                                             args.gfailconfig,
-                                             event['url'],
-                                             event['eventcode'],
-                                             pdlconf=args.pdlconf,
-                                             faultfile=event['finite_fault'],
-                                             dryrun=dryrun)
+        
+            # Run gfail
+                                             
+            gdict = dict(config=args.gfailconfig, shakefile=event['url'],
+                         finite_fault=event['finite_fault'],
+                         make_webpage=args.webpage,
+                         hdf5=args.hdf5, make_static_pngs=args.make_static_pngs,
+                         make_summary=args.make_summary)
+            
+            filenames = run_gfail(**gdict)
+            
+            if filenames is None:
+                print('Did not find any files output by runGF for event_id %s, '
+                      'Continuing to next event\n' % (event['eventcode'],))
+            
+            event_dir = os.path.dirname([fn for fn in filenames if '.tif' in fn or 'webpage' in fn or '.png' in fn][0])
+        
+            if args.pdlconf is not None:
+                success, url, jsonfeed = gf_transfer(event_dir, event['eventcode'], args.pdlconf, dryrun)
+                if not success:
+                    print('PDL transfer failed')
+                    url = None
+                    jsonfeed = None
+            else:
+                url = None
+                jsonfeed = None
+            
             change = ''
 
             timediff = float(np.abs((etime-datetime.now()).days))  # Time between event and present date
@@ -402,51 +415,6 @@ def mailUsers(event, autoconfig, url, jsonfeed, update=False, change=''):
     sender1.send()
 
 
-def runGF(flagstr, modelconfig, shakefile, event_id, pdlconf=None,
-          transfer=True, faultfile=None, dryrun=False):
-    if dryrun:
-        dryrun = '-d'
-    else:
-        dryrun = ''
-    if faultfile is not None:
-        cmd = 'gfail -f %s %s %s %s' % (faultfile, flagstr, modelconfig, shakefile)
-    else:
-        cmd = 'gfail %s %s %s' % (flagstr, modelconfig, shakefile)
-    print(cmd)
-    retcode, stdout, stderr = get_command_output(cmd)
-    temp = stdout.decode('utf-8')
-    if temp.find('Files created:\n') > -1:
-        temp = temp.split('Files created:\n')[1]
-        filenames = []
-        for line in temp.split('\n'):
-            if 'pdf' in line or 'png' in line or 'html' in line or 'hdf5' in line or 'bil' in line or 'webpage' or 'json':
-                filenames.append(line)
-    else:
-        print("""
-            Did not find any files output by runGF for event_id %s,
-            Continuing to next event\n \
-            Warnings that were output: \
-            %s\n""" % (event_id, stderr.decode()))
-        filenames = None
-        url = None
-        jsonfeed = None
-        return filenames, url, jsonfeed
-
-    event_dir = os.path.dirname([fn for fn in filenames if '.bil' in fn or 'webpage' in fn or '.png' in fn][0])
-
-    if transfer and pdlconf is not None:
-        success, url, jsonfeed = gf_transfer(event_dir, event_id, pdlconf, dryrun)
-        if not success:
-            print('PDL transfer failed')
-            url = None
-            jsonfeed = None
-    else:
-        url = None
-        jsonfeed = None
-
-    return filenames, url, jsonfeed
-
-
 def getProductInfo(shakemap, pager=None):
     edict = {}
     edict['eventcode'] = shakemap['code']
@@ -652,73 +620,6 @@ def connect(dbfile):
     return (db, cursor)
 
 
-def text_to_json(url):
-    """
-    Simplification of text_to_json from shakelib.rupture.factory
-    """
-    with urllib.request.urlopen(url) as f:
-        lines = f.readlines()
-    x = []
-    y = []
-    z = []
-    reference = ''
-    # convert to geojson
-    for line in lines:
-        sline = line.decode('utf8').strip()
-        if sline.startswith('#'):
-            reference += sline.strip('#').strip('Source: ')
-            continue
-        if sline.startswith('>'):
-            if len(x):  # start of new line segment
-                x.append(np.nan)
-                y.append(np.nan)
-                z.append(np.nan)
-                continue
-            else:  # start of file
-                continue
-        if not len(sline.strip()):
-            continue
-        parts = sline.split()
-
-        y.append(float(parts[0]))
-        x.append(float(parts[1]))
-        if len(parts) >= 3:
-            z.append(float(parts[2]))
-        else:
-            print('Fault file has no depths, assuming zero depth')
-            z.append(0.0)
-        coords = []
-        poly = []
-        for lon, lat, dep in zip(x, y, z):
-            if np.isnan(lon):
-                coords.append(poly)
-                poly = []
-            else:
-                poly.append([lon, lat, dep])
-        if poly != []:
-            coords.append(poly)
-
-    d = {
-        "type": "FeatureCollection",
-        "metadata": {
-            'reference': reference
-        },
-        "features": [
-            {
-                "type": "Feature",
-                "properties": {
-                    "rupture type": "rupture extent"
-                },
-                "geometry": {
-                    "type": "MultiPolygon",
-                    "coordinates": [coords]
-                }
-            }
-        ]
-    }
-    return json.dumps(d)
-
-
 def gf_transfer(eventdir, event_id, pdl_config=None, dry_run=False):
     """
     Transfer ground failure results to dev server
@@ -847,6 +748,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '-pn', '--make-static-pngs', action='store_true', default=False,
         help='Make static plots for each model')
+
+    parser.add_argument(
+        '-ps', '--make-summary', action='store_true', default=False,
+        help='Make interactive html plots summarizing all models')
 
     pargs = parser.parse_args()
     main(pargs)
