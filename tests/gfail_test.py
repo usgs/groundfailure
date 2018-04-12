@@ -134,11 +134,11 @@ def test_zhu2015_web(tmpdir):
 
         # Make png
         cmd = 'create_png -e %s' % event_dir
-        rc, so, se = get_command_output(cmd)
+        rc1, so1, se1 = get_command_output(cmd)
         
         # Make info
         cmd = 'create_info -e %s' % event_dir
-        rc, so, se = get_command_output(cmd)
+        rc2, so2, se2 = get_command_output(cmd)
         
         # Make PDL directory
         pdldir = os.path.join(p, '19891018000415')
@@ -153,15 +153,17 @@ def test_zhu2015_web(tmpdir):
     if os.path.exists(default_file+'_bak'):
         shutil.copy(default_file+'_bak', default_file)
 
-    # Remove backup and tempfile
+    # remove backup
     os.remove(default_file+'_bak')
-    shutil.rmtree(p)
 
     # Then do test
     assert '--property-lq_pop_alert=red' in transfer_cmd
     assert '--property-ls_pop_alert=orange' in transfer_cmd
     assert '--property-lq_pop_alert_level=15000' in transfer_cmd
     assert '--property-ls_pop_alert_level=1400' in transfer_cmd
+    
+    # Remove tempfile
+    shutil.rmtree(p)
 
 
 if __name__ == "__main__":

@@ -46,7 +46,7 @@ def test_autogf(tmpdir):
         rc, so, se = get_command_output('gfail -reset')
         # Modify gfail defaults
         pathcmd = pathcmd.replace('[TMPOUT]', p)
-        rc, so, se = get_command_output(pathcmd)
+        rc1, so1, se1 = get_command_output(pathcmd)
 
         # Set command for autogf
         agfcmd = """
@@ -56,10 +56,10 @@ def test_autogf(tmpdir):
             -t -w
         """ % (gconfig, config)
 
-        rc, so, se = get_command_output(agfcmd)
+        rc2, so2, se2 = get_command_output(agfcmd)
 
         #print(agfcmd)
-        temp = so.decode().split('\n')[-2]
+        temp = so2.decode().split('\n')[-2]
     except Exception as e:  # To make sure defaults are replaced
         print(e)
 

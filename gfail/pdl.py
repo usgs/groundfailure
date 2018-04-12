@@ -142,8 +142,8 @@ def prepare_pdl_directory(event_dir):
         if os.path.exists(src):
             shutil.copy(src, dst)
 
-    # Put json file into pdl directory (for now copy info2.json to info.json)
-    src = os.path.join(event_dir, 'info2.json')
+    # Put json file into pdl directory
+    src = os.path.join(event_dir, 'info.json')
     dst = os.path.join(pdl_dir, 'info.json')
     if os.path.exists(src):
         shutil.copy(src, dst)

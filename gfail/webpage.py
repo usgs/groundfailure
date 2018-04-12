@@ -70,7 +70,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     logLQ = []
     limLQ = []
     colLQ = []
-
+    
     for conf, maplayer in zip(configs, maplayerlist):
         mdict = maplayer['model']['description']
         #config = ConfigObj(conf)
@@ -147,7 +147,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                                  probthresh=probthresh,
                                  shakefile=shakemap,
                                  shakethresh=shakethresh,
-                                 statprobthresh=statprobthresh,
                                  pop_file=pop_file,
                                  shakethreshtype=shakethreshtype)
 
@@ -245,6 +244,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
             ls_mod = loadlayers(ls_file)
             levels = DFBINS
             colors1 = DFCOLORS
+            filesnippet = 'jessee_2017'
         else:
             raise OSError("Preferred landslide model result not found.")
     else:
@@ -302,6 +302,9 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
+            levels = DFBINS
+            colors1 = DFCOLORS
+            filesnippet = 'zhu_2017_general'
         else:
             raise OSError("Preferred liquefaction model result not found.")
     else:
@@ -387,14 +390,14 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     
         # Read in extents
         ls_extent_file = [f for f in files if 'jessee_2017_extent.json' in f]
-        if len(ls_mod_file) == 1:
+        if len(ls_extent_file) == 1:
             ls_file = os.path.join(event_dir, ls_extent_file[0])
             with open(ls_file) as f:
                 jessee_extent = json.load(f)
         else:
             raise OSError("Landslide extent not found.")
-        lq_extent_file = [f for f in files if 'zhu_2017_extent.json' in f]
-        if len(lq_mod_file) == 1:
+        lq_extent_file = [f for f in files if 'zhu_2017_general_extent.json' in f]
+        if len(lq_extent_file) == 1:
             lq_file = os.path.join(event_dir, lq_extent_file[0])
             with open(lq_file) as f:
                 zhu_extent = json.load(f)
