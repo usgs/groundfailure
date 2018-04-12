@@ -91,13 +91,13 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         '--eventtime=%s ' % time_stamp +
         '--type=%s ' % pdl_type +
         '--directory=%s ' % pdl_dir +
-        lq_haz_alert + " " +
-        ls_haz_alert + " " +
-        lq_pop_alert + " " +
-        ls_pop_alert + " " +
-        lq_haz_alert_level + " " +
-        ls_haz_alert_level + " " +
-        lq_pop_alert_level + " " +
+        lq_haz_alert +
+        ls_haz_alert +
+        lq_pop_alert +
+        ls_pop_alert +
+        lq_haz_alert_level +
+        ls_haz_alert_level +
+        lq_pop_alert_level +
         ls_pop_alert_level
     )
 
@@ -142,8 +142,8 @@ def prepare_pdl_directory(event_dir):
         if os.path.exists(src):
             shutil.copy(src, dst)
 
-    # Put json file into pdl directory (for now copy info2.json to info.json)
-    src = os.path.join(event_dir, 'info2.json')
+    # Put json file into pdl directory
+    src = os.path.join(event_dir, 'info.json')
     dst = os.path.join(pdl_dir, 'info.json')
     if os.path.exists(src):
         shutil.copy(src, dst)
