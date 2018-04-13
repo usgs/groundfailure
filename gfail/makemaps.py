@@ -597,8 +597,11 @@ def modelMap(grids, shakefile=None,
             wid, ht = axsize.width, axsize.height
         default1 = True
         if len(colormaps) == 1 and len(plotorder) == 1:
-            palette = colormaps
-            default1 = False
+            if colormaps[k] is None:
+                default1 = True
+            else:
+                default1 = False
+            palette = colormaps[k]
         if (colormaps is not None and
                 len(colormaps) == len(plotorder) and
                 colormaps[k] is not None):
@@ -1216,7 +1219,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
         if clear_zero:
             dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
-            
+
         if maskthreshes[k] is not None:
             dat[dat <= maskthreshes[k]] = float('nan')
 
