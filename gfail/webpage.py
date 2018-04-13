@@ -14,6 +14,8 @@ from mapio.shake import ShakeGrid
 import matplotlib.cm as cm
 
 from impactutils.textformat.text import set_num_precision
+from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
+import pytz
 
 from gfail.utilities import get_event_comcat, loadlayers
 
@@ -24,15 +26,34 @@ warnings.filterwarnings('ignore')
 
 plt.switch_backend('agg')
 
-DFCOLORS = [[0.9403921568627451, 0.9403921568627451, 0.7019607843137254, 0.7],
-            [0.9, 0.781764705882353, 0.18470588235294128, 0.7],
-            [0.92, 0.45, 0.03, 0.7],
-            [0.7552941176470588, 0.21941176470588236, 0.36411764705882355, 0.7],
-            [0.35882352941176465, 0.15980392156862744, 0.7009803921568627, 0.7],
-            [0.11764705882352941, 0.11764705882352941, 0.39215686274509803, 0.7]]
+# DFCOLORS = [[0.9403921568627451, 0.9403921568627451, 0.7019607843137254, 0.7],
+#            [0.9, 0.781764705882353, 0.18470588235294128, 0.7],
+#            [0.92, 0.45, 0.03, 0.7],
+#            [0.7552941176470588, 0.21941176470588236, 0.36411764705882355, 0.7],
+#            [0.35882352941176465, 0.15980392156862744, 0.7009803921568627, 0.7],
+#            [0.11764705882352941, 0.11764705882352941, 0.39215686274509803, 0.7]]
+
+# hex versions:
+DFCOLORS = [
+    '#efefb3',
+    '#e5c72f',
+    '#ea7207',
+    '#c0375c',
+    '#5b28b2',
+    '#1e1e64'
+]
 
 DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
-        
+
+# reformat for info.json
+color_bins = []
+for i in range(len(DFCOLORS)):
+    color_bins.append({
+        'min': DFBINS[i],
+        'max': DFBINS[i+1],
+        'color': DFCOLORS[i]
+    })
+
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            shakethreshtype='pga', probthresh=None, shakethresh=10.,
@@ -40,9 +61,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            pop_file=None):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
-    
+
     Args:
-        
+
     """
     event_id = maplayerlist[0]['model']['description']['event_id']
 
@@ -54,9 +75,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
     if outfolder is None:
         outfolder = os.path.join(os.getcwd(), event_id)
-        
+
     filenames = []
-        
+
     # Separate the LS and LQ models
 
     concLS = []
@@ -70,10 +91,10 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     logLQ = []
     limLQ = []
     colLQ = []
-    
+
     for conf, maplayer in zip(configs, maplayerlist):
         mdict = maplayer['model']['description']
-        #config = ConfigObj(conf)
+        # config = ConfigObj(conf)
 
         if 'landslide' in mdict['parameters']['modeltype'].lower():
             title = maplayer['model']['description']['name']
@@ -111,8 +132,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if title == prefLS:
                 on = True
-                ls_haz_alert, ls_pop_alert, _, _ = get_alert(stats['Hagg_0.10g'], 0.,
-                                                             stats['exp_pop_0.10g'], 0.)
+                ls_haz_alert, ls_pop_alert, _, _ = get_alert(
+                    stats['Hagg_0.10g'], 0.,
+                    stats['exp_pop_0.10g'], 0.)
             else:
                 on = False
                 ls_haz_alert = None
@@ -131,13 +153,13 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                          longref=metadata['longref'],
                          hazard_alert=ls_haz_alert,
                          population_alert=ls_pop_alert,)
-            
+
             lsmodels.append(edict)
 
         elif 'liquefaction' in mdict['parameters']['modeltype'].lower():
             title = maplayer['model']['description']['name']
             plotorder, logscale, lims, colormaps, maskthreshes = \
-                parseConfigLayers(maplayer, conf, keys=['model'])  
+                parseConfigLayers(maplayer, conf, keys=['model'])
             logLQ.append(logscale[0])
             limLQ.append(lims[0])
             colLQ.append(colormaps[0])
@@ -162,8 +184,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if title == prefLQ:
                 on = True
-                _, _, lq_haz_alert, lq_pop_alert = get_alert(0., stats['Hagg_0.10g'],
-                                                             0., stats['exp_pop_0.10g'])
+                _, _, lq_haz_alert, lq_pop_alert = get_alert(
+                    0., stats['Hagg_0.10g'],
+                    0., stats['exp_pop_0.10g'])
             else:
                 on = False
                 lq_haz_alert = None
@@ -195,7 +218,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     sync, colorlistLS, reflims = setupsync(prefLS, concLS, limLS, colLS,
                                            defaultcolormap, logscale=logLS,
                                            alpha=alpha)
-    
+
     if reflims is None:
         raise Exception('Check input config files, they must all have the '
                         'same number of bin edges')
@@ -203,7 +226,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         # Stuff colors into dictionary
         for ls in lsmodels:
             ls['bin_colors'] = list(colorlistLS)
-        
 
     sync, colorlistLQ, reflims = setupsync(prefLQ, concLQ, limLQ, colLQ,
                                            defaultcolormap, logscale=logLQ,
@@ -215,15 +237,15 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         # Stuff colors into dictionary
         for lq in lqmodels:
             lq['bin_colors'] = list(colorlistLQ)
-    
+
     # Create invisible pngs
     out = create_png(outfolder, lsmodels=lsmodels, lqmodels=lqmodels)
     filenames += out
-    
+
     # Create info.json
     out = create_info(outfolder, lsmodels=lsmodels, lqmodels=lqmodels)
     filenames += out
-    
+
     return filenames
 
 
@@ -369,7 +391,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     # Find the shakemap grid.xml file
     with open(os.path.join(event_dir, 'shakefile.txt'), 'r') as f:
         shakefile = f.read()
-    
+
     files = os.listdir(event_dir)
 
     if lsmodels is None or lqmodels is None:
@@ -387,7 +409,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             lq_mod = loadlayers(lq_file)
         else:
             raise OSError("Preferred liquefaction model result not found.")
-    
+
         # Read in extents
         ls_extent_file = [f for f in files if 'jessee_2017_extent.json' in f]
         if len(ls_extent_file) == 1:
@@ -396,7 +418,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 jessee_extent = json.load(f)
         else:
             raise OSError("Landslide extent not found.")
-        lq_extent_file = [f for f in files if 'zhu_2017_general_extent.json' in f]
+        lq_extent_file = [
+            f for f in files if 'zhu_2017_general_extent.json' in f]
         if len(lq_extent_file) == 1:
             lq_file = os.path.join(event_dir, lq_extent_file[0])
             with open(lq_file) as f:
@@ -408,7 +431,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
         defaults = ConfigObj(default_file)
         pop_file = defaults['popfile']
-    
+
         # Landslide alert statistics
         ls_stats = computeStats(
             ls_mod['model']['grid'],
@@ -418,7 +441,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             shakethreshtype='pga',
             statprobthresh=None,
             pop_file=pop_file)
-    
+
         # Liquefaction alert statistics
         lq_stats = computeStats(
             lq_mod['model']['grid'],
@@ -428,7 +451,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             shakethreshtype='pga',
             statprobthresh=None,
             pop_file=pop_file)
-    
+
         # Get alert levels
         ls_haz_level = ls_stats['Hagg_0.10g']
         lq_haz_level = lq_stats['Hagg_0.10g']
@@ -444,56 +467,69 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             ls_haz_level = 0.0
         if lq_haz_level < 0.1:
             lq_haz_level = 0.0
-    
+
         # Convert levels into categories
         alert_info = get_alert(ls_haz_level, lq_haz_level,
                                ls_pop_level, lq_pop_level)
         # Unpack info (I think we are now assuming that the statements will be
         # constructed on the website and so we don't need them here)
         ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert = alert_info
-        
+
         if lsmodels is None:
             lsmodels = [{
-                'model': 'Nowicki Jessee (2017)',
-                'filename': 'jessee_2017.png',
+                'id': 'nowicki_jessee_2017',
+                'title': 'Nowicki Jessee (2017)',
+                'overlay': 'jessee_2017.png',
                 'extent': jessee_extent,
+                'units': "Proportiona of area affected",
                 'preferred': True,
-                'hazard_alert': ls_haz_alert,
-                'population_alert': ls_pop_alert,
-                'hazard_alert_value':
-                    set_num_precision(ls_haz_level, 2, 'float'),
-                'population_alert_value':
-                    set_num_precision(ls_pop_level, 2, 'int'),
-                'hazard_alert_parameter': 'Hagg_0.10g',
-                'population_alert_parameter': 'exp_pop_0.10g',
-                'bin_edges': DFBINS,
-                'bin_colors': DFCOLORS,
-                'probability_max': float("%.2f" % ls_stats['Max']),
-                'probability_std': float("%.2f" % ls_stats['Std']),
-                'units': "coverage"
-                }]
+                'hazard_alert': {
+                    'color': ls_haz_alert,
+                    'value': set_num_precision(ls_haz_level, 2, 'float'),
+                    'parameter': 'Aggregate Hazard',
+                    'units': 'km^2'
+                },
+                'population_alert': {
+                    'color': ls_pop_alert,
+                    'value': set_num_precision(ls_pop_level, 2, 'int'),
+                    'parameter': 'Population exposure',
+                    'units': 'people'
+                },
+                'color_bins': color_bins,
+                'probability': {
+                    'max': float("%.2f" % ls_stats['Max']),
+                    'std': float("%.2f" % ls_stats['Std'])
+                }
+            }]
         if lqmodels is None:
             lqmodels = [{
-                'model': 'Zhu and others (2017)',
-                'filename': 'zhu_2017.png',
+                'id': 'zhu_2017',
+                'title': 'Zhu and others (2017)',
+                'overlay': 'zhu_2017.png',
                 'extent': zhu_extent,
+                'units': "Proportiona of area affected",
                 'preferred': True,
-                'hazard_alert': lq_haz_alert,
-                'population_alert': lq_pop_alert,
-                'hazard_alert_value':
-                    set_num_precision(lq_haz_level, 2, 'float'),
-                'population_alert_value':
-                    set_num_precision(lq_pop_level, 2, 'int'),
-                'hazard_alert_parameter': 'Hagg_0.10g',
-                'population_alert_parameter': 'exp_pop_0.10g',
-                'bin_edges': DFBINS,
-                'bin_colors': DFCOLORS,
-                'probability_max': float("%.2f" % lq_stats['Max']),
-                'probability_std': float("%.2f" % lq_stats['Std']),
-                'units': "coverage"
-                }]
+                'hazard_alert': {
+                    'color': lq_haz_alert,
+                    'value': set_num_precision(lq_haz_level, 2, 'float'),
+                    'parameter': 'Aggregate Hazard',
+                    'units': 'km^2'
+                },
+                'population_alert': {
+                    'color': lq_pop_alert,
+                    'value': set_num_precision(lq_pop_level, 2, 'int'),
+                    'parameter': 'Population exposure',
+                    'units': 'people'
+                },
+                'color_bins': color_bins,
+                'probability': {
+                    'max': float("%.2f" % lq_stats['Max']),
+                    'std': float("%.2f" % lq_stats['Std'])
+                }
+            }]
     else:
-        # Get all info from dictionaries of preferred events, add in extent and filename
+        # Get all info from dictionaries of preferred events, add in extent
+        # and filename
         for lsm in lsmodels:
             # Add extent and filename for preferred model
             if lsm['preferred']:
@@ -515,8 +551,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     raise OSError("Landslide extent not found.")
                 lsm['extent'] = ls_extent
                 lsm['filename'] = flnm
-                
-        
+
         for lqm in lqmodels:
             if lqm['preferred']:
                 shortname = lqm['model']
@@ -535,7 +570,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     raise OSError("Liquefaction extent not found.")
                 lqm['extent'] = lq_extent
                 lqm['filename'] = flnm
-        
+
     # Try to get event info
     event_dict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
     sm_dict = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
@@ -548,7 +583,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         event_url = detail.url
         code = detail['code']
         net = detail['net']
-        time = detail['time']
+        utc = pytz.utc
+        detail_time = ShakeDateTime.fromtimestamp(detail['time']/1000.0, utc)
 
         # ---------------------------------------------------------------------
         # Finite fault stuff:
@@ -567,7 +603,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         event_url = '%s%s#executive' % (base_url, event_dict['event_id'])
         code = 'unknown'
         net = 'unknown'
-        time = -999
+        detail_time = -999
         point = False
 
     # Should we display the warning about point source?
@@ -582,7 +618,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             'net': net,
             'magnitude': event_dict['magnitude'],
             'depth': event_dict['depth'],
-            'time': time,
+            'time': detail_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
             'lat': event_dict['lat'],
             'lon': event_dict['lon'],
             'event_url': event_url,
@@ -613,8 +649,9 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
         paramalertLQ (float): Hazard statistic of preferred liquefaction model
         parampopLS (float): Exposure statistic of preferred landslide model
         parampopLQ (float): Exposure statistic of preferred liquefaction model
-        hazbinLS (list): 3 element list of bin edges for landslide 
-            hazard alert between Green and Yellow, Yellow and Orange, and Orange and Red.
+        hazbinLS (list): 3 element list of bin edges for landslide
+            hazard alert between Green and Yellow, Yellow and Orange, and
+            Orange and Red.
         popbinLS (list): same as above but for population exposure
         hazbinLQ (list): 3 element list of bin edges for liquefaction hazard
             alert between Green and Yellow, Yellow and Orange, and Orange
