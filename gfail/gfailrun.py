@@ -180,7 +180,7 @@ def run_gfail(args):
         else:
             bounds = None
 
-        if args.make_webpage:
+        if args.make_webpage or args.make_summary:
             results = []
 
         # pre-read in ocean trimming file polygons so only do this step once
@@ -195,7 +195,7 @@ def run_gfail(args):
                 trimfile = args.trimfile
         else:
             trimfile = None
-        
+
         # Get finite fault ready, if exists
 
         ffault = None
@@ -212,7 +212,7 @@ def run_gfail(args):
                     ffault = None
             except:
                 print('Could not read in finite fault, will try to download from comcat')
-                ffault = None 
+                ffault = None
 
         if ffault is None:
             # Try to get finite fault file, if it exists
@@ -379,12 +379,16 @@ def run_gfail(args):
                 filenames.append(filef)
                 filenames.append(filefh)
 
+            if args.make_summary and not args.make_webpage:
+                # Compile into list of results for later
+                results.append(maplayers)
+
         if args.make_webpage:
-            outputs = hazdev(results, configs, 
+            outputs = hazdev(results, configs,
                              shakefile, outfolder=outfolder,
                              pop_file=args.popfile)
             filenames = filenames + outputs
-        
+
         if args.make_summary:
             outputs = GFSummary(results, configs, args.web_template,
                                 shakefile, outfolder=outfolder, cleanup=True,
@@ -394,7 +398,7 @@ def run_gfail(args):
         print('\nFiles created:\n')
         for filen in filenames:
             print('%s' % filen)
-        
+
         return filenames
 
 
