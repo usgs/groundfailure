@@ -7,6 +7,7 @@ TODO:
 import os
 import json
 import shutil
+import pkg_resources
 from lxml import etree
 from impactutils.io.cmd import get_command_output
 
@@ -132,7 +133,9 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         lq_xmin + lq_xmax + lq_ymin + lq_ymax +
         ls_xmin + ls_xmax + ls_ymin + ls_ymax +
         rupt_warn +
-        '"--property-shakemap-version=%s" ' % shake_version
+        '"--property-shakemap-version=%s" ' % shake_version +
+        '"--property-liquefaction-legend=legend_liquefaction.png" ' +
+        '"--property-landslide-legend=legend_landslide.png" '
     )
 
     if not dryrun:
@@ -291,6 +294,15 @@ def prepare_pdl_directory(event_dir):
                      href='zhu_2017_global_model.tif', type=gtif_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017.png', type=png_mime)
+
+    # Copy over legend files
+    data_dir = pkg_resources.resource_filename('gfail', 'data')
+    src = os.path.join(data_dir, 'legend_landslide.png')
+    dst = os.path.join(pdl_dir, 'legend_landslide.png')
+    shutil.copy(src, dst)
+    src = os.path.join(data_dir, 'legend_liquefaction.png')
+    dst = os.path.join(pdl_dir, 'legend_liquefaction.png')
+    shutil.copy(src, dst)
 
     # Write result
     out_file = os.path.join(pdl_dir, 'contents.xml')

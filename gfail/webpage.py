@@ -499,7 +499,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 'probability': {
                     'max': float("%.2f" % ls_stats['Max']),
                     'std': float("%.2f" % ls_stats['Std'])
-                }
+                },
+                'legend': 'legend_landslide.png'
             }]
         if lqmodels is None:
             lqmodels = [{
@@ -525,7 +526,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 'probability': {
                     'max': float("%.2f" % lq_stats['Max']),
                     'std': float("%.2f" % lq_stats['Std'])
-                }
+                },
+                'legend': 'legend_liquefaction.png'
             }]
     else:
         # Get all info from dictionaries of preferred events, add in extent
