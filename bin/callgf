@@ -1,0 +1,193 @@
+#!/usr/bin/env python
+
+# stdlib imports
+import argparse
+import os.path
+import sys
+import logging
+import StringIO
+import configparser
+
+# third party imports
+from impactutils.io.cmd import get_command_output
+from mapio.shake import getHeaderData
+
+# local imports
+from gfail.pdl import transfer2
+
+# thresholds for running on event
+EIS_THRESHOLD = 'yellow'
+MAG_THRESHOLD = 6.5
+MMI_THRESHOLD = 6
+
+# what are the pager alert levels?
+ALERTLEVELS = ['green', 'yellow', 'pending', 'orange', 'red']
+
+# config file name, located in ~/.groundfailure
+CONFIG_FILE = 'callgf.ini'
+
+# gfail defaults file, which contains the default output directory
+# TODO: move this to ~/.groundfailure as well
+# currently in users home
+DEFAULTS_FILE = '.gfail_defaults'
+
+
+def check_pager_thresholds(args, config):
+    mag_threshold = config['THRESHOLDS']['mag']
+    eis_threshold = config['THRESHOLDS']['eis']
+    mmi_threshold = config['THRESHOLDS']['mmi']
+    run_pager = False
+    if args.magnitude >= mag_threshold:
+        run_pager = True
+    if args.maxmmi >= mmi_threshold:
+        run_pager = True
+    if ALERTLEVELS.index(args.alertlevel) >= ALERTLEVELS.index(eis_threshold):
+        run_pager = True
+
+    return run_pager
+
+
+def process_pager(args, config, outdir):
+    logging.info('######Event %s####\n' % args.code)
+    logging.info('args%s\n\n' % str(args))
+    if args.status == 'DELETE':
+        # look at this with respect to archiving and sending cancel messages
+        msg = 'No action to take with delete messages.'
+        print(msg)
+        logging.info(msg+'\n\n')
+        sys.exit(1)
+
+    logging.info('Checking if status is update...\n\n')
+    if args.status != 'UPDATE':
+        msg = 'No action to take with %s messages.' % args.status
+        print(msg)
+        logging.info(msg+'\n\n')
+        sys.exit(1)
+
+    logging.info('Checking action...\n\n')
+    if args.action not in ('EVENT_ADDED', 'EVENT_UPDATED',
+                           'PRODUCT_ADDED', 'PRODUCT_UPDATED'):
+        msg = 'No action to take with %s messages.' % args.action
+        print(msg)
+        logging.info(msg+'\n\n')
+        sys.exit(1)
+
+    logging.info('Checking PAGER property thresholds...\n\n')
+    if not check_pager_thresholds(args, config):
+        msg = 'Input ShakeMap did not meet target thresholds.  Exiting.'
+        print(msg)
+        logging.info(msg+'\n\n')
+        sys.exit(1)
+
+    logging.info('Checking gridfile...\n\n')
+    gridfile = os.path.join(args.directory, 'grid.xml')
+    if not os.path.isfile(gridfile):
+        msg = 'Could not find input ShakeMap grid file at %s.  Exiting.' % \
+              gridfile
+        print(msg)
+        logging.info(msg+'\n\n')
+        sys.exit(1)
+
+    # We've passed all the filters, so call gfail
+    homedir = os.path.dirname(os.path.abspath(
+        __file__))  # where is this script?
+    gfailpath = os.path.join(homedir, 'gfail')
+    cmd = "%s %s -c /home/gfail/configlist.txt --hdf5 -w" % (
+        gfailpath, gridfile)
+    res, stdout, stderr = get_command_output(cmd)
+    if res:
+        msg = 'Successful run.  Output returned: "%s".' % stdout
+        print(msg)
+        logging.info(msg+'\n\n')
+        # now that we've successfully called gfail, let's transfer the results
+        transfer2(gridfile, outdir, config)
+        sys.exit(0)
+    else:
+        msg = 'Unsuccessful run.  Output returned: "%s", "%s".' % (
+            stdout, stderr)
+        print(msg)
+        logging.info(msg+'\n\n')
+        sys.exit(1)
+
+
+def read_shakemap(gridfile):
+    gdict, edict, gspec_dict, fdict, unc_dict = getHeaderData(gridfile)
+    source = gdict['shakemap_originator']
+    lat = edict['lat']
+    lon = edict['lon']
+    magnitude = edict['magnitude']
+    time = edict['event_timestamp']
+    return (source, time, magnitude, lat, lon)
+
+
+def main(args, config, outdir):
+    logfile = os.path.join(os.path.expanduser('~'), 'callpagerlog.log')
+    logging.basicConfig(filename=logfile, level=logging.DEBUG)
+    logging.info('Arguments: "%s"' % str(args))
+    if args.type == 'losspager':
+        process_pager(args, config, outdir)
+    else:
+        print('No type specified, exiting.')
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    desc = """Call the PAGER main program with arguments from PDL.
+This program is meant to be called by a PDL process, and generally not
+called by a user, unless that user is a developer debugging callpager itself.
+"""
+    argparser = argparse.ArgumentParser(
+        description=desc,
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    argparser.add_argument("--directory",
+                           help="Directory where PAGER data can be found",
+                           metavar='DIRECTORY')
+    argparser.add_argument("--type",
+                           help="Product type", metavar='TYPE')
+    argparser.add_argument("--code",
+                           help="Product code", metavar='CODE')
+    argparser.add_argument("--source",
+                           help="Product source", metavar='SOURCE')
+    argparser.add_argument("--status",
+                           help="Product status", metavar='STATUS')
+    argparser.add_argument('-d', '--debug', action='store_true',
+                           default=False, help='Run PAGER in debug mode')
+    argparser.add_argument("--action",
+                           help="Product action", metavar='ACTION')
+    argparser.add_argument("--preferred-latitude", type=float,
+                           help="Event latitude", metavar='LAT', dest='lat')
+    argparser.add_argument("--preferred-longitude", type=float,
+                           help="Event longitude", metavar='LON', dest='lon')
+    argparser.add_argument("--preferred-depth", type=float,
+                           help="Event depth", metavar='DEPTH', dest='depth')
+    argparser.add_argument("--preferred-magnitude", type=float,
+                           help="Event magnitude", metavar='MAG',
+                           dest='magnitude')
+    argparser.add_argument("--preferred-eventtime",
+                           help="Event time", metavar='TIME', dest='time')
+
+    # get product properties
+    argparser.add_argument("--property-maxmmi", dest="maxmmi", type=float,
+                           help="PAGER Maximum MMI")
+    argparser.add_argument("--property-alertlevel", dest="alertlevel",
+                           help="PAGER Alert Level")
+    pargs, unknown = argparser.parse_known_args()
+
+    # make sure the config file is where we expect it to be, and read it
+    config_file = os.path.join(os.path.expanduser(
+        '~'), '.groundfailure', 'callgf.ini')
+    pconfig = configparser.ConfigParser()
+    pconfig.read(config_file)
+
+    # read the gfail defaults file as well, get the output directory
+    # this file has no header, so adding hack to make it readable by
+    # configparser
+    defaults_file = os.path.join(os.path.expanduser('~'), 'DEFAULTS_FILE')
+    data = open(defaults_file, 'r').read().decode('utf-8')
+    data = '[DEFAULTS]'+data
+    iostring = StringIO.StringIO(data)
+    defaults = configparser.ConfigParser()
+    defaults.readfp(iostring)
+    outdir = defaults['DEFAULTS']['output_filepath']
+
+    main(pargs, pconfig, outdir)
