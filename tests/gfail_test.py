@@ -18,6 +18,7 @@ datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
 changetarget = False  # Change to True if need to recompute target data
 
+
 def test_zhu2015(tmpdir):
     shakegrid = os.path.join(datadir, 'loma_prieta', 'grid.xml')
     pathcmd = """
@@ -65,7 +66,8 @@ def test_zhu2015(tmpdir):
         if changetarget:
             # To change target data:
             test_grid.save(test_file)
-            cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (test_file, target_file)
+            cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
+                test_file, target_file)
             rc, so, se = get_command_output(cmd)
 
         target_grid = GDALGrid.load(target_file)
@@ -120,7 +122,7 @@ def test_zhu2015_web(tmpdir):
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
-    
+
         with open(default_file, "a") as f:
             f.write("popfile = %s"
                     % os.path.join(datadir, 'loma_prieta/lspop2016_lp.flt'))
@@ -135,17 +137,17 @@ def test_zhu2015_web(tmpdir):
         # Make png
         cmd = 'create_png -e %s' % event_dir
         rc1, so1, se1 = get_command_output(cmd)
-        
+
         # Make info
         cmd = 'create_info -e %s' % event_dir
         rc2, so2, se2 = get_command_output(cmd)
-        
+
         # Make PDL directory
         pdldir = os.path.join(p, '19891018000415')
         pdl.prepare_pdl_directory(pdldir)
-    
+
         # Transfer dry run
-        transfer_cmd = pdl.transfer(pdldir, 'None', dryrun=True)
+        pdl_out = pdl.transfer(pdldir, 'None', dryrun=True)
     except Exception as e:  # So that defaults are put back even if something goes wrong
         print(e)
 
@@ -157,11 +159,8 @@ def test_zhu2015_web(tmpdir):
     os.remove(default_file+'_bak')
 
     # Then do test
-    assert '--property-lq_pop_alert=red' in transfer_cmd
-    assert '--property-ls_pop_alert=orange' in transfer_cmd
-    assert '--property-lq_pop_alert_level=15000' in transfer_cmd
-    assert '--property-ls_pop_alert_level=1400' in transfer_cmd
-    
+    assert pdl_out['rc'] is True
+
     # Remove tempfile
     shutil.rmtree(p)
 
