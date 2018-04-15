@@ -46,7 +46,8 @@ if __name__ == '__main__':
                 popfile = D[key]
 
     parser = argparse.ArgumentParser(
-        description='Run ground failure models on input ShakeMap grid.')
+        description='Run ground failure models on input ShakeMap grid.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         'config', metavar='config', nargs='?',
         help='single config file of model to run (.ini extension), or text '

@@ -17,22 +17,20 @@ import gfail.logisticmodel as LM
 from gfail.godt import godt2008
 from gfail.makemaps import (modelMap, interactiveMap, GFSummary)
 from gfail.webpage import hazdev
-from gfail.utilities import (get_event_comcat, parseConfigLayers,
-                             parseMapConfig, text_to_json, write_floats,
-                             savelayers)
+from gfail.utilities import (
+    get_event_comcat, parseConfigLayers,
+    parseMapConfig, text_to_json, write_floats,
+    savelayers)
 
 
 def run_gfail(args):
-    """Runs ground failure
+    """Runs ground failure.
 
     Args:
-        args: dictionary or argument parser Namespace containing the following
-            information:
-                
-                
-                
-        
-    Returns: A list of filenames created
+        args: dictionary or argument parser Namespace from bin/gfail program.
+
+    Returns:
+        list: Names of created files.
 
     # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
     """
@@ -40,7 +38,7 @@ def run_gfail(args):
     # If args is a dictionary, convert to a Namespace
     if isinstance(args, dict):
         args = Namespace(**args)
-    
+
     if args.set_default_paths:
         set_default_paths(args)
         print('default paths set, continuing...\n')
@@ -52,7 +50,7 @@ def run_gfail(args):
     if args.reset_default_paths:
         reset_default_paths()
         return
-    
+
     if args.make_webpage:
         # Turn on GIS and HDF5 flags
         gis = True
@@ -84,7 +82,7 @@ def run_gfail(args):
             if isURL(shakefile):
                 # getGridURL returns a named temporary file object
                 shakefile = getGridURL(shakefile)
-                #cleanup = True  # Be sure to delete it after
+                # cleanup = True  # Be sure to delete it after
             else:
                 raise NameError('Could not find "%s" as a file or a valid url'
                                 % (shakefile))
@@ -100,16 +98,16 @@ def run_gfail(args):
                 os.makedirs(outfolder)
         else:
             outfolder = outdir
-            
+
         # Write shakefile to a file for use later
         shakename = os.path.join(outfolder, "shakefile.txt")
         shake_file = open(shakename, "w")
         shake_file.write(shakefile)
         shake_file.close()
         filenames.append(shakename)
-        
+
         config = args.config
-        
+
         if args.config_filepath is not None:
             # only add config_filepath if full filepath not given and file
             # ext is .ini
@@ -120,7 +118,8 @@ def run_gfail(args):
         if os.path.splitext(config)[-1] == '.ini':
             temp = ConfigObj(config)
             if len(temp) == 0:
-                raise Exception('Could not find specified .ini file: %s' % config)
+                raise Exception(
+                    'Could not find specified .ini file: %s' % config)
             if args.data_path is not None:
                 temp = correct_config_filepaths(args.data_path, temp)
             configs = [temp]
@@ -132,7 +131,7 @@ def run_gfail(args):
             configs = []
             conffail = []
             for conf in configlist:
-                conf = conf.replace('\n', '')
+                conf = conf.strip()
                 if not os.path.isabs(conf):
                     # only add config_filepath if full filepath not given
                     conf = os.path.join(args.config_filepath, conf)
@@ -140,8 +139,8 @@ def run_gfail(args):
                     temp = ConfigObj(conf)
                     if temp:
                         if args.data_path is not None:
-                            temp = correct_config_filepaths(args.data_path,
-                                                            temp)
+                            temp = correct_config_filepaths(
+                                args.data_path, temp)
                         configs.append(temp)
                     else:
                         conffail.append(conf)
@@ -186,7 +185,8 @@ def run_gfail(args):
         # pre-read in ocean trimming file polygons so only do this step once
         if args.trimfile is not None:
             if not os.path.exists(args.trimfile):
-                print('trimfile defined does not exist: %s\nOcean will not be trimmed' % args.trimfile)
+                print(
+                    'trimfile defined does not exist: %s\nOcean will not be trimmed' % args.trimfile)
                 trimfile = None
             elif os.path.splitext(args.trimfile)[1] != '.shp':
                 print('trimfile must be a shapefile, ocean will not be trimmed')
@@ -208,7 +208,8 @@ def run_gfail(args):
                 elif os.path.splitext(args.finite_fault)[-1] == '.json':
                     ffault = args.finite_fault
                 else:
-                    print('Could not read in finite fault, will try to download from comcat')
+                    print(
+                        'Could not read in finite fault, will try to download from comcat')
                     ffault = None
             except:
                 print('Could not read in finite fault, will try to download from comcat')
@@ -244,20 +245,20 @@ def run_gfail(args):
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
                 lm = LM.LogisticModel(shakefile, conf,
-                    uncertfile=args.uncertfile,
-                    saveinputs=args.save_inputs,
-                    bounds=bounds,
-                    numstd=float(args.std),
-                    trimfile=trimfile)
+                                      uncertfile=args.uncertfile,
+                                      saveinputs=args.save_inputs,
+                                      bounds=bounds,
+                                      numstd=float(args.std),
+                                      trimfile=trimfile)
 
                 maplayers = lm.calculate()
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(shakefile, conf,
-                    uncertfile=args.uncertfile,
-                    saveinputs=args.save_inputs,
-                    bounds=bounds,
-                    numstd=float(args.std),
-                    trimfile=trimfile)
+                                     uncertfile=args.uncertfile,
+                                     saveinputs=args.save_inputs,
+                                     bounds=bounds,
+                                     numstd=float(args.std),
+                                     trimfile=trimfile)
             else:
                 print('Unknown model function specified in config for %s '
                       'model, skipping to next config' % modelfunc)
@@ -357,7 +358,8 @@ def run_gfail(args):
                                          % (filename, keyS))
 
                     GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
-                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (filen, fileg)
+                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
+                        filen, fileg)
                     rc, so, se = get_command_output(cmd)
                     # Delete bil file and its header
                     os.remove(filen)
