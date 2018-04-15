@@ -38,7 +38,7 @@ def check_groundfailure_thresholds(args, config):
 
     Args:
         args (argparse): Argparse object containing command line arguments.
-        config (ConfigParser): Options set in ~/.groudfailure/callgf.ini.
+        config (ConfigObj): Options set in ~/.gfail_defaults.
 
     Returns:
         bool: Should groundfailure be run?
@@ -118,34 +118,52 @@ def process_groundfailure(args, config):
 
     # File containing list of model configs to include
     model_file = os.path.join(
-        config['PATHS']['data_path'], 'autogf_models')
+        config['data_path'], 'autogf_models')
 
     # Need to find the ocean shapefile for timming, assume it is in
     # the data_path directory
     trim_file = os.path.join(
-        config['PATHS']['data_path'], "gadm28", "gadm28.shp")
+        config['data_path'], "gadm28", "gadm28.shp")
 
     # Run gfail
     cmd = "gfail %s %s --hdf5 -w -tr %s" % (
         model_file, gridfile, trim_file)
     res, stdout, stderr = get_command_output(cmd)
-    exit
-
-    if res:
-        msg = 'Successful run.  Output returned: "%s".' % stdout
-        print(msg)
-        logging.info(msg + '\n\n')
-
-        # now that we've successfully called gfail, let's transfer the results
-        outdir = config['PATHS']['output_filepath']
-        transfer(gridfile, outdir, config)
-        sys.exit(0)
-    else:
-        msg = 'Unsuccessful run.  Output returned: "%s", "%s".' % (
-            stdout, stderr)
-        print(msg)
-        logging.info(msg + '\n\n')
+    if not res:
+        print("gfail command failed.")
         sys.exit(1)
+
+    # Find output directory
+    out_lines = stdout.decode().split('\n')
+    info_path = [l for l in out_lines if 'info.json' in l][0]
+    out_dir = os.path.dirname(info_path)
+
+    # Make overlay PNGs for website
+    cmd = "create_png -e %s" % out_dir
+    res, stdout, stderr = get_command_output(cmd)
+    if not res:
+        print("create_png command failed.")
+        sys.exit(1)
+
+    # Make info.json
+    cmd = "create_info -e %s" % out_dir
+    res, stdout, stderr = get_command_output(cmd)
+    if not res:
+        print("create_info command failed.")
+        sys.exit(1)
+
+    # Transfer
+    pdl_conf_file = config['pdl_config']
+    cmd = "gfail_transfer -e %s -c %s -d True" % (out_dir, pdl_conf_file)
+    res, stdout, stderr = get_command_output(cmd)
+    if not res:
+        print("gfail_transfer command failed.")
+        sys.exit(1)
+    else:
+        msg = 'Successful run.  Output returned: \n\n%s\n.' % stdout.decode()
+        print(msg)
+        logging.info(msg + '\n\n')
+        sys.exit(0)
 
 
 def read_shakemap(gridfile):
