@@ -4,278 +4,521 @@
 import argparse
 import os.path
 import sys
+import glob
+from datetime import datetime
 import logging
-from configobj import ConfigObj
+import logging.config
+import sqlite3
+from collections import OrderedDict
 
 # third party imports
 from impactutils.io.cmd import get_command_output
+from impactutils.comcat.query import GeoServe
 from mapio.shake import getHeaderData
+import configobj
 
-# local imports
-from gfail.pdl import transfer
+import fiona
+from shapely.geometry import shape, box
 
-# thresholds for running on event
-EIS_THRESHOLD = 'yellow'
-MAG_THRESHOLD = 6.5
-MMI_THRESHOLD = 6
+# config parameters required for this program to run
+REQUIRED_CONFIG = ['log_filepath', 'output_filepath',
+                   'trimfile', 'dbfile', 'pdl_config']
 
-# what are the pager alert levels?
-ALERTLEVELS = ['green', 'yellow', 'pending', 'orange', 'red']
+# what are the networks from which we will accept ShakeMap products?
+WHITELIST = ['us', 'ci', 'nc', 'nn', 'hv', 'uw', 'nn', 'uu', 'ak']
 
-# config file name, located in ~/.groundfailure
-CONFIG_FILE = 'callgf.ini'
+# what are the networks that have origins but not ShakeMaps
+NO_SHAKEMAPS = ['mb', 'ecx', 'tul', 'ismp',
+                'nm', 'se', 'ogso', 'pr', 'neic', 'ld', 'wy']
 
-# gfail defaults file, which contains the default output directory
-# TODO: move this to ~/.groundfailure as well
-# currently in users home
-DEFAULTS_FILE = '.gfail_defaults'
+# minimum magnitude to be processed
+MAG_THRESHOLD = 4.0
+
+# logging configuration - sets up a rotating log file
+LOG_CFG = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': ('%(levelname)s ; %(asctime)s ; '
+                       '%(module)s.%(funcName)s ; %(message)s'),
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'handlers': {
+        'default': {
+            'level': 'INFO',
+            'formatter': 'standard',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'when': 'midnight',
+        },
+    },
+    'loggers': {
+        '': {
+            'handlers': ['default'],
+            'level': 'INFO',
+            'propagate': False
+        },
+    }
+}
+
+# name of the logfile, will get archived at midnight
+LOGFILE = 'groundfailure.log'
+
+# name of the global configuration file
+CONFIG_FILE = '.gfail_defaults'
+
+# string time format to stuff in the database
+TIMEFMT = '%Y-%m-%d %H:%M:%S'
+
+# schema definition of the event table in the sqlite database
+EVENT = OrderedDict([('id', 'INTEGER PRIMARY KEY'),
+                     ('eventcode', 'TEXT'),
+                     ('eventdir', 'TEXT'),
+                     ('version', 'INTEGER'),
+                     ('lat', 'REAL'),
+                     ('lon', 'REAL'),
+                     ('depth', 'REAL'),
+                     ('time', 'TIMESTAMP'),
+                     ('mag', 'REAL'),
+                     ('location', 'TEXT'),
+                     ('finitefault', 'INTEGER'),
+                     ('HaggLS', 'REAL'),
+                     ('ExpPopLS', 'REAL'),
+                     ('HaggLQ', 'REAL'),
+                     ('ExpPopLQ', 'REAL')])
 
 
-def check_groundfailure_thresholds(args, config):
-    """
-    This function checks for whether or not to run groundfailure based on
-    magnitude, max MMI, and EIS.
+def get_next_version(eventdir):
+    """Get the number for the next version for the input event directory.
 
     Args:
-        args (argparse): Argparse object containing command line arguments.
-        config (ConfigObj): Options set in ~/.gfail_defaults.
+        eventdir (str): Path to event directory.
 
     Returns:
-        bool: Should groundfailure be run?
+        int - Number of next version of groundfailure product.
+
     """
-    # We could make this configurable but I think it is better to just
-    # hav it hard coded for now.
-    # mag_threshold = config['THRESHOLDS']['mag']
-    # eis_threshold = config['THRESHOLDS']['eis']
-    # mmi_threshold = config['THRESHOLDS']['mmi']
-    mag_threshold = MAG_THRESHOLD
-    eis_threshold = EIS_THRESHOLD
-    mmi_threshold = MMI_THRESHOLD
-
-    run_pager = False
-    if args.magnitude >= mag_threshold:
-        run_pager = True
-    if args.maxmmi >= mmi_threshold:
-        run_pager = True
-    # Not clear to me what this is doing.... skip for now
-    # if ALERTLEVELS.index(args.alertlevel) >= ALERTLEVELS.index(eis_threshold):
-    #     run_pager = True
-
-    return run_pager
+    vfolders = glob.glob(os.path.join(eventdir, 'version.*'))
+    if not len(vfolders):
+        return 1
+    vfolders = sorted(vfolders)
+    version = int(vfolders[-1][-1]) + 1
+    return version
 
 
-def process_groundfailure(args, config):
-    """
-    Method that runs groundfailure.
+def shakemap_over_land(landfile, grid):
+    """Test to see if any portion of the ShakeMap grid is over land.
 
     Args:
-        args (argparse): Argparse object containing command line arguments.
-        config (ConfigObj): Options set in ~/.gfail_defaults.
+        landfile (str): Path to global shapefile of land masses.
+        grid (dict): grid containing fields:
+                     - lon_min
+                     - lon_max
+                     - lat_min
+                     - lat_max
+    Returns:
+        bool: True if over land, False if not.
     """
-    logging.info('######Event %s####\n' % args.code)
-    logging.info('args%s\n\n' % str(args))
+    # Check if ShakeMap is entirely in water
+    box_tuple = (grid['lon_min'], grid['lat_min'],
+                 grid['lon_max'], grid['lat_max'])
+    grid_box = box(*box_tuple)
+
+    with fiona.open(landfile, 'r') as shapefile:
+        tfeatures = shapefile.items(bbox=box_tuple)
+        features = [shape(feature[1]["geometry"]) for feature in tfeatures]
+
+    on_land = False
+    for feature in features:
+        if feature.intersects(grid_box):
+            on_land = True
+            break
+
+    return on_land
+
+
+def connect_database(dbfile):
+    """Connect to the sqlite database, create if necessary.
+
+    Args:
+        dbfile (str): Path to sqlite database file.
+    Returns:
+        connection: SQLITE connection object.
+        cursor: SQLITE cursor object.
+    """
+
+    # Create the database if it doesn't exist
+    db_exists = os.path.isfile(dbfile)
+    connection = None
+    cursor = None
+    connection = sqlite3.connect(dbfile)
+    cursor = connection.cursor()
+    if not db_exists:
+        createcmd = 'CREATE TABLE shakemap ('
+        nuggets = []
+        for column, ctype in EVENT.items():
+            nuggets.append('%s %s' % (column, ctype))
+        createcmd += ','.join(nuggets) + ')'
+        cursor.execute(createcmd)
+
+    return connection, cursor
+
+
+def get_version_dir(eventid, eventdir, config):
+    """Get the version directory for an event.
+
+    Args:
+        eventid (str): Event ID.
+        eventdir (str): Path to (possibly non-existent) event directory.
+        config (ConfigObj): Configuration object.
+
+    Returns:
+        str: Path to version dictionary.
+        int: Version number.
+        str: Event directory.
+    """
+    # if eventdir is None, create a new one
+    if eventdir is None:
+        tnow = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        eventdir = os.path.join(
+            config['output_filepath'], '%s_%s' % (eventid, tnow))
+        if os.path.isdir(eventdir):  # how did this happen??
+            version = get_next_version(eventdir)
+        else:
+            os.makedirs(eventdir)
+            version = 1
+    else:
+        if not os.path.isdir(eventdir):  # this shouldn't happen either...
+            os.makedirs(eventdir)
+            version = 1
+        else:
+            version = get_next_version(eventdir)
+
+    # create a version directory
+    vdir = os.path.join(eventdir, 'version.%03i' % version)
+    return (vdir, version, eventdir)
+
+
+def get_event_dir(args, cursor):
+    """Scan the database for existing event directory.
+
+    Args:
+        args (arparser Namespace): Input arguments.
+        cursor (sqlite cursor): Database cursor object.
+
+    Returns:
+        int: Database ID of event (-1 if not found).
+        str: Event directory (None if not found).
+    """
+    # get all the event IDS associated with this event, then we can scan the
+    # database to see if we have processed this event before.
+    eventdir = None
+    db_id = -1
+    eventids = args.eventids.split(',')
+    for eventid in eventids:
+        idquery = ('SELECT id,eventdir FROM shakemap WHERE eventcode="%s"' %
+                   eventid)
+        cursor.execute(idquery)
+        row = cursor.fetchone()
+        if row is None:
+            continue
+        db_id, eventdir = row
+        break
+
+    return (db_id, eventdir)
+
+
+def insert_event(connection, cursor, eventid, event, version, eventdir):
+    """Insert known event information into database.
+
+    Args:
+        connection (sqlite connection): connection object.
+        cursor (sqlite cursor): cursor object.
+        eventid (str): Event ID.
+        event (dict): Event dictionary.
+        version (int): Groundfailure version number.
+        eventdir (str): Path to groundfailure event directory.
+    Returns:
+        int: Database ID of event row inserted.
+    """
+    cnames = ['eventcode', 'eventdir', 'version',
+              'lat', 'lon', 'depth',
+              'time', 'mag', 'location']
+    columns = ','.join(cnames)
+    vfmt = '("%s","%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s")'
+    fmt = 'INSERT INTO shakemap (%s) VALUES %s' % (columns, vfmt)
+    tpl = (eventid, eventdir, version,
+           event['lat'], event['lon'],
+           event['depth'], event['event_timestamp'].strftime(TIMEFMT),
+           event['magnitude'], event['event_description'])
+    query = fmt % tpl
+    cursor.execute(query)
+    db_id = cursor.lastrowid
+    connection.commit()
+    return db_id
+
+
+def process_shakemap(args, config):
+    """Process the ShakeMap.
+
+    Args:
+        args (arparser Namespace): Input arguments.
+        config (ConfigObj): Configuration object.
+    """
+    logging.info('###### Event source: %s' % args.preferred_eventsource)
+    logging.info('###### Event source code: %s' %
+                 args.preferred_eventsourcecode)
+    logging.info('args: \n%s' % str(args))
     if args.status == 'DELETE':
         # look at this with respect to archiving and sending cancel messages
         msg = 'No action to take with delete messages.'
-        print(msg)
-        logging.info(msg + '\n\n')
+        logging.info(msg)
         sys.exit(1)
 
-    logging.info('Checking if status is update...\n\n')
+    logging.info('Checking if status is update...')
     if args.status != 'UPDATE':
-        msg = 'No action to take with %s status.' % args.status
-        print(msg)
-        logging.info(msg + '\n\n')
+        msg = 'No action to take with %s messages.' % args.status
+        logging.info(msg)
         sys.exit(1)
 
-    logging.info('Checking action...\n\n')
+    logging.info('Checking action...')
     if args.action not in ('EVENT_ADDED', 'EVENT_UPDATED',
                            'PRODUCT_ADDED', 'PRODUCT_UPDATED'):
-        msg = 'No action to take with %s action.' % args.action
-        print(msg)
-        logging.info(msg + '\n\n')
+        msg = 'No action to take with %s messages.' % args.action
+        logging.info(msg)
         sys.exit(1)
 
-    logging.info('Checking groundfailure property thresholds...\n\n')
-    if not check_groundfailure_thresholds(args, config):
-        msg = 'Input ShakeMap did not meet target thresholds.  Exiting.'
-        print(msg)
-        logging.info(msg + '\n\n')
-        sys.exit(1)
-
-    logging.info('Checking gridfile...\n\n')
-    gridfile = os.path.join(args.directory, 'grid.xml')
+    logging.info('Checking gridfile...')
+    gridfile = os.path.join(args.directory, 'download', 'grid.xml')
     if not os.path.isfile(gridfile):
-        msg = 'Could not find input ShakeMap grid file at %s.  Exiting.' % \
-              gridfile
-        print(msg)
-        logging.info(msg + '\n\n')
+        gridfile = os.path.join(args.directory, 'grid.xml')
+        if not os.path.isfile(gridfile):
+            msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
+                   % gridfile)
+            logging.info(msg)
+            sys.exit(1)
+
+    logging.info('Checking source...')
+    if args.preferred_eventsource not in WHITELIST:
+        msg = ('Input ShakeMaps must be from an approved list of sources: %s. '
+               'Exiting.' % str(WHITELIST))
+        logging.info(msg)
         sys.exit(1)
 
-    #
+    logging.info('Checking magnitude...')
+    if args.magnitude < MAG_THRESHOLD:
+        msg = ('Input ShakeMaps must be larger than M%.1f. Exiting.'
+               % MAG_THRESHOLD)
+        logging.info(msg)
+        sys.exit(1)
+
+    # Use lat,lon and source to exclude ShakeMap providers who are playing
+    # outside their sandbox
+    logging.info('Checking for authoritativeness...')
+
+    # we'll default to letting the event run if we can't figure out who's
+    # authoritative
+    authtype = 'anss'
+    authsrc = args.preferred_eventsource
+    try:
+        gs = GeoServe(args.preferred_latitude, args.preferred_longitude)
+        authsrc, authtype = gs.getAuthoritative()
+    except Exception as e:
+        logging.info('Unable to connect to GeoServe, assuming "%s" is '
+                     'authoritative.' % args.source)
+    if authtype != 'anss':
+        authsrc = 'us'
+    is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
+    if not is_authoritative and authsrc.lower() not in NO_SHAKEMAPS:
+        msg = ('Source %s is not authoritative for this region (%s is). '
+               'Exiting.' % (args.source, authsrc))
+        logging.info(msg)
+        sys.exit(1)
+
+    logging.info('Checking to see if ShakeMap is over any land...')
+    landfile = config['trimfile']
+    hdrtuple = getHeaderData(gridfile)
+    grid = hdrtuple[2]
+    event = hdrtuple[1]
+    if not shakemap_over_land(landfile, grid):
+        msg = 'Input ShakeMap is completely over water. Exiting.'
+        logging.info(msg)
+        sys.exit(1)
+
+    # connect to the database, creating it if necessary
+    dbfile = config['dbfile']
+    conn, cursor = connect_database(dbfile)
+
+    # get the database ID and directory of the event we have
+    # db_id = -1 and eventdir is None if event not in database
+    db_id, eventdir = get_event_dir(args, cursor)
+
+    # get the event ID for this event
+    eventsource = args.preferred_eventsource
+    eventcode = args.preferred_eventsourcecode
+    eventid = eventsource+eventcode
+
+    # Get the directory for this new version
+    vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
+    os.makedirs(vdir)
+
+    # insert what we know about the event into the database
+    db_id = insert_event(conn, cursor, eventid, event,
+                         version, eventdir)
+
+    # ----------------------------------------------------------------------
     # We've passed all the filters, so call gfail
-    #
+    # ----------------------------------------------------------------------
 
     # File containing list of model configs to include
     model_file = os.path.join(
         config['data_path'], 'autogf_models')
 
-    # Need to find the ocean shapefile for timming, assume it is in
-    # the data_path directory
-    trim_file = os.path.join(
-        config['data_path'], "gadm28", "gadm28.shp")
-
-    # Run gfail
-    cmd = "gfail %s %s --hdf5 -w -tr %s" % (
-        model_file, gridfile, trim_file)
-    res, stdout, stderr = get_command_output(cmd)
-    if not res:
-        print("gfail command failed.")
+    logging.info("Staring gfail...")
+    cmd = ("gfail %s %s --unnest-folder --hdf5 --make-webpage "
+           "--trimfile %s --output-filepath %s" %
+           (model_file, gridfile, landfile, vdir))
+    rc, so, se = get_command_output(cmd)
+    logging.info("Standard output: %s" % so.decode())
+    logging.info("Standard error: %s" % se.decode())
+    if not rc:
+        logging.info("gfail command failed.")
         sys.exit(1)
 
-    # Find output directory
-    out_lines = stdout.decode().split('\n')
-    info_path = [l for l in out_lines if 'info.json' in l][0]
-    out_dir = os.path.dirname(info_path)
-
     # Make overlay PNGs for website
-    cmd = "create_png -e %s" % out_dir
-    res, stdout, stderr = get_command_output(cmd)
-    if not res:
-        print("create_png command failed.")
+    logging.info("Staring create_png...")
+    cmd = "create_png -e %s" % vdir
+    rc, so, se = get_command_output(cmd)
+    logging.info("Standard output: %s" % so.decode())
+    logging.info("Standard error: %s" % se.decode())
+    if not rc:
+        logging.info("create_png command failed.")
         sys.exit(1)
 
     # Make info.json
-    cmd = "create_info -e %s" % out_dir
-    res, stdout, stderr = get_command_output(cmd)
-    if not res:
-        print("create_info command failed.")
+    logging.info("Staring create_info...")
+    cmd = "create_info -e %s" % vdir
+    rc, so, se = get_command_output(cmd)
+    logging.info("Standard output: %s" % so.decode())
+    logging.info("Standard error: %s" % se.decode())
+    if not rc:
+        logging.info("create_info command failed.")
         sys.exit(1)
 
     # Transfer
+    logging.info("Staring gfail_transfer...")
     pdl_conf_file = config['pdl_config']
-    cmd = "gfail_transfer -e %s -c %s -d True" % (out_dir, pdl_conf_file)
-    res, stdout, stderr = get_command_output(cmd)
-    if not res:
-        print("gfail_transfer command failed.")
+    dry = ""
+    if args.dry_run:
+        dry = " -d "
+    cmd = "gfail_transfer -e %s -c %s %s" % (vdir, pdl_conf_file, dry)
+    rc, so, se = get_command_output(cmd)
+    logging.info("Standard output: %s" % so.decode())
+    logging.info("Standard error: %s" % se.decode())
+    if not rc:
+        logging.info("gfail_transfer command failed.")
         sys.exit(1)
-    else:
-        msg = 'Successful run.  Output returned: \n\n%s\n.' % stdout.decode()
-        print(msg)
-        logging.info(msg + '\n\n')
-        sys.exit(0)
 
+    # Enter model results into the database.
+    # ??
 
-def read_shakemap(gridfile):
-    """
-    Read source information from shakemap grid.xml file.
-
-    Args:
-        gridfile (str): Path to shakemap grid.xml file.
-
-    Returns:
-        tuple: Source information, including
-            - Event source code (str)
-            - Event source time (datetime object)
-            - Magnitude (float)
-            - Latitude (float)
-            - Longitude (float)
-    """
-    gdict, edict, gspec_dict, fdict, unc_dict = getHeaderData(gridfile)
-    source = gdict['shakemap_originator']
-    lat = edict['lat']
-    lon = edict['lon']
-    magnitude = edict['magnitude']
-    time = edict['event_timestamp']
-    return (source, time, magnitude, lat, lon)
+    # close the database
+    cursor.close()
+    conn.close()
 
 
 def main(args, config):
-    """
-    callgf wrapper method.
+    """Main entry point method.
 
     Args:
-        args (argparse): Argparse object containing command line arguments.
-        config (ConfigObj): Options set in ~/.gfail_defaults.
+        args (arparser Namespace): Input arguments.
+        config (ConfigObj): Configuration object.
+
     """
-    logfile = os.path.join(os.path.expanduser('~'), 'callgf.log')
-    logging.basicConfig(filename=logfile, level=logging.DEBUG)
-    logging.info('Arguments: "%s"' % str(args))
-    if args.type == 'groundfailure':
-        process_groundfailure(args, config)
+    # set up a daily rotating file handler logger
+    log_path = config['log_filepath']
+    if not os.path.isdir(log_path):
+        os.makedirs(log_path)
+    logfile = os.path.join(log_path, LOGFILE)
+    log_cfg = LOG_CFG.copy()
+    if args.debug:
+        log_cfg['handlers']['default']['class'] = 'logging.StreamHandler'
+        del log_cfg['handlers']['default']['when']
     else:
-        logging.info('Type is not "groundfailure", exiting.')
+        log_cfg['handlers']['default']['filename'] = logfile
+    logging.config.dictConfig(log_cfg)
+    logger = logging.getLogger()
+
+    if args.type == 'shakemap':
+        process_shakemap(args, config)
+    else:
+        logging.info('Incorrect type specified, exiting.')
     sys.exit(0)
 
 
 if __name__ == '__main__':
-    desc = """Run groundfailure with arguments from PDL.
-This program is meant to be called by a PDL process, and generally not
-called by a user, unless that user is a developer debugging callpager itself.
+    desc = """Call the groundfailure program with arguments from PDL.
+
+This program is meant to be called by a PDL process, and generally not called
+by a user, unless that user is a developer debugging callgf itself.
+
+This program assumes that there is a configuration file in the user's home
+directory called .gfail_defaults, which contains at least the following
+entries:
+
+log_filepath = A directory where rotating log files will be written.
+output_filepath = A directory where event sub-directories will be created.
+trimfile = Path to a shapefile containing GADM shapefile of country landmasses.
+dbfile = Path to a SQLITE file containing event and version run information.
+
 """
     argparser = argparse.ArgumentParser(
         description=desc,
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    argparser.add_argument(
-        "--directory",
-        required=True,
-        help='Directory where the shakemap grid.xml '
-             'file data can be found',
-        metavar='DIRECTORY')
-    argparser.add_argument(
-        "--type",
-        required=True,
-        help="Product type", metavar='TYPE')
-    argparser.add_argument(
-        "--status",
-        required=True,
-        help="Product status", metavar='STATUS')
-    argparser.add_argument(
-        "--code",
-        help="Product code", metavar='CODE')
-    argparser.add_argument(
-        "--source",
-        help="Product source", metavar='SOURCE')
-    argparser.add_argument(
-        '-d', '--debug', action='store_true',
-        default=False, help='Run PAGER in debug mode')
-    argparser.add_argument(
-        "--action",
-        help="Product action", metavar='ACTION')
-    argparser.add_argument(
-        "--preferred-latitude", type=float,
-        help="Event latitude", metavar='LAT', dest='lat')
-    argparser.add_argument(
-        "--preferred-longitude", type=float,
-        help="Event longitude", metavar='LON', dest='lon')
-    argparser.add_argument(
-        "--preferred-depth", type=float,
-        help="Event depth", metavar='DEPTH', dest='depth')
-    argparser.add_argument(
-        "--preferred-magnitude", type=float,
-        required=True,
-        help="Event magnitude", metavar='MAG',
-        dest='magnitude')
-    argparser.add_argument(
-        "--preferred-eventtime",
-        help="Event time", metavar='TIME', dest='time')
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    argparser.add_argument("--directory",
+                           help="Directory where ShakeMap data can be found",
+                           metavar='DIRECTORY')
+    argparser.add_argument("--type",
+                           help="Product type", metavar='TYPE')
+    argparser.add_argument("--preferred-eventsourcecode",
+                           help="Product code", metavar='CODE')
+    argparser.add_argument("--preferred-eventsource",
+                           help="Product source", metavar='SOURCE')
+    argparser.add_argument("--status",
+                           help="Product status", metavar='STATUS')
+    argparser.add_argument('-d', '--debug', action='store_true',
+                           default=False,
+                           help='Print log messages to the screen.')
+    argparser.add_argument("--action",
+                           help="Product action", metavar='ACTION')
+    argparser.add_argument("--preferred-latitude", type=float,
+                           help="Event latitude")
+    argparser.add_argument("--preferred-longitude", type=float,
+                           help="Event longitude", )
+    argparser.add_argument("--preferred-depth", type=float,
+                           help="Event depth")
+    argparser.add_argument("--preferred-magnitude", type=float,
+                           help="Event magnitude", metavar='MAG',
+                           dest='magnitude')
+    argparser.add_argument("--preferred-eventtime",
+                           help="Event time", metavar='TIME', dest='time')
+    argparser.add_argument("--eventids", help="List of associated event IDs")
+    argparser.add_argument("--dry-run",
+                           action='store_true', default=False,
+                           help="Do not transfer result to PDL.")
 
-    # get product properties
-    argparser.add_argument("--property-maxmmi", dest="maxmmi", type=float,
-                           required=True,
-                           help="Maximum MMI")
     pargs, unknown = argparser.parse_known_args()
 
     # make sure the config file is where we expect it to be, and read it
+    config_file = os.path.join(os.path.expanduser('~'), CONFIG_FILE)
+    pconfig = configobj.ConfigObj(config_file)
 
-    # NOTE: .groundfailure/callgf.ini' currently isn't used and probably
-    # could be combined with .gfail_defaults, or maybe put them both in
-    # the .groundfailure directory.
+    if not set(REQUIRED_CONFIG).issubset(set(list(pconfig.keys()))):
+        fmt = 'Missing some of the required entries in %s. Needed:'
+        print(fmt % config_file)
+        for req in REQUIRED_CONFIG:
+            print('\t%s' % req)
+        sys.exit(1)
 
-    # Read the gfail defaults file as well, get the output directory
-    # I added a header: PATHS
-    defaults_file = os.path.join(os.path.expanduser('~'), DEFAULTS_FILE)
-    defaults = ConfigObj(defaults_file)
-
-    # Merge... even though there's nothing in config right now...
-    main(pargs, defaults)
+    main(pargs, pconfig)

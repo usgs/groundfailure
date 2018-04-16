@@ -7,7 +7,6 @@ TODO:
 import os
 import json
 import shutil
-import pkg_resources
 from lxml import etree
 from impactutils.io.cmd import get_command_output
 
@@ -19,8 +18,6 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     Args:
         event_dir (str): File path to location of results for event
         pdl_conf (str): Path to PDL conf file.
-        eventid (str): Event id, if None, assumes that basename of event_dir is
-            the eventid
         pdl_bin (str): Path to 'ProductClient.jar'. If None it guesses that it
             is installed in the user's home directory:
             ``~/ProductClient/ProductClient.jar``.
@@ -83,7 +80,7 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
 
     lq_haz_alert_parameter = '"--property-liquefaction-hazard-alert-parameter=%s" ' % \
         lq_pref['hazard_alert']['parameter']
-    ls_haz_alert_parameter = '"--property-landslide-hazard-alert-value=%s" ' % \
+    ls_haz_alert_parameter = '"--property-landslide-hazard-alert-parameter=%s" ' % \
         ls_pref['hazard_alert']['parameter']
     lq_pop_alert_parameter = '"--property-liquefaction-population-alert-parameter=%s" ' % \
         lq_pref['population_alert']['parameter']
@@ -91,20 +88,31 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         ls_pref['population_alert']['parameter']
 
     lq_overlay = '"--property-liquefaction-overlay=%s" ' % lq_pref['overlay']
-    ls_overlay = '"--property-liquefaction-overlay=%s" ' % ls_pref['overlay']
+    ls_overlay = '"--property-landslide-overlay=%s" ' % ls_pref['overlay']
 
     lq_extent = lq_pref['extent']
     ls_extent = ls_pref['extent']
 
+    # Liquefaction extent
     lq_xmin = '"--property-liquefaction-minimum-longitude=%s" ' % lq_extent[0]
     lq_xmax = '"--property-liquefaction-maximum-longitude=%s" ' % lq_extent[1]
     lq_ymin = '"--property-liquefaction-minimum-latitude=%s" ' % lq_extent[2]
     lq_ymax = '"--property-liquefaction-maximum-latitude=%s" ' % lq_extent[3]
 
+    # Landslide extent
     ls_xmin = '"--property-landslide-minimum-longitude=%s" ' % ls_extent[0]
     ls_xmax = '"--property-landslide-maximum-longitude=%s" ' % ls_extent[1]
     ls_ymin = '"--property-landslide-minimum-latitude=%s" ' % ls_extent[2]
     ls_ymax = '"--property-landslide-maximum-latitude=%s" ' % ls_extent[3]
+
+    # Product extent --  note, for now I'm just setting this to the landslide
+    # extent, which seems a bit pointless. But by providing the property, it
+    # gives us the ability to update it later if we can come up with a more
+    # sensible product extent.
+    ls_xmin = '"--property-minimum-longitude=%s" ' % ls_extent[0]
+    ls_xmax = '"--property-maximum-longitude=%s" ' % ls_extent[1]
+    ls_ymin = '"--property-minimum-latitude=%s" ' % ls_extent[2]
+    ls_ymax = '"--property-maximum-latitude=%s" ' % ls_extent[3]
 
     rupt_warn = '"--property-rupture-warning=%s" ' % \
                 info_dict['Summary']['rupture_warning']
@@ -133,17 +141,26 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         lq_xmin + lq_xmax + lq_ymin + lq_ymax +
         ls_xmin + ls_xmax + ls_ymin + ls_ymax +
         rupt_warn +
-        '"--property-shakemap-version=%s" ' % shake_version +
-        '"--property-liquefaction-legend=legend_liquefaction.png" ' +
-        '"--property-landslide-legend=legend_landslide.png" '
+        '"--property-shakemap-version=%s" ' % shake_version
     )
 
     if not dryrun:
         rc, so, se = get_command_output(pdl_cmd)
-        return {'rc': rc, 'so': so, 'se': se}
+        print('PDL return code: %s ' % rc)
+        print('PDL standard output:\n%s ' % so)
+        print('PDL standard error:\n%s ' % se)
+        return {
+            'rc': rc,
+            'so': so,
+            'se': se
+        }
     else:
         print(pdl_cmd)
-        return {'rc': True, b'so': '', 'se': b''}
+        return {
+            'rc': True,
+            'so': b'',
+            'se': b''
+        }
 
 
 def prepare_pdl_directory(event_dir):
@@ -245,7 +262,7 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(godt_tree, "format",
                      href='godt_2008.hdf5', type=hdf_mime)
     etree.SubElement(godt_tree, "format",
-                     href='godt_2008.tiff', type=gtif_mime)
+                     href='godt_2008_model.tif', type=gtif_mime)
 
     # Jessee section
     jessee_tree = etree.SubElement(
@@ -258,7 +275,7 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017_model.tif', type=gtif_mime)
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017_model.png', type=png_mime)
+                     href='jessee_2017.png', type=png_mime)
 
     # Nowicki section
     nowicki_tree = etree.SubElement(
@@ -278,9 +295,9 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(zhu2015_tree, "caption")
     file_caps.text = 'Outputs for Zhu 2015 Model'
     etree.SubElement(zhu2015_tree, "format",
-                     href='zhu_2015_global.hdf5', type=hdf_mime)
+                     href='zhu_2015.hdf5', type=hdf_mime)
     etree.SubElement(zhu2015_tree, "format",
-                     href='zhu_2015_global_model.tif', type=gtif_mime)
+                     href='zhu_2015_model.tif', type=gtif_mime)
 
     # Zhu 2017 section
     zhu2017_tree = etree.SubElement(
@@ -289,20 +306,20 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(zhu2017_tree, "caption")
     file_caps.text = 'Outputs for Zhu 2017 Model'
     etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017_global.hdf5', type=hdf_mime)
+                     href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017_global_model.tif', type=gtif_mime)
+                     href='zhu_2017_general_model.tif', type=gtif_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017.png', type=png_mime)
 
     # Copy over legend files
-    data_dir = pkg_resources.resource_filename('gfail', 'data')
-    src = os.path.join(data_dir, 'legend_landslide.png')
-    dst = os.path.join(pdl_dir, 'legend_landslide.png')
-    shutil.copy(src, dst)
-    src = os.path.join(data_dir, 'legend_liquefaction.png')
-    dst = os.path.join(pdl_dir, 'legend_liquefaction.png')
-    shutil.copy(src, dst)
+#    data_dir = pkg_resources.resource_filename('gfail', 'data')
+#    src = os.path.join(data_dir, 'legend_landslide.png')
+#    dst = os.path.join(pdl_dir, 'legend_landslide.png')
+#    shutil.copy(src, dst)
+#    src = os.path.join(data_dir, 'legend_liquefaction.png')
+#    dst = os.path.join(pdl_dir, 'legend_liquefaction.png')
+#    shutil.copy(src, dst)
 
     # Write result
     out_file = os.path.join(pdl_dir, 'contents.xml')

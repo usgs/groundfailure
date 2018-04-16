@@ -11,6 +11,9 @@ from gfail.gfailrun import run_gfail
 
 
 if __name__ == '__main__':
+    """
+    Main command line program for running the groundfailure models.
+    """
 
     # See if there is a default path file, load in if there is and
     # replace any nones
@@ -22,7 +25,8 @@ if __name__ == '__main__':
     mapdata_filepath = None
     popfile = None
     web_template = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'pelican', 'theme')
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        'pelican', 'theme')
     trimfile = None
 
     if os.path.exists(defaults):
@@ -97,16 +101,17 @@ if __name__ == '__main__':
         help='single ShakeMap uncertainty.xml file', default=None)
     parser.add_argument(
         '-tr', '--trimfile', metavar='trimocean', nargs='?', default=trimfile,
-        help='Location of shapefile of land masses to use to trim areas over water')
+        help=('Location of shapefile of land masses to use to trim areas '
+              'over water'))
 
     parser.add_argument(
         '-b', '--set-bounds', type=str,
         metavar=('latmin, latmax, lonmin, lonmax'), nargs='?',
-        help="Set bounds of model run using four floats in this format, "
-             "including quotes: 'latmin, latmax, lonmin, lonmax', default "
-             "uses shakemap bounds, 'zoom, parameter, threshold' in single "
-             "quotes uses a shakemap threshold value, e.g. 'zoom, pga, 2' "
-             "where 2 is in percent g",
+        help=("Set bounds of model run using four floats in this format, "
+              "including quotes: 'latmin, latmax, lonmin, lonmax', default "
+              "uses shakemap bounds, 'zoom, parameter, threshold' in single "
+              "quotes uses a shakemap threshold value, e.g. 'zoom, pga, 2' "
+              "where 2 is in percent g"),
         default=None)
     parser.add_argument(
         '-f', '--finite-fault', metavar='finitefault', nargs='?',
@@ -155,13 +160,13 @@ if __name__ == '__main__':
         '-w', '--make-webpage', action='store_true', default=False,
         help='Create all files needed for product page creation')
     parser.add_argument(
-        '-n', '--unnest-folder', action='store_true', default=True,
+        '-n', '--unnest-folder', action='store_true', default=False,
         help='do not nest in output folder with eventid as name '
              '(default is it will nest)')
     parser.add_argument(
         '--alert', action='store_true', default=False,
         help='Determine and report alert levels. Default is false')
-    #parser.add_argument('-e', '--exercise', action='store_true', default=False,
+    # parser.add_argument('-e', '--exercise', action='store_true', default=False,
     #                    help='Exercise tests (for developers)')
 
     pargs = parser.parse_args()

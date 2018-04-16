@@ -57,14 +57,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             * ``'RS_PGA_PGV'`` -- PGA and PGV-based model, equation 6
               from Saygili and Rathje (2008).
 
-        probtype (str): Method used to estimate probability.
-
-            * ``'jibson2000'`` uses equation 5 from Jibson et al. (2000) to
-              estimate probability from Newmark displacement.
-            * ``'threshold'`` uses a specified threshold of Newmark displacement
-              (defined in config file) and assumes anything greater than this
-              threshold fails.
-
+        bounds (dict): Dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'.
         slopediv (float): Divide slope by this number to get slope in degrees
             (Verdin datasets need to be divided by 100).
         codiv (float): Divide cohesion by this number to get reasonable numbers
@@ -109,7 +102,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     # See if trimfile exists
     if trimfile is not None:
         if not os.path.exists(trimfile):
-            print('trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
+            print('trimfile defined does not exist: %s\n'
+                  'Ocean will not be trimmed' % trimfile)
             trimfile = None
         if os.path.splitext(trimfile)[1] != '.shp':
             print('trimfile must be a shapefile, ocean will not be trimmed')
@@ -167,7 +161,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
               'Continuing')
 
     # Figure out how/if need to cut anything
-    geodict = ShakeGrid.getFileGeoDict(shakefile)#, adjust='res')
+    geodict = ShakeGrid.getFileGeoDict(shakefile)  # , adjust='res')
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
         if (geodict.xmin > bounds['xmin'] or
                 geodict.xmax < bounds['xmax'] or
@@ -182,32 +176,39 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             bounds['ymin'], bounds['ymax'],
             geodict.dx, geodict.dy, inside=False)
         geodict = geodict.getBoundsWithin(tempgdict)
-        
-    basegeodict, firstcol = GDALGrid.getFileGeoDict(os.path.join(slopefilepath, 'slope_min.bil'))
+
+    basegeodict, firstcol = GDALGrid.getFileGeoDict(
+        os.path.join(slopefilepath, 'slope_min.bil'))
     if basegeodict == geodict:
         sampledict = geodict
     else:
         sampledict = basegeodict.getBoundsWithin(geodict)
-    
+
     # Do we need to subdivide baselayer?
     if 'divfactor' in config['godt_2008'].keys():
         divfactor = float(config['godt_2008']['divfactor'])
         if divfactor != 1.:
-            # adjust sampledict so everything will be resampled (cut one cell of each edge so will be inside bounds)
-            newxmin = sampledict.xmin - sampledict.dx/2. + sampledict.dx/(2.*divfactor) + sampledict.dx
-            newymin = sampledict.ymin - sampledict.dy/2. + sampledict.dy/(2.*divfactor) + sampledict.dy
-            newxmax = sampledict.xmax + sampledict.dx/2. - sampledict.dx/(2.*divfactor) - sampledict.dx
-            newymax = sampledict.ymax + sampledict.dy/2. - sampledict.dy/(2.*divfactor) - sampledict.dy
+            # adjust sampledict so everything will be resampled (cut one cell
+            # of each edge so will be inside bounds)
+            newxmin = sampledict.xmin - sampledict.dx/2. + \
+                sampledict.dx/(2.*divfactor) + sampledict.dx
+            newymin = sampledict.ymin - sampledict.dy/2. + \
+                sampledict.dy/(2.*divfactor) + sampledict.dy
+            newxmax = sampledict.xmax + sampledict.dx/2. - \
+                sampledict.dx/(2.*divfactor) - sampledict.dx
+            newymax = sampledict.ymax + sampledict.dy/2. - \
+                sampledict.dy/(2.*divfactor) - sampledict.dy
             newdx = sampledict.dx/divfactor
             newdy = sampledict.dy/divfactor
 
-            sampledict = GeoDict.createDictFromBox(newxmin, newxmax, newymin,
-                                                   newymax, newdx, newdy, inside=True)
-    
+            sampledict = GeoDict.createDictFromBox(
+                newxmin, newxmax, newymin,
+                newymax, newdx, newdy, inside=True)
+
     tmpdir = tempfile.mkdtemp()
-    
+
     # Load in ShakeMap and get new geodictionary
-    temp = ShakeGrid.load(shakefile) #, adjust='res')
+    temp = ShakeGrid.load(shakefile)  # , adjust='res')
     junkfile = os.path.join(tmpdir, 'temp.bil')
     GDALGrid.copyFromGrid(temp.getLayer('pga')).save(junkfile)
     pga = quickcut(junkfile, sampledict, precise=True, method='bilinear')
@@ -227,12 +228,14 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     # read in uncertainty if present
     if uncertfile is not None:
         try:
-            temp = ShakeGrid.load(uncertfile) #, adjust='res')
+            temp = ShakeGrid.load(uncertfile)  # , adjust='res')
             GDALGrid.copyFromGrid(temp.getLayer('stdpga')).save(junkfile)
-            uncertpga = quickcut(junkfile, sampledict, precise=True, method='bilinear')
+            uncertpga = quickcut(junkfile, sampledict,
+                                 precise=True, method='bilinear')
             os.remove(junkfile)
             GDALGrid.copyFromGrid(temp.getLayer('stdpgv')).save(junkfile)
-            uncertpgv = quickcut(junkfile, sampledict, precise=True, method='bilinear')
+            uncertpgv = quickcut(junkfile, sampledict,
+                                 precise=True, method='bilinear')
             os.remove(junkfile)
         except:
             print('Could not read uncertainty file, ignoring uncertainties')
@@ -244,7 +247,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     # degrees (because input files are multiplied by 100.)
     slopes = []
     quantiles = ['slope_min.bil', 'slope10.bil', 'slope30.bil', 'slope50.bil',
-                 'slope70.bil', 'slope90.bil','slope_max.bil']
+                 'slope70.bil', 'slope90.bil', 'slope_max.bil']
     for quant in quantiles:
         tmpslp = quickcut(os.path.join(slopefilepath, quant), sampledict)
         tgd = tmpslp.getGeoDict()
@@ -268,7 +271,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     cohesion[cohesion == -999.9] = nodata_cohesion
     cohesion = np.nan_to_num(cohesion)
     cohesion[cohesion == 0] = nodata_cohesion
-    
+
     tempfric = quickcut(frictionfile, sampledict, method='near')
     tempfric = tempfric.getData().astype(float)[:, :, np.newaxis]
     friction = np.repeat(tempfric, 7, axis=2)
@@ -291,15 +294,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
                     axis=2).astype(float)
     if 'PGV' in displmodel:  # Load in PGV also, in cm/sec
         PGV = np.repeat(pgv.getData()[:, :, np.newaxis], 7,
-            axis=2).astype(float)
+                        axis=2).astype(float)
     else:
         PGV = None
 
     if uncertfile is not None:
         stdpga = np.repeat(uncertpga.getData()[:, :, np.newaxis], 7,
-            axis=2).astype(float)
+                           axis=2).astype(float)
         stdpgv = np.repeat(uncertpgv.getData()[:, :, np.newaxis], 7,
-            axis=2).astype(float)
+                           axis=2).astype(float)
         # estimate PGA +- 1std
         PGAmin = np.exp(np.log(PGA*100) - numstd*stdpga)/100
         PGAmax = np.exp(np.log(PGA*100) + numstd*stdpga)/100
@@ -342,6 +345,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     PROB[PROB == 5.] = 0.70
     PROB[PROB == 6.] = 0.90
     PROB[PROB == 7.] = 0.99
+
     if uncertfile is not None:
         PROBmin[PROBmin == 1.] = 0.01
         PROBmin[PROBmin == 2.] = 0.10
@@ -368,7 +372,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     # Turn output and inputs into into grids and put in mapLayers dictionary
     maplayers = collections.OrderedDict()
 
-    shakedetail = '%s_ver%s' % (shakedict['shakemap_id'], shakedict['shakemap_version'])
+    shakedetail = '%s_ver%s' % (
+        shakedict['shakemap_id'], shakedict['shakemap_version'])
 
     description = {
         'name': modelsref,
@@ -401,8 +406,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         PROBmingrid = GDALGrid(PROBmin, sampledict)
         PROBmaxgrid = GDALGrid(PROBmax, sampledict)
         if trimfile is not None:
-            PROBmingrid = trim_ocean(PROBmingrid, trimfile, nodata=float('nan'))
-            PROBmaxgrid = trim_ocean(PROBmaxgrid, trimfile, nodata=float('nan'))
+            PROBmingrid = trim_ocean(
+                PROBmingrid, trimfile, nodata=float('nan'))
+            PROBmaxgrid = trim_ocean(
+                PROBmaxgrid, trimfile, nodata=float('nan'))
         maplayers['modelmin'] = {
             'grid': PROBmingrid,
             'label': 'Probability-%1.2fstd' % numstd,
@@ -536,7 +543,7 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
             for models with PGV in the name.
 
     Returns:
-        Tuple of Dn, logDnstd, and logtype.
+        tuple: Dn, logDnstd, and logtype.
     """
     # Deal with non-array inputs
     if isinstance(Ac, float) or isinstance(Ac, int):

@@ -77,7 +77,7 @@ def run_gfail(args):
                 os.makedirs(outdir)
 
         # download if is url
-        #cleanup = False
+        # cleanup = False
         if not os.path.isfile(shakefile):
             if isURL(shakefile):
                 # getGridURL returns a named temporary file object
@@ -92,7 +92,7 @@ def run_gfail(args):
         # Get entire path so won't break if running gfail with relative path
         shakefile = os.path.abspath(shakefile)
 
-        if args.unnest_folder:
+        if not args.unnest_folder:
             outfolder = os.path.join(outdir, eventid)
             if not os.path.exists(outfolder):
                 os.makedirs(outfolder)
@@ -185,11 +185,12 @@ def run_gfail(args):
         # pre-read in ocean trimming file polygons so only do this step once
         if args.trimfile is not None:
             if not os.path.exists(args.trimfile):
-                print(
-                    'trimfile defined does not exist: %s\nOcean will not be trimmed' % args.trimfile)
+                print('trimfile defined does not exist: %s\n'
+                      'Ocean will not be trimmed.' % args.trimfile)
                 trimfile = None
             elif os.path.splitext(args.trimfile)[1] != '.shp':
-                print('trimfile must be a shapefile, ocean will not be trimmed')
+                print('trimfile must be a shapefile, '
+                      'ocean will not be trimmed')
                 trimfile = None
             else:
                 trimfile = args.trimfile
@@ -208,11 +209,12 @@ def run_gfail(args):
                 elif os.path.splitext(args.finite_fault)[-1] == '.json':
                     ffault = args.finite_fault
                 else:
-                    print(
-                        'Could not read in finite fault, will try to download from comcat')
+                    print('Could not read in finite fault, will '
+                          'try to download from comcat')
                     ffault = None
             except:
-                print('Could not read in finite fault, will try to download from comcat')
+                print('Could not read in finite fault, will try to '
+                      'download from comcat')
                 ffault = None
 
         if ffault is None:
@@ -449,6 +451,9 @@ def set_default_paths(args):
     information to simplify running gfail. Can be overwritten by any manually
     entered paths. This updates any existing .gfail_defaults file. If
     args.data_path is 'reset' then any existing defaults will be removed.
+
+    Args:
+        args (arparser Namespace): Input arguments.
     """
     filename = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
     if os.path.exists(filename):
@@ -577,7 +582,7 @@ def reset_default_paths():
         print('No default paths currently set\n')
 
 
-def get_bounds(shakefile, parameter='pga', threshold=2):
+def get_bounds(shakefile, parameter='pga', threshold=2.0):
     """
     Get the boundaries of the shakemap that include all areas with shaking
     above the defined threshold.
