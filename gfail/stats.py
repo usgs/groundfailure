@@ -45,14 +45,16 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
             pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation
         statprobthresh: Optional, Float, Exclude any values less than or equal to this value in
             calculation of regular stats (max, median, std)
+        pop_file (str): File path to population file to use to compute exposure stats
 
     Returns:
         Dictionary with the following keys:
             - Max
             - Median
             - Std
-            - Hagg_# where # is the shaking threshold for each
+            - Hagg_# where # is the shaking threshold
             - Parea_# where # is the probability threshold
+            - exp_pop_# where # is the shaking threshold (if pop_file specified)
     """
     stats = collections.OrderedDict()
     grid = grid2D.getData()
@@ -277,7 +279,7 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             pga, cm/s for pgv, float for mmi.
 
     Returns:
-        dict: Dictionary with enties for poplulation-based aggregate hazard.
+        dict: Dictionary with keys named exp_pop_# where # is the shakethresh
     """
 
     mdict = grid.getGeoDict()
