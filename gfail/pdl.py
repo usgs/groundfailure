@@ -109,10 +109,10 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     # extent, which seems a bit pointless. But by providing the property, it
     # gives us the ability to update it later if we can come up with a more
     # sensible product extent.
-    ls_xmin = '"--property-minimum-longitude=%s" ' % ls_extent[0]
-    ls_xmax = '"--property-maximum-longitude=%s" ' % ls_extent[1]
-    ls_ymin = '"--property-minimum-latitude=%s" ' % ls_extent[2]
-    ls_ymax = '"--property-maximum-latitude=%s" ' % ls_extent[3]
+    prod_xmin = '"--property-minimum-longitude=%s" ' % ls_extent[0]
+    prod_xmax = '"--property-maximum-longitude=%s" ' % ls_extent[1]
+    prod_ymin = '"--property-minimum-latitude=%s" ' % ls_extent[2]
+    prod_ymax = '"--property-maximum-latitude=%s" ' % ls_extent[3]
 
     rupt_warn = '"--property-rupture-warning=%s" ' % \
                 info_dict['Summary']['rupture_warning']
@@ -140,6 +140,7 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         lq_overlay + ls_overlay +
         lq_xmin + lq_xmax + lq_ymin + lq_ymax +
         ls_xmin + ls_xmax + ls_ymin + ls_ymax +
+        prod_xmin + prod_xmax + prod_ymin + prod_ymax +
         rupt_warn +
         '"--property-shakemap-version=%s" ' % shake_version
     )
