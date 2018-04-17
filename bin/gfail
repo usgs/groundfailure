@@ -161,7 +161,7 @@ if __name__ == '__main__':
         help='Create all files needed for product page creation')
     parser.add_argument(
         '-n', '--nest-folder', action='store_true', default=False,
-        help='nest results in subfolder within output folder with eventid as name'
+        help='nest results in subfolder within output folder named by eventid'
              '(default is False)')
     parser.add_argument(
         '--alert', action='store_true', default=False,
