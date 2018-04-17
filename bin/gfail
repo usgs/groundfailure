@@ -160,9 +160,9 @@ if __name__ == '__main__':
         '-w', '--make-webpage', action='store_true', default=False,
         help='Create all files needed for product page creation')
     parser.add_argument(
-        '-n', '--unnest-folder', action='store_true', default=False,
-        help='do not nest in output folder with eventid as name '
-             '(default is it will nest)')
+        '-n', '--nest-folder', action='store_true', default=False,
+        help='nest results in subfolder within output folder with eventid as name'
+             '(default is False)')
     parser.add_argument(
         '--alert', action='store_true', default=False,
         help='Determine and report alert levels. Default is false')

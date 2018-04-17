@@ -92,7 +92,7 @@ def run_gfail(args):
         # Get entire path so won't break if running gfail with relative path
         shakefile = os.path.abspath(shakefile)
 
-        if not args.unnest_folder:
+        if args.nest_folder:
             outfolder = os.path.join(outdir, eventid)
             if not os.path.exists(outfolder):
                 os.makedirs(outfolder)
