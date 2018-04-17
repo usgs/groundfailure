@@ -63,7 +63,25 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     Assumes gfail has been run already with -w flag
 
     Args:
+        maplayerlist (list): List of model outputs from gfail
+        configs (list): List of dictionaries of config files corresponding to
+            each model in maplayerlist and in the same order
+        shakemap (str): path to shakemap .xml file
+        outfolder (str): Location in which to save outputs. If None, will use current directory 
+        alpha (float): Transparency to use for overlay pngs, value from 0 to 1.
+        shakethreshtype (str): Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'.
+        probthresh: Optional. Float or list of probability thresholds to apply before computing stats.
+        shakethresh: Float or list of shaking thresholds in %g for pga, cm/s for pgv, float for mmi.
+            Used for Hagg and Exposure computation
+        prefLS (str): shortref of "preferred" landslide model
+        prefLQ (str): shortref of "preferred" liquefaction model
+        pop_filt (str): file path to population file used to compute population-based
+            alert levels.
 
+    Returns:
+        Files that need to be sent to comcat for hazdev to create the product webpage including:
+            info.json
+            transparent png overlays of all models
     """
     event_id = maplayerlist[0]['model']['description']['event_id']
 
@@ -255,6 +273,14 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
 
     Args:
         event_dir (srt): Directory containing ground failure results.
+        lsmodels (list): List of dictionaries of model summary info compiled
+            by the hazdev function. If not specified, code will search for
+            the hdf5 files for the preferred model and will create this dictionary
+            and will apply default colorbars and bins.
+        lqmodels (list): Same as above for liquefaction.
+
+    Returns:
+        .png map overlays and .json files specifying their mapped extents
     """
     filenames = []
     files = os.listdir(event_dir)
@@ -386,6 +412,14 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
 
     Args:
         event_dir (srt): Directory containing ground failure results.
+        lsmodels (list): List of dictionaries of model summary info compiled
+            by the hazdev function. If not specified, code will search for
+            the hdf5 files for the preferred model and will create this dictionary
+            and will apply default colorbars and bins.
+        lqmodels (list): Same as above for liquefaction.
+
+    Returns:
+        creates info.json for this event
     """
     filenames = []
     # Find the shakemap grid.xml file
