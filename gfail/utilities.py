@@ -19,6 +19,7 @@ import matplotlib.cm as cm  # Don't delete this, it's needed in an eval function
 
 def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     """
+
     """
     header_dicts = getHeaderData(shakefile)
     grid_dict = header_dicts[0]
@@ -289,11 +290,13 @@ def parseConfigLayers(maplayers, config, keys=None):
 
 
 def text_to_json(input1):
-    """
-    Simplification of text_to_json from shakelib.rupture.factory
-    
+    """Simplification of text_to_json from shakelib.rupture.factory
+
     Args:
         input1 (str): url or filepath to text file
+
+    Returns:
+        json formatted stream of input1
     """
     if os.path.exists(input1):
         with open(input1, 'r') as f:
@@ -366,12 +369,13 @@ def text_to_json(input1):
 def write_floats(filename, grid2d):
     """Create a binary (with acc. header file) version of a Grid2D object.
 
-    Given a filename input of "probability.flt", this function will
-    create that file, plus a text file called "probability.hdr".
-
     Args:
         filename (str): String filename to write (i.e., 'probability.flt')
         grid2d (Grid2D): MapIO Grid2D object.
+
+    Returns:
+        Given a filename input of "probability.flt", this function will
+        create that file, plus a text file called "probability.hdr".
     """
     geodict = grid2d.getGeoDict().asDict()
     array = grid2d.getData().astype('float32')
@@ -396,10 +400,14 @@ def write_floats(filename, grid2d):
 def savelayers(grids, filename):
     """
     Save ground failure layers object as a MultiHazard HDF file, preserving
-    metadata structures. Must all have the same geodict.
+    metadata structures. All layers must have same geodictionary.
+
     Args:
         grids: Ground failure layers object.
         filename (str): Path to where you want to save this file.
+
+    Returns:
+        .hdf5 file containing ground failure layers
     """
     layers = collections.OrderedDict()
     metadata = collections.OrderedDict()
@@ -424,7 +432,10 @@ def loadlayers(filename):
     Load a MultiHazard HDF file back in as a ground failure layers object in
     active memory (must have been saved for this purpose).
     Args:
-        filename (str): Path to layers file.
+        filename (str): Path to layers file (hdf5 extension).
+
+    Returns:
+        Ground failure layers object
     """
     mgrid = MultiHazardGrid.load(filename)
     grids = collections.OrderedDict()
