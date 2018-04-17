@@ -64,19 +64,11 @@ def modelMap(grids, shakefile=None,
              isScenario=False, roadfolder=None, topofile=None, cityfile=None,
              oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF',
              countrycolor='#177F10', outputdir=None, outfilename=None,
-             savepdf=True, savepng=True, showplots=False, roadref='unknown',
-             cityref='unknown', oceanref='unknown', printparam=False, ds=True,
+             savepdf=True, savepng=True, showplots=False, printparam=False, ds=True,
              dstype='mean', upsample=False):
     """
-    This function creates maps of mapio grid layers (e.g. liquefaction or
+    Create static maps of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers).
-
-    All grids must use the same bounds.
-
-    TODO:
-        - Change so that all input layers do not have to have the same bounds,
-          test plotting multiple probability layers, and add option so that if
-          PDF and PNG aren't output, opens plot on screen using plt.show().
 
     Args:
         grids (dict): Dictionary of N layers and metadata formatted like:
@@ -90,7 +82,7 @@ def modelMap(grids, shakefile=None,
                     'description': 'description for subtitle'
                 }
 
-          Layer names must be unique.
+          Layer names must be unique. All grids must use the same bounds.
         shakefile (str): Optional ShakeMap file (url or full file path) to
             extract information for labels and folder names.
         suptitle (str): This will be displayed at the top of the plots and in
@@ -132,8 +124,8 @@ def modelMap(grids, shakefile=None,
             estimate the limits, when an array is specified but the scale
             type is continuous, vmin will be set to min(array) and vmax will
             be set to max(array).
-        logscale (bool): Use a log-transformed scalebar? Can be a bool or list
-            of bools.
+        logscale (*): boolean to apply log colorbar to all plotted layers or list
+            of booleans corresponding to each layer in grid.
         ALPHA (float): Transparency for mapping, if there is a hillshade that
             will plot below each layer, it is recommended to set this to at
             least 0.7.
@@ -161,11 +153,8 @@ def modelMap(grids, shakefile=None,
         outfilename (str): Output file name.
         savepdf (bool): True to save pdf figure.
         savepng (bool): True to save png figure.
-        showplots (bool): Show plots?
-        roadref (str): Reference for source of road info.
-        cityref (str): Reference for source of city info.
-        oceanref (str): Reference for source of ocean info.
-        printparam (bool): Show parameter values on plots.
+        showplots (bool): True to display plots
+        printparam (bool): Show parameter values used to run model on plots.
         ds (bool): True to allow downsampling for display (necessary when
             arrays are quite large, False to not allow).
         dstype (str): What function to use in downsampling? Options are 'min',
@@ -175,10 +164,15 @@ def modelMap(grids, shakefile=None,
 
     Returns:
         tuple: (newgrids, filenames), where newgrids and filenames are lists.
+        newgrids are downsampled and trimmed version of input grids. If
+        no modification was needed for plotting, this will be identical to grids
+        but without the metadata. Filenames is a list of filenames that were created
 
-    Note that newgrids are downsampled and trimmed version of input grids. If
-    no modification was needed for plotting, this will be identical to grids
-    but without the metadata.
+    TODO:
+        - Change so that all input layers do not have to have the same bounds,
+          test plotting multiple probability layers, and add option so that if
+          PDF and PNG aren't output, opens plot on screen using plt.show().
+
     """
 
     if suptitle is None:
@@ -254,19 +248,10 @@ def modelMap(grids, shakefile=None,
                 lonmax = lons[col].max()
                 latmin = lats[row].min()
                 latmax = lats[row].max()
-                # llons, llats = np.meshgrid(lons, lats)  # make meshgrid
-                # llons1 = llons[temp.getData() > float(zthresh)]
-                # llats1 = llats[temp.getData() > float(zthresh)]
-                # if llons1.min() < lonmin:
-                #     lonmin = llons1.min()
-                # if llons1.max() > lonmax:
-                #     lonmax = llons1.max()
-                # if llats1.min() < latmin:
-                #     latmin = llats1.min()
-                # if llats1.max() > latmax:
-                #     latmax = llats1.max()
+
             # dummy fillers, only really care about bounds
             boundaries1 = {'dx': 100, 'dy': 100., 'nx': 100., 'ny': 100}
+            # Add padding around zoom limits
             if xmin < lonmin-0.15*(lonmax-lonmin):
                 boundaries1['xmin'] = lonmin-0.1*(lonmax-lonmin)
             else:
@@ -349,9 +334,6 @@ def modelMap(grids, shakefile=None,
     else:
         fig.set_figheight(rowpan*5.3)
 
-    # Need to update naming to reflect the shakemap version once can get
-    # getHeaderData to work, add edict['version'] back into title, maybe
-    # shakemap id also?
     fontsizemain = 14.
     fontsizesub = 12.
     fontsizesmallest = 10.
@@ -374,7 +356,6 @@ def modelMap(grids, shakefile=None,
     clear_color = [0, 0, 0, 0.0]
 
     # Cut all of them and release extra memory
-
     xbuff = (bxmax-bxmin)/10.
     ybuff = (bymax-bymin)/10.
     cutxmin = bxmin-xbuff
@@ -1051,7 +1032,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
         outputdir (str): File path for outputting figures, if edict is defined,
             a subfolder based on the event id will be created in this folder.
             If None, will use current directory.
-        outfilename (str): File name for output without any file extensions.
+        outfilename (str): File name for output (without any file extensions).
         tiletype (str): Folium tile type:
             - "OpenStreetMap"
             - "Mapbox Bright" (Limited levels of zoom for free tiles)
@@ -1071,16 +1052,10 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
             the colorbar on the map.
         savefiles(bool): If True (default), will save map as html file,
             otherwise will just return map object
+        mapid (str): map id, used only for syncing two of these interactive maps
+            to each other
         clear_zero (bool): If True, will make all zero values clear.
             default is False.
-
-        printparam (bool): Print model parameters on figure? NOT IMPLEMENTED
-            YET.
-        ds (bool): Allow downsampling for display? NOT IMPLEMENTED YET.
-        dstype (str): What function to use in downsampling? Options are 'min',
-            'max', 'median', or 'mean'. NOT IMPLEMENTED YET.
-        smcontourfile (str): File extension to shakemap contour file to plot
-            NOT FUNCTIONAL YET.
         sync: If False, each map will use it's own colorbar.
             If a grid layer shortref is specified (e.g. 'Nowicki and others (2014)'),
             all maps will have colorbars synced to the colors of the one
@@ -1151,7 +1126,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
     if not os.path.isdir(outfolder):
         os.makedirs(outfolder)
 
-    # ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE - OR CREATE TILES?
+    #TODO ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE - OR CREATE TILES?
     filenames = []
     maps = []
     images = []
@@ -1225,8 +1200,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
 
         # Make changes needed to get desired colorbar
         outputs = correct4colorbar(dat, lims[k], logscale[k], scaletype,
-                                   palette, colorlist=colorlist,
-                                   synclims=reflims)
+                                   palette, colorlist=colorlist)
         clev, vmin, vmax, rgba_img, cmap, norm, colorlist = outputs
 
         gd = grid.getGeoDict()
@@ -1281,7 +1255,7 @@ def interactiveMap(grids, shakefile=None, plotorder=None,
                 cbars[k].ax.tick_params(labelsize=10)
             cbars[k].set_label('%s - %s' % (label1, sref), fontsize=10)
             cbars[k].ax.set_aspect(0.05)
-            #plt.tight_layout()
+
             plt.subplots_adjust(hspace=0.3, left=0.01, right=0.99, top=0.99, bottom=0.01)
             if separate:
                 ctemp = '%s_%s_colorbar.png' % (outfilename, keyS)
@@ -1457,7 +1431,7 @@ def GFSummary(maplayerlist, configs, web_template, shakemap, outfolder=None,
               probthresh=None, shakethresh=[5., 10.], statement=None):
     """
     Create an interactive html that summarizes all ground failure results for
-    a given earthquake
+    a given earthquake in side-by-side plots and with summary tables
 
     Args:
         maplayerlist (list): list of model output structures to include.
@@ -1469,7 +1443,7 @@ def GFSummary(maplayerlist, configs, web_template, shakemap, outfolder=None,
         outfolder (str, optional): path to folder where output should be
             placed.
         includeunc (bool, optional): include uncertainty, NOT IMPLEMENTED.
-        cleanup (bool, optional): cleanup all unneeded intermediate files that
+        cleanup (bool, optional): clean up all unneeded intermediate files that
             pelican creates, default True.
         faultfile (str, optional): GeoJson file of finite fault to display on
             interactive maps
@@ -1739,6 +1713,10 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
         outjsfile (str, optional): Path for output javascript file.
         stats (list): List of stats keys to include in the table, if None,
             it will include all of them
+
+    Returns:
+        writes markdown files named Landslides.md and/or Liquefaction.md
+        that will be used by GFSummary
     """
 
     if modeltype == 'Landslides':
@@ -1749,7 +1727,6 @@ def write_individual(concatmods, outputdir, modeltype, topimage=None,
     if len(concatmods) > 0:
         # If single model and not in list form, turn into lists
         modelnames = [key for key, value in concatmods.items()]
-        # TODO Extract stats
         stattable = collections.OrderedDict()
         stattable['Model'] = modelnames
         if statlist is None:
@@ -1879,12 +1856,20 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
         outputdir (str): path to folder where output should be placed
         imgoutputdir (str): path to folder where images should be placed
             and linked
-        HaggLS (float, optional): Aggregate hazard of preferred landslide model
-        HaggLQ (float, optional): Aggregate hazard of preferred liquefaction
-            model
+        statement (str): Statement to put at top of GFSummary plot, if None
+            will append some generic statements.
+        finitefault (bool): True if it is known that the shakemap used a
+            finite fault.
+        point(bool): True if it is known that the event was a point
+            source. False if unknown.
+        event_url (str): url to event page, if None, code will try to
+            guess what the url should be using the event_id in the shakemap file
+        shake_url (str): url to shakemap page for this event, if None,
+            code will try to guess what the url should be using the
+            event_id in the shakemap file
 
     Returns:
-        Markdown file
+        Markdown file that summarizes the event and model used by GFSummary
     """
     edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
     smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
@@ -1960,17 +1945,45 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
     return shakesummary
 
 
-def setupsync(sync, plotorder, lims, colormaps, defaultcolormap, logscale=None,
+def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, logscale=None,
               alpha=None):
     """Get colors that will be used for all colorbars from reference grid
 
-    
-    sync(str): shortref of model to sync other models to
+    Args:
+        sync(str): If False, will exit program, else corresponds to the shortref
+            of the model which should serve as the template for
+            the colorbars used by all other models. All other models must
+            have the exact same number of bins
+        plotorder (list): List of keys of shortrefs of the grids that will be
+            plotted.
+        lims (*): Nx1 list of tuples or numpy arrays corresponding to
+            plotorder defining the bin edges to use for each model.
+            Example:
+
+            .. code-block:: python
+
+                [(0., 0.1, 0.2, 0.3), np.linspace(0., 1.5, 15)]
+
+        colormaps (list): List of strings of matplotlib colormaps (e.g.
+            cm.autumn_r) corresponding to plotorder
+        defaultcolormap (matplotlib colormap): Colormap to use if
+            colormaps is not defined. default cm.CMRmap_r
+        logscale (*): If not None, then a list of booleans corresponding to
+            plotorder stating whether to use log scaling in determining colors
+
+    Returns:
+        tuple: (sync, colorlist, lim1)
+            sync (bool): whether or not colorbars are/can be synced
+            colorlist (list): list of rgba colors that will be applied to all
+                models regardless of bin edge values
+            lim1 (array): bin edges of model to which others are synced
+
+
     """
 
     if not sync:
         return False, None, None
-        
+
     elif sync in plotorder:
         k = [indx for indx, key in enumerate(plotorder) if key in sync][0]
         # Make sure lims exist and all have the same number of bins'
@@ -1984,7 +1997,7 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap, logscale=None,
         sum1 = 0
         for lim in lims:
             if lim is None:
-                sum1 +=1
+                sum1 += 1
                 continue
             if len(lim) != len(lim1):
                 sum1 += 1
@@ -1993,7 +2006,7 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap, logscale=None,
             print('Cannot sync colorbars, different number of bins or lims not specified')
             sync = False
             return sync, None, None
-        
+
         if colormaps[k] is not None:
             palette1 = colormaps[k]
         else:
@@ -2001,7 +2014,7 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap, logscale=None,
         #palette1.set_bad(clear_color, alpha=0.0)
         if logs:
             cNorm = colors.LogNorm(vmin=lim1[0], vmax=lim1[-1])
-            midpts = np.sqrt(lim1[1:] * lim1[:-1]) #geometric mean for midpoints
+            midpts = np.sqrt(lim1[1:] * lim1[:-1])  # geometric mean for midpoints
         else:
             cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
             midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
@@ -2020,25 +2033,44 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap, logscale=None,
 
 
 def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None,
-                     synclims=None, alpha=None):
+                     alpha=None):
     """Create rgba layer for plotting along with all the info needed to create
     a separate colorbar
-    
+
     Args:
-        
+        dat (array): 2D numpy array of the data to turn into rgba layer
+        gridlims (array): Nx1 array or list of bin edges, or None if not specified
+        logscale (bool): if True, will use log scaling for bins
+        scaletype (str): Type of scaling to use with colormap,
+            'binned' or 'continuous.' 'binned' must be used for synced
+            colorbars.
+        palette: colormap palette to use
+        colorlist (list): Optional, N-1 list of colors to use for each bin,
+            where N is the number of bin edges specified in gridlims. Only
+            works if scaletype = 'binned'
+        alpha (float): Transparency value from 0 to 1
+
     Returns:
-        
+        tuple: clev, vmin, vmax, rgba_img, cmap, norm, colorlist
+            clev: bin edges used
+            vmin: lowest bin edge (saturated below)
+            vmax: highest bin edge (saturated above)
+            rgba_img: rgba image (2D array of rgba tuples)
+            cmap: colormap used
+            norm: normalization used for colorbar
+            colorlist: list of colors used for each colorbar bin,
+                None if scaletype was 'continuous'
     """
     dat = dat.copy()
     if np.nanmax(dat) > 0.:
         minnonzero = np.nanmin(dat[dat > 0.])
     else:
         minnonzero = 0.0001
-        
+
     if scaletype.lower() == 'binned':
         order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
         datcop = dat.copy()
-        if synclims is not None:
+        if colorlist is not None:
             clev = gridlims
             datcop[dat < gridlims[0]] = gridlims[0]
             datcop[dat > gridlims[-1]] = gridlims[-1]
@@ -2066,8 +2098,8 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
                 dat = np.ma.array(dat, mask=np.isnan(dat))
                 norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
                 dat = np.log10(dat.copy())
-                midpts = np.sqrt(clev[1:] * clev[:-1]) #geometric mean for midpoints
-            
+                midpts = np.sqrt(clev[1:] * clev[:-1])  # geometric mean for midpoints
+
             else:
                 if gridlims is None:
                     if order < 1.:
@@ -2131,7 +2163,7 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
                 vmax = np.log10(clev[-1])
                 norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
                 dat = np.log10(dat)
-                
+
             else:
                 vmin = gridlims[0]
                 vmax = gridlims[-1]
@@ -2143,14 +2175,14 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
         dat1 = (dat - vmin)/(vmax-vmin)  # Normalize by vmin and vmax so colorbar matches
         scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
         rgba_img = scalarMap.to_rgba(dat1, alpha=alpha)
-        
+
     return clev, vmin, vmax, rgba_img, cmap, norm, colorlist
 
 
 def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
     """
-    Computes a hillshade from a digital elevation model. Most of this script
-    borrowed from
+    Computes a hillshade from a digital elevation model.
+    Adapted from
     <http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html>
     last accessed 9/2/2015
 
@@ -2160,7 +2192,6 @@ def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
         angle_altitude (float): Altitude angle of illumination.
 
     Returns: Hillshade map layer (Grid2D object).
-
     """
     topotmp = topogrid.getData().copy()
     # make a masked array
@@ -2180,6 +2211,17 @@ def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
 
 
 def getMapLines(dmin, dmax, nlines):
+    """Get equally spaced lat or lon lines for mapping
+
+    Args:
+        dmin (float): minimum lat or lon
+        dmax (float): maximum lat or lon
+        nlines (int): number of lines
+
+    Returns:
+        array: location of lines
+
+    """
     drange = dmax-dmin
     if drange > 4:
         near = 1
@@ -2205,6 +2247,19 @@ def getMapLines(dmin, dmax, nlines):
 
 
 def getProjectedPatch(polygon, m, edgecolor, facecolor, lw=1., zorder=10):
+    """Project a polygon to coordinate system used in Basemap m
+
+    Args:
+        polygon: list of shapely polygons to project
+        m: Basemap map to project polygon to
+        edgecolor: color to use for polygon edge
+        facecolor: color to use to fill polygon
+        lw: line width for edge of polygon
+        zorder: plotting order of polygons
+
+    Returns:
+        patch: patch of projected polygons that can be added to map figure
+    """
     polyjson = mapping(polygon)
     tlist = []
     for sequence in polyjson['coordinates']:
@@ -2326,8 +2381,14 @@ def removeVis(filename, removelater, mapname):
 
 
 def getZoom(minlon, maxlon):
-    """
-    Get the best starting zoom level based on span of coordinates
+    """Get the best starting zoom level based on span of coordinates
+
+    Args:
+        minlon (float): minimum longitude in area of interest
+        maxlon (float): maximum longitude in area of interest
+
+    Returns:
+        zoom level (for leaflet)
     """
     angle = maxlon - minlon
     if angle < 0:
