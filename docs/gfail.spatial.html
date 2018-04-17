@@ -1,0 +1,164 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.spatial &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gfail.stats" href="gfail.stats.html" />
+    <link rel="prev" title="gfail.sample" href="gfail.sample.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.spatial">
+<span id="gfail-spatial"></span><h1>gfail.spatial<a class="headerlink" href="#module-gfail.spatial" title="Permalink to this headline">¶</a></h1>
+<p>Spatial functions used by all models</p>
+<dl class="function">
+<dt id="gfail.spatial.trim_ocean">
+<code class="descclassname">gfail.spatial.</code><code class="descname">trim_ocean</code><span class="sig-paren">(</span><em>grid2D</em>, <em>mask</em>, <em>all_touched=True</em>, <em>crop=False</em>, <em>invert=False</em>, <em>nodata=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/spatial.html#trim_ocean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.spatial.trim_ocean" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use the mask (a shapefile) to trim offshore areas</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grid2D</strong> – MapIO grid2D object of results that need trimming</li>
+<li><strong>mask</strong> – list of shapely polygon features already loaded in or string of file extension of shapefile to use
+for clipping</li>
+<li><strong>all_touched</strong> (<em>bool</em>) – if True, won’t mask cells that touch any part of polygon edge</li>
+<li><strong>crop</strong> (<em>bool</em>) – crop boundaries of raster to new masked area</li>
+<li><strong>invert</strong> (<em>bool</em>) – if True, will mask areas that do not overlap with the polygon</li>
+<li><strong>nodata</strong> (<em>flt</em>) – value to use as mask</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">grid2D file with ocean masked</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.spatial.quickcut">
+<code class="descclassname">gfail.spatial.</code><code class="descname">quickcut</code><span class="sig-paren">(</span><em>filename</em>, <em>gdict</em>, <em>tempname=None</em>, <em>extrasamp=5.0</em>, <em>method='bilinear'</em>, <em>precise=True</em>, <em>cleanup=True</em>, <em>verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/spatial.html#quickcut"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.spatial.quickcut" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use gdal to trim a large global file down quickly so mapio can read it
+efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>filename</strong> (<em>str</em>) – File path to original input file (raster).</li>
+<li><strong>gdict</strong> (<em>geodict</em>) – Geodictionary to cut around and align with.</li>
+<li><strong>tempname</strong> (<em>str</em>) – File path to desired location of clipped part of
+filename.</li>
+<li><strong>extrasamp</strong> (<em>int</em>) – Number of extra cells to cut around each edge of
+geodict to have resampling buffer for future steps.</li>
+<li><strong>method</strong> (<em>str</em>) – If resampling is necessary, method to use.</li>
+<li><strong>precise</strong> (<em>bool</em>) – If true, will resample to the gdict as closely as
+possible, if False it will just roughly cut around the area of
+interest without changing resolution</li>
+<li><strong>cleanup</strong> (<em>bool</em>) – if True, delete tempname after reading it back in</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Returns: New grid2D layer</p>
+<p>Note: This function uses the subprocess approach because <code class="docutils literal"><span class="pre">gdal.Translate</span></code> doesn’t hang on the
+command until the file is created which causes problems in the next steps.</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.spatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

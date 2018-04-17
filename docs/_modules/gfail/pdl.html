@@ -43,27 +43,22 @@
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">TODO:</span>
 <span class="sd">    - Add max probability to product properties</span>
-<span class="sd">    - Add support to specify location of PDL key</span>
 <span class="sd">    - Potentially add more files (e.g., png, pdf)</span>
 <span class="sd">&quot;&quot;&quot;</span>
 <span class="kn">import</span> <span class="nn">os</span>
-<span class="c1">#import numpy as np</span>
 <span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">from</span> <span class="nn">lxml</span> <span class="k">import</span> <span class="n">etree</span>
 <span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="k">import</span> <span class="n">get_command_output</span>
-<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
 
 
-<div class="viewcode-block" id="transfer"><a class="viewcode-back" href="../../gfail.pdl.html#gfail.pdl.transfer">[docs]</a><span class="k">def</span> <span class="nf">transfer</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="n">pdl_conf</span><span class="p">,</span> <span class="n">pdl_bin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span> <span class="n">dryrun</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<div class="viewcode-block" id="transfer"><a class="viewcode-back" href="../../gfail.pdl.html#gfail.pdl.transfer">[docs]</a><span class="k">def</span> <span class="nf">transfer</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">pdl_conf</span><span class="p">,</span> <span class="n">pdl_bin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span> <span class="n">dryrun</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    This is to transfer the event&#39;s &#39;pdl_directory&#39; to comcat.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        eventdir (str): File path to location of results for event</span>
+<span class="sd">        event_dir (str): File path to location of results for event</span>
 <span class="sd">        pdl_conf (str): Path to PDL conf file.</span>
-<span class="sd">        eventid (str): Event id, if None, assumes that basename of eventdir is</span>
-<span class="sd">            the eventid</span>
 <span class="sd">        pdl_bin (str): Path to &#39;ProductClient.jar&#39;. If None it guesses that it</span>
 <span class="sd">            is installed in the user&#39;s home directory:</span>
 <span class="sd">            ``~/ProductClient/ProductClient.jar``.</span>
@@ -83,189 +78,294 @@
                                <span class="s1">&#39;ProductClient&#39;</span><span class="p">,</span>
                                <span class="s1">&#39;ProductClient.jar&#39;</span><span class="p">)</span>
 
-    <span class="n">pdl_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="s1">&#39;pdl_directory&#39;</span><span class="p">)</span>
+    <span class="n">pdl_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;pdl_directory&#39;</span><span class="p">)</span>
 
-    <span class="c1"># Get the shakefile</span>
-    <span class="n">shake_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="s1">&#39;shakefile.txt&#39;</span><span class="p">)</span>
-    <span class="n">sfile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">shake_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
-    <span class="n">shakefile</span> <span class="o">=</span> <span class="n">sfile</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
-    <span class="n">sfile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-    <span class="n">event_dict</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()</span>
+    <span class="c1"># Load info.json</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="s1">&#39;info.json&#39;</span><span class="p">))</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">info_dict</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
 
     <span class="c1"># Get some event info for pdl send command</span>
-    <span class="n">lat</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">]</span>
-    <span class="n">lon</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span>
-    <span class="n">dep</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;depth&#39;</span><span class="p">]</span>
-    <span class="n">mag</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;magnitude&#39;</span><span class="p">]</span>
-    <span class="n">eventid</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
-    <span class="n">time_stamp</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_timestamp&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">T%H:%M:%SZ&#39;</span><span class="p">)</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;lat&#39;</span><span class="p">]</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span>
+    <span class="n">dep</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;depth&#39;</span><span class="p">]</span>
+    <span class="n">mag</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;magnitude&#39;</span><span class="p">]</span>
+    <span class="n">time_stamp</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;time&#39;</span><span class="p">]</span>
+    <span class="n">code</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;code&#39;</span><span class="p">]</span>
+    <span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;code&#39;</span><span class="p">]</span>
+    <span class="n">eventsource</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;net&#39;</span><span class="p">]</span>
+    <span class="n">shake_version</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]</span>
 
-    <span class="c1"># Note that eventsource is like &#39;catalog&#39; for scenarios, but I think for</span>
-    <span class="c1"># real events this is just the same as &#39;source&#39;</span>
-    <span class="n">eventsource</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_network&#39;</span><span class="p">]</span>
-    <span class="k">if</span> <span class="n">eventid</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">eventsource</span><span class="p">):</span>
-        <span class="n">code</span> <span class="o">=</span> <span class="n">eventid</span>
-        <span class="n">nch</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">eventsource</span><span class="p">)</span>
-        <span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">eventid</span><span class="p">[</span><span class="n">nch</span><span class="p">:]</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">code</span> <span class="o">=</span> <span class="n">eventsource</span> <span class="o">+</span> <span class="n">eventid</span>
-        <span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">eventid</span>
-
-    <span class="n">pdl_type</span> <span class="o">=</span> <span class="s1">&#39;groundfailure&#39;</span>
+    <span class="n">pdl_type</span> <span class="o">=</span> <span class="s1">&#39;ground-failure&#39;</span>
 
     <span class="c1"># PDL properties</span>
-    <span class="n">title</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-title=Earthquake-Induced Ground Failure&quot;&#39;</span>
-    <span class="n">alert_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="s1">&#39;info.json&#39;</span><span class="p">)</span>
-    <span class="n">alert_json</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="n">alert_file</span><span class="p">))</span>
-    <span class="n">lq_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-alertLQ=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">alert_json</span><span class="p">[</span><span class="s1">&#39;Liquefaction&#39;</span><span class="p">][</span><span class="s1">&#39;alert&#39;</span><span class="p">]</span>
-    <span class="n">ls_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-alertLS=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">alert_json</span><span class="p">[</span><span class="s1">&#39;Landslides&#39;</span><span class="p">][</span><span class="s1">&#39;alert&#39;</span><span class="p">]</span>
-    <span class="n">lq_hagg</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-HaggLQ=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span><span class="n">alert_json</span><span class="p">[</span><span class="s1">&#39;Liquefaction&#39;</span><span class="p">][</span><span class="s1">&#39;alertvalue&#39;</span><span class="p">]</span> <span class="c1">#np.round(alert_json[&#39;Liquefaction&#39;][&#39;alertvalue&#39;], 0)</span>
-    <span class="n">ls_hagg</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-HaggLS=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span><span class="n">alert_json</span><span class="p">[</span><span class="s1">&#39;Landslides&#39;</span><span class="p">][</span><span class="s1">&#39;alertvalue&#39;</span><span class="p">]</span> <span class="c1">#np.round(alert_json[&#39;Landslides&#39;][&#39;alertvalue&#39;], 0)</span>
+    <span class="n">lq_pref</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Liquefaction&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ls_pref</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Landslides&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">lq_haz_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-alert-color=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;color&#39;</span><span class="p">]</span>
+    <span class="n">ls_haz_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-hazard-alert-color=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;color&#39;</span><span class="p">]</span>
+    <span class="n">lq_pop_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-population-alert-color=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;color&#39;</span><span class="p">]</span>
+    <span class="n">ls_pop_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-population-alert-color=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;color&#39;</span><span class="p">]</span>
+
+    <span class="n">lq_haz_alert_value</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-alert-value=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
+    <span class="n">ls_haz_alert_value</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-hazard-alert-value=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
+    <span class="n">lq_pop_alert_value</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-population-alert-value=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
+    <span class="n">ls_pop_alert_value</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-population-alert-value=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
+
+    <span class="n">lq_haz_alert_parameter</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-alert-parameter=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;parameter&#39;</span><span class="p">]</span>
+    <span class="n">ls_haz_alert_parameter</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-hazard-alert-parameter=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;parameter&#39;</span><span class="p">]</span>
+    <span class="n">lq_pop_alert_parameter</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-population-alert-parameter=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;parameter&#39;</span><span class="p">]</span>
+    <span class="n">ls_pop_alert_parameter</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-population-alert-parameter=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;parameter&#39;</span><span class="p">]</span>
+
+    <span class="n">lq_overlay</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-overlay=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;overlay&#39;</span><span class="p">]</span>
+    <span class="n">ls_overlay</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-overlay=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;overlay&#39;</span><span class="p">]</span>
+
+    <span class="n">lq_extent</span> <span class="o">=</span> <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;extent&#39;</span><span class="p">]</span>
+    <span class="n">ls_extent</span> <span class="o">=</span> <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;extent&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Liquefaction extent</span>
+    <span class="n">lq_xmin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-minimum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">lq_extent</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">lq_xmax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-maximum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">lq_extent</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">lq_ymin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-minimum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">lq_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">lq_ymax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-maximum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">lq_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="c1"># Landslide extent</span>
+    <span class="n">ls_xmin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-minimum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">ls_xmax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-maximum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">ls_ymin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-minimum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">ls_ymax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-maximum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="c1"># Product extent --  note, for now I&#39;m just setting this to the landslide</span>
+    <span class="c1"># extent, which seems a bit pointless. But by providing the property, it</span>
+    <span class="c1"># gives us the ability to update it later if we can come up with a more</span>
+    <span class="c1"># sensible product extent.</span>
+    <span class="n">prod_xmin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-minimum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">prod_xmax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-maximum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">prod_ymin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-minimum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">prod_ymax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-maximum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+
+    <span class="n">rupt_warn</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-rupture-warning=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+                <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;rupture_warning&#39;</span><span class="p">]</span>
 
     <span class="c1"># Construct PDL command</span>
-    <span class="n">pdl_cmd</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;java -jar </span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_bin</span> <span class="o">+</span>
-               <span class="s1">&#39;--send --configFile=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_conf</span> <span class="o">+</span>
-               <span class="s1">&#39;--source=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">source</span> <span class="o">+</span>
-               <span class="s1">&#39;--eventsource=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">eventsource</span> <span class="o">+</span>
-               <span class="s1">&#39;--code=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">code</span> <span class="o">+</span>
-               <span class="s1">&#39;--eventsourcecode=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">eventsourcecode</span> <span class="o">+</span>
-               <span class="s1">&#39;--latitude=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">lat</span> <span class="o">+</span>
-               <span class="s1">&#39;--longitude=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">lon</span> <span class="o">+</span>
-               <span class="s1">&#39;--magnitude=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">mag</span> <span class="o">+</span>
-               <span class="s1">&#39;--depth=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">dep</span> <span class="o">+</span>
-               <span class="s1">&#39;--eventtime=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">time_stamp</span> <span class="o">+</span>
-               <span class="s1">&#39;--type=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_type</span> <span class="o">+</span>
-               <span class="s1">&#39;--directory=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_dir</span> <span class="o">+</span>
-               <span class="n">title</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">lq_alert</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">ls_alert</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span>
-               <span class="n">lq_hagg</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span> <span class="o">+</span> <span class="n">ls_hagg</span>
-               <span class="p">)</span>
+    <span class="n">pdl_cmd</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;java -jar </span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_bin</span> <span class="o">+</span>
+        <span class="s1">&#39;--send --configFile=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_conf</span> <span class="o">+</span>
+        <span class="s1">&#39;--source=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">source</span> <span class="o">+</span>
+        <span class="s1">&#39;--eventsource=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">eventsource</span> <span class="o">+</span>
+        <span class="s1">&#39;--code=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">code</span> <span class="o">+</span>
+        <span class="s1">&#39;--eventsourcecode=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">eventsourcecode</span> <span class="o">+</span>
+        <span class="s1">&#39;--latitude=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">lat</span> <span class="o">+</span>
+        <span class="s1">&#39;--longitude=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">lon</span> <span class="o">+</span>
+        <span class="s1">&#39;--magnitude=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">mag</span> <span class="o">+</span>
+        <span class="s1">&#39;--depth=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">dep</span> <span class="o">+</span>
+        <span class="s1">&#39;--eventtime=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">time_stamp</span> <span class="o">+</span>
+        <span class="s1">&#39;--type=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_type</span> <span class="o">+</span>
+        <span class="s1">&#39;--directory=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_dir</span> <span class="o">+</span>
+        <span class="n">lq_haz_alert</span> <span class="o">+</span> <span class="n">ls_haz_alert</span> <span class="o">+</span> <span class="n">lq_pop_alert</span> <span class="o">+</span> <span class="n">ls_pop_alert</span> <span class="o">+</span>
+        <span class="n">lq_haz_alert_value</span> <span class="o">+</span> <span class="n">ls_haz_alert_value</span> <span class="o">+</span>
+        <span class="n">lq_pop_alert_value</span> <span class="o">+</span> <span class="n">ls_pop_alert_value</span> <span class="o">+</span>
+        <span class="n">lq_haz_alert_parameter</span> <span class="o">+</span> <span class="n">ls_haz_alert_parameter</span> <span class="o">+</span>
+        <span class="n">lq_pop_alert_parameter</span> <span class="o">+</span> <span class="n">ls_pop_alert_parameter</span> <span class="o">+</span>
+        <span class="n">lq_overlay</span> <span class="o">+</span> <span class="n">ls_overlay</span> <span class="o">+</span>
+        <span class="n">lq_xmin</span> <span class="o">+</span> <span class="n">lq_xmax</span> <span class="o">+</span> <span class="n">lq_ymin</span> <span class="o">+</span> <span class="n">lq_ymax</span> <span class="o">+</span>
+        <span class="n">ls_xmin</span> <span class="o">+</span> <span class="n">ls_xmax</span> <span class="o">+</span> <span class="n">ls_ymin</span> <span class="o">+</span> <span class="n">ls_ymax</span> <span class="o">+</span>
+        <span class="n">prod_xmin</span> <span class="o">+</span> <span class="n">prod_xmax</span> <span class="o">+</span> <span class="n">prod_ymin</span> <span class="o">+</span> <span class="n">prod_ymax</span> <span class="o">+</span>
+        <span class="n">rupt_warn</span> <span class="o">+</span>
+        <span class="s1">&#39;&quot;--property-shakemap-version=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">shake_version</span>
+    <span class="p">)</span>
 
     <span class="k">if</span> <span class="ow">not</span> <span class="n">dryrun</span><span class="p">:</span>
         <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">pdl_cmd</span><span class="p">)</span>
-        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;rc&#39;</span><span class="p">:</span> <span class="n">rc</span><span class="p">,</span> <span class="s1">&#39;so&#39;</span><span class="p">:</span> <span class="n">so</span><span class="p">,</span> <span class="s1">&#39;se&#39;</span><span class="p">:</span> <span class="n">se</span><span class="p">}</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;PDL return code: </span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">rc</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;PDL standard output:</span><span class="se">\n</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">so</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;PDL standard error:</span><span class="se">\n</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">se</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;rc&#39;</span><span class="p">:</span> <span class="n">rc</span><span class="p">,</span>
+            <span class="s1">&#39;so&#39;</span><span class="p">:</span> <span class="n">so</span><span class="p">,</span>
+            <span class="s1">&#39;se&#39;</span><span class="p">:</span> <span class="n">se</span>
+        <span class="p">}</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="n">pdl_cmd</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">pdl_cmd</span></div>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s1">&#39;rc&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s1">&#39;so&#39;</span><span class="p">:</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;se&#39;</span><span class="p">:</span> <span class="sa">b</span><span class="s1">&#39;&#39;</span>
+        <span class="p">}</span></div>
 
 
-<div class="viewcode-block" id="prepare_pdl_directory"><a class="viewcode-back" href="../../gfail.pdl.html#gfail.pdl.prepare_pdl_directory">[docs]</a><span class="k">def</span> <span class="nf">prepare_pdl_directory</span><span class="p">(</span><span class="n">eventdir</span><span class="p">):</span>
+<div class="viewcode-block" id="prepare_pdl_directory"><a class="viewcode-back" href="../../gfail.pdl.html#gfail.pdl.prepare_pdl_directory">[docs]</a><span class="k">def</span> <span class="nf">prepare_pdl_directory</span><span class="p">(</span><span class="n">event_dir</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Make director for transferring to comcat.</span>
+<span class="sd">    Make directory for transferring to comcat.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        eventdir (str): Path to event directory</span>
+<span class="sd">        event_dir (str): Path to event directory</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        event_dir containing copies of all of the files that need to</span>
+<span class="sd">        be sent to comcat</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">pdl_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="s1">&#39;pdl_directory&#39;</span><span class="p">)</span>
+    <span class="n">pdl_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;pdl_directory&#39;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">):</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">)</span>
     <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">)</span>
 
-    <span class="c1"># Copy web page directory</span>
-    <span class="n">old_web_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="s1">&#39;webpage&#39;</span><span class="p">)</span>
-    <span class="n">new_web_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="s1">&#39;html&#39;</span><span class="p">)</span>
-    <span class="n">shutil</span><span class="o">.</span><span class="n">copytree</span><span class="p">(</span><span class="n">old_web_dir</span><span class="p">,</span> <span class="n">new_web_dir</span><span class="p">)</span>
+    <span class="c1"># Get the event id prefix that is prepended to strip it off later</span>
+    <span class="n">all_files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">event_dir</span><span class="p">)</span>
+    <span class="n">an_hdf_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.hdf5&#39;</span><span class="p">)][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">event_prefix</span> <span class="o">=</span> <span class="n">an_hdf_file</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
 
     <span class="c1"># Put geotif files into pdl directory</span>
-    <span class="n">all_files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">eventdir</span><span class="p">)</span>
-    <span class="n">geotif_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.tif&#39;</span><span class="p">)]</span>
+    <span class="n">geotif_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.tif&#39;</span><span class="p">)]</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">geotif_files</span><span class="p">)):</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">geotif_files</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
         <span class="n">tfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">tfile</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">):</span>
+            <span class="n">tfile</span> <span class="o">=</span> <span class="n">tfile</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
         <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">tfile</span><span class="p">)</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">move</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
-
-    <span class="c1"># Put json files into pdl directory</span>
-    <span class="n">json_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.json&#39;</span><span class="p">)]</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">json_files</span><span class="p">)):</span>
-        <span class="n">src</span> <span class="o">=</span> <span class="n">json_files</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-        <span class="n">jfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
-        <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">jfile</span><span class="p">)</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
-        
+
+    <span class="c1"># Also the png files (default models for website interactive map,</span>
+    <span class="c1"># not static maps)</span>
+    <span class="n">png_files</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;jessee_2017.png&#39;</span><span class="p">,</span> <span class="s1">&#39;zhu_2017.png&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">png_files</span><span class="p">)):</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">png_files</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="n">tfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">tfile</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">src</span><span class="p">):</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+
+    <span class="c1"># Put json file into pdl directory</span>
+    <span class="n">src</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;info.json&#39;</span><span class="p">)</span>
+    <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="s1">&#39;info.json&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">src</span><span class="p">):</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+
     <span class="c1"># Put hdf files into pdl directory</span>
-    <span class="n">hdf_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">eventdir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.hdf5&#39;</span><span class="p">)]</span>
+    <span class="n">hdf_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.hdf5&#39;</span><span class="p">)]</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hdf_files</span><span class="p">)):</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">hdf_files</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
         <span class="n">hfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">hfile</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">):</span>
+            <span class="n">hfile</span> <span class="o">=</span> <span class="n">hfile</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
         <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">hfile</span><span class="p">)</span>
+        <span class="c1"># Strip off event id prefix</span>
+
         <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
-    
+
+    <span class="c1"># Put binary ShakeCast files into pdl directory</span>
+    <span class="n">flt_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.flt&#39;</span><span class="p">)]</span>
+    <span class="n">flth_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+                  <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.hdr&#39;</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">flt_files</span><span class="p">,</span> <span class="n">flth_files</span><span class="p">):</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="n">f1</span>
+        <span class="n">f1file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">f1file</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">):</span>
+            <span class="n">f1file</span> <span class="o">=</span> <span class="n">f1file</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">f1file</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+        <span class="n">src</span> <span class="o">=</span> <span class="n">f2</span>
+        <span class="n">f2file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">f2file</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">):</span>
+            <span class="n">f2file</span> <span class="o">=</span> <span class="n">f2file</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">f2file</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+
     <span class="c1"># Make contents.xml</span>
     <span class="n">contents</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">(</span><span class="s2">&quot;contents&quot;</span><span class="p">)</span>
 
-    <span class="c1"># index.html</span>
-    <span class="n">file1</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span>
-        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Groundfailure Webpage&quot;</span><span class="p">,</span>
-        <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;gf_html&#39;</span><span class="p">)</span>
-    <span class="n">caption1</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">file1</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-    <span class="n">caption1</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Groundfailure Webpage&#39;</span>
-    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-        <span class="n">file1</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
-        <span class="n">href</span><span class="o">=</span><span class="s1">&#39;html/index.html&#39;</span><span class="p">,</span>
-        <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;text/html&#39;</span><span class="p">)</span>
+    <span class="n">json_mime</span> <span class="o">=</span> <span class="s1">&#39;text/json&#39;</span>
+    <span class="n">hdf_mime</span> <span class="o">=</span> <span class="s1">&#39;application/x-hdf&#39;</span>
+    <span class="n">gtif_mime</span> <span class="o">=</span> <span class="s1">&#39;image/geotiff&#39;</span>
+    <span class="n">png_mime</span> <span class="o">=</span> <span class="s1">&#39;image/png&#39;</span>
 
-    <span class="c1"># Geotif files</span>
-    <span class="n">tif_files</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">geotif_files</span><span class="p">)</span>
-    <span class="n">file_caps</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">geotif_files</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">geotif_files</span><span class="p">)):</span>
-        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">geotif_files</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
-        <span class="n">spl</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
-        <span class="n">ftitle</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">spl</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; Model&#39;</span>
-        <span class="n">fid</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span><span class="o">+</span><span class="s2">&quot;_gtiff&quot;</span>
-        <span class="n">tif_files</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-            <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span>
-            <span class="n">title</span><span class="o">=</span><span class="n">ftitle</span><span class="p">,</span>
-            <span class="nb">id</span><span class="o">=</span><span class="n">fid</span><span class="p">)</span>
-        <span class="n">file_caps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">tif_files</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-        <span class="n">file_caps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">ftitle</span> <span class="o">+</span> <span class="s1">&#39; Geotiff file&#39;</span>
-        <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-            <span class="n">tif_files</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
-            <span class="n">href</span><span class="o">=</span><span class="n">fname</span><span class="p">,</span>
-            <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;image/geotiff&#39;</span><span class="p">)</span>
-        
-    <span class="c1"># Json files</span>
-    <span class="n">j_files</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">json_files</span><span class="p">)</span>
-    <span class="n">file_caps</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">json_files</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">json_files</span><span class="p">)):</span>
-        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">json_files</span><span class="p">[</span><span class="n">i</span><span class="p">]))[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">if</span> <span class="n">fname</span> <span class="ow">in</span> <span class="s1">&#39;info.json&#39;</span><span class="p">:</span>
-            <span class="n">ftitle</span> <span class="o">=</span> <span class="s1">&#39;Info&#39;</span>
-            <span class="n">fid</span> <span class="o">=</span> <span class="s1">&#39;info_json&#39;</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">spl</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
-            <span class="n">ftitle</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">spl</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; Model Metadata&#39;</span>
-            <span class="n">fid</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span><span class="o">+</span><span class="s2">&quot;_json&quot;</span>
-        <span class="n">j_files</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-            <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span>
-            <span class="n">title</span><span class="o">=</span><span class="n">ftitle</span><span class="p">,</span>
-            <span class="nb">id</span><span class="o">=</span><span class="n">fid</span><span class="p">)</span>
-        <span class="n">file_caps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">j_files</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-        <span class="n">file_caps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">ftitle</span> <span class="o">+</span> <span class="s1">&#39; json file&#39;</span>
-        <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-            <span class="n">j_files</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
-            <span class="n">href</span><span class="o">=</span><span class="n">fname</span><span class="p">,</span>
-            <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;text/json&#39;</span><span class="p">)</span>
+    <span class="c1"># Json info file</span>
+    <span class="n">j_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Info&#39;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;info_json&#39;</span><span class="p">)</span>
+    <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">j_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Info json file&#39;</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">j_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span> <span class="n">href</span><span class="o">=</span><span class="s1">&#39;info.json&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">json_mime</span><span class="p">)</span>
 
-    <span class="c1"># Hdf5 files</span>
-    <span class="n">h_files</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">hdf_files</span><span class="p">)</span>
-    <span class="n">file_caps</span> <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">hdf_files</span><span class="p">)</span>
-    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">hdf_files</span><span class="p">)):</span>
-        <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">hdf_files</span><span class="p">[</span><span class="n">i</span><span class="p">]))[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">spl</span> <span class="o">=</span> <span class="n">fname</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)</span>
-        <span class="n">ftitle</span> <span class="o">=</span> <span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">capitalize</span><span class="p">()</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">spl</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; Model Results (All)&#39;</span>
-        <span class="n">fid</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">spl</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="mi">3</span><span class="p">])</span><span class="o">+</span><span class="s2">&quot;_hdf5&quot;</span>
-        <span class="n">h_files</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-            <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span>
-            <span class="n">title</span><span class="o">=</span><span class="n">ftitle</span><span class="p">,</span>
-            <span class="nb">id</span><span class="o">=</span><span class="n">fid</span><span class="p">)</span>
-        <span class="n">file_caps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">h_files</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-        <span class="n">file_caps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">ftitle</span> <span class="o">+</span> <span class="s1">&#39; hdf5 file&#39;</span>
-        <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-            <span class="n">h_files</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
-            <span class="n">href</span><span class="o">=</span><span class="n">fname</span><span class="p">,</span>
-            <span class="nb">type</span><span class="o">=</span><span class="s1">&#39;text/hdf5&#39;</span><span class="p">)</span>
+    <span class="c1"># Godt section</span>
+    <span class="n">godt_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Godt 2008&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;godt_2008&#39;</span><span class="p">)</span>
+    <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">godt_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Godt 2008 Model&#39;</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">godt_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;godt_2008.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">godt_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;godt_2008_model.tif&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
+
+    <span class="c1"># Jessee section</span>
+    <span class="n">jessee_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Nowicki Jessee 2017&quot;</span><span class="p">,</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;nowicki_jessee_2017&#39;</span><span class="p">)</span>
+    <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Nowicki Jessee 2017 Model&#39;</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;jessee_2017.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;jessee_2017_model.tif&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;jessee_2017.png&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">png_mime</span><span class="p">)</span>
+
+    <span class="c1"># Nowicki section</span>
+    <span class="n">nowicki_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Nowicki 2014&quot;</span><span class="p">,</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;nowicki_2014&#39;</span><span class="p">)</span>
+    <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">nowicki_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Nowicki 2014 Model&#39;</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">nowicki_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;nowicki_2014_global.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">nowicki_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;nowicki_2014_global_model.tif&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
+
+    <span class="c1"># zhu 2015 section</span>
+    <span class="n">zhu2015_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Zhu 2015&quot;</span><span class="p">,</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;zhu_2015&#39;</span><span class="p">)</span>
+    <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2015_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Zhu 2015 Model&#39;</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2015_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2015.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2015_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2015_model.tif&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
+
+    <span class="c1"># Zhu 2017 section</span>
+    <span class="n">zhu2017_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Zhu 2017&quot;</span><span class="p">,</span>
+        <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;zhu_2017&#39;</span><span class="p">)</span>
+    <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Zhu 2017 Model&#39;</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2017_general.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2017_general_model.tif&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
+    <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2017.png&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">png_mime</span><span class="p">)</span>
+
+    <span class="c1"># Copy over legend files</span>
+<span class="c1">#    data_dir = pkg_resources.resource_filename(&#39;gfail&#39;, &#39;data&#39;)</span>
+<span class="c1">#    src = os.path.join(data_dir, &#39;legend_landslide.png&#39;)</span>
+<span class="c1">#    dst = os.path.join(pdl_dir, &#39;legend_landslide.png&#39;)</span>
+<span class="c1">#    shutil.copy(src, dst)</span>
+<span class="c1">#    src = os.path.join(data_dir, &#39;legend_liquefaction.png&#39;)</span>
+<span class="c1">#    dst = os.path.join(pdl_dir, &#39;legend_liquefaction.png&#39;)</span>
+<span class="c1">#    shutil.copy(src, dst)</span>
 
     <span class="c1"># Write result</span>
     <span class="n">out_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="s1">&#39;contents.xml&#39;</span><span class="p">)</span>

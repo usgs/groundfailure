@@ -57,6 +57,8 @@
 
 <span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="k">import</span> <span class="n">GeoDict</span>
 <span class="kn">import</span> <span class="nn">matplotlib.path</span> <span class="k">as</span> <span class="nn">mplPath</span>
+<span class="kn">from</span> <span class="nn">rasterio.transform</span> <span class="k">import</span> <span class="n">Affine</span>
+<span class="kn">import</span> <span class="nn">rasterio</span>
 
 
 <div class="viewcode-block" id="getProjectedShapes"><a class="viewcode-back" href="../../gfail.sample.html#gfail.sample.getProjectedShapes">[docs]</a><span class="k">def</span> <span class="nf">getProjectedShapes</span><span class="p">(</span><span class="n">shapes</span><span class="p">,</span> <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">):</span>
@@ -72,9 +74,9 @@
 <span class="sd">        ymax: Northern boundary of all shapes.</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">       Tuple of</span>
-<span class="sd">           - Input sequence of shapes, projected to orthographic</span>
-<span class="sd">           - PyProj projection object used to transform input shapes</span>
+<span class="sd">        tuple: (pshapes, proj) where:</span>
+<span class="sd">            * pshapes: input sequence of shapes, projected to orthographic</span>
+<span class="sd">            * proj: PyProj projection object used to transform input shapes</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">latmiddle</span> <span class="o">=</span> <span class="n">ymin</span> <span class="o">+</span> <span class="p">(</span><span class="n">ymax</span> <span class="o">-</span> <span class="n">ymin</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
     <span class="n">lonmiddle</span> <span class="o">=</span> <span class="n">xmin</span> <span class="o">+</span> <span class="p">(</span><span class="n">xmax</span> <span class="o">-</span> <span class="n">xmin</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span>
@@ -110,18 +112,18 @@
 <span class="sd">            number.</span>
 <span class="sd">        nmax: Threshold maximum number of points in total data mesh.</span>
 <span class="sd">        touch_center: Boolean indicating whether presence of polygon in each</span>
-<span class="sd">            grid cell is enough to turn that into a yes pixel.</span>
-<span class="sd">            ** This doc needs a better explanation! ** And I don&#39;t know what</span>
-<span class="sd">            does so I&#39;m not the one to fix it.</span>
+<span class="sd">            grid cell is enough to turn that into a yes pixel (False) or</span>
+<span class="sd">            if the center of the grid cell must intersect a polygon (True).</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        A tuple of</span>
-<span class="sd">          - numpy 2-D array of X/Y coordinates inside hazard polygons.</span>
-<span class="sd">          - number of rows of resulting mesh</span>
-<span class="sd">          - number of columns of resulting mesh</span>
-<span class="sd">          - numpy array of x coordinate centers of columns</span>
-<span class="sd">          - numpy array of y coordinate centers of rows</span>
-<span class="sd">          - 1D array of indices where yes pixels are located (use np.unravel_index to unpack to 2D array)</span>
+<span class="sd">        tuple: (yespoints, nrows, ncols, xvar, yvar, idx) where:</span>
+<span class="sd">          - yespoints: numpy 2-D array of X/Y coordinates inside hazard polygons.</span>
+<span class="sd">          - nrows: number of rows of resulting mesh</span>
+<span class="sd">          - ncols: number of columns of resulting mesh</span>
+<span class="sd">          - xvar: numpy array of x coordinate centers of columns</span>
+<span class="sd">          - yvar: numpy array of y coordinate centers of rows</span>
+<span class="sd">          - idx: 1D array of indices where yes pixels are located</span>
+<span class="sd">            (use np.unravel_index to unpack to 2D array)</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
 
@@ -228,11 +230,13 @@
 <span class="sd">            describe the opposite of the usual meaning of this variable!**</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Tuple of</span>
-<span class="sd">          - sequence of coordinates in lat/lon for: YesPoints, NoPoints</span>
-<span class="sd">          - numpy array of mesh column centers</span>
-<span class="sd">          - numpy array of mesh row centers</span>
-<span class="sd">          - PyProj object defining orthographic projection of xy points</span>
+<span class="sd">        tuple: (yespoints, nopoints, xvar, yvar, pshapes, proj) where:</span>
+<span class="sd">          - yespoints: sequence of coordinates in lat/lon for yespoints</span>
+<span class="sd">          - nopoints: same as above for no points</span>
+<span class="sd">          - xvar: numpy array of mesh column centers</span>
+<span class="sd">          - yvar: numpy array of mesh row centers</span>
+<span class="sd">          - pshapes: projected shapes</span>
+<span class="sd">          - proj: PyProj object defining orthographic projection of xy points</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">xmin</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">bounds</span>
@@ -262,7 +266,7 @@
 
     <span class="c1"># get the &quot;yes&quot; sample points</span>
     <span class="n">yespoints</span><span class="p">,</span> <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span><span class="p">,</span> <span class="n">xvar</span><span class="p">,</span> <span class="n">yvar</span><span class="p">,</span> <span class="n">yesidx</span> <span class="o">=</span> <span class="n">getYesPoints</span><span class="p">(</span>
-            <span class="n">pshapes</span><span class="p">,</span> <span class="n">proj</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="n">nmax</span><span class="p">,</span> <span class="n">touch_center</span><span class="o">=</span><span class="n">touch_center</span><span class="p">)</span>
+        <span class="n">pshapes</span><span class="p">,</span> <span class="n">proj</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="n">nmax</span><span class="o">=</span><span class="n">nmax</span><span class="p">,</span> <span class="n">touch_center</span><span class="o">=</span><span class="n">touch_center</span><span class="p">)</span>
 
     <span class="c1"># sampleNo but with taking all of the points instead of just some of them</span>
     <span class="c1"># randomly flattened array of all indices in mesh</span>
@@ -328,6 +332,32 @@
         <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
     <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">coords</span></div>
+
+
+<div class="viewcode-block" id="rasterizeShapes"><a class="viewcode-back" href="../../gfail.sample.html#gfail.sample.rasterizeShapes">[docs]</a><span class="k">def</span> <span class="nf">rasterizeShapes</span><span class="p">(</span><span class="n">pshapes</span><span class="p">,</span> <span class="n">geodict</span><span class="p">,</span> <span class="n">all_touched</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Rasterizing a shape</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        pshapes: Sequence of orthographically projected shapes.</span>
+<span class="sd">        geodict: Mapio geodictionary.</span>
+<span class="sd">        all_touched: Turn pixel &quot;on&quot; if shape touches pixel, otherwise turn it</span>
+<span class="sd">            on if the center of the pixel is contained within the shape. Note</span>
+<span class="sd">            that the footprint of the shape is inflated and the amount of</span>
+<span class="sd">            inflation depends on the pixel size if all_touched=True.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Rasterio grid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">outshape</span> <span class="o">=</span> <span class="p">(</span><span class="n">geodict</span><span class="o">.</span><span class="n">ny</span><span class="p">,</span> <span class="n">geodict</span><span class="o">.</span><span class="n">nx</span><span class="p">)</span>
+    <span class="n">txmin</span> <span class="o">=</span> <span class="n">geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="n">geodict</span><span class="o">.</span><span class="n">dx</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">tymax</span> <span class="o">=</span> <span class="n">geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="n">geodict</span><span class="o">.</span><span class="n">dy</span> <span class="o">/</span> <span class="mf">2.0</span>
+    <span class="n">transform</span> <span class="o">=</span> <span class="n">Affine</span><span class="o">.</span><span class="n">from_gdal</span><span class="p">(</span>
+        <span class="n">txmin</span><span class="p">,</span> <span class="n">geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="n">tymax</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="n">geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">)</span>
+    <span class="n">imgs</span> <span class="o">=</span> <span class="n">rasterio</span><span class="o">.</span><span class="n">features</span><span class="o">.</span><span class="n">rasterize</span><span class="p">(</span>
+        <span class="n">pshapes</span><span class="p">,</span> <span class="n">out_shape</span><span class="o">=</span><span class="n">outshape</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">transform</span><span class="p">,</span>
+        <span class="n">all_touched</span><span class="o">=</span><span class="n">all_touched</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">imgs</span></div>
 </pre></div>
 
           </div>

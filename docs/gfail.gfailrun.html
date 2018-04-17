@@ -1,0 +1,219 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.gfailrun &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gfail.godt" href="gfail.godt.html" />
+    <link rel="prev" title="gfail.conf" href="gfail.conf.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.gfailrun">
+<span id="gfail-gfailrun"></span><h1>gfail.gfailrun<a class="headerlink" href="#module-gfail.gfailrun" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="gfail.gfailrun.run_gfail">
+<code class="descclassname">gfail.gfailrun.</code><code class="descname">run_gfail</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#run_gfail"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.run_gfail" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs ground failure.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> – dictionary or argument parser Namespace output by bin/gfail program.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Names of created files.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.gfailrun.getGridURL">
+<code class="descclassname">gfail.gfailrun.</code><code class="descname">getGridURL</code><span class="sig-paren">(</span><em>gridurl</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#getGridURL"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.getGridURL" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gridurl</strong> (<em>str</em>) – url for Shakemap grid.xml file.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">file object corresponding to the url.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.gfailrun.isURL">
+<code class="descclassname">gfail.gfailrun.</code><code class="descname">isURL</code><span class="sig-paren">(</span><em>gridurl</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#isURL"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.isURL" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function determines if the provided string is a valid url</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>gridurl</strong> (<em>str</em>) – url to check.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if gridurl is a valid url, False otherwise.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.gfailrun.set_default_paths">
+<code class="descclassname">gfail.gfailrun.</code><code class="descname">set_default_paths</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#set_default_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.set_default_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates a file called .gfail_defaults that contains default path
+information to simplify running gfail. Can be overwritten by any manually
+entered paths. This updates any existing .gfail_defaults file. If
+args.data_path is ‘reset’ then any existing defaults will be removed.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> (<em>arparser Namespace</em>) – Input arguments.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">Updates .gfail_defaults file on users path, or creates new one if
+file does not already exist.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.gfailrun.list_default_paths">
+<code class="descclassname">gfail.gfailrun.</code><code class="descname">list_default_paths</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#list_default_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.list_default_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Lists all default paths currently set.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.gfailrun.reset_default_paths">
+<code class="descclassname">gfail.gfailrun.</code><code class="descname">reset_default_paths</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#reset_default_paths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.reset_default_paths" title="Permalink to this definition">¶</a></dt>
+<dd><p>Clear default path file</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.gfailrun.get_bounds">
+<code class="descclassname">gfail.gfailrun.</code><code class="descname">get_bounds</code><span class="sig-paren">(</span><em>shakefile</em>, <em>parameter='pga'</em>, <em>threshold=2.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#get_bounds"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.get_bounds" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the boundaries of the shakemap that include all areas with shaking
+above the defined threshold.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>shakefile</strong> (<em>str</em>) – Path to shakemap file.</li>
+<li><strong>parameter</strong> (<em>str</em>) – Either ‘pga’ or ‘pgv’.</li>
+<li><strong>threshold</strong> (<em>float</em>) – Minimum value of parameter of interest, in units
+of %g for pga and cm/s for pgv. The default value of 2% g is based
+on minimum pga threshold ever observed to have triggered landslides
+by Jibson and Harp (2016).</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A dictionary with keys ‘xmin’, ‘xmax’, ‘ymin’, and ‘ymax’ that
+defines the boundaries in geographic coordinates.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.gfailrun</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

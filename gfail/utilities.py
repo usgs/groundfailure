@@ -19,6 +19,24 @@ import matplotlib.cm as cm  # Don't delete this, it's needed in an eval function
 
 def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     """
+    Find an event in comcat, searching first by event id and if that
+    fails searching by magnitude, time, and location.
+
+    Args:
+        shakefile (str): path to shakemap .xml file of event to find
+        timewindow (float): width of time window to search around time defined
+            in shakefile (in seconds)
+        degwindow (float): width of area to search around location specified in
+            shakefile (in degrees).
+        magwindow (float): width of magnitude window to search around the
+            magnitude specified in shakefile.
+
+    Returns:
+        None if event not found, else tuple (info, detail, shakemap) where,
+            * info: json formatted dictionary of info.json for the event
+            * detail: event detail from comcat
+            * shakemap: shakemap of event found (from comcat)
+
     """
     header_dicts = getHeaderData(shakefile)
     grid_dict = header_dicts[0]
@@ -65,6 +83,7 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     info = json.loads(infobytes.decode('utf-8'))
     return info, detail, shakemap
 
+
 def parseMapConfig(config, fileext=None):
     """
     Parse config for mapping options.
@@ -85,9 +104,9 @@ def parseMapConfig(config, fileext=None):
     watercolor = 'B8EEFF'
     ALPHA = 0.7
     oceanfile = None
-    oceanref = None
-    roadref = None
-    cityref = None
+    #oceanref = None
+    #roadref = None
+    #cityref = None
 
     if fileext is None:
         fileext = '.'
@@ -97,25 +116,25 @@ def parseMapConfig(config, fileext=None):
             print('DEM not valid - hillshade will not be possible\n')
     if 'ocean' in config:
         oceanfile = os.path.join(fileext, config['ocean']['file'])
-        try:
-            oceanref = config['ocean']['shortref']
-        except:
-            oceanref = 'unknown'
+        #try:
+        #    oceanref = config['ocean']['shortref']
+        #except:
+        #    oceanref = 'unknown'
     if 'roads' in config:
         roadfolder = os.path.join(fileext, config['roads']['file'])
         if os.path.exists(roadfolder) is False:
             print('roadfolder not valid - roads will not be displayed\n')
             roadfolder = None
-        try:
-            roadref = config['roads']['shortref']
-        except:
-            roadref = 'unknown'
+        #try:
+        #    roadref = config['roads']['shortref']
+        #except:
+        #    roadref = 'unknown'
     if 'cities' in config:
         cityfile = os.path.join(fileext, config['cities']['file'])
-        try:
-            cityref = config['cities']['shortref']
-        except:
-            cityref = 'unknown'
+        #try:
+        #    cityref = config['cities']['shortref']
+        #except:
+        #    cityref = 'unknown'
         if os.path.exists(cityfile):
             try:
                 BasemapCities.loadFromGeoNames(cityfile=cityfile)
@@ -142,17 +161,13 @@ def parseMapConfig(config, fileext=None):
     mapin = {'topofile': topofile, 'roadfolder': roadfolder,
              'cityfile': cityfile, 'roadcolor': roadcolor,
              'countrycolor': countrycolor, 'watercolor': watercolor,
-             'ALPHA': ALPHA, 'roadref': roadref,
-             'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
+             'ALPHA': ALPHA, 'oceanfile': oceanfile}  # 'roadref': roadref, 'cityref': cityref, 'oceanref': oceanref
 
     return mapin
 
 
 def parseConfigLayers(maplayers, config, keys=None):
     """
-    TODO:
-        - Add ability to interpret custom color maps.
-
     Parse things that need to coodinate with each layer (like lims, logscale,
     colormaps etc.) from config file, in right order, where the order is from
     maplayers.
@@ -164,7 +179,7 @@ def parseConfigLayers(maplayers, config, keys=None):
         keys (list): List of keys of maplayers to process, e.g. ``['model']``.
 
     Returns:
-        list: List of the following:
+        tuple: (plotorder, logscale, lims, colormaps, maskthreshes) where:
             * plotorder: maplayers keys in order of plotting.
             * logscale: list of logscale options from config corresponding to
               keys in plotorder (same order).
@@ -176,6 +191,9 @@ def parseConfigLayers(maplayers, config, keys=None):
               to keys in plotorder (same order).
 
     """
+    #TODO:
+    #    - Add ability to interpret custom color maps.
+
     # get all key names, create a plotorder list in case maplayers is not an
     # ordered dict, making sure that anything called 'model' is first
     if keys is None:
@@ -289,11 +307,13 @@ def parseConfigLayers(maplayers, config, keys=None):
 
 
 def text_to_json(input1):
-    """
-    Simplification of text_to_json from shakelib.rupture.factory
-    
+    """Simplification of text_to_json from shakelib.rupture.factory
+
     Args:
         input1 (str): url or filepath to text file
+
+    Returns:
+        json formatted stream of input1
     """
     if os.path.exists(input1):
         with open(input1, 'r') as f:
@@ -366,12 +386,13 @@ def text_to_json(input1):
 def write_floats(filename, grid2d):
     """Create a binary (with acc. header file) version of a Grid2D object.
 
-    Given a filename input of "probability.flt", this function will
-    create that file, plus a text file called "probability.hdr".
-
     Args:
         filename (str): String filename to write (i.e., 'probability.flt')
         grid2d (Grid2D): MapIO Grid2D object.
+
+    Returns:
+        Given a filename input of "probability.flt", this function will
+        create that file, plus a text file called "probability.hdr".
     """
     geodict = grid2d.getGeoDict().asDict()
     array = grid2d.getData().astype('float32')
@@ -396,10 +417,14 @@ def write_floats(filename, grid2d):
 def savelayers(grids, filename):
     """
     Save ground failure layers object as a MultiHazard HDF file, preserving
-    metadata structures. Must all have the same geodict.
+    metadata structures. All layers must have same geodictionary.
+
     Args:
         grids: Ground failure layers object.
         filename (str): Path to where you want to save this file.
+
+    Returns:
+        .hdf5 file containing ground failure layers
     """
     layers = collections.OrderedDict()
     metadata = collections.OrderedDict()
@@ -424,7 +449,10 @@ def loadlayers(filename):
     Load a MultiHazard HDF file back in as a ground failure layers object in
     active memory (must have been saved for this purpose).
     Args:
-        filename (str): Path to layers file.
+        filename (str): Path to layers file (hdf5 extension).
+
+    Returns:
+        Ground failure layers object
     """
     mgrid = MultiHazardGrid.load(filename)
     grids = collections.OrderedDict()

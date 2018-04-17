@@ -1,0 +1,291 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.spatial &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gfail.spatial</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="c1"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Spatial functions used by all models</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">fiona</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">rasterio</span>
+<span class="kn">import</span> <span class="nn">rasterio.mask</span>
+
+<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="k">import</span> <span class="n">GDALGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.gmt</span> <span class="k">import</span> <span class="n">GMTGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="k">import</span> <span class="n">GeoDict</span>
+<span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="k">import</span> <span class="n">get_command_output</span>
+
+
+<div class="viewcode-block" id="trim_ocean"><a class="viewcode-back" href="../../gfail.spatial.html#gfail.spatial.trim_ocean">[docs]</a><span class="k">def</span> <span class="nf">trim_ocean</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">all_touched</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">crop</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">invert</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="mf">0.</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Use the mask (a shapefile) to trim offshore areas</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        grid2D: MapIO grid2D object of results that need trimming</span>
+<span class="sd">        mask: list of shapely polygon features already loaded in or string of file extension of shapefile to use</span>
+<span class="sd">            for clipping</span>
+<span class="sd">        all_touched (bool): if True, won&#39;t mask cells that touch any part of polygon edge</span>
+<span class="sd">        crop (bool): crop boundaries of raster to new masked area</span>
+<span class="sd">        invert (bool): if True, will mask areas that do not overlap with the polygon</span>
+<span class="sd">        nodata (flt): value to use as mask</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        grid2D file with ocean masked</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">gdict</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+
+    <span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+    <span class="n">tempfile1</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.tif&#39;</span><span class="p">)</span>
+    <span class="n">tempfile2</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp2.tif&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Get shapes ready</span>
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">fiona</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">shapefile</span><span class="p">:</span>
+            <span class="n">hits</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">shapefile</span><span class="o">.</span><span class="n">items</span><span class="p">(</span><span class="n">bbox</span><span class="o">=</span><span class="p">(</span><span class="n">gdict</span><span class="o">.</span><span class="n">xmin</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">xmax</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">ymax</span><span class="p">)))</span>
+            <span class="n">features</span> <span class="o">=</span> <span class="p">[</span><span class="n">feature</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">&quot;geometry&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="n">hits</span><span class="p">]</span>
+            <span class="c1">#hits = list(shapefile)</span>
+            <span class="c1">#features = [feature[&quot;geometry&quot;] for feature in hits]</span>
+    <span class="k">elif</span> <span class="nb">type</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">mask</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;mask is neither a link to a shapefile or a list of shapely shapes, cannot proceed&#39;</span><span class="p">)</span>
+
+    <span class="n">tempfilen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.bil&#39;</span><span class="p">)</span>
+    <span class="n">tempfile1</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.tif&#39;</span><span class="p">)</span>
+    <span class="n">tempfile2</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp2.tif&#39;</span><span class="p">)</span>
+    <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">grid2D</span><span class="p">)</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">tempfilen</span><span class="p">)</span>
+    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">tempfilen</span><span class="p">,</span> <span class="n">tempfile1</span><span class="p">)</span>
+    <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+
+    <span class="c1"># #Convert grid2D to rasterio format</span>
+    <span class="c1">#</span>
+    <span class="c1"># source_crs = rasterio.crs.CRS.from_string(gdict.projection)</span>
+    <span class="c1"># src_transform = rasterio.Affine.from_gdal(gdict.xmin - gdict.dx/2.0,</span>
+    <span class="c1">#                                           gdict.dx, 0.0,  gdict.ymax + gdict.dy/2.0,</span>
+    <span class="c1">#                                           0.0, -1*gdict.dy)  # from mapio.grid2D</span>
+    <span class="c1"># with rasterio.open(tempfile1, &#39;w&#39;, driver=&#39;GTIff&#39;,</span>
+    <span class="c1">#                    height=gdict.ny,    # numpy of rows</span>
+    <span class="c1">#                    width=gdict.nx,     # number of columns</span>
+    <span class="c1">#                    count=1,                        # number of bands</span>
+    <span class="c1">#                    dtype=rasterio.dtypes.float64,  # this must match the dtype of our array</span>
+    <span class="c1">#                    crs=source_crs,</span>
+    <span class="c1">#                    transform=src_transform) as src_raster:</span>
+    <span class="c1">#     src_raster.write(grid2D.getData().astype(float), 1)  # optional second parameter is the band number to write to</span>
+    <span class="c1">#     #ndvi_raster.nodata = -1  # set the raster&#39;s nodata value</span>
+
+    <span class="k">if</span> <span class="n">rc</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">rasterio</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">tempfile1</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">src_raster</span><span class="p">:</span>
+            <span class="n">out_image</span><span class="p">,</span> <span class="n">out_transform</span> <span class="o">=</span> <span class="n">rasterio</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">mask</span><span class="p">(</span><span class="n">src_raster</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span>
+                                                          <span class="n">all_touched</span><span class="o">=</span><span class="n">all_touched</span><span class="p">,</span>
+                                                          <span class="n">crop</span><span class="o">=</span><span class="n">crop</span><span class="p">)</span>
+            <span class="n">out_meta</span> <span class="o">=</span> <span class="n">src_raster</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">out_meta</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;driver&quot;</span><span class="p">:</span> <span class="s2">&quot;GTiff&quot;</span><span class="p">,</span>
+                             <span class="s2">&quot;height&quot;</span><span class="p">:</span> <span class="n">out_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                             <span class="s2">&quot;width&quot;</span><span class="p">:</span> <span class="n">out_image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span>
+                             <span class="s2">&quot;transform&quot;</span><span class="p">:</span> <span class="n">out_transform</span><span class="p">})</span>
+            <span class="k">with</span> <span class="n">rasterio</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">tempfile2</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">out_meta</span><span class="p">)</span> <span class="k">as</span> <span class="n">dest</span><span class="p">:</span>
+                <span class="n">dest</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">out_image</span><span class="p">)</span>
+
+        <span class="n">newgrid</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">tempfile2</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;ocean trimming failed&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">se</span><span class="p">)</span>
+
+    <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">tempdir</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">newgrid</span></div>
+
+
+<div class="viewcode-block" id="quickcut"><a class="viewcode-back" href="../../gfail.spatial.html#gfail.spatial.quickcut">[docs]</a><span class="k">def</span> <span class="nf">quickcut</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">gdict</span><span class="p">,</span> <span class="n">tempname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extrasamp</span><span class="o">=</span><span class="mf">5.</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">,</span>
+             <span class="n">precise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Use gdal to trim a large global file down quickly so mapio can read it</span>
+<span class="sd">    efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        filename (str): File path to original input file (raster).</span>
+<span class="sd">        gdict (geodict): Geodictionary to cut around and align with.</span>
+<span class="sd">        tempname (str): File path to desired location of clipped part of</span>
+<span class="sd">            filename.</span>
+<span class="sd">        extrasamp (int): Number of extra cells to cut around each edge of</span>
+<span class="sd">            geodict to have resampling buffer for future steps.</span>
+<span class="sd">        method (str): If resampling is necessary, method to use.</span>
+<span class="sd">        precise (bool): If true, will resample to the gdict as closely as</span>
+<span class="sd">            possible, if False it will just roughly cut around the area of</span>
+<span class="sd">            interest without changing resolution</span>
+<span class="sd">        cleanup (bool): if True, delete tempname after reading it back in</span>
+<span class="sd">    Returns: New grid2D layer</span>
+
+<span class="sd">    Note: This function uses the subprocess approach because ``gdal.Translate`` doesn&#39;t hang on the</span>
+<span class="sd">    command until the file is created which causes problems in the next steps.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">filegdict</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">filegdict</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Cannot get geodict for </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">filename</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">tempname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">tempname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;junk.tif&#39;</span><span class="p">)</span>
+        <span class="n">deltemp</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">deltemp</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1">#if os.path.exists(tempname):</span>
+    <span class="c1">#    os.remove(tempname)</span>
+    <span class="c1">#    print(&#39;Temporary file already there, removing file&#39;)</span>
+
+    <span class="n">filegdict</span> <span class="o">=</span> <span class="n">filegdict</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="c1"># Get the right methods for mapio (method) and gdal (method2)</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;linear&#39;</span><span class="p">:</span>
+        <span class="n">method2</span> <span class="o">=</span> <span class="s1">&#39;bilinear&#39;</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;nearest&#39;</span><span class="p">:</span>
+        <span class="n">method2</span> <span class="o">=</span> <span class="s1">&#39;near&#39;</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;bilinear&#39;</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;linear&#39;</span>
+        <span class="n">method2</span> <span class="o">=</span> <span class="s1">&#39;bilinear&#39;</span>
+    <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;near&#39;</span><span class="p">:</span>
+        <span class="n">method</span> <span class="o">=</span> <span class="s1">&#39;nearest&#39;</span>
+        <span class="n">method2</span> <span class="o">=</span> <span class="s1">&#39;near&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">method2</span> <span class="o">=</span> <span class="n">method</span>
+
+    <span class="k">if</span> <span class="n">filegdict</span> <span class="o">!=</span> <span class="n">gdict</span><span class="p">:</span>
+        <span class="c1"># First cut without resampling</span>
+        <span class="n">tempgdict</span> <span class="o">=</span> <span class="n">GeoDict</span><span class="o">.</span><span class="n">createDictFromBox</span><span class="p">(</span>
+            <span class="n">gdict</span><span class="o">.</span><span class="n">xmin</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">xmax</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">ymax</span><span class="p">,</span>
+            <span class="n">filegdict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="n">filegdict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span> <span class="n">inside</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">egdict</span> <span class="o">=</span> <span class="n">filegdict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">tempgdict</span><span class="p">)</span>
+
+            <span class="n">ulx</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dx</span>
+            <span class="n">uly</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dy</span>
+            <span class="n">lrx</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dx</span>
+            <span class="n">lry</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dy</span>
+
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff -projwin </span><span class="si">%1.8f</span><span class="s1"> </span><span class="si">%1.8f</span><span class="s1"> </span><span class="se">\</span>
+<span class="s1">            </span><span class="si">%1.8f</span><span class="s1"> </span><span class="si">%1.8f</span><span class="s1"> -r </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ulx</span><span class="p">,</span> <span class="n">uly</span><span class="p">,</span> <span class="n">lrx</span><span class="p">,</span> <span class="n">lry</span><span class="p">,</span> <span class="n">method2</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">tempname</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>  <span class="c1"># When ShakeMap is being loaded, sometimes they won&#39;t align right because it&#39;s already cut to the area, so just load the whole file in</span>
+            <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff -r </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">method2</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">tempname</span><span class="p">)</span>
+        <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">rc</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">se</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">so</span><span class="o">.</span><span class="n">decode</span><span class="p">())</span>
+
+        <span class="n">newgrid2d</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">tempname</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">precise</span><span class="p">:</span>
+            <span class="c1"># Resample to exact geodictionary</span>
+            <span class="n">newgrid2d</span> <span class="o">=</span> <span class="n">newgrid2d</span><span class="o">.</span><span class="n">interpolate2</span><span class="p">(</span><span class="n">gdict</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cleanup</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">tempname</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">deltemp</span><span class="p">:</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">tempdir</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ftype</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">getFileType</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ftype</span> <span class="o">!=</span> <span class="s1">&#39;unknown&#39;</span><span class="p">:</span>
+            <span class="n">newgrid2d</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">filename</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.xml&#39;</span><span class="p">):</span>
+            <span class="n">newgrid2d</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">newgrid2d</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">newgrid2d</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gfail.html">gfail</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

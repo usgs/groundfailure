@@ -16,6 +16,8 @@ from shapely.geometry import Polygon, shape, MultiPoint, Point
 
 from mapio.geodict import GeoDict
 import matplotlib.path as mplPath
+from rasterio.transform import Affine
+import rasterio
 
 
 def getProjectedShapes(shapes, xmin, xmax, ymin, ymax):
@@ -31,9 +33,9 @@ def getProjectedShapes(shapes, xmin, xmax, ymin, ymax):
         ymax: Northern boundary of all shapes.
 
     Returns:
-       Tuple of
-           - Input sequence of shapes, projected to orthographic
-           - PyProj projection object used to transform input shapes
+        tuple: (pshapes, proj) where:
+            * pshapes: input sequence of shapes, projected to orthographic
+            * proj: PyProj projection object used to transform input shapes
     """
     latmiddle = ymin + (ymax - ymin) / 2.0
     lonmiddle = xmin + (xmax - xmin) / 2.0
@@ -69,18 +71,18 @@ def getYesPoints(pshapes, proj, dx, nmax, touch_center=True):
             number.
         nmax: Threshold maximum number of points in total data mesh.
         touch_center: Boolean indicating whether presence of polygon in each
-            grid cell is enough to turn that into a yes pixel.
-            ** This doc needs a better explanation! ** And I don't know what
-            does so I'm not the one to fix it.
+            grid cell is enough to turn that into a yes pixel (False) or
+            if the center of the grid cell must intersect a polygon (True).
 
     Returns:
-        A tuple of
-          - numpy 2-D array of X/Y coordinates inside hazard polygons.
-          - number of rows of resulting mesh
-          - number of columns of resulting mesh
-          - numpy array of x coordinate centers of columns
-          - numpy array of y coordinate centers of rows
-          - 1D array of indices where yes pixels are located (use np.unravel_index to unpack to 2D array)
+        tuple: (yespoints, nrows, ncols, xvar, yvar, idx) where:
+          - yespoints: numpy 2-D array of X/Y coordinates inside hazard polygons.
+          - nrows: number of rows of resulting mesh
+          - ncols: number of columns of resulting mesh
+          - xvar: numpy array of x coordinate centers of columns
+          - yvar: numpy array of y coordinate centers of rows
+          - idx: 1D array of indices where yes pixels are located
+            (use np.unravel_index to unpack to 2D array)
 
     """
 
@@ -187,11 +189,13 @@ def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None,
             describe the opposite of the usual meaning of this variable!**
 
     Returns:
-        Tuple of
-          - sequence of coordinates in lat/lon for: YesPoints, NoPoints
-          - numpy array of mesh column centers
-          - numpy array of mesh row centers
-          - PyProj object defining orthographic projection of xy points
+        tuple: (yespoints, nopoints, xvar, yvar, pshapes, proj) where:
+          - yespoints: sequence of coordinates in lat/lon for yespoints
+          - nopoints: same as above for no points
+          - xvar: numpy array of mesh column centers
+          - yvar: numpy array of mesh row centers
+          - pshapes: projected shapes
+          - proj: PyProj object defining orthographic projection of xy points
 
     """
     xmin, ymin, xmax, ymax = bounds
@@ -221,7 +225,7 @@ def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None,
 
     # get the "yes" sample points
     yespoints, nrows, ncols, xvar, yvar, yesidx = getYesPoints(
-            pshapes, proj, dx, nmax=nmax, touch_center=touch_center)
+        pshapes, proj, dx, nmax=nmax, touch_center=touch_center)
 
     # sampleNo but with taking all of the points instead of just some of them
     # randomly flattened array of all indices in mesh
@@ -287,3 +291,29 @@ def projectBack(points, proj):
         coords.append((x, y))
     coords = np.array(coords)
     return coords
+
+
+def rasterizeShapes(pshapes, geodict, all_touched=True):
+    """
+    Rasterizing a shape
+
+    Args:
+        pshapes: Sequence of orthographically projected shapes.
+        geodict: Mapio geodictionary.
+        all_touched: Turn pixel "on" if shape touches pixel, otherwise turn it
+            on if the center of the pixel is contained within the shape. Note
+            that the footprint of the shape is inflated and the amount of
+            inflation depends on the pixel size if all_touched=True.
+
+    Returns:
+        Rasterio grid.
+    """
+    outshape = (geodict.ny, geodict.nx)
+    txmin = geodict.xmin - geodict.dx / 2.0
+    tymax = geodict.ymax + geodict.dy / 2.0
+    transform = Affine.from_gdal(
+        txmin, geodict.dx, 0.0, tymax, 0.0, -geodict.dy)
+    imgs = rasterio.features.rasterize(
+        pshapes, out_shape=outshape, fill=0.0, transform=transform,
+        all_touched=all_touched, default_value=1.0)
+    return imgs

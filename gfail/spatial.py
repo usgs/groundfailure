@@ -10,8 +10,6 @@ import fiona
 import shutil
 import rasterio
 import rasterio.mask
-import math
-import numpy as np
 
 from mapio.gdal import GDALGrid
 from mapio.shake import ShakeGrid
@@ -31,6 +29,9 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False, invert=False, nodata=
         crop (bool): crop boundaries of raster to new masked area
         invert (bool): if True, will mask areas that do not overlap with the polygon
         nodata (flt): value to use as mask
+
+    Returns:
+        grid2D file with ocean masked
     """
     gdict = grid2D.getGeoDict()
 
@@ -101,13 +102,12 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
     """
     Use gdal to trim a large global file down quickly so mapio can read it
     efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)
-    Using subprocess approach because ``gdal.Translate`` doesn't hang on the
-    command until the file is created which causes problems in the next steps.
+
     Args:
         filename (str): File path to original input file (raster).
+        gdict (geodict): Geodictionary to cut around and align with.
         tempname (str): File path to desired location of clipped part of
             filename.
-        gdict (geodict): Geodictionary to cut around and align with.
         extrasamp (int): Number of extra cells to cut around each edge of
             geodict to have resampling buffer for future steps.
         method (str): If resampling is necessary, method to use.
@@ -115,8 +115,10 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             possible, if False it will just roughly cut around the area of
             interest without changing resolution
         cleanup (bool): if True, delete tempname after reading it back in
-    Returns:
-        newgrid2d: New grid2D layer 
+    Returns: New grid2D layer
+
+    Note: This function uses the subprocess approach because ``gdal.Translate`` doesn't hang on the
+    command until the file is created which causes problems in the next steps.
     """
 
     try:
@@ -153,7 +155,7 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         method2 = 'near'
     else:
         method2 = method
-    
+
     if filegdict != gdict:
         # First cut without resampling
         tempgdict = GeoDict.createDictFromBox(
@@ -162,12 +164,12 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
 
         try:
             egdict = filegdict.getBoundsWithin(tempgdict)
-        
+
             ulx = egdict.xmin - extrasamp * egdict.dx
             uly = egdict.ymax + extrasamp * egdict.dy
             lrx = egdict.xmax + extrasamp * egdict.dx
             lry = egdict.ymin - extrasamp * egdict.dy
-        
+
             cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f %1.8f \
             %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2, filename, tempname)
         except:  # When ShakeMap is being loaded, sometimes they won't align right because it's already cut to the area, so just load the whole file in
@@ -185,21 +187,10 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             newgrid2d = newgrid2d.interpolate2(gdict, method=method)
         if cleanup:
             os.remove(tempname)
-            
+
         if deltemp:
             shutil.rmtree(tempdir)
 
-#    if precise:
-#        cmd = 'gdalwarp -s_srs EPSG:4326 -te %1.8f %1.8f %1.8f %1.8f -tr \
-#               %1.8f, %1.8f -r %s -tap %s %s' % (gdict.xmin,
-#                gdict.ymin, gdict.xmax, gdict.ymax, gdict.dx, gdict.dy,
-#                method, filename, tempname)
-#        rc, so, se = get_command_output(cmd)
-#        if not rc:
-#            raise Exception(se.decode())
-#        else:
-#            if verbose:
-#                print(so.decode())
     else:
         ftype = GMTGrid.getFileType(filename)
         if ftype != 'unknown':
@@ -210,19 +201,3 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             newgrid2d = GDALGrid.load(filename)
 
     return newgrid2d
-
-
-#def haversine(lat1, lat2, lon1, lon2):
-#    """
-#    Estimate distance in km from pair of coordinates
-#    Uses code from https://stackoverflow.com/questions/29545704/fast-haversine-approximation-python-pandas
-#    """
-#    # convert decimal degrees to radians 
-#    lon1, lat1, lon2, lat2 = map(math.radians, [lon1, lat1, lon2, lat2])
-#    # haversine formula 
-#    dlon = lon2 - lon1 
-#    dlat = lat2 - lat1 
-#    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-#    c = 2 * math.asin(np.sqrt(a)) 
-#    km = 6371 * c
-#    return km

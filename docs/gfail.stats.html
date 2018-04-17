@@ -24,7 +24,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.temphdf" href="gfail.temphdf.html" />
-    <link rel="prev" title="gfail.savelayers" href="gfail.savelayers.html" />
+    <link rel="prev" title="gfail.spatial" href="gfail.spatial.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -44,7 +44,7 @@
 <span id="gfail-stats"></span><h1>gfail.stats<a class="headerlink" href="#module-gfail.stats" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.stats.computeStats">
-<code class="descclassname">gfail.stats.</code><code class="descname">computeStats</code><span class="sig-paren">(</span><em>grid2D</em>, <em>probthresh=0.0</em>, <em>shakefile=None</em>, <em>shakethreshtype='pga'</em>, <em>shakethresh=0.0</em>, <em>statprobthresh=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeStats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeStats" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.stats.</code><code class="descname">computeStats</code><span class="sig-paren">(</span><em>grid2D</em>, <em>probthresh=None</em>, <em>shakefile=None</em>, <em>shakethreshtype='pga'</em>, <em>shakethresh=0.0</em>, <em>statprobthresh=None</em>, <em>pop_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeStats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeStats" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute summary stats of a ground failure model output.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -59,23 +59,29 @@ threshold.</li>
 <li><strong>shakethreshtype</strong> – Optional, Type of ground motion to use for
 shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</li>
 <li><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
-pga, cm/s for pgv, float for mmi. Used for Hagg computation</li>
+pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation</li>
 <li><strong>statprobthresh</strong> – Optional, Float, Exclude any values less than or equal to this value in
 calculation of regular stats (max, median, std)</li>
+<li><strong>pop_file</strong> (<em>str</em>) – File path to population file to use to compute exposure stats</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><ul class="simple">
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>Dictionary with the following keys:</dt>
+<dd><ul class="first last simple">
 <li>Max</li>
 <li>Median</li>
 <li>Std</li>
-<li>Hagg_# where # is the shaking threshold for each</li>
+<li>Hagg_# where # is the shaking threshold</li>
 <li>Parea_# where # is the probability threshold</li>
+<li>exp_pop_# where # is the shaking threshold (if pop_file specified)</li>
 </ul>
+</dd>
+</dl>
 </p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Dictionary with the following keys</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
 </td>
 </tr>
 </tbody>
@@ -92,7 +98,7 @@ this is equivalant to the total predicted area affected in km2.</p>
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
 <li><strong>grid2D</strong> – grid2D object of model output.</li>
 <li><strong>proj</strong> – projection to use to obtain equal area, ‘moll’  mollweide, or
 ‘laea’ lambert equal area.</li>
@@ -107,12 +113,12 @@ pga, cm/s for pgv, float for mmi.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Float if no shakethresh defined or only one shakethresh defined,
-otherwise, a list of aggregate hazard for all shakethresh values.</p>
-</td>
-</tr>
 </tbody>
 </table>
+<dl class="docutils">
+<dt>Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh was defined,</dt>
+<dd>otherwise, a list of floats of aggregate hazard for all shakethresh values.</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
@@ -138,8 +144,39 @@ pga, cm/s for pgv, float for mmi.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Float if no probthresh defined or only one probthresh defined,
-otherwise, a list of Parea for all probthresh values.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Parea (float) if no or only one probthresh defined,
+otherwise, a list of floats of Parea corresponding to all
+specified probthresh values.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.stats.get_exposures">
+<code class="descclassname">gfail.stats.</code><code class="descname">get_exposures</code><span class="sig-paren">(</span><em>grid</em>, <em>pop_file</em>, <em>shakefile=None</em>, <em>shakethreshtype=None</em>, <em>shakethresh=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#get_exposures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.get_exposures" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get exposure-based statistics.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grid</strong> – Model grid.</li>
+<li><strong>pop_file</strong> (<em>str</em>) – Path to the landscan population grid.</li>
+<li><strong>shakefile</strong> (<em>str</em>) – Optional, path to shakemap file to use for ground
+motion threshold.</li>
+<li><strong>shakethreshtype</strong> (<em>str</em>) – Optional, Type of ground motion to use for
+shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</li>
+<li><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
+pga, cm/s for pgv, float for mmi.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary with keys named exp_pop_# where # is the shakethresh</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
 </td>
 </tr>
 </tbody>
@@ -168,14 +205,16 @@ otherwise, a list of Parea for all probthresh values.</p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
 </ul>
 </li>

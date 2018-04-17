@@ -23,7 +23,7 @@
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="gfail.godt" href="gfail.godt.html" />
+    <link rel="next" title="gfail.gfailrun" href="gfail.gfailrun.html" />
     <link rel="prev" title="gfail" href="gfail.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -43,11 +43,6 @@
   <div class="section" id="module-gfail.conf">
 <span id="gfail-conf"></span><h1>gfail.conf<a class="headerlink" href="#module-gfail.conf" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
-<dt id="gfail.conf.filterResults">
-<code class="descclassname">gfail.conf.</code><code class="descname">filterResults</code><span class="sig-paren">(</span><em>result</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/conf.html#filterResults"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.conf.filterResults" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="function">
 <dt id="gfail.conf.correct_config_filepaths">
 <code class="descclassname">gfail.conf.</code><code class="descname">correct_config_filepaths</code><span class="sig-paren">(</span><em>input_path</em>, <em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/conf.html#correct_config_filepaths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.conf.correct_config_filepaths" title="Permalink to this definition">¶</a></dt>
 <dd><p>Takes an input filepath name and pre-pends it to all file locations within
@@ -61,7 +56,7 @@ config dictionary and subdictionary to fine locations named ‘file’.</p>
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
 <li><strong>input_path</strong> (<em>str</em>) – Path that needs to be appended to the front of all
 the file names/paths in config.</li>
-<li><strong>config</strong> – configobj object defining the model and its inputs.</li>
+<li><strong>config</strong> (<em>ConfigObj</em>) – Object defining the model and its inputs.</li>
 </ul>
 </td>
 </tr>
@@ -116,14 +111,16 @@ section/parameters failed validation.</p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
 </ul>
 </li>

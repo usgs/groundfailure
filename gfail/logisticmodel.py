@@ -51,7 +51,7 @@ class LogisticModel(object):
                  slopefile=None, bounds=None, numstd=1, slopemod=None,
                  trimfile=None):
         """
-        Set up the logistic model
+        Sets up the logistic model
 
         Args:
             shakefile (str): Path to shakemap grid.xml file for the event.
@@ -449,11 +449,11 @@ class LogisticModel(object):
         deviation (3 total).
 
         Returns:
-            tuple: Three equations: equation, equationmin, equationmax, where
-                * equation is the equation for median ground motions,
-                * equationmin is the equation for the same model but with
-                  median ground motions minus 1 standard deviation, and
-                * equationmax is the same but for plus 1 standard deviation.
+            tuple: (equation, equationmin, equationmax) where:
+                * equation: the equation for median ground motions,
+                * equationmin: the equation for the same model but using
+                  median ground motions minus 1 standard deviation
+                * equationmax: same as above but for plus 1 standard deviation.
         """
         return self.equation, self.equationmin, self.equationmax
 
@@ -463,7 +463,7 @@ class LogisticModel(object):
         and resolution of model inputs and outputs.
 
         Returns:
-            geodict: mapio geodict object.
+            geodict: mapio geodict object
         """
         return self.geodict
 
@@ -472,11 +472,11 @@ class LogisticModel(object):
         Calculate the model.
 
         Args:
-            cleanup (bool): Delete temporary hdf5 files?
-            rowmax (int): Number of rows to compute at once; None does all at
-                once.
-            colmax (int): Number of columns to compute at once; None does all
-                at once.
+            cleanup (bool): If True, delete temporary hdf5 files
+            rowmax (int): Number of rows to compute at once; If None, all rows
+                will be computed at once.
+            colmax (int): Number of columns to compute at once; If None, all
+                columns will be computed at once.
         Returns:
             dict: Dictionary containing the model results (and model inputs if
             saveinputs was set to True). See
@@ -721,8 +721,10 @@ class LogisticModel(object):
 def getLogisticModelNames(config):
     """
     Get the names of the models present in the configobj
+
     Args:
         config: configobj object defining the model and its inputs.
+
     Returns:
         list: list of model names.
     """
@@ -739,12 +741,14 @@ def getLogisticModelNames(config):
 def getFileType(filename):
     """
     Determine whether input file is a shapefile or a grid (ESRI or GMT).
-    EVENTUALLY WILL BE MOVED TO MAPIO.
+
     Args:
         filename (str): Path to candidate filename.
+
     Returns:
         str: 'shapefile', 'grid', or 'unknown'.
     """
+    #TODO MOVE TO MAPIO.
     if os.path.isdir(filename):
         return 'dir'
     ftype = GMTGrid.getFileType(filename)
@@ -764,12 +768,13 @@ def getFileType(filename):
 def getAllGridFiles(indir):
     """
     Get list of all gmt or esri (.grd, .bil) files in a directory.
-    EVENTUALLY WILL BE MOVED TO MAPIO
+
     Args:
         indir (str): Directory to search.
     Returns:
         list: List of file names.
     """
+    #TODO MOVE TO MAPIO
     tflist = os.listdir(indir)
     flist = []
     for tf in tflist:
@@ -784,9 +789,10 @@ def validateCoefficients(cmodel):
     """
     Ensures coefficients provided in model description are valid and outputs
     a dictionary of the coefficients.
+
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
-            e.g.
+            for example:
 
             .. code-block:: python
 
@@ -810,9 +816,10 @@ def validateClips(cmodel, layers, gmused):
     """
     Ensures coefficients provided in model description are valid and outputs
     a dictionary of the coefficients.
+
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
-            e.g.
+            for example:
 
             .. code-block:: python
 
@@ -839,9 +846,10 @@ def validateLayers(cmodel):
     """
     Ensures all input files required to run the model exist and are valid
     file types.
+
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
-            e.g.
+            for example,
 
             .. code-block:: python
 
@@ -885,9 +893,6 @@ def validateTerms(cmodel, coeffs, layers):
     to run eval in the calculate step), addressing any time variables, and
     checks that term names match coefficient names.
 
-    TODO:
-        - Return a time field for every term, not just one global one.
-
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
             e.g.
@@ -923,6 +928,9 @@ def validateTerms(cmodel, coeffs, layers):
             - 'timeField' indicates the time that is used to know which input
               file to read in, e.g. for monthly average precipitation, 'MONTH'.
     """
+    #TODO:
+    #    - Return a time field for every term, not just one global one.
+
     terms = {}
     timeField = None
     for key, value in cmodel['terms'].items():
@@ -998,7 +1006,7 @@ def validateLogisticModels(config):
         layers (dict): Dictionary of file names for all input layers.
 
     Returns:
-        bool: Are the names valid?
+        bool: True if the model names are valid
     """
     mnames = getLogisticModelNames(config)
     if len(mnames) > 1:
@@ -1030,9 +1038,19 @@ def validateLogisticModels(config):
 
 
 def validateRefs(cmodel):
-    """Validate model references.
+    """Validate references for models and layers.
 
     Args:
+        cmodel (dict): Sub-dictionary from config for specific model.
+
+    Returns:
+        tuple: (modelrefs, longrefs, shortrefs) where:
+            * modelrefs: dictionary of citation information for model
+                keys='longref', 'shortref'
+            * shortrefs: dictionary containing short reference for each
+                input layer
+            * longrefs: dictionary containing full references for each
+                input layer
 
     """
     longrefs = {}
@@ -1063,6 +1081,20 @@ def validateRefs(cmodel):
 
 
 def checkTerm(term, layers):
+    """Checks terms of equation and replaces text with machine readable operators
+
+    Args:
+        term: term from model configuration file
+        layers: dictionary of file names for all input layers
+
+    Returns:
+        tuple: (term, tterm, timeField) where:
+            * term: dictionary of verified terms for equation with keys corresponding
+                to each layer name
+            * tterm: any unconverted and unverified text that may cause expression to fail
+            * timeField: if any inputs are time dependent, output is unit of time (e.g., 'YEAR'),
+                otherwise, None.
+    """
     # startterm = term
     # Strip out everything that isn't: 0-9.() operators, +-/* or layer names.
     # Anything left is an unknown symbol.

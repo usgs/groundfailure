@@ -6,14 +6,16 @@ Submodules
 .. toctree::
 
    gfail.conf
+   gfail.gfailrun
    gfail.godt
    gfail.logisticmodel
    gfail.makemaps
    gfail.pdl
    gfail.sample
-   gfail.savelayers
+   gfail.spatial
    gfail.stats
    gfail.temphdf
+   gfail.utilities
    gfail.webpage
 
 Module contents

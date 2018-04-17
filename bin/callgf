@@ -380,7 +380,7 @@ def process_shakemap(args, config):
         config['data_path'], 'autogf_models')
 
     logging.info("Starting gfail...")
-    cmd = ("gfail %s %s --unnest-folder --hdf5 --make-webpage "
+    cmd = ("gfail %s %s --hdf5 --make-webpage "
            "--trimfile %s --output-filepath %s" %
            (model_file, gridfile, landfile, vdir))
     rc, so, se = get_command_output(cmd)

@@ -47,11 +47,11 @@ def test_zhu2015(tmpdir):
         rc, so, se = get_command_output('gfail -reset')
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
-        rc, so, se = get_command_output(pathcmd)
+        rc1, so1, se1 = get_command_output(pathcmd)
 
         # Run model
-        runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd" % (shakegrid)
-        rc, so, se = get_command_output(runcmd)
+        runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd -n" % (shakegrid)
+        rc2, so2, se2 = get_command_output(runcmd)
 
         # Read in the testing data
         test_file = os.path.join(p, '19891018000415',
@@ -129,7 +129,7 @@ def test_zhu2015_web(tmpdir):
 
         # Run model
         conf = os.path.join(datadir, 'test_conf')
-        runcmd = "gfail %s %s -w --hdf5 --alert" % (conf, shakegrid)
+        runcmd = "gfail %s %s -w --hdf5 --alert -n" % (conf, shakegrid)
         rc, so, se = get_command_output(runcmd)
 
         event_dir = os.path.join(p, '19891018000415')

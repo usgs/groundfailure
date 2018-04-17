@@ -44,18 +44,9 @@
 <span id="gfail-makemaps"></span><h1>gfail.makemaps<a class="headerlink" href="#module-gfail.makemaps" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.makemaps.modelMap">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">modelMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>suptitle=None</em>, <em>inventory_shapefile=None</em>, <em>plotorder=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>boundaries=None</em>, <em>zthresh=0</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.7</em>, <em>maproads=True</em>, <em>mapcities=True</em>, <em>isScenario=False</em>, <em>roadfolder=None</em>, <em>topofile=None</em>, <em>cityfile=None</em>, <em>oceanfile=None</em>, <em>roadcolor='#6E6E6E'</em>, <em>watercolor='#B8EEFF'</em>, <em>countrycolor='#177F10'</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>savepdf=True</em>, <em>savepng=True</em>, <em>showplots=False</em>, <em>roadref='unknown'</em>, <em>cityref='unknown'</em>, <em>oceanref='unknown'</em>, <em>printparam=False</em>, <em>ds=True</em>, <em>dstype='mean'</em>, <em>upsample=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#modelMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.modelMap" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function creates maps of mapio grid layers (e.g. liquefaction or
+<code class="descclassname">gfail.makemaps.</code><code class="descname">modelMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>suptitle=None</em>, <em>inventory_shapefile=None</em>, <em>plotorder=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>boundaries=None</em>, <em>zthresh=0</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.7</em>, <em>maproads=True</em>, <em>mapcities=True</em>, <em>isScenario=False</em>, <em>roadfolder=None</em>, <em>topofile=None</em>, <em>cityfile=None</em>, <em>oceanfile=None</em>, <em>roadcolor='#6E6E6E'</em>, <em>watercolor='#B8EEFF'</em>, <em>countrycolor='#177F10'</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>savepdf=True</em>, <em>savepng=True</em>, <em>showplots=False</em>, <em>printparam=False</em>, <em>ds=True</em>, <em>dstype='mean'</em>, <em>upsample=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#modelMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.modelMap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create static maps of mapio grid layers (e.g. liquefaction or
 landslide models with their input layers).</p>
-<p>All grids must use the same bounds.</p>
-<div class="admonition-todo admonition" id="index-0">
-<p class="first admonition-title">Todo</p>
-<ul class="last simple">
-<li>Change so that all input layers do not have to have the same bounds,
-test plotting multiple probability layers, and add option so that if
-PDF and PNG aren’t output, opens plot on screen using plt.show().</li>
-</ul>
-</div>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
@@ -72,7 +63,7 @@ PDF and PNG aren’t output, opens plot on screen using plt.show().</li>
 </pre></div>
 </div>
 </div></blockquote>
-<p>Layer names must be unique.</p>
+<p>Layer names must be unique. All grids must use the same bounds.</p>
 </li>
 <li><strong>shakefile</strong> (<em>str</em>) – Optional ShakeMap file (url or full file path) to
 extract information for labels and folder names.</li>
@@ -114,8 +105,8 @@ estimate the limits, when an array is specified but the scale
 type is continuous, vmin will be set to min(array) and vmax will
 be set to max(array).</p>
 </li>
-<li><strong>logscale</strong> (<em>bool</em>) – Use a log-transformed scalebar? Can be a bool or list
-of bools.</li>
+<li><strong>logscale</strong> – boolean to apply log colorbar to all plotted layers or list
+of booleans corresponding to each layer in grid.</li>
 <li><strong>ALPHA</strong> (<em>float</em>) – Transparency for mapping, if there is a hillshade that
 will plot below each layer, it is recommended to set this to at
 least 0.7.</li>
@@ -143,11 +134,8 @@ If None, will use current directory.</li>
 <li><strong>outfilename</strong> (<em>str</em>) – Output file name.</li>
 <li><strong>savepdf</strong> (<em>bool</em>) – True to save pdf figure.</li>
 <li><strong>savepng</strong> (<em>bool</em>) – True to save png figure.</li>
-<li><strong>showplots</strong> (<em>bool</em>) – Show plots?</li>
-<li><strong>roadref</strong> (<em>str</em>) – Reference for source of road info.</li>
-<li><strong>cityref</strong> (<em>str</em>) – Reference for source of city info.</li>
-<li><strong>oceanref</strong> (<em>str</em>) – Reference for source of ocean info.</li>
-<li><strong>printparam</strong> (<em>bool</em>) – Show parameter values on plots.</li>
+<li><strong>showplots</strong> (<em>bool</em>) – True to display plots</li>
+<li><strong>printparam</strong> (<em>bool</em>) – Show parameter values used to run model on plots.</li>
 <li><strong>ds</strong> (<em>bool</em>) – True to allow downsampling for display (necessary when
 arrays are quite large, False to not allow).</li>
 <li><strong>dstype</strong> (<em>str</em>) – What function to use in downsampling? Options are ‘min’,
@@ -157,7 +145,20 @@ better looking hillshades.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">(newgrids, filenames), where newgrids and filenames are lists.</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>(newgrids, filenames), where:</dt>
+<dd><ul class="first last simple">
+<li><dl class="first docutils">
+<dt>newgrids: list of downsampled and trimmed version of input grids. If</dt>
+<dd>no modification was needed for plotting, this will be identical to grids
+but without the metadata.</dd>
+</dl>
+</li>
+<li>filenames: a list of filenames that were created</li>
+</ul>
+</dd>
+</dl>
+</p>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
@@ -165,14 +166,11 @@ better looking hillshades.</li>
 </tr>
 </tbody>
 </table>
-<p>Note that newgrids are downsampled and trimmed version of input grids. If
-no modification was needed for plotting, this will be identical to grids
-but without the metadata.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.makemaps.interactiveMap">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">interactiveMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>plotorder=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.8</em>, <em>isScenario=False</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>smcontourfile=None</em>, <em>faultfile=None</em>, <em>separate=True</em>, <em>onkey=None</em>, <em>sepcolorbar=False</em>, <em>floatcb=True</em>, <em>savefiles=True</em>, <em>mapid=None</em>, <em>clear_zero=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#interactiveMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.interactiveMap" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.makemaps.</code><code class="descname">interactiveMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>plotorder=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.8</em>, <em>isScenario=False</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>smcontourfile=None</em>, <em>faultfile=None</em>, <em>separate=True</em>, <em>onkey=None</em>, <em>sepcolorbar=False</em>, <em>floatcb=True</em>, <em>savefiles=True</em>, <em>mapid=None</em>, <em>clear_zero=False</em>, <em>sync=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#interactiveMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.interactiveMap" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function creates interactive html plots of mapio grid layers
 (e.g. liquefaction or landslide models with their input layers).</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -222,14 +220,14 @@ type is continuous, vmin will be set to min(array) and vmax will
 be set to max(array).</li>
 <li><strong>logscale</strong> (<em>list</em>) – None, single boolean value, or Nx1 list of booleans
 defining whether to use a log scale or not for each layer.</li>
-<li><strong>ALPHA</strong> (<em>float</em>) – Transparency for mapping, if there is a hillshade that
+<li><strong>alpha</strong> (<em>float</em>) – Transparency for mapping, if there is a hillshade that
 will plot below each layer, it is recommended to set this to at
 least 0.7.</li>
 <li><strong>isScenario</strong> (<em>bool</em>) – Is this a scenario?</li>
 <li><strong>outputdir</strong> (<em>str</em>) – File path for outputting figures, if edict is defined,
 a subfolder based on the event id will be created in this folder.
 If None, will use current directory.</li>
-<li><strong>outfilename</strong> (<em>str</em>) – File name for output without any file extensions.</li>
+<li><strong>outfilename</strong> (<em>str</em>) – File name for output (without any file extensions).</li>
 <li><strong>tiletype</strong> (<em>str</em>) – Folium tile type:
 - “OpenStreetMap”
 - “Mapbox Bright” (Limited levels of zoom for free tiles)
@@ -249,15 +247,14 @@ if False (default), will embed simple colorbar</li>
 the colorbar on the map.</li>
 <li><strong>savefiles</strong> (<em>bool</em>) – If True (default), will save map as html file,
 otherwise will just return map object</li>
+<li><strong>mapid</strong> (<em>str</em>) – map id, used only for syncing two of these interactive maps
+to each other</li>
 <li><strong>clear_zero</strong> (<em>bool</em>) – If True, will make all zero values clear.
 default is False.</li>
-<li><strong>printparam</strong> (<em>bool</em>) – Print model parameters on figure? NOT IMPLEMENTED
-YET.</li>
-<li><strong>ds</strong> (<em>bool</em>) – Allow downsampling for display? NOT IMPLEMENTED YET.</li>
-<li><strong>dstype</strong> (<em>str</em>) – What function to use in downsampling? Options are ‘min’,
-‘max’, ‘median’, or ‘mean’. NOT IMPLEMENTED YET.</li>
-<li><strong>smcontourfile</strong> (<em>str</em>) – File extension to shakemap contour file to plot
-NOT FUNCTIONAL YET.</li>
+<li><strong>sync</strong> – If False, each map will use it’s own colorbar.
+If a grid layer shortref is specified (e.g. ‘Nowicki and others (2014)’),
+all maps will have colorbars synced to the colors of the one
+specified, but they must all have the same number of bins</li>
 </ul>
 </td>
 </tr>
@@ -272,24 +269,47 @@ NOT FUNCTIONAL YET.</li>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.parseMapConfig">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">parseMapConfig</code><span class="sig-paren">(</span><em>config</em>, <em>fileext=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#parseMapConfig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.parseMapConfig" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse config for mapping options.</p>
+<dt id="gfail.makemaps.GFSummary">
+<code class="descclassname">gfail.makemaps.</code><code class="descname">GFSummary</code><span class="sig-paren">(</span><em>maplayerlist, configs, web_template, shakemap, outfolder=None, includeunc=False, cleanup=True, faultfile=None, shakethreshtype='pga', point=False, pop_file=None, statlist=['Max', 'Std', 'Hagg_0.10g', 'exp_pop_0.10g'], probthresh=None, shakethresh=[5.0, 10.0], statement=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#GFSummary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.GFSummary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create an interactive html that summarizes all ground failure results for
+a given earthquake in side-by-side plots and with summary tables</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj object.</li>
-<li><strong>fileext</strong> (<em>str</em>) – File extension to add to relative filepaths, will be
-prepended to any file paths in config.</li>
+<li><strong>maplayerlist</strong> (<em>list</em>) – list of model output structures to include.</li>
+<li><strong>configs</strong> (<em>list</em>) – list of paths to config files corresponding to each
+of the models in maplayerlist in the same order.</li>
+<li><strong>web_template</strong> (<em>str</em>) – Path to location of pelican template
+(final folder should be “theme”).</li>
+<li><strong>shakemap</strong> (<em>str</em>) – path to shakemap .xml file for the current event.</li>
+<li><strong>outfolder</strong> (<em>str</em><em>, </em><em>optional</em>) – path to folder where output should be
+placed.</li>
+<li><strong>includeunc</strong> (<em>bool</em><em>, </em><em>optional</em>) – include uncertainty, NOT IMPLEMENTED.</li>
+<li><strong>cleanup</strong> (<em>bool</em><em>, </em><em>optional</em>) – clean up all unneeded intermediate files that
+pelican creates, default True.</li>
+<li><strong>faultfile</strong> (<em>str</em><em>, </em><em>optional</em>) – GeoJson file of finite fault to display on
+interactive maps</li>
+<li><strong>shakethreshtype</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of ground motion to use for stat
+thresholds, ‘pga’, ‘pgv’, or ‘mmi’</li>
+<li><strong>point</strong> (<em>bool</em>) – True if it is known that the ShakeMap used a point
+source, False does not assume anything about source type.</li>
+<li><strong>pop_file</strong> (<em>str</em>) – Path to population file used for statistics</li>
+<li><strong>statlist</strong> (<em>list</em>) – list of strings indicating which stats to show on
+webpage.</li>
+<li><strong>probthresh</strong> (<em>float</em><em>, </em><em>optional</em>) – List of probability thresholds for which
+to compute Parea.</li>
+<li><strong>shakethresh</strong> (<em>list</em><em>, </em><em>optional</em>) – List of ground motion thresholds for
+which to compute Hagg, units corresponding to shakethreshtype.</li>
+<li><strong>statement</strong> (<em>str</em>) – Text to include in the summary section of the web
+page. Alert statements will be appended prior to this statement,
+Point source warnings for &gt;M7 will be appended after this
+statement. If None, will use a generic explanatory statement.</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary of map options pulled from config file.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Folder where webpage files are located</p>
 </td>
 </tr>
 </tbody>
@@ -297,48 +317,170 @@ prepended to any file paths in config.</li>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.parseConfigLayers">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">parseConfigLayers</code><span class="sig-paren">(</span><em>maplayers</em>, <em>config</em>, <em>keys=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
-<dd><div class="admonition-todo admonition" id="index-1">
-<p class="first admonition-title">Todo</p>
-<ul class="last simple">
-<li>Add ability to interpret custom color maps.</li>
-</ul>
-</div>
-<p>Parse things that need to coodinate with each layer (like lims, logscale,
-colormaps etc.) from config file, in right order, where the order is from
-maplayers.</p>
+<dt id="gfail.makemaps.write_individual">
+<code class="descclassname">gfail.makemaps.</code><code class="descname">write_individual</code><span class="sig-paren">(</span><em>concatmods</em>, <em>outputdir</em>, <em>modeltype</em>, <em>topimage=None</em>, <em>staticmap=None</em>, <em>interactivehtml=None</em>, <em>outjsfile=None</em>, <em>statlist=None</em>, <em>statement=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#write_individual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.write_individual" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write markdown file for landslides or liquefaction.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>maplayers</strong> (<em>dict</em>) – Dictionary containing model output.</li>
-<li><strong>config</strong> (<em>ConfigObj</em>) – Config object describing options for specific
-model.</li>
-<li><strong>keys</strong> (<em>list</em>) – List of keys of maplayers to process, e.g. <code class="docutils literal"><span class="pre">['model']</span></code>.</li>
+<li><strong>concatmods</strong> (<em>float</em><em> or </em><em>list</em>) – Ordered dictionary of models with
+fields required for write_individual populated (stats in
+particular)</li>
+<li><strong>outputdir</strong> (<em>str</em>) – Path to output directory.</li>
+<li><strong>modeltype</strong> (<em>str</em>) – ‘Landslides’ for landslide model, otherwise it is
+a liquefaction model.</li>
+<li><strong>topimage</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to image for top of page.</li>
+<li><strong>staticmap</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to static map.</li>
+<li><strong>interactivehtml</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to interactive map file.</li>
+<li><strong>outjsfile</strong> (<em>str</em><em>, </em><em>optional</em>) – Path for output javascript file.</li>
+<li><strong>stats</strong> (<em>list</em>) – List of stats keys to include in the table, if None,
+it will include all of them</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">writes markdown files named Landslides.md and/or Liquefaction.md
+that will be used by GFSummary</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.makemaps.write_summary">
+<code class="descclassname">gfail.makemaps.</code><code class="descname">write_summary</code><span class="sig-paren">(</span><em>shakemap</em>, <em>outputdir</em>, <em>imgoutputdir</em>, <em>statement=None</em>, <em>finitefault=False</em>, <em>point=False</em>, <em>event_url=None</em>, <em>shake_url=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#write_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.write_summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write markdown file summarizing event</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>shakemap</strong> (<em>str</em>) – path to shakemap .xml file for the current event</li>
+<li><strong>outputdir</strong> (<em>str</em>) – path to folder where output should be placed</li>
+<li><strong>imgoutputdir</strong> (<em>str</em>) – path to folder where images should be placed
+and linked</li>
+<li><strong>statement</strong> (<em>str</em>) – Statement to put at top of GFSummary plot, if None
+will append some generic statements.</li>
+<li><strong>finitefault</strong> (<em>bool</em>) – True if it is known that the shakemap used a
+finite fault.</li>
+<li><strong>point</strong> (<em>bool</em>) – True if it is known that the event was a point
+source. False if unknown.</li>
+<li><strong>event_url</strong> (<em>str</em>) – url to event page, if None, code will try to
+guess what the url should be using the event_id in the shakemap file</li>
+<li><strong>shake_url</strong> (<em>str</em>) – url to shakemap page for this event, if None,
+code will try to guess what the url should be using the
+event_id in the shakemap file</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Markdown file that summarizes the event and model used by GFSummary</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.makemaps.setupsync">
+<code class="descclassname">gfail.makemaps.</code><code class="descname">setupsync</code><span class="sig-paren">(</span><em>sync</em>, <em>plotorder</em>, <em>lims</em>, <em>colormaps</em>, <em>defaultcolormap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;</em>, <em>logscale=None</em>, <em>alpha=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#setupsync"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.setupsync" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get colors that will be used for all colorbars from reference grid</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sync</strong> (<em>str</em>) – If False, will exit program, else corresponds to the shortref
+of the model which should serve as the template for
+the colorbars used by all other models. All other models must
+have the exact same number of bins</li>
+<li><strong>plotorder</strong> (<em>list</em>) – List of keys of shortrefs of the grids that will be
+plotted.</li>
+<li><strong>lims</strong> – <p>Nx1 list of tuples or numpy arrays corresponding to
+plotorder defining the bin edges to use for each model.
+Example:</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="p">[(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">15</span><span class="p">)]</span>
+</pre></div>
+</div>
+</li>
+<li><strong>colormaps</strong> (<em>list</em>) – List of strings of matplotlib colormaps (e.g.
+cm.autumn_r) corresponding to plotorder</li>
+<li><strong>defaultcolormap</strong> (<em>matplotlib colormap</em>) – Colormap to use if
+colormaps is not defined. default cm.CMRmap_r</li>
+<li><strong>logscale</strong> – If not None, then a list of booleans corresponding to
+plotorder stating whether to use log scaling in determining colors</li>
 </ul>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>List of the following:</dt>
+<dt>(sync, colorlist, lim1) where:</dt>
 <dd><ul class="first last simple">
-<li>plotorder: maplayers keys in order of plotting.</li>
-<li>logscale: list of logscale options from config corresponding to
-keys in plotorder (same order).</li>
-<li>lims: list of colorbar limits from config corresponding to keys
-in plotorder (same order).</li>
-<li>colormaps: list of colormaps from config corresponding to keys
-in plotorder (same order),</li>
-<li>maskthreshes: list of mask thresholds from config corresponding
-to keys in plotorder (same order).</li>
+<li>sync (bool): whether or not colorbars are/can be synced</li>
+<li><dl class="first docutils">
+<dt>colorlist (list): list of rgba colors that will be applied to all</dt>
+<dd>models regardless of bin edge values</dd>
+</dl>
+</li>
+<li>lim1 (array): bin edges of model to which others are synced</li>
 </ul>
 </dd>
 </dl>
 </p>
 </td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list</p>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.makemaps.correct4colorbar">
+<code class="descclassname">gfail.makemaps.</code><code class="descname">correct4colorbar</code><span class="sig-paren">(</span><em>dat</em>, <em>gridlims</em>, <em>logscale</em>, <em>scaletype</em>, <em>palette</em>, <em>colorlist=None</em>, <em>alpha=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#correct4colorbar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.correct4colorbar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create rgba layer for plotting along with all the info needed to create
+a separate colorbar</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dat</strong> (<em>array</em>) – 2D numpy array of the data to turn into rgba layer</li>
+<li><strong>gridlims</strong> (<em>array</em>) – Nx1 array or list of bin edges, or None if not specified</li>
+<li><strong>logscale</strong> (<em>bool</em>) – if True, will use log scaling for bins</li>
+<li><strong>scaletype</strong> (<em>str</em>) – Type of scaling to use with colormap,
+‘binned’ or ‘continuous.’ ‘binned’ must be used for synced
+colorbars.</li>
+<li><strong>palette</strong> – colormap palette to use</li>
+<li><strong>colorlist</strong> (<em>list</em>) – Optional, N-1 list of colors to use for each bin,
+where N is the number of bin edges specified in gridlims. Only
+works if scaletype = ‘binned’</li>
+<li><strong>alpha</strong> (<em>float</em>) – Transparency value from 0 to 1</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>(clev, vmin, vmax, rgba_img, cmap, norm, colorlist) where:</dt>
+<dd><ul class="first last simple">
+<li>clev: bin edges used</li>
+<li>vmin: lowest bin edge (saturated below)</li>
+<li>vmax: highest bin edge (saturated above)</li>
+<li>rgba_img: rgba image (2D array of rgba tuples)</li>
+<li>cmap: colormap used</li>
+<li>norm: normalization used for colorbar</li>
+<li><dl class="first docutils">
+<dt>colorlist: list of colors used for each colorbar bin,</dt>
+<dd>None if scaletype was ‘continuous’</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
 </td>
 </tr>
 </tbody>
@@ -348,8 +490,8 @@ to keys in plotorder (same order).</li>
 <dl class="function">
 <dt id="gfail.makemaps.make_hillshade">
 <code class="descclassname">gfail.makemaps.</code><code class="descname">make_hillshade</code><span class="sig-paren">(</span><em>topogrid</em>, <em>azimuth=315.0</em>, <em>angle_altitude=50.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#make_hillshade"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.make_hillshade" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes a hillshade from a digital elevation model. Most of this script
-borrowed from
+<dd><p>Computes a hillshade from a digital elevation model.
+Adapted from
 &lt;<a class="reference external" href="http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html">http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html</a>&gt;
 last accessed 9/2/2015</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -371,12 +513,55 @@ last accessed 9/2/2015</p>
 <dl class="function">
 <dt id="gfail.makemaps.getMapLines">
 <code class="descclassname">gfail.makemaps.</code><code class="descname">getMapLines</code><span class="sig-paren">(</span><em>dmin</em>, <em>dmax</em>, <em>nlines</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getMapLines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getMapLines" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get equally spaced lat or lon lines for mapping</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>dmin</strong> (<em>float</em>) – minimum lat or lon</li>
+<li><strong>dmax</strong> (<em>float</em>) – maximum lat or lon</li>
+<li><strong>nlines</strong> (<em>int</em>) – number of lines</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">location of lines</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="gfail.makemaps.getProjectedPatch">
 <code class="descclassname">gfail.makemaps.</code><code class="descname">getProjectedPatch</code><span class="sig-paren">(</span><em>polygon</em>, <em>m</em>, <em>edgecolor</em>, <em>facecolor</em>, <em>lw=1.0</em>, <em>zorder=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getProjectedPatch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getProjectedPatch" title="Permalink to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Project a polygon to coordinate system used in Basemap m</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>polygon</strong> – list of shapely polygons to project</li>
+<li><strong>m</strong> – Basemap map to project polygon to</li>
+<li><strong>edgecolor</strong> – color to use for polygon edge</li>
+<li><strong>facecolor</strong> – color to use to fill polygon</li>
+<li><strong>lw</strong> – line width for edge of polygon</li>
+<li><strong>zorder</strong> – plotting order of polygons</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">patch of projected polygons that can be added to map figure</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">patch</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
 
 <dl class="function">
 <dt id="gfail.makemaps.roundToNearest">
@@ -486,6 +671,21 @@ from initial plot</li>
 <dt id="gfail.makemaps.getZoom">
 <code class="descclassname">gfail.makemaps.</code><code class="descname">getZoom</code><span class="sig-paren">(</span><em>minlon</em>, <em>maxlon</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getZoom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getZoom" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the best starting zoom level based on span of coordinates</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>minlon</strong> (<em>float</em>) – minimum longitude in area of interest</li>
+<li><strong>maxlon</strong> (<em>float</em>) – maximum longitude in area of interest</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">zoom level (for leaflet)</p>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </div>
@@ -510,14 +710,16 @@ from initial plot</li>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.savelayers.html">gfail.savelayers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
 </ul>
 </li>

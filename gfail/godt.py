@@ -28,24 +28,19 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
              displmodel=None, bounds=None, slopediv=100.,
              codiv=10., numstd=None, trimfile=None):
     """
-    This function runs the Godt et al. (2008) global method for a given
+    This function runs the Godt and others (2008) global method for a given
     ShakeMap. The Factor of Safety is calculated using infinite slope analysis
     assumuing dry conditions. The method uses threshold newmark displacement
     and estimates areal coverage by doing the calculations for each slope
     quantile.
 
-    TODO:
-        - Add 'all' -- averages Dn from all four equations, add term to
-          convert PGA and PGV to Ia and use other equations, add Ambraseys and
-          Menu (1988) option.
-
     Args:
         shakefile (str): Path to shakemap xml file.
         config (ConfigObj): ConfigObj of config file containing inputs required
             for running the model
-        uncertfile (str): Path to shakemap uncertainty xml file.
+        uncertfile (str): Path to shakemap uncertainty xml file (optional).
         saveinputs (bool): Whether or not to return the model input layers,
-            False (defeault) returns only the model output (one layer).
+            False (default) returns only the model output (one layer).
         displmodel (str): Newmark displacement regression model to use
 
             * ``'J_PGA'`` (default) -- PGA-based model, equation 6 from
@@ -57,21 +52,21 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             * ``'RS_PGA_PGV'`` -- PGA and PGV-based model, equation 6
               from Saygili and Rathje (2008).
 
-        bounds (dict): Dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'.
+        bounds (dict): Optional dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'
+            that defines a subset of the shakemap area to compute.
         slopediv (float): Divide slope by this number to get slope in degrees
             (Verdin datasets need to be divided by 100).
-        codiv (float): Divide cohesion by this number to get reasonable numbers
+        codiv (float): Divide cohesion input layer by this number
             (For Godt method, need to divide by 10 because that is how it was
-            calibrated, but values are reasonable without multiplying for
-            regular analysis).
-        numstd (float): Number of +/- standard deviations to use if uncertainty
-            is computed (uncertfile is not None).
+            calibrated).
+        numstd (float): Number of (+/-) standard deviations to use if uncertainty
+            is computed (uncertfile must be supplied).
         trimfile (str): shapefile of earth's land masses to trim offshore areas
             of model
 
     Returns:
         dict: Dictionary containing output and input layers (if
-        saveinputs=True) along with metadata formatted like:
+        saveinputs=True):
 
         .. code-block:: python
 
@@ -79,7 +74,14 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
                 'grid': mapio grid2D object,
                 'label': 'label for colorbar and top line of subtitle',
                 'type': 'output or input to model',
-                'description': 'detailed description'
+                'description': {'name': 'short reference of model',
+                                'longref': 'full model reference',
+                                'units': 'units of output',
+                                'shakemap': 'information about shakemap used',
+                                'event_id': 'shakemap event id',
+                                'parameters': 'dictionary of model parameters used'
+
+                }
             }
 
     Raises:
@@ -88,6 +90,10 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
              shakefile (Shakemap filepath) -- these cause program to end.
 
     """
+    #TODO:
+    #    - Add 'all' -- averages Dn from all four equations, add term to
+    #      convert PGA and PGV to Ia and use other equations, add Ambraseys and
+    #      Menu (1988) option.
 
     # Empty refs
     slopesref = 'unknown'
@@ -543,7 +549,10 @@ def NMdisp(Ac, PGA, model='J_PGA', M=None, PGV=None):
             for models with PGV in the name.
 
     Returns:
-        tuple: Dn, logDnstd, and logtype.
+        tuple: (Dn, logDnstd, logtype) where:
+            * Dn: Newmark displacement in cm
+            * logDnstd: Log of standard deviation of Dn
+            * logtype: Type of log used in logDnstd (log10 or ln)
     """
     # Deal with non-array inputs
     if isinstance(Ac, float) or isinstance(Ac, int):
