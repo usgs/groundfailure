@@ -166,10 +166,14 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
 
 def prepare_pdl_directory(event_dir):
     """
-    Make director for transferring to comcat.
+    Make directory for transferring to comcat.
 
     Args:
         event_dir (str): Path to event directory
+
+    Returns:
+        event_dir containing copies of all of the files that need to
+        be sent to comcat
     """
 
     pdl_dir = os.path.join(event_dir, 'pdl_directory')
