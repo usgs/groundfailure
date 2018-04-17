@@ -443,7 +443,7 @@ def process_shakemap(args, config):
     lq_hazard_value = liquefaction['hazard_alert']['value']
     lq_pop_value = liquefaction['population_alert']['value']
     values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
-    tnowstr = datetime.utcnow().strftime('TIMEFMT')
+    tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
     qfmt = 'INSERT INTO shakemap %s VALUES ("%s",%i,%.3f,%.3f,%.3f,%.3f)'
     query = qfmt % (values, tnowstr, finite_fault,
