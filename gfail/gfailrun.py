@@ -27,13 +27,13 @@ def run_gfail(args):
     """Runs ground failure.
 
     Args:
-        args: dictionary or argument parser Namespace from bin/gfail program.
+        args: dictionary or argument parser Namespace output by bin/gfail program.
 
     Returns:
         list: Names of created files.
 
-    # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
     """
+    # TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST
     filenames = []
     # If args is a dictionary, convert to a Namespace
     if isinstance(args, dict):
@@ -433,7 +433,7 @@ def isURL(gridurl):
         gridurl (str): url to check.
 
     Returns:
-        bool: True if griurl is a valid url, False otherwise.
+        bool: True if gridurl is a valid url, False otherwise.
     """
 
     isURL = False
@@ -454,6 +454,10 @@ def set_default_paths(args):
 
     Args:
         args (arparser Namespace): Input arguments.
+
+    Returns:
+        Updates .gfail_defaults file on users path, or creates new one if
+        file does not already exist.
     """
     filename = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
     if os.path.exists(filename):
@@ -591,13 +595,13 @@ def get_bounds(shakefile, parameter='pga', threshold=2.0):
         shakefile (str): Path to shakemap file.
         parameter (str): Either 'pga' or 'pgv'.
         threshold (float): Minimum value of parameter of interest, in units
-            of %g for pga and cm/s for pgv. The default value of 2 %g is based
+            of %g for pga and cm/s for pgv. The default value of 2% g is based
             on minimum pga threshold ever observed to have triggered landslides
-            from Jibson and Harp (2016).
+            by Jibson and Harp (2016).
 
     Returns:
-        dict: A dictionary with keys 'xmin', 'xmax', 'ymin', and 'ymax' and
-        some dummy keys that are unused.
+        dict: A dictionary with keys 'xmin', 'xmax', 'ymin', and 'ymax' that
+        defines the boundaries in geographic coordinates.
     """
     shakemap = ShakeGrid.load(shakefile, adjust='res')
     if parameter == 'pga':

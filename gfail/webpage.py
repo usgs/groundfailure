@@ -694,11 +694,11 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
 
     Returns:
         Returns:
-            tuple: alertLS, popalertLS, alertLQ, popalertLQ, where
-                * alertLS is the landslide hazard alert level (str)
-                * popalertLS is the landslide population alert level (str)
-                * alertLQ is the liquefaction hazard alert level (str)
-                * popalertLQ is the liquefaction population alert level (str)
+            tuple: (alertLS, popalertLS, alertLQ, popalertLQ) where:
+                * alertLS: the landslide hazard alert level (str)
+                * popalertLS: the landslide population alert level (str)
+                * alertLQ: the liquefaction hazard alert level (str)
+                * popalertLQ: the liquefaction population alert level (str)
 
     """
     if paramalertLS is None:

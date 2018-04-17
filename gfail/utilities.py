@@ -19,6 +19,23 @@ import matplotlib.cm as cm  # Don't delete this, it's needed in an eval function
 
 def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     """
+    Find an event in comcat, searching first by event id and if that
+    fails searching by magnitude, time, and location.
+
+    Args:
+        shakefile (str): path to shakemap .xml file of event to find
+        timewindow (float): width of time window to search around time defined
+            in shakefile (in seconds)
+        degwindow (float): width of area to search around location specified in
+            shakefile (in degrees).
+        magwindow (float): width of magnitude window to search around the
+            magnitude specified in shakefile.
+
+    Returns:
+        None if event not found, else tuple (info, detail, shakemap) where,
+            * info: json formatted dictionary of info.json for the event
+            * detail: event detail from comcat
+            * shakemap: shakemap of event found (from comcat)
 
     """
     header_dicts = getHeaderData(shakefile)
@@ -65,6 +82,7 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     infobytes, url = shakemap.getContentBytes('info.json')
     info = json.loads(infobytes.decode('utf-8'))
     return info, detail, shakemap
+
 
 def parseMapConfig(config, fileext=None):
     """
@@ -151,9 +169,6 @@ def parseMapConfig(config, fileext=None):
 
 def parseConfigLayers(maplayers, config, keys=None):
     """
-    TODO:
-        - Add ability to interpret custom color maps.
-
     Parse things that need to coodinate with each layer (like lims, logscale,
     colormaps etc.) from config file, in right order, where the order is from
     maplayers.
@@ -165,7 +180,7 @@ def parseConfigLayers(maplayers, config, keys=None):
         keys (list): List of keys of maplayers to process, e.g. ``['model']``.
 
     Returns:
-        list: List of the following:
+        tuple: (plotorder, logscale, lims, colormaps, maskthreshes) where:
             * plotorder: maplayers keys in order of plotting.
             * logscale: list of logscale options from config corresponding to
               keys in plotorder (same order).
@@ -177,6 +192,9 @@ def parseConfigLayers(maplayers, config, keys=None):
               to keys in plotorder (same order).
 
     """
+    #TODO:
+    #    - Add ability to interpret custom color maps.
+
     # get all key names, create a plotorder list in case maplayers is not an
     # ordered dict, making sure that anything called 'model' is first
     if keys is None:

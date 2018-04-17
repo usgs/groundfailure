@@ -51,7 +51,6 @@
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">import</span> <span class="nn">collections</span>
 <span class="kn">import</span> <span class="nn">copy</span>
-<span class="kn">import</span> <span class="nn">subprocess</span>
 <span class="c1"># from scipy import sparse</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
@@ -64,9 +63,9 @@
 <span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="k">import</span> <span class="n">GDALGrid</span>
 <span class="kn">from</span> <span class="nn">mapio.grid2d</span> <span class="k">import</span> <span class="n">Grid2D</span>
 <span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="k">import</span> <span class="n">GeoDict</span>
-<span class="c1"># from osgeo import gdal</span>
 
 <span class="kn">from</span> <span class="nn">gfail.temphdf</span> <span class="k">import</span> <span class="n">TempHdf</span>
+<span class="kn">from</span> <span class="nn">gfail.spatial</span> <span class="k">import</span> <span class="n">quickcut</span><span class="p">,</span> <span class="n">trim_ocean</span>
 
 <span class="c1"># temporary until mapio is updated</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
@@ -90,9 +89,11 @@
 
 <div class="viewcode-block" id="LogisticModel"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.LogisticModel">[docs]</a><span class="k">class</span> <span class="nc">LogisticModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">uncertfile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">saveinputs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                 <span class="n">slopefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">numstd</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">slopemod</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">slopefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">numstd</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">slopemod</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">trimfile</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Set up the logistic model</span>
+<span class="sd">        Sets up the logistic model</span>
+
 <span class="sd">        Args:</span>
 <span class="sd">            shakefile (str): Path to shakemap grid.xml file for the event.</span>
 <span class="sd">            config: configobj object defining the model and its inputs. Only</span>
@@ -120,6 +121,8 @@
 <span class="sd">                degrees: e.g., ``np.arctan(slope) * 180. / np.pi`` or</span>
 <span class="sd">                ``slope/100.`` (note that this may be in the config file</span>
 <span class="sd">                already).</span>
+<span class="sd">            trimfile (str): shapefile of earth&#39;s landmasses to use to cut</span>
+<span class="sd">                offshore areas.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">mnames</span> <span class="o">=</span> <span class="n">getLogisticModelNames</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mnames</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -129,6 +132,7 @@
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Config file contains more than one model which &#39;</span>
                             <span class="s1">&#39;is no longer allowed, update your config file &#39;</span>
                             <span class="s1">&#39;to the newer format&#39;</span><span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">mnames</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span>
         <span class="n">cmodel</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span>
@@ -144,6 +148,8 @@
                        <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="s1">&#39;mmi&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">longrefs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortrefs</span> <span class="o">=</span> <span class="n">validateRefs</span><span class="p">(</span><span class="n">cmodel</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span> <span class="o">=</span> <span class="n">numstd</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">clips</span> <span class="o">=</span> <span class="n">validateClips</span><span class="p">(</span><span class="n">cmodel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gmused</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;baselayer&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;You must specify a base layer corresponding to &#39;</span>
                             <span class="s1">&#39;one of the files in the layer section.&#39;</span><span class="p">)</span>
@@ -152,8 +158,8 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span> <span class="o">=</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;slopefile&#39;</span><span class="p">]</span>
             <span class="k">except</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not find slopefile term in config, no slope &#39;</span>
-                      <span class="s1">&#39;thresholds will be applied</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="c1"># print(&#39;Slopefile not specified in config, no slope &#39;</span>
+                <span class="c1">#      &#39;thresholds will be applied\n&#39;)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span> <span class="o">=</span> <span class="n">slopefile</span>
@@ -162,6 +168,20 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">slopemod</span> <span class="o">=</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;slopemod&#39;</span><span class="p">]</span>
             <span class="k">except</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">slopemod</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># See if trimfile exists</span>
+        <span class="k">if</span> <span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">trimfile</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s1">&#39;trimfile defined does not exist: </span><span class="si">%s</span><span class="se">\n</span><span class="s1">Ocean will not be trimmed&#39;</span> <span class="o">%</span> <span class="n">trimfile</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">trimfile</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;.shp&#39;</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trimfile must be a shapefile, ocean will not be trimmed&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">=</span> <span class="n">trimfile</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># Get month of event</span>
         <span class="n">griddict</span><span class="p">,</span> <span class="n">eventdict</span><span class="p">,</span> <span class="n">specdict</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">uncertainties</span> <span class="o">=</span> \
@@ -207,37 +227,99 @@
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;All predictor variable grids must be a valid &#39;</span>
                             <span class="s1">&#39;GMT or ESRI file type.&#39;</span><span class="p">)</span>
 
+        <span class="c1"># Do we need to subdivide baselayer?</span>
+        <span class="k">if</span> <span class="s1">&#39;divfactor&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">divfactor</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;divfactor&#39;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">divfactor</span> <span class="o">!=</span> <span class="mf">1.</span><span class="p">:</span>
+                <span class="c1"># adjust sampledict so everything will be resampled</span>
+                <span class="n">newxmin</span> <span class="o">=</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dx</span> <span class="o">/</span> \
+                    <span class="mf">2.</span> <span class="o">+</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dx</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">divfactor</span><span class="p">)</span>
+                <span class="n">newymin</span> <span class="o">=</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dy</span> <span class="o">/</span> \
+                    <span class="mf">2.</span> <span class="o">+</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dy</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">divfactor</span><span class="p">)</span>
+                <span class="n">newxmax</span> <span class="o">=</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dx</span> <span class="o">/</span> \
+                    <span class="mf">2.</span> <span class="o">-</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dx</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">divfactor</span><span class="p">)</span>
+                <span class="n">newymax</span> <span class="o">=</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dy</span> <span class="o">/</span> \
+                    <span class="mf">2.</span> <span class="o">-</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dy</span><span class="o">/</span><span class="p">(</span><span class="mf">2.</span><span class="o">*</span><span class="n">divfactor</span><span class="p">)</span>
+                <span class="n">newdx</span> <span class="o">=</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dx</span><span class="o">/</span><span class="n">divfactor</span>
+                <span class="n">newdy</span> <span class="o">=</span> <span class="n">sampledict</span><span class="o">.</span><span class="n">dy</span><span class="o">/</span><span class="n">divfactor</span>
+
+                <span class="n">sampledict</span> <span class="o">=</span> <span class="n">GeoDict</span><span class="o">.</span><span class="n">createDictFromBox</span><span class="p">(</span>
+                    <span class="n">newxmin</span><span class="p">,</span> <span class="n">newxmax</span><span class="p">,</span> <span class="n">newymin</span><span class="p">,</span>
+                    <span class="n">newymax</span><span class="p">,</span> <span class="n">newdx</span><span class="p">,</span> <span class="n">newdy</span><span class="p">,</span> <span class="n">inside</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
         <span class="c1"># Find slope thresholds, if applicable</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;slopemin&#39;</span><span class="p">])</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;slopemax&#39;</span><span class="p">])</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not find slopemin and/or slopemax in config, limits &#39;</span>
-                  <span class="s1">&#39;No slope thresholds will be applied.&#39;</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+        <span class="k">if</span> <span class="n">slopefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;slopemin&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;slopemax&#39;</span><span class="p">])</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not find slopemin and/or slopemax in config, &#39;</span>
+                      <span class="s1">&#39;limits. No slope thresholds will be applied.&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">=</span> <span class="s1">&#39;none&#39;</span>
 
         <span class="c1"># Make temporary directory for hdf5 pytables file storage</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
-        <span class="c1"># Apply to shakemap</span>
-        <span class="c1"># now load the shakemap, resampling and padding if necessary</span>
-        <span class="n">start</span> <span class="o">=</span> <span class="n">timer</span><span class="p">()</span>
-        <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">samplegeodict</span><span class="o">=</span><span class="n">sampledict</span><span class="p">,</span>
-                              <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                              <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span>
-                                                   <span class="s1">&#39;shakemap.hdf5&#39;</span><span class="p">))</span>
-        <span class="k">del</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Shakemap loading: </span><span class="si">%1.1f</span><span class="s1"> sec&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">timer</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
 
-        <span class="c1"># take uncertainties into account</span>
+        <span class="c1"># now load the shakemap, resampling and padding if necessary</span>
+        <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>  <span class="c1"># , adjust=&#39;res&#39;)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shakedict</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getShakeDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">eventdict</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Read both PGA and PGV in, may need them for thresholds</span>
+        <span class="k">for</span> <span class="n">gm</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="s1">&#39;pgv&#39;</span><span class="p">]:</span>
+            <span class="n">junkfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.bil&#39;</span><span class="p">)</span>
+            <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="n">gm</span><span class="p">))</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">junkfile</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">gm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolations</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">intermeth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolations</span><span class="p">[</span><span class="n">gm</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">intermeth</span> <span class="o">=</span> <span class="s1">&#39;bilinear&#39;</span>
+            <span class="n">junkgrid</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="n">junkfile</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span> <span class="n">precise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                <span class="n">method</span><span class="o">=</span><span class="n">intermeth</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">gm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">:</span>
+                <span class="n">junkgrid</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">junkgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">(),</span>
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">gm</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">gm</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="n">gm</span><span class="p">]</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span>
+                <span class="n">junkgrid</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">gm</span><span class="p">))</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">junkfile</span><span class="p">)</span>
+        <span class="k">del</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+
+        <span class="c1"># get updated geodict</span>
+        <span class="n">sampledict</span> <span class="o">=</span> <span class="n">junkgrid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+
+        <span class="c1"># take uncertainties into account, if available</span>
         <span class="k">if</span> <span class="n">uncertfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">uncertfile</span><span class="p">,</span> <span class="n">samplegeodict</span><span class="o">=</span><span class="n">sampledict</span><span class="p">,</span>
-                                      <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                      <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span><span class="n">temp</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span>
-                                                         <span class="s1">&#39;uncert.hdf5&#39;</span><span class="p">))</span>
+                <span class="c1"># Only read in the ones that will be needed</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">uncertfile</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">gm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">gmused</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s1">&#39;pgv&#39;</span> <span class="ow">in</span> <span class="n">gm</span><span class="p">:</span>
+                        <span class="n">gmsimp</span> <span class="o">=</span> <span class="s1">&#39;pgv&#39;</span>
+                    <span class="k">elif</span> <span class="s1">&#39;pga&#39;</span> <span class="ow">in</span> <span class="n">gm</span><span class="p">:</span>
+                        <span class="n">gmsimp</span> <span class="o">=</span> <span class="s1">&#39;pga&#39;</span>
+                    <span class="k">elif</span> <span class="s1">&#39;mmi&#39;</span> <span class="ow">in</span> <span class="n">gm</span><span class="p">:</span>
+                        <span class="n">gmsimp</span> <span class="o">=</span> <span class="s1">&#39;mmi&#39;</span>
+                    <span class="n">junkfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.bil&#39;</span><span class="p">)</span>
+                    <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span>
+                        <span class="s1">&#39;std</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">gmsimp</span><span class="p">))</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">junkfile</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">gmsimp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolations</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                        <span class="n">intermeth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolations</span><span class="p">[</span><span class="n">gmsimp</span><span class="p">]</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">intermeth</span> <span class="o">=</span> <span class="s1">&#39;bilinear&#39;</span>
+                    <span class="n">junkgrid</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="n">junkfile</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span> <span class="n">precise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                        <span class="n">method</span><span class="o">=</span><span class="n">intermeth</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">gmsimp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">:</span>
+                        <span class="n">junkgrid</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">junkgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">gmsimp</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                                    <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">gmsimp</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span><span class="p">[</span><span class="s1">&#39;std&#39;</span> <span class="o">+</span> <span class="n">gmsimp</span><span class="p">]</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span>
+                        <span class="n">junkgrid</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span>
+                                               <span class="s1">&#39;std</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">gmsimp</span><span class="p">))</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">junkfile</span><span class="p">)</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
             <span class="k">except</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not read uncertainty file, ignoring &#39;</span>
@@ -265,53 +347,32 @@
                             <span class="n">layerfile</span> <span class="o">=</span> <span class="n">lfile</span>
                             <span class="n">ftype</span> <span class="o">=</span> <span class="n">getFileType</span><span class="p">(</span><span class="n">layerfile</span><span class="p">)</span>
                             <span class="n">interp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolations</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span>
-                            <span class="k">if</span> <span class="n">ftype</span> <span class="o">==</span> <span class="s1">&#39;gmt&#39;</span><span class="p">:</span>
-                                <span class="n">temp</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">layerfile</span><span class="p">,</span>
-                                                    <span class="n">sampledict</span><span class="p">,</span>
-                                                    <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                                    <span class="n">method</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span>
-                                                    <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                            <span class="k">elif</span> <span class="n">ftype</span> <span class="o">==</span> <span class="s1">&#39;esri&#39;</span><span class="p">:</span>
-                                <span class="n">temp</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">layerfile</span><span class="p">,</span>
-                                                     <span class="n">sampledict</span><span class="p">,</span>
-                                                     <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                                     <span class="n">method</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span>
-                                                     <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                            <span class="k">else</span><span class="p">:</span>
-                                <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Layer </span><span class="si">%s</span><span class="s1"> (file </span><span class="si">%s</span><span class="s1">) does not appear &#39;</span>
-                                       <span class="s1">&#39;to be a valid GMT or ESRI file.&#39;</span>
-                                       <span class="o">%</span> <span class="p">(</span><span class="n">layername</span><span class="p">,</span> <span class="n">layerfile</span><span class="p">))</span>
-                                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+                            <span class="n">temp</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="n">layerfile</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span>
+                                            <span class="n">precise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">interp</span><span class="p">)</span>
+                            <span class="k">if</span> <span class="n">layername</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">:</span>
+                                <span class="n">temp</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span>
+                                    <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">getData</span><span class="p">(),</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">layername</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                                            <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">layername</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
                             <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span>
                                 <span class="n">temp</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span>
                                                    <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">layername</span><span class="p">))</span>
                             <span class="k">del</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">interp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">interpolations</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span>
-
-                <span class="c1"># If resolution is too high, first create temporary geotiff</span>
-                <span class="c1"># snippet using gdal because mapio can&#39;t handle cutting high</span>
-                <span class="c1"># res files</span>
-                <span class="n">templyrname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.tif&#39;</span> <span class="o">%</span> <span class="n">layername</span><span class="p">)</span>
-
-                <span class="c1"># cut piece out quickly using gdal</span>
-                <span class="n">newgdict</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="n">layerfile</span><span class="p">,</span> <span class="n">templyrname</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span>
-                                    <span class="n">extrasamp</span><span class="o">=</span><span class="mf">5.</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
-
-                <span class="c1"># Then load it in using mapio</span>
-                <span class="k">if</span> <span class="n">newgdict</span><span class="o">.</span><span class="n">isAligned</span><span class="p">(</span><span class="n">sampledict</span><span class="p">):</span>
-                    <span class="n">temp</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">templyrname</span><span class="p">,</span>
-                                         <span class="n">sampledict</span><span class="p">,</span>
-                                         <span class="n">resample</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">temp</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">templyrname</span><span class="p">,</span>
-                                         <span class="n">sampledict</span><span class="p">,</span>
-                                         <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                         <span class="n">method</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span>
-                                         <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="n">layerfile</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span>
+                                <span class="n">precise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">interp</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">layername</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">:</span>
+                    <span class="n">temp</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span>
+                        <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">getData</span><span class="p">(),</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">layername</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">layername</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span>
                     <span class="n">temp</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">layername</span><span class="p">))</span>
+                <span class="n">td</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">td</span> <span class="o">!=</span> <span class="n">sampledict</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                        <span class="s1">&#39;Geodictionaries of resampled files do not match&#39;</span><span class="p">)</span>
 
                 <span class="k">if</span> <span class="n">layerfile</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span><span class="p">:</span>
                     <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
@@ -336,33 +397,21 @@
                         <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
                         <span class="k">del</span><span class="p">(</span><span class="n">slope</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
-                        <span class="c1"># Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas</span>
+                        <span class="c1"># Still remove areas where the slope equals exactly</span>
+                        <span class="c1"># 0.0 to remove offshore liq areas.</span>
                         <span class="n">nonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">slope1</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">])</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="o">=</span> <span class="n">nonzero</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
                         <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
                     <span class="n">didslope</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
 
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Loading of layer </span><span class="si">%s</span><span class="s1">: </span><span class="si">%1.1f</span><span class="s1"> sec&#39;</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Loading </span><span class="si">%s</span><span class="s1"> layer: </span><span class="si">%1.1f</span><span class="s1"> sec&#39;</span>
                   <span class="o">%</span> <span class="p">(</span><span class="n">layername</span><span class="p">,</span> <span class="n">timer</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">))</span>
 
         <span class="k">if</span> <span class="n">didslope</span> <span class="ow">is</span> <span class="kc">False</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Slope didn&#39;t get read in yet</span>
-
-            <span class="c1"># If resolution is too high, first create temporary geotiff snippet</span>
-            <span class="c1"># using gdal because mapio can&#39;t handle cutting high res files.</span>
-            <span class="n">templyrname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;tempslope.tif&#39;</span><span class="p">)</span>
-
-            <span class="c1"># Cut piece out quickly using gdal</span>
-            <span class="n">newgdict</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span><span class="p">,</span> <span class="n">templyrname</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span>
-                                <span class="n">extrasamp</span><span class="o">=</span><span class="mf">5.</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">)</span>
-
-            <span class="c1"># Then load it in using mapio</span>
-            <span class="k">if</span> <span class="n">newgdict</span><span class="o">.</span><span class="n">isAligned</span><span class="p">(</span><span class="n">sampledict</span><span class="p">):</span>
-                <span class="n">temp</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">templyrname</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span> <span class="n">resample</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">temp</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">templyrname</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span> <span class="n">resample</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                     <span class="n">method</span><span class="o">=</span><span class="n">interp</span><span class="p">,</span> <span class="n">doPadding</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">temp</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span><span class="p">,</span> <span class="n">sampledict</span><span class="p">,</span> <span class="n">precise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                            <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
             <span class="n">flag</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span> <span class="o">==</span> <span class="s1">&#39;none&#39;</span><span class="p">:</span>
                 <span class="n">flag</span> <span class="o">=</span> <span class="mi">1</span>
@@ -384,7 +433,8 @@
                 <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">slope</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="c1"># Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas</span>
+                <span class="c1"># Still remove areas where the slope equals exactly</span>
+                <span class="c1"># 0.0 to remove offshore liq areas.</span>
                 <span class="n">nonzero</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">slope1</span> <span class="o">!=</span> <span class="mf">0.0</span><span class="p">])</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="o">=</span> <span class="n">nonzero</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">slope1</span><span class="p">)</span>
@@ -406,74 +456,45 @@
 
             <span class="c1"># Find the term with the shakemap input and replace for these</span>
             <span class="c1"># nuggets.</span>
-            <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">nug</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span><span class="p">):</span>
-                <span class="k">if</span> <span class="p">(</span><span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;pga&#39;)&quot;</span> <span class="ow">in</span> <span class="n">nug</span><span class="p">):</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                        <span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;pga&#39;)&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;(np.exp(np.log(self.shakemap.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;pga&#39;)) - &quot;</span>
-                        <span class="s2">&quot;self.numstd * self.uncert.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;stdpga&#39;)))&quot;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                        <span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;pga&#39;)&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;(np.exp(np.log(self.shakemap.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;pga&#39;)) + &quot;</span>
-                        <span class="s2">&quot;self.numstd * self.uncert.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;stdpga&#39;)))&quot;</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="p">(</span><span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;pgv&#39;)&quot;</span> <span class="ow">in</span> <span class="n">nug</span><span class="p">):</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                        <span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;pgv&#39;)&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;(np.exp(np.log(self.shakemap.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;pgv&#39;)) - &quot;</span>
-                        <span class="s2">&quot;self.numstd * self.uncert.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;stdpgv&#39;)))&quot;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                        <span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;pgv&#39;)&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;(np.exp(np.log(self.shakemap.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;pgv&#39;)) + &quot;</span>
-                        <span class="s2">&quot;self.numstd * self.uncert.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;stdpgv&#39;)))&quot;</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="p">(</span><span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;mmi&#39;)&quot;</span> <span class="ow">in</span> <span class="n">nug</span><span class="p">):</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                        <span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;mmi&#39;)&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;(np.exp(np.log(self.shakemap.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;mmi&#39;)) - &quot;</span>
-                        <span class="s2">&quot;self.numstd * self.uncert.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;stdmmi&#39;)))&quot;</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                        <span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, colstart, &quot;</span>
-                        <span class="s2">&quot;colend, name=&#39;mmi&#39;)&quot;</span><span class="p">,</span>
-                        <span class="s2">&quot;(np.exp(np.log(self.shakemap.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;mmi&#39;)) + &quot;</span>
-                        <span class="s2">&quot;self.numstd * self.uncert.getSlice(rowstart, &quot;</span>
-                        <span class="s2">&quot;rowend, colstart, colend, name=&#39;stdmmi&#39;)))&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">gm</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="s1">&#39;mmi&#39;</span><span class="p">,</span> <span class="s1">&#39;pgv&#39;</span><span class="p">]:</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">nug</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span><span class="p">):</span>
+                    <span class="n">tempnug</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;self.shakemap[&#39;</span><span class="si">%s</span><span class="s2">&#39;].getSlice(rowstart, &quot;</span>
+                               <span class="s2">&quot;rowend, colstart, colend, name=&#39;</span><span class="si">%s</span><span class="s2">&#39;)&quot;</span>
+                               <span class="o">%</span> <span class="p">(</span><span class="n">gm</span><span class="p">,</span> <span class="n">gm</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">tempnug</span> <span class="ow">in</span> <span class="n">nug</span><span class="p">:</span>
+                        <span class="n">newnug</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;np.exp(np.log(</span><span class="si">%s</span><span class="s2">) - self.numstd * &quot;</span>
+                                  <span class="s2">&quot;self.uncert[&#39;std</span><span class="si">%s</span><span class="s2">&#39;].getSlice(rowstart, &quot;</span>
+                                  <span class="s2">&quot;rowend, colstart, colend, name=&#39;std</span><span class="si">%s</span><span class="s2">&#39;))&quot;</span>
+                                  <span class="o">%</span> <span class="p">(</span><span class="n">tempnug</span><span class="p">,</span> <span class="n">gm</span><span class="p">,</span> <span class="n">gm</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+                            <span class="n">tempnug</span><span class="p">,</span> <span class="n">newnug</span><span class="p">)</span>
+                        <span class="n">newnug</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;np.exp(np.log(</span><span class="si">%s</span><span class="s2">) + self.numstd * &quot;</span>
+                                  <span class="s2">&quot;self.uncert[&#39;std</span><span class="si">%s</span><span class="s2">&#39;].getSlice(rowstart, &quot;</span>
+                                  <span class="s2">&quot;rowend, colstart, colend, name=&#39;std</span><span class="si">%s</span><span class="s2">&#39;))&quot;</span>
+                                  <span class="o">%</span> <span class="p">(</span><span class="n">tempnug</span><span class="p">,</span> <span class="n">gm</span><span class="p">,</span> <span class="n">gm</span><span class="p">))</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+                            <span class="n">tempnug</span><span class="p">,</span> <span class="n">newnug</span><span class="p">)</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span> <span class="o">=</span> <span class="s1">&#39; + &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span> <span class="o">=</span> <span class="s1">&#39; + &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span> <span class="o">=</span> <span class="n">sampledict</span>
 
 <div class="viewcode-block" id="LogisticModel.getEquations"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.LogisticModel.getEquations">[docs]</a>    <span class="k">def</span> <span class="nf">getEquations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Method for LogisticModel class to extract strings defining the</span>
 <span class="sd">        equations for the model for median ground motions and +/- one standard</span>
 <span class="sd">        deviation (3 total).</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            tuple: Three equations: equation, equationmin, equationmax, where</span>
-<span class="sd">                * equation is the equation for median ground motions,</span>
-<span class="sd">                * equationmin is the equation for the same model but with</span>
-<span class="sd">                  median ground motions minus 1 standard deviation, and</span>
-<span class="sd">                * equationmax is the same but for plus 1 standard deviation.</span>
+<span class="sd">            tuple: (equation, equationmin, equationmax) where:</span>
+<span class="sd">                * equation: the equation for median ground motions,</span>
+<span class="sd">                * equationmin: the equation for the same model but using</span>
+<span class="sd">                  median ground motions minus 1 standard deviation</span>
+<span class="sd">                * equationmax: same as above but for plus 1 standard deviation.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">equation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span></div>
 
@@ -481,30 +502,32 @@
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Returns the geodictionary of the LogisticModel class defining bounds</span>
 <span class="sd">        and resolution of model inputs and outputs.</span>
+
 <span class="sd">        Returns:</span>
-<span class="sd">            geodict: mapio geodict object.</span>
+<span class="sd">            geodict: mapio geodict object</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span></div>
 
 <div class="viewcode-block" id="LogisticModel.calculate"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.LogisticModel.calculate">[docs]</a>    <span class="k">def</span> <span class="nf">calculate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">rowmax</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">colmax</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Calculate the model.</span>
+
 <span class="sd">        Args:</span>
-<span class="sd">            cleanup (bool): Delete temporary hdf5 files?</span>
-<span class="sd">            rowmax (int): Number of rows to compute at once; None does all at</span>
-<span class="sd">                once.</span>
-<span class="sd">            colmax (int): Number of columns to compute at once; None does all</span>
-<span class="sd">                at once.</span>
+<span class="sd">            cleanup (bool): If True, delete temporary hdf5 files</span>
+<span class="sd">            rowmax (int): Number of rows to compute at once; If None, all rows</span>
+<span class="sd">                will be computed at once.</span>
+<span class="sd">            colmax (int): Number of columns to compute at once; If None, all</span>
+<span class="sd">                columns will be computed at once.</span>
 <span class="sd">        Returns:</span>
 <span class="sd">            dict: Dictionary containing the model results (and model inputs if</span>
 <span class="sd">            saveinputs was set to True). See</span>
 <span class="sd">            `the description &lt;https://github.com/usgs/groundfailure#api-for-model-output&gt;`_</span>
 <span class="sd">            of the structure.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
-
+        <span class="n">tk</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">keys</span><span class="p">())[</span><span class="mi">0</span><span class="p">]</span>
         <span class="c1"># Figure out what slices to do</span>
         <span class="n">rowstarts</span><span class="p">,</span> <span class="n">rowends</span><span class="p">,</span> <span class="n">colstarts</span><span class="p">,</span> <span class="n">colends</span> <span class="o">=</span> \
-            <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">getSliceDiv</span><span class="p">(</span><span class="n">rowmax</span><span class="p">,</span> <span class="n">colmax</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="n">tk</span><span class="p">]</span><span class="o">.</span><span class="n">getSliceDiv</span><span class="p">(</span><span class="n">rowmax</span><span class="p">,</span> <span class="n">colmax</span><span class="p">)</span>
 
         <span class="c1"># Make empty matrix to fill</span>
         <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="o">.</span><span class="n">ny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="o">.</span><span class="n">nx</span><span class="p">])</span>
@@ -522,8 +545,14 @@
             <span class="n">P</span><span class="p">[</span><span class="n">vs30</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;vs30max&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="k">if</span> <span class="s1">&#39;minpgv&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-            <span class="n">pgv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pgv&#39;</span><span class="p">)</span>
+            <span class="n">pgv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="s1">&#39;pgv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
+                <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pgv&#39;</span><span class="p">)</span>
             <span class="n">P</span><span class="p">[</span><span class="n">pgv</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpgv&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+        <span class="k">if</span> <span class="s1">&#39;minpga&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">pga</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="s1">&#39;pga&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
+                <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">)</span>
+            <span class="n">P</span><span class="p">[</span><span class="n">pga</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpga&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="n">eqn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;coverage&#39;</span><span class="p">][</span><span class="s1">&#39;eqn&#39;</span><span class="p">]</span>
@@ -549,31 +578,41 @@
                 <span class="n">Pmax</span><span class="p">[</span><span class="n">vs30</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;vs30max&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
             <span class="k">if</span> <span class="s1">&#39;minpgv&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="n">pgv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
+                <span class="n">pgv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="s1">&#39;pgv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
                     <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pgv&#39;</span><span class="p">)</span>
                 <span class="n">Pmin</span><span class="p">[</span><span class="n">pgv</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpgv&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
                 <span class="n">Pmax</span><span class="p">[</span><span class="n">pgv</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpgv&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
+
+            <span class="k">if</span> <span class="s1">&#39;minpga&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">pga</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="s1">&#39;pgv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
+                    <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">)</span>
+                <span class="n">Pmin</span><span class="p">[</span><span class="n">pga</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpga&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="n">Pmax</span><span class="p">[</span><span class="n">pga</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpga&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
             <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
                 <span class="n">eqnmin</span> <span class="o">=</span> <span class="n">eqn</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="s1">&#39;Pmin&#39;</span><span class="p">)</span>
                 <span class="n">eqnmax</span> <span class="o">=</span> <span class="n">eqn</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="s1">&#39;Pmax&#39;</span><span class="p">)</span>
                 <span class="n">Pmin</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">eqnmin</span><span class="p">)</span>
                 <span class="n">Pmax</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">eqnmax</span><span class="p">)</span>
+
+            <span class="c1">#Pmin[np.isnan(Pmin)] = 0.0</span>
+            <span class="c1">#Pmax[np.isnan(Pmax)] = 0.0</span>
+
+        <span class="c1">#P[np.isnan(P)] = 0.0</span>
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Apply slope min/max limits</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;applying slope thresholds&#39;</span><span class="p">)</span>
             <span class="n">P</span> <span class="o">=</span> <span class="n">P</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
             <span class="c1">#P[P==0.0] = float(&#39;nan&#39;)</span>
-            <span class="n">P</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">P</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="c1">#P[np.isnan(P)] = 0.0</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">Pmin</span> <span class="o">=</span> <span class="n">Pmin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
                 <span class="n">Pmax</span> <span class="o">=</span> <span class="n">Pmax</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
                 <span class="c1">#Pmin[Pmin==0.0] = float(&#39;nan&#39;)</span>
                 <span class="c1">#Pmax[Pmax==0.0] = float(&#39;nan&#39;)</span>
-                <span class="n">Pmin</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">Pmin</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
-                <span class="n">Pmax</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">Pmax</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No slope file provided, slope thresholds not applied&#39;</span><span class="p">)</span>
+                <span class="c1">#Pmin[np.isnan(Pmin)] = 0.0</span>
+                <span class="c1">#Pmax[np.isnan(Pmax)] = 0.0</span>
 
         <span class="c1"># Stuff into Grid2D object</span>
         <span class="k">if</span> <span class="s1">&#39;Jessee&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
@@ -581,20 +620,21 @@
                 <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;relative hazard&#39;</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;areal coverage&#39;</span>
+        <span class="k">elif</span> <span class="s1">&#39;Zhu&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
+            <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;areal coverage&#39;</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;probability&#39;</span>
 
-        <span class="n">temp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">getShakeDict</span><span class="p">()</span>
         <span class="n">shakedetail</span> <span class="o">=</span> <span class="p">(</span>
             <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_ver</span><span class="si">%s</span><span class="s1">&#39;</span>
-            <span class="o">%</span> <span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_id&#39;</span><span class="p">],</span>
-               <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]))</span>
+            <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">shakedict</span><span class="p">[</span><span class="s1">&#39;shakemap_id&#39;</span><span class="p">],</span>
+               <span class="bp">self</span><span class="o">.</span><span class="n">shakedict</span><span class="p">[</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]))</span>
         <span class="n">description</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;name&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">],</span>
             <span class="s1">&#39;longref&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;longref&#39;</span><span class="p">],</span>
             <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">units5</span><span class="p">,</span>
             <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span><span class="p">,</span>
-            <span class="s1">&#39;event_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">edict</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;event_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">eventdict</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">],</span>
             <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;slopemin&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemin</span><span class="p">,</span>
                            <span class="s1">&#39;slopemax&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopemax</span><span class="p">,</span>
                            <span class="s1">&#39;modeltype&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="p">}}</span>
@@ -602,8 +642,11 @@
             <span class="n">description</span><span class="p">[</span><span class="s1">&#39;vs30max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;vs30max&#39;</span><span class="p">])</span>
         <span class="k">if</span> <span class="s1">&#39;minpgv&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="n">description</span><span class="p">[</span><span class="s1">&#39;minpgv&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpgv&#39;</span><span class="p">])</span>
-            
+
         <span class="n">Pgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Turn all offshore cells to nan</span>
+            <span class="n">Pgrid</span> <span class="o">=</span> <span class="n">trim_ocean</span><span class="p">(</span><span class="n">Pgrid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">))</span>
         <span class="n">rdict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
         <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pgrid</span><span class="p">,</span>
@@ -613,8 +656,15 @@
             <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
         <span class="p">}</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">Pmingrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">Pmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
+            <span class="n">Pmaxgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">Pmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">Pmingrid</span> <span class="o">=</span> <span class="n">trim_ocean</span><span class="p">(</span>
+                    <span class="n">Pmingrid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">))</span>
+                <span class="n">Pmaxgrid</span> <span class="o">=</span> <span class="n">trim_ocean</span><span class="p">(</span>
+                    <span class="n">Pmaxgrid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">))</span>
             <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;modelmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">Pmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">),</span>
+                <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pmingrid</span><span class="p">,</span>
                 <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> (-</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
                           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
                              <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span>
@@ -623,7 +673,7 @@
                 <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
             <span class="p">}</span>
             <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;modelmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">Pmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">),</span>
+                <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pmaxgrid</span><span class="p">,</span>
                 <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> (+</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
                           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
                              <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span>
@@ -670,7 +720,7 @@
                 <span class="k">if</span> <span class="n">getkey</span> <span class="ow">in</span> <span class="n">rdict</span><span class="p">:</span>
                     <span class="k">continue</span>
 
-                <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
+                <span class="n">layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="n">getkey</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
                     <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">getkey</span><span class="p">)</span>
                 <span class="n">rdict</span><span class="p">[</span><span class="n">getkey</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">),</span>
@@ -682,7 +732,7 @@
                     <span class="p">}</span>
                 <span class="p">}</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">uncertlayer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
+                    <span class="n">uncertlayer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span><span class="p">[</span><span class="n">getkey</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
                         <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;std&#39;</span><span class="o">+</span><span class="n">getkey</span><span class="p">)</span>
                     <span class="n">layer1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="o">-</span> <span class="n">uncertlayer</span><span class="p">)</span>
                     <span class="n">rdict</span><span class="p">[</span><span class="n">getkey</span> <span class="o">+</span> <span class="s1">&#39;modelmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
@@ -712,8 +762,10 @@
 <div class="viewcode-block" id="getLogisticModelNames"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.getLogisticModelNames">[docs]</a><span class="k">def</span> <span class="nf">getLogisticModelNames</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the names of the models present in the configobj</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        config: configobj object defining the model and its inputs.</span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        list: list of model names.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -730,12 +782,14 @@
 <div class="viewcode-block" id="getFileType"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.getFileType">[docs]</a><span class="k">def</span> <span class="nf">getFileType</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Determine whether input file is a shapefile or a grid (ESRI or GMT).</span>
-<span class="sd">    EVENTUALLY WILL BE MOVED TO MAPIO.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        filename (str): Path to candidate filename.</span>
+
 <span class="sd">    Returns:</span>
 <span class="sd">        str: &#39;shapefile&#39;, &#39;grid&#39;, or &#39;unknown&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#TODO MOVE TO MAPIO.</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;dir&#39;</span>
     <span class="n">ftype</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">getFileType</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
@@ -755,12 +809,13 @@
 <div class="viewcode-block" id="getAllGridFiles"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.getAllGridFiles">[docs]</a><span class="k">def</span> <span class="nf">getAllGridFiles</span><span class="p">(</span><span class="n">indir</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get list of all gmt or esri (.grd, .bil) files in a directory.</span>
-<span class="sd">    EVENTUALLY WILL BE MOVED TO MAPIO</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        indir (str): Directory to search.</span>
 <span class="sd">    Returns:</span>
 <span class="sd">        list: List of file names.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#TODO MOVE TO MAPIO</span>
     <span class="n">tflist</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">indir</span><span class="p">)</span>
     <span class="n">flist</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">tf</span> <span class="ow">in</span> <span class="n">tflist</span><span class="p">:</span>
@@ -775,9 +830,10 @@
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Ensures coefficients provided in model description are valid and outputs</span>
 <span class="sd">    a dictionary of the coefficients.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
-<span class="sd">            e.g.</span>
+<span class="sd">            for example:</span>
 
 <span class="sd">            .. code-block:: python</span>
 
@@ -797,13 +853,44 @@
     <span class="k">return</span> <span class="n">coeffs</span></div>
 
 
+<div class="viewcode-block" id="validateClips"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.validateClips">[docs]</a><span class="k">def</span> <span class="nf">validateClips</span><span class="p">(</span><span class="n">cmodel</span><span class="p">,</span> <span class="n">layers</span><span class="p">,</span> <span class="n">gmused</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensures coefficients provided in model description are valid and outputs</span>
+<span class="sd">    a dictionary of the coefficients.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
+<span class="sd">            for example:</span>
+
+<span class="sd">            .. code-block:: python</span>
+
+<span class="sd">                cmodel = config[&#39;test_model&#39;]</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: a dictionary of clip values for each layer (if exists)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">clips</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="s1">&#39;clip&#39;</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;clip&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">layers</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">gmused</span><span class="p">:</span>
+                    <span class="n">x1</span> <span class="o">=</span> <span class="p">[</span><span class="n">par</span> <span class="k">for</span> <span class="n">par</span> <span class="ow">in</span> <span class="n">gmused</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">par</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                            <span class="s1">&#39;Clipping key </span><span class="si">%s</span><span class="s1"> does not match any names of layers&#39;</span>
+                            <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
+            <span class="n">clips</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">clips</span></div>
+
+
 <div class="viewcode-block" id="validateLayers"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.validateLayers">[docs]</a><span class="k">def</span> <span class="nf">validateLayers</span><span class="p">(</span><span class="n">cmodel</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Ensures all input files required to run the model exist and are valid</span>
 <span class="sd">    file types.</span>
+
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
-<span class="sd">            e.g.</span>
+<span class="sd">            for example,</span>
 
 <span class="sd">            .. code-block:: python</span>
 
@@ -847,9 +934,6 @@
 <span class="sd">    to run eval in the calculate step), addressing any time variables, and</span>
 <span class="sd">    checks that term names match coefficient names.</span>
 
-<span class="sd">    TODO:</span>
-<span class="sd">        - Return a time field for every term, not just one global one.</span>
-
 <span class="sd">    Args:</span>
 <span class="sd">        cmodel (dict): Sub-dictionary from config for specific model,</span>
 <span class="sd">            e.g.</span>
@@ -885,6 +969,9 @@
 <span class="sd">            - &#39;timeField&#39; indicates the time that is used to know which input</span>
 <span class="sd">              file to read in, e.g. for monthly average precipitation, &#39;MONTH&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#TODO:</span>
+    <span class="c1">#    - Return a time field for every term, not just one global one.</span>
+
     <span class="n">terms</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">timeField</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;terms&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -904,64 +991,23 @@
     <span class="k">return</span> <span class="p">(</span><span class="n">terms</span><span class="p">,</span> <span class="n">timeField</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="quickcut"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.quickcut">[docs]</a><span class="k">def</span> <span class="nf">quickcut</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">tempname</span><span class="p">,</span> <span class="n">gdict</span><span class="p">,</span> <span class="n">extrasamp</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Use gdal to trim a large global file down quickly so mapio can read it</span>
-<span class="sd">    efficiently.</span>
-<span class="sd">    Using subprocess approach because ``gdal.Translate`` doesn&#39;t hang on the</span>
-<span class="sd">    command until the file is created which causes problems in the next steps.</span>
-<span class="sd">    Args:</span>
-<span class="sd">        filename (str): File path to original input file (raster).</span>
-<span class="sd">        tempname (str): File path to desired location of clipped part of</span>
-<span class="sd">            filename.</span>
-<span class="sd">        gdict (geodict): Geodictionary to cut around and align with.</span>
-<span class="sd">        extrasamp (int): Number of extra cells to cut around each edge of</span>
-<span class="sd">            geodict to have resampling buffer for future steps.</span>
-<span class="sd">        method (str): If resampling is necessary, method to use.</span>
-<span class="sd">    Returns:</span>
-<span class="sd">        dict: Geodict for new file that was cut and also creates the file in</span>
-<span class="sd">        the tempname location.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">filegdict</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
-    <span class="k">except</span><span class="p">:</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">filegdict</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="k">try</span><span class="p">:</span>
-                <span class="n">filegdict</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-            <span class="k">except</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Cannot get geodict for </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">filename</span><span class="p">)</span>
-
-    <span class="n">filegdict</span> <span class="o">=</span> <span class="n">filegdict</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">tempgdict</span> <span class="o">=</span> <span class="n">GeoDict</span><span class="o">.</span><span class="n">createDictFromBox</span><span class="p">(</span>
-        <span class="n">gdict</span><span class="o">.</span><span class="n">xmin</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">xmax</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span> <span class="n">gdict</span><span class="o">.</span><span class="n">ymax</span><span class="p">,</span>
-        <span class="n">filegdict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span> <span class="n">filegdict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span> <span class="n">inside</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-    <span class="n">egdict</span> <span class="o">=</span> <span class="n">filegdict</span><span class="o">.</span><span class="n">getBoundsWithin</span><span class="p">(</span><span class="n">tempgdict</span><span class="p">)</span>
-
-    <span class="n">ulx</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dx</span>
-    <span class="n">uly</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dy</span>
-    <span class="n">lrx</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dx</span>
-    <span class="n">lry</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dy</span>
-
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">devnull</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">devnull</span><span class="p">:</span>
-        <span class="n">subprocess</span><span class="o">.</span><span class="n">call</span><span class="p">(</span>
-            <span class="s1">&#39;gdal_translate -of GTiff -projwin </span><span class="si">%1.8f</span><span class="s1"> </span><span class="si">%1.8f</span><span class="s1"> </span><span class="si">%1.8f</span><span class="s1"> </span><span class="si">%1.8f</span><span class="s1"> &#39;</span>
-            <span class="s1">&#39;-r </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ulx</span><span class="p">,</span> <span class="n">uly</span><span class="p">,</span> <span class="n">lrx</span><span class="p">,</span> <span class="n">lry</span><span class="p">,</span> <span class="n">method</span><span class="p">,</span> <span class="n">filename</span><span class="p">,</span> <span class="n">tempname</span><span class="p">),</span>
-            <span class="n">shell</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">stdout</span><span class="o">=</span><span class="n">devnull</span><span class="p">)</span>
-    <span class="n">newgdict</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">tempname</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">newgdict</span></div>
-    <span class="c1"># TODO add error catching for subprocess call</span>
-
-
 <div class="viewcode-block" id="validateInterpolations"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.validateInterpolations">[docs]</a><span class="k">def</span> <span class="nf">validateInterpolations</span><span class="p">(</span><span class="n">cmodel</span><span class="p">,</span> <span class="n">layers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate logistic model interpolation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cmodel (dict): Sub-dictionary from config for specific model.</span>
+<span class="sd">        layers (dict): Dictionary of file names for all input layers.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Model interpolation methods.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">interpolations</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;interpolations&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
         <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">layers</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
                 <span class="s1">&#39;Interpolation key </span><span class="si">%s</span><span class="s1"> does not match any names of layers&#39;</span>
                 <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
-        <span class="n">methods</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="s1">&#39;cubic&#39;</span><span class="p">]</span>
+        <span class="n">methods</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;linear&#39;</span><span class="p">,</span> <span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="s1">&#39;cubic&#39;</span><span class="p">,</span> <span class="s1">&#39;bilinear&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">methods</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
                 <span class="s1">&#39;Interpolation method </span><span class="si">%s</span><span class="s1"> not in approved list of methods: </span><span class="si">%s</span><span class="s1">&#39;</span>
@@ -975,6 +1021,15 @@
 
 
 <div class="viewcode-block" id="validateUnits"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.validateUnits">[docs]</a><span class="k">def</span> <span class="nf">validateUnits</span><span class="p">(</span><span class="n">cmodel</span><span class="p">,</span> <span class="n">layers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate model units.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cmodel (dict): Sub-dictionary from config for specific model.</span>
+<span class="sd">        layers (dict): Dictionary of file names for all input layers.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Model units.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">units</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;layers&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
         <span class="k">if</span> <span class="s1">&#39;units&#39;</span> <span class="ow">in</span> <span class="n">cmodel</span><span class="p">[</span><span class="s1">&#39;layers&#39;</span><span class="p">][</span><span class="n">key</span><span class="p">]:</span>
@@ -985,6 +1040,15 @@
 
 
 <div class="viewcode-block" id="validateLogisticModels"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.validateLogisticModels">[docs]</a><span class="k">def</span> <span class="nf">validateLogisticModels</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate model names.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cmodel (dict): Sub-dictionary from config for specific model.</span>
+<span class="sd">        layers (dict): Dictionary of file names for all input layers.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if the model names are valid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mnames</span> <span class="o">=</span> <span class="n">getLogisticModelNames</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">mnames</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Config file contains more than one model which is &#39;</span>
@@ -1015,6 +1079,21 @@
 
 
 <div class="viewcode-block" id="validateRefs"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.validateRefs">[docs]</a><span class="k">def</span> <span class="nf">validateRefs</span><span class="p">(</span><span class="n">cmodel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Validate references for models and layers.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cmodel (dict): Sub-dictionary from config for specific model.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: (modelrefs, longrefs, shortrefs) where:</span>
+<span class="sd">            * modelrefs: dictionary of citation information for model</span>
+<span class="sd">                keys=&#39;longref&#39;, &#39;shortref&#39;</span>
+<span class="sd">            * shortrefs: dictionary containing short reference for each</span>
+<span class="sd">                input layer</span>
+<span class="sd">            * longrefs: dictionary containing full references for each</span>
+<span class="sd">                input layer</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">longrefs</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">shortrefs</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">modelrefs</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1043,6 +1122,20 @@
 
 
 <div class="viewcode-block" id="checkTerm"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.checkTerm">[docs]</a><span class="k">def</span> <span class="nf">checkTerm</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">layers</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Checks terms of equation and replaces text with machine readable operators</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        term: term from model configuration file</span>
+<span class="sd">        layers: dictionary of file names for all input layers</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: (term, tterm, timeField) where:</span>
+<span class="sd">            * term: dictionary of verified terms for equation with keys corresponding</span>
+<span class="sd">                to each layer name</span>
+<span class="sd">            * tterm: any unconverted and unverified text that may cause expression to fail</span>
+<span class="sd">            * timeField: if any inputs are time dependent, output is unit of time (e.g., &#39;YEAR&#39;),</span>
+<span class="sd">                otherwise, None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># startterm = term</span>
     <span class="c1"># Strip out everything that isn&#39;t: 0-9.() operators, +-/* or layer names.</span>
     <span class="c1"># Anything left is an unknown symbol.</span>
@@ -1076,11 +1169,11 @@
     <span class="k">for</span> <span class="n">sm_term</span> <span class="ow">in</span> <span class="n">SM_GRID_TERMS</span><span class="p">:</span>
         <span class="n">term</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
             <span class="n">sm_term</span><span class="p">,</span>
-            <span class="s2">&quot;self.shakemap.getSlice(rowstart, rowend, &quot;</span>
-            <span class="s2">&quot;colstart, colend, name=&#39;</span><span class="si">%s</span><span class="s2">&#39;)&quot;</span> <span class="o">%</span> <span class="n">sm_term</span><span class="p">)</span>
+            <span class="s2">&quot;self.shakemap[&#39;</span><span class="si">%s</span><span class="s2">&#39;].getSlice(rowstart, rowend, &quot;</span>
+            <span class="s2">&quot;colstart, colend, name=&#39;</span><span class="si">%s</span><span class="s2">&#39;)&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sm_term</span><span class="p">,</span> <span class="n">sm_term</span><span class="p">))</span>
 
     <span class="c1"># replace the macro MW with the magnitude value from the shakemap</span>
-    <span class="n">term</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;MW&#39;</span><span class="p">,</span> <span class="s2">&quot;self.shakemap.edict[&#39;magnitude&#39;]&quot;</span><span class="p">)</span>
+    <span class="n">term</span> <span class="o">=</span> <span class="n">term</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;MW&#39;</span><span class="p">,</span> <span class="s2">&quot;self.eventdict[&#39;magnitude&#39;]&quot;</span><span class="p">)</span>
 
     <span class="c1"># term.replace(&#39;YEAR&#39;,&quot;self.shakemap.getEventDict()[&#39;event_time&#39;].year&quot;)</span>
     <span class="c1"># hasTime = False</span>

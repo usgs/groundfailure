@@ -163,17 +163,17 @@ def modelMap(grids, shakefile=None,
             better looking hillshades.
 
     Returns:
-        tuple: (newgrids, filenames), where newgrids and filenames are lists.
-        newgrids are downsampled and trimmed version of input grids. If
-        no modification was needed for plotting, this will be identical to grids
-        but without the metadata. Filenames is a list of filenames that were created
-
-    TODO:
-        - Change so that all input layers do not have to have the same bounds,
-          test plotting multiple probability layers, and add option so that if
-          PDF and PNG aren't output, opens plot on screen using plt.show().
+        tuple: (newgrids, filenames), where:
+            * newgrids: list of downsampled and trimmed version of input grids. If
+                no modification was needed for plotting, this will be identical to grids
+                but without the metadata.
+            * filenames: a list of filenames that were created
 
     """
+    # TODO:
+    #     - Change so that all input layers do not have to have the same bounds,
+    #       test plotting multiple probability layers, and add option so that if
+    #       PDF and PNG aren't output, opens plot on screen using plt.show().
 
     if suptitle is None:
         suptitle = ' '
@@ -1972,12 +1972,11 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, log
             plotorder stating whether to use log scaling in determining colors
 
     Returns:
-        tuple: (sync, colorlist, lim1)
-            sync (bool): whether or not colorbars are/can be synced
-            colorlist (list): list of rgba colors that will be applied to all
+        tuple: (sync, colorlist, lim1) where:
+            * sync (bool): whether or not colorbars are/can be synced
+            * colorlist (list): list of rgba colors that will be applied to all
                 models regardless of bin edge values
-            lim1 (array): bin edges of model to which others are synced
-
+            * lim1 (array): bin edges of model to which others are synced
 
     """
 
@@ -2051,14 +2050,14 @@ def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None
         alpha (float): Transparency value from 0 to 1
 
     Returns:
-        tuple: clev, vmin, vmax, rgba_img, cmap, norm, colorlist
-            clev: bin edges used
-            vmin: lowest bin edge (saturated below)
-            vmax: highest bin edge (saturated above)
-            rgba_img: rgba image (2D array of rgba tuples)
-            cmap: colormap used
-            norm: normalization used for colorbar
-            colorlist: list of colors used for each colorbar bin,
+        tuple: (clev, vmin, vmax, rgba_img, cmap, norm, colorlist) where:
+            * clev: bin edges used
+            * vmin: lowest bin edge (saturated below)
+            * vmax: highest bin edge (saturated above)
+            * rgba_img: rgba image (2D array of rgba tuples)
+            * cmap: colormap used
+            * norm: normalization used for colorbar
+            * colorlist: list of colors used for each colorbar bin,
                 None if scaletype was 'continuous'
     """
     dat = dat.copy()

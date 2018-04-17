@@ -102,8 +102,7 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
     """
     Use gdal to trim a large global file down quickly so mapio can read it
     efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)
-    Using subprocess approach because ``gdal.Translate`` doesn't hang on the
-    command until the file is created which causes problems in the next steps.
+
     Args:
         filename (str): File path to original input file (raster).
         gdict (geodict): Geodictionary to cut around and align with.
@@ -116,8 +115,10 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             possible, if False it will just roughly cut around the area of
             interest without changing resolution
         cleanup (bool): if True, delete tempname after reading it back in
-    Returns:
-        newgrid2d: New grid2D layer
+    Returns: New grid2D layer
+
+    Note: This function uses the subprocess approach because ``gdal.Translate`` doesn't hang on the
+    command until the file is created which causes problems in the next steps.
     """
 
     try:

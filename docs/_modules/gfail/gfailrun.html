@@ -1,0 +1,730 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.gfailrun &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gfail.gfailrun</h1><div class="highlight"><pre>
+<span></span><span class="c1"># stdlib imports</span>
+<span class="kn">from</span> <span class="nn">configobj</span> <span class="k">import</span> <span class="n">ConfigObj</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">urllib</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">Namespace</span>
+
+<span class="c1"># local imports</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">getHeaderData</span>
+<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="k">import</span> <span class="n">GDALGrid</span>
+<span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="k">import</span> <span class="n">get_command_output</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
+<span class="kn">from</span> <span class="nn">gfail.conf</span> <span class="k">import</span> <span class="n">correct_config_filepaths</span>
+<span class="kn">import</span> <span class="nn">gfail.logisticmodel</span> <span class="k">as</span> <span class="nn">LM</span>
+<span class="kn">from</span> <span class="nn">gfail.godt</span> <span class="k">import</span> <span class="n">godt2008</span>
+<span class="kn">from</span> <span class="nn">gfail.makemaps</span> <span class="k">import</span> <span class="p">(</span><span class="n">modelMap</span><span class="p">,</span> <span class="n">interactiveMap</span><span class="p">,</span> <span class="n">GFSummary</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="k">import</span> <span class="n">hazdev</span>
+<span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="k">import</span> <span class="p">(</span>
+    <span class="n">get_event_comcat</span><span class="p">,</span> <span class="n">parseConfigLayers</span><span class="p">,</span>
+    <span class="n">parseMapConfig</span><span class="p">,</span> <span class="n">text_to_json</span><span class="p">,</span> <span class="n">write_floats</span><span class="p">,</span>
+    <span class="n">savelayers</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="run_gfail"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.run_gfail">[docs]</a><span class="k">def</span> <span class="nf">run_gfail</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Runs ground failure.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        args: dictionary or argument parser Namespace output by bin/gfail program.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list: Names of created files.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST</span>
+    <span class="n">filenames</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># If args is a dictionary, convert to a Namespace</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="n">Namespace</span><span class="p">(</span><span class="o">**</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set_default_paths</span><span class="p">:</span>
+        <span class="n">set_default_paths</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;default paths set, continuing...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">list_default_paths</span><span class="p">:</span>
+        <span class="n">list_default_paths</span><span class="p">()</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">reset_default_paths</span><span class="p">:</span>
+        <span class="n">reset_default_paths</span><span class="p">()</span>
+        <span class="k">return</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
+        <span class="c1"># Turn on GIS and HDF5 flags</span>
+        <span class="n">gis</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">hdf5</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">gis</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">gis</span>
+        <span class="n">hdf5</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">hdf5</span>
+
+    <span class="c1"># Figure out what models will be run</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># user intends to actually run some models</span>
+        <span class="n">shakefile</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">shakefile</span>
+
+        <span class="c1"># make output location for things</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">outdir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">outdir</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">hdf5</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span> <span class="ow">or</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span> <span class="ow">or</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">make_interactive_plots</span> <span class="ow">or</span>
+                <span class="n">gis</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
+
+        <span class="c1"># download if is url</span>
+        <span class="c1"># cleanup = False</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isfile</span><span class="p">(</span><span class="n">shakefile</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">isURL</span><span class="p">(</span><span class="n">shakefile</span><span class="p">):</span>
+                <span class="c1"># getGridURL returns a named temporary file object</span>
+                <span class="n">shakefile</span> <span class="o">=</span> <span class="n">getGridURL</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+                <span class="c1"># cleanup = True  # Be sure to delete it after</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s1">&#39;Could not find &quot;</span><span class="si">%s</span><span class="s1">&quot; as a file or a valid url&#39;</span>
+                                <span class="o">%</span> <span class="p">(</span><span class="n">shakefile</span><span class="p">))</span>
+                <span class="k">return</span>
+        <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Get entire path so won&#39;t break if running gfail with relative path</span>
+        <span class="n">shakefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">nest_folder</span><span class="p">:</span>
+            <span class="n">outfolder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="n">eventid</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outfolder</span><span class="p">):</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outfolder</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">outfolder</span> <span class="o">=</span> <span class="n">outdir</span>
+
+        <span class="c1"># Write shakefile to a file for use later</span>
+        <span class="n">shakename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;shakefile.txt&quot;</span><span class="p">)</span>
+        <span class="n">shake_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">shakename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
+        <span class="n">shake_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+        <span class="n">shake_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">shakename</span><span class="p">)</span>
+
+        <span class="n">config</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">config</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># only add config_filepath if full filepath not given and file</span>
+            <span class="c1"># ext is .ini</span>
+            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="ow">and</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">config</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.ini&#39;</span><span class="p">):</span>
+                <span class="n">config</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">config</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.ini&#39;</span><span class="p">:</span>
+            <span class="n">temp</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                    <span class="s1">&#39;Could not find specified .ini file: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">config</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">correct_config_filepaths</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
+            <span class="n">configs</span> <span class="o">=</span> <span class="p">[</span><span class="n">temp</span><span class="p">]</span>
+            <span class="n">conffail</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># input is a list of config files</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+            <span class="n">configlist</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+            <span class="n">configs</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">conffail</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">configlist</span><span class="p">:</span>
+                <span class="n">conf</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">conf</span><span class="p">):</span>
+                    <span class="c1"># only add config_filepath if full filepath not given</span>
+                    <span class="n">conf</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">temp</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">temp</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">temp</span> <span class="o">=</span> <span class="n">correct_config_filepaths</span><span class="p">(</span>
+                                <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
+                        <span class="n">configs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">conffail</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="n">conffail</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Running the following models:&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">configs</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">conf</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">conffail</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not find or read in the following config files:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">conffail</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">conf</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Continuing...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;zoom&#39;</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Using </span><span class="si">%s</span><span class="s1"> threshold of </span><span class="si">%1.1f</span><span class="s1"> to cut model bounds&#39;</span>
+                      <span class="o">%</span> <span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())))</span>
+                <span class="n">bounds</span> <span class="o">=</span> <span class="n">get_bounds</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
+                                    <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span><span class="p">)</span>
+                <span class="n">latmin</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">latmax</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">lonmin</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+                <span class="n">lonmax</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+                <span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;xmin&#39;</span><span class="p">:</span> <span class="n">lonmin</span><span class="p">,</span> <span class="s1">&#39;xmax&#39;</span><span class="p">:</span> <span class="n">lonmax</span><span class="p">,</span>
+                          <span class="s1">&#39;ymin&#39;</span><span class="p">:</span> <span class="n">latmin</span><span class="p">,</span> <span class="s1">&#39;ymax&#39;</span><span class="p">:</span> <span class="n">latmax</span><span class="p">}</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Applying bounds of lonmin </span><span class="si">%1.2f</span><span class="s1">, lonmax </span><span class="si">%1.2f</span><span class="s1">, &#39;</span>
+                  <span class="s1">&#39;latmin </span><span class="si">%1.2f</span><span class="s1">, latmax </span><span class="si">%1.2f</span><span class="s1">&#39;</span>
+                  <span class="o">%</span> <span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">],</span>
+                     <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_summary</span><span class="p">:</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># pre-read in ocean trimming file polygons so only do this step once</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">):</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trimfile defined does not exist: </span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span>
+                      <span class="s1">&#39;Ocean will not be trimmed.&#39;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+                <span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;.shp&#39;</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trimfile must be a shapefile, &#39;</span>
+                      <span class="s1">&#39;ocean will not be trimmed&#39;</span><span class="p">)</span>
+                <span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">trimfile</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># Get finite fault ready, if exists</span>
+
+        <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">point</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.txt&#39;</span><span class="p">:</span>
+                    <span class="n">ffault</span> <span class="o">=</span> <span class="n">text_to_json</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.json&#39;</span><span class="p">:</span>
+                    <span class="n">ffault</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not read in finite fault, will &#39;</span>
+                          <span class="s1">&#39;try to download from comcat&#39;</span><span class="p">)</span>
+                    <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">except</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not read in finite fault, will try to &#39;</span>
+                      <span class="s1">&#39;download from comcat&#39;</span><span class="p">)</span>
+                <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="n">ffault</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Try to get finite fault file, if it exists</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">testjd</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">temp</span> <span class="o">=</span> <span class="n">get_event_comcat</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s1">&#39;faultfiles&#39;</span> <span class="ow">in</span> <span class="n">testjd</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;event_information&#39;</span><span class="p">]:</span>
+                    <span class="n">ffilename</span> <span class="o">=</span> <span class="n">testjd</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;event_information&#39;</span><span class="p">][</span><span class="s1">&#39;faultfiles&#39;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ffilename</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                        <span class="c1"># Download the file</span>
+                        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                            <span class="n">temp</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="n">ffilename</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                            <span class="n">ffault</span> <span class="o">=</span> <span class="n">text_to_json</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                            <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                        <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">point</span> <span class="o">=</span> <span class="kc">True</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to determine source type, unknown if finite&#39;</span>
+                      <span class="s1">&#39; fault or point source&#39;</span><span class="p">)</span>
+                <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="c1"># Loop over config files</span>
+        <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">configs</span><span class="p">:</span>
+            <span class="n">modelname</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Now running </span><span class="si">%s</span><span class="s1">:&#39;</span> <span class="o">%</span> <span class="n">modelname</span><span class="p">)</span>
+            <span class="n">modelfunc</span> <span class="o">=</span> <span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s1">&#39;funcname&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s1">&#39;LogisticModel&#39;</span><span class="p">:</span>
+                <span class="n">lm</span> <span class="o">=</span> <span class="n">LM</span><span class="o">.</span><span class="n">LogisticModel</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span>
+                                      <span class="n">uncertfile</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">uncertfile</span><span class="p">,</span>
+                                      <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
+                                      <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+                                      <span class="n">numstd</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">std</span><span class="p">),</span>
+                                      <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">)</span>
+
+                <span class="n">maplayers</span> <span class="o">=</span> <span class="n">lm</span><span class="o">.</span><span class="n">calculate</span><span class="p">()</span>
+            <span class="k">elif</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s1">&#39;godt2008&#39;</span><span class="p">:</span>
+                <span class="n">maplayers</span> <span class="o">=</span> <span class="n">godt2008</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span>
+                                     <span class="n">uncertfile</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">uncertfile</span><span class="p">,</span>
+                                     <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
+                                     <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
+                                     <span class="n">numstd</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">std</span><span class="p">),</span>
+                                     <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unknown model function specified in config for </span><span class="si">%s</span><span class="s1"> &#39;</span>
+                      <span class="s1">&#39;model, skipping to next config&#39;</span> <span class="o">%</span> <span class="n">modelfunc</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="c1"># time1 = datetime.datetime.utcnow().strftime(&#39;%d%b%Y_%H%M&#39;)</span>
+            <span class="c1"># filename = (&#39;%s_%s_%s&#39; % (eventid, modelname, time1))</span>
+
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">appendname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">filename</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">eventid</span><span class="p">,</span> <span class="n">modelname</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">appendname</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">filename</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">eventid</span><span class="p">,</span> <span class="n">modelname</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">hdf5</span><span class="p">:</span>
+                <span class="n">filenameh</span> <span class="o">=</span> <span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;.hdf5&#39;</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filenameh</span><span class="p">):</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filenameh</span><span class="p">)</span>
+                <span class="n">savelayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">filenameh</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span><span class="p">:</span>
+                <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
+                    <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
+                <span class="n">mapconfig</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">)</span>
+
+                <span class="n">kwargs</span> <span class="o">=</span> <span class="n">parseMapConfig</span><span class="p">(</span>
+                    <span class="n">mapconfig</span><span class="p">,</span> <span class="n">fileext</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">)</span>
+                <span class="n">junk</span><span class="p">,</span> <span class="n">filenames1</span> <span class="o">=</span> <span class="n">modelMap</span><span class="p">(</span>
+                    <span class="n">maplayers</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span>
+                    <span class="n">suptitle</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">],</span>
+                    <span class="n">boundaries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">zthresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span>
+                    <span class="n">lims</span><span class="o">=</span><span class="n">lims</span><span class="p">,</span>
+                    <span class="n">plotorder</span><span class="o">=</span><span class="n">plotorder</span><span class="p">,</span>
+                    <span class="n">maskthreshes</span><span class="o">=</span><span class="n">maskthreshes</span><span class="p">,</span>
+                    <span class="n">maproads</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">mapcities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span>
+                    <span class="n">savepdf</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span><span class="p">,</span>
+                    <span class="n">savepng</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span><span class="p">,</span>
+                    <span class="n">printparam</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">inventory_shapefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">outputdir</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
+                    <span class="n">outfilename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+                    <span class="n">scaletype</span><span class="o">=</span><span class="s1">&#39;continuous&#39;</span><span class="p">,</span>
+                    <span class="n">logscale</span><span class="o">=</span><span class="n">logscale</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames1</span><span class="p">:</span>
+                    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+
+                <span class="c1"># make model only plots too</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">maplayers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
+                        <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">])</span>
+                    <span class="n">junk</span><span class="p">,</span> <span class="n">filenames1</span> <span class="o">=</span> <span class="n">modelMap</span><span class="p">(</span>
+                        <span class="n">maplayers</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span>
+                        <span class="n">suptitle</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">],</span> <span class="n">boundaries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">zthresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">lims</span><span class="o">=</span><span class="n">lims</span><span class="p">,</span> <span class="n">plotorder</span><span class="o">=</span><span class="n">plotorder</span><span class="p">,</span>
+                        <span class="n">maskthreshes</span><span class="o">=</span><span class="n">maskthreshes</span><span class="p">,</span> <span class="n">maproads</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                        <span class="n">mapcities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">savepdf</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span><span class="p">,</span>
+                        <span class="n">savepng</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span><span class="p">,</span> <span class="n">printparam</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">inventory_shapefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
+                        <span class="n">outfilename</span><span class="o">=</span><span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;-just_model&#39;</span><span class="p">,</span>
+                        <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span> <span class="n">scaletype</span><span class="o">=</span><span class="s1">&#39;continuous&#39;</span><span class="p">,</span>
+                        <span class="n">logscale</span><span class="o">=</span><span class="n">logscale</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames1</span><span class="p">:</span>
+                        <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_interactive_plots</span><span class="p">:</span>
+                <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
+                    <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
+                <span class="n">junk</span><span class="p">,</span> <span class="n">filenames1</span> <span class="o">=</span> <span class="n">interactiveMap</span><span class="p">(</span>
+                    <span class="n">maplayers</span><span class="p">,</span> <span class="n">plotorder</span><span class="o">=</span><span class="n">plotorder</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
+                    <span class="n">inventory_shapefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">maskthreshes</span><span class="o">=</span><span class="n">maskthreshes</span><span class="p">,</span>
+                    <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span> <span class="n">isScenario</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                    <span class="n">scaletype</span><span class="o">=</span><span class="s1">&#39;continuous&#39;</span><span class="p">,</span> <span class="n">lims</span><span class="o">=</span><span class="n">lims</span><span class="p">,</span> <span class="n">logscale</span><span class="o">=</span><span class="n">logscale</span><span class="p">,</span>
+                    <span class="n">ALPHA</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">outfilename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+                    <span class="n">tiletype</span><span class="o">=</span><span class="s1">&#39;Stamen Terrain&#39;</span><span class="p">,</span> <span class="n">separate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">faultfile</span><span class="o">=</span><span class="n">ffault</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames1</span><span class="p">:</span>
+                    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">gis</span><span class="p">:</span>
+
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">maplayers</span><span class="p">:</span>
+                    <span class="c1"># Get simplified name of key for file naming</span>
+                    <span class="n">RIDOF</span> <span class="o">=</span> <span class="s1">&#39;[+-]?(?=\d*[.eE])(?=\.?\d)&#39;</span>\
+                            <span class="s1">&#39;\d*\.?\d*(?:[eE][+-]?\d+)?&#39;</span>
+                    <span class="n">OPERATORPAT</span> <span class="o">=</span> <span class="s1">&#39;[\+\-\*\/]*&#39;</span>
+                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">OPERATORPAT</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                    <span class="c1"># remove floating point numbers</span>
+                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">RIDOF</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">keyS</span><span class="p">)</span>
+                    <span class="c1"># remove parentheses</span>
+                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;[()]*&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">keyS</span><span class="p">)</span>
+                    <span class="c1"># remove any blank spaces</span>
+                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">keyS</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+                    <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.bil&#39;</span>
+                                         <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+                    <span class="n">fileh</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.hdr&#39;</span>
+                                         <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+                    <span class="n">fileg</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.tif&#39;</span>
+                                         <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+
+                    <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+                    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                        <span class="n">filen</span><span class="p">,</span> <span class="n">fileg</span><span class="p">)</span>
+                    <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+                    <span class="c1"># Delete bil file and its header</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fileh</span><span class="p">)</span>
+                    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fileg</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
+                <span class="c1"># Compile into list of results for later</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">maplayers</span><span class="p">)</span>
+
+                <span class="c1"># Make binary output for ShakeCast</span>
+                <span class="n">filef</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_model.flt&#39;</span>
+                                     <span class="o">%</span> <span class="n">filename</span><span class="p">)</span>
+                <span class="c1"># And get name of header</span>
+                <span class="n">filefh</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_model.hdr&#39;</span>
+                                      <span class="o">%</span> <span class="n">filename</span><span class="p">)</span>
+                <span class="c1"># Make file</span>
+                <span class="n">write_floats</span><span class="p">(</span><span class="n">filef</span><span class="p">,</span> <span class="n">maplayers</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span>
+                <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filef</span><span class="p">)</span>
+                <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filefh</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_summary</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
+                <span class="c1"># Compile into list of results for later</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">maplayers</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="n">hazdev</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span>
+                             <span class="n">shakefile</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
+                             <span class="n">pop_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
+            <span class="n">filenames</span> <span class="o">=</span> <span class="n">filenames</span> <span class="o">+</span> <span class="n">outputs</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_summary</span><span class="p">:</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="n">GFSummary</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">,</span>
+                                <span class="n">shakefile</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                                <span class="n">faultfile</span><span class="o">=</span><span class="n">ffault</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">,</span> <span class="n">pop_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
+            <span class="n">filenames</span> <span class="o">=</span> <span class="n">filenames</span> <span class="o">+</span> <span class="n">outputs</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Files created:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">filen</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">filenames</span></div>
+
+
+<div class="viewcode-block" id="getGridURL"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.getGridURL">[docs]</a><span class="k">def</span> <span class="nf">getGridURL</span><span class="p">(</span><span class="n">gridurl</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Args:</span>
+<span class="sd">        gridurl (str): url for Shakemap grid.xml file.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        file object corresponding to the url.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">fh</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">gridurl</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span></div>
+
+
+<div class="viewcode-block" id="isURL"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.isURL">[docs]</a><span class="k">def</span> <span class="nf">isURL</span><span class="p">(</span><span class="n">gridurl</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function determines if the provided string is a valid url</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        gridurl (str): url to check.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if gridurl is a valid url, False otherwise.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">isURL</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">gridurl</span><span class="p">)</span>
+        <span class="n">isURL</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">isURL</span></div>
+
+
+<div class="viewcode-block" id="set_default_paths"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.set_default_paths">[docs]</a><span class="k">def</span> <span class="nf">set_default_paths</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a file called .gfail_defaults that contains default path</span>
+<span class="sd">    information to simplify running gfail. Can be overwritten by any manually</span>
+<span class="sd">    entered paths. This updates any existing .gfail_defaults file. If</span>
+<span class="sd">    args.data_path is &#39;reset&#39; then any existing defaults will be removed.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        args (arparser Namespace): Input arguments.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Updates .gfail_defaults file on users path, or creates new one if</span>
+<span class="sd">        file does not already exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.gfail_defaults&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_path&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;data_path&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for data_path does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;output_filepath&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;output_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for output_filepath does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;config_filepath&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;config_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for config_filepath does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;mapconfig&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;mapconfig&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for mapconfig does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;mapdata_filepath&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;mapdata_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for mapdata_filepath does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;popfile&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;popfile&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for population file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;web_template&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;web_template&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for webpage templates does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;trim&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path and that it&#39;s a shapefile</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">):</span>
+                <span class="n">filename4</span><span class="p">,</span> <span class="n">fileextension</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">fileextension</span> <span class="o">==</span> <span class="s1">&#39;.shp&#39;</span><span class="p">:</span>
+                    <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;trimfile&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">})</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Ocean trimming file is not a shapefile: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                          <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for ocean trimming file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;New default paths set.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">D</span><span class="p">:</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
+        <span class="n">C</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="n">C</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
+        <span class="n">list_default_paths</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no defaults set because no paths were input</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="list_default_paths"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.list_default_paths">[docs]</a><span class="k">def</span> <span class="nf">list_default_paths</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Lists all default paths currently set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.gfail_defaults&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="n">D</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Default paths currently set to:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">D</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1"> = </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">D</span><span class="p">[</span><span class="n">key</span><span class="p">]))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No default paths currently set</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="reset_default_paths"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.reset_default_paths">[docs]</a><span class="k">def</span> <span class="nf">reset_default_paths</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clear default path file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.gfail_defaults&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Default paths cleared</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No default paths currently set</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_bounds"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.get_bounds">[docs]</a><span class="k">def</span> <span class="nf">get_bounds</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">parameter</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">2.0</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the boundaries of the shakemap that include all areas with shaking</span>
+<span class="sd">    above the defined threshold.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shakefile (str): Path to shakemap file.</span>
+<span class="sd">        parameter (str): Either &#39;pga&#39; or &#39;pgv&#39;.</span>
+<span class="sd">        threshold (float): Minimum value of parameter of interest, in units</span>
+<span class="sd">            of %g for pga and cm/s for pgv. The default value of 2% g is based</span>
+<span class="sd">            on minimum pga threshold ever observed to have triggered landslides</span>
+<span class="sd">            by Jibson and Harp (2016).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: A dictionary with keys &#39;xmin&#39;, &#39;xmax&#39;, &#39;ymin&#39;, and &#39;ymax&#39; that</span>
+<span class="sd">        defines the boundaries in geographic coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shakemap</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">parameter</span> <span class="o">==</span> <span class="s1">&#39;pga&#39;</span><span class="p">:</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s1">&#39;pga&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">parameter</span> <span class="o">==</span> <span class="s1">&#39;pgv&#39;</span><span class="p">:</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s1">&#39;pgv&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;parameter not valid&#39;</span><span class="p">)</span>
+    <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">vals</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
+    <span class="n">lons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">vals</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">nx</span><span class="p">)</span>
+    <span class="n">lats</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">ymax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">vals</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">ny</span><span class="p">)</span>
+    <span class="n">row</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">vals</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">threshold</span><span class="p">))</span>
+    <span class="n">lonmin</span> <span class="o">=</span> <span class="n">lons</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">lonmax</span> <span class="o">=</span> <span class="n">lons</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">latmin</span> <span class="o">=</span> <span class="n">lats</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">latmax</span> <span class="o">=</span> <span class="n">lats</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+    <span class="c1"># dummy fillers, only really care about bounds</span>
+    <span class="n">boundaries1</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;dx&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;dy&#39;</span><span class="p">:</span> <span class="mf">100.</span><span class="p">,</span> <span class="s1">&#39;nx&#39;</span><span class="p">:</span> <span class="mf">100.</span><span class="p">,</span> <span class="s1">&#39;ny&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">xmin</span> <span class="o">&lt;</span> <span class="n">lonmin</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmin</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmin</span>
+    <span class="k">if</span> <span class="n">xmax</span> <span class="o">&gt;</span> <span class="n">lonmax</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmax</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmax</span>
+    <span class="k">if</span> <span class="n">ymin</span> <span class="o">&lt;</span> <span class="n">latmin</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmin</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymin</span>
+    <span class="k">if</span> <span class="n">ymax</span> <span class="o">&gt;</span> <span class="n">latmax</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmax</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymax</span>
+
+    <span class="k">return</span> <span class="n">boundaries1</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gfail.html">gfail</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

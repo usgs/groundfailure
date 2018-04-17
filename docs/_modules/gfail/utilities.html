@@ -1,0 +1,556 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.utilities &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for gfail.utilities</h1><div class="highlight"><pre>
+<span></span><span class="c1"># stdlib imports</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">urllib</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">timedelta</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="c1"># local imports</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">getHeaderData</span>
+<span class="kn">from</span> <span class="nn">libcomcat.search</span> <span class="k">import</span> <span class="n">get_event_by_id</span><span class="p">,</span> <span class="n">search</span>
+<span class="kn">from</span> <span class="nn">libcomcat.classes</span> <span class="k">import</span> <span class="n">VersionOption</span>
+<span class="kn">from</span> <span class="nn">mapio.basemapcity</span> <span class="k">import</span> <span class="n">BasemapCities</span>
+<span class="kn">from</span> <span class="nn">mapio.multihaz</span> <span class="k">import</span> <span class="n">MultiHazardGrid</span>
+
+<span class="kn">import</span> <span class="nn">matplotlib.cm</span> <span class="k">as</span> <span class="nn">cm</span>  <span class="c1"># Don&#39;t delete this, it&#39;s needed in an eval function</span>
+
+
+<div class="viewcode-block" id="get_event_comcat"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.get_event_comcat">[docs]</a><span class="k">def</span> <span class="nf">get_event_comcat</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">timewindow</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">degwindow</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">magwindow</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find an event in comcat, searching first by event id and if that</span>
+<span class="sd">    fails searching by magnitude, time, and location.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        shakefile (str): path to shakemap .xml file of event to find</span>
+<span class="sd">        timewindow (float): width of time window to search around time defined</span>
+<span class="sd">            in shakefile (in seconds)</span>
+<span class="sd">        degwindow (float): width of area to search around location specified in</span>
+<span class="sd">            shakefile (in degrees).</span>
+<span class="sd">        magwindow (float): width of magnitude window to search around the</span>
+<span class="sd">            magnitude specified in shakefile.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        None if event not found, else tuple (info, detail, shakemap) where,</span>
+<span class="sd">            * info: json formatted dictionary of info.json for the event</span>
+<span class="sd">            * detail: event detail from comcat</span>
+<span class="sd">            * shakemap: shakemap of event found (from comcat)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">header_dicts</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+    <span class="n">grid_dict</span> <span class="o">=</span> <span class="n">header_dicts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">event_dict</span> <span class="o">=</span> <span class="n">header_dicts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">grid_dict</span><span class="p">[</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">eid</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
+        <span class="n">net</span> <span class="o">=</span> <span class="s1">&#39;us&#39;</span>
+        <span class="k">if</span> <span class="s1">&#39;event_network&#39;</span> <span class="ow">in</span> <span class="n">event_dict</span><span class="p">:</span>
+            <span class="n">net</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_network&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">eid</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">net</span><span class="p">):</span>
+            <span class="n">eid</span> <span class="o">=</span> <span class="n">net</span> <span class="o">+</span> <span class="n">eid</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">eid</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">lat</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;lat&#39;</span><span class="p">]</span>
+        <span class="n">lon</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;lon&#39;</span><span class="p">]</span>
+        <span class="n">mag</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;magnitude&#39;</span><span class="p">]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_timestamp&#39;</span><span class="p">]</span>
+        <span class="n">starttime</span> <span class="o">=</span> <span class="n">time</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">timewindow</span><span class="p">)</span>
+        <span class="n">endtime</span> <span class="o">=</span> <span class="n">time</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">seconds</span><span class="o">=</span><span class="n">timewindow</span><span class="p">)</span>
+        <span class="n">minlat</span> <span class="o">=</span> <span class="n">lat</span> <span class="o">-</span> <span class="n">degwindow</span>
+        <span class="n">minlon</span> <span class="o">=</span> <span class="n">lon</span> <span class="o">-</span> <span class="n">degwindow</span>
+        <span class="n">maxlat</span> <span class="o">=</span> <span class="n">lat</span> <span class="o">+</span> <span class="n">degwindow</span>
+        <span class="n">maxlon</span> <span class="o">=</span> <span class="n">lon</span> <span class="o">+</span> <span class="n">degwindow</span>
+        <span class="n">minmag</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">mag</span> <span class="o">-</span> <span class="n">magwindow</span><span class="p">)</span>
+        <span class="n">maxmag</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">mag</span> <span class="o">+</span> <span class="n">magwindow</span><span class="p">)</span>
+        <span class="n">events</span> <span class="o">=</span> <span class="n">search</span><span class="p">(</span><span class="n">starttime</span><span class="o">=</span><span class="n">starttime</span><span class="p">,</span>
+                        <span class="n">endtime</span><span class="o">=</span><span class="n">endtime</span><span class="p">,</span>
+                        <span class="n">minmagnitude</span><span class="o">=</span><span class="n">minmag</span><span class="p">,</span>
+                        <span class="n">maxmagnitude</span><span class="o">=</span><span class="n">maxmag</span><span class="p">,</span>
+                        <span class="n">minlatitude</span><span class="o">=</span><span class="n">minlat</span><span class="p">,</span>
+                        <span class="n">minlongitude</span><span class="o">=</span><span class="n">minlon</span><span class="p">,</span>
+                        <span class="n">maxlatitude</span><span class="o">=</span><span class="n">maxlat</span><span class="p">,</span>
+                        <span class="n">maxlongitude</span><span class="o">=</span><span class="n">maxlon</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">events</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">events</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">getDetailEvent</span><span class="p">()</span>
+    <span class="n">allversions</span> <span class="o">=</span> <span class="n">detail</span><span class="o">.</span><span class="n">getProducts</span><span class="p">(</span><span class="s1">&#39;shakemap&#39;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="n">VersionOption</span><span class="o">.</span><span class="n">ALL</span><span class="p">)</span>
+    <span class="c1"># Find the right version</span>
+    <span class="n">vers</span> <span class="o">=</span> <span class="p">[</span><span class="n">allv</span><span class="o">.</span><span class="n">version</span> <span class="k">for</span> <span class="n">allv</span> <span class="ow">in</span> <span class="n">allversions</span><span class="p">]</span>
+    <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vers</span><span class="p">)</span> <span class="o">==</span> <span class="n">version</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">shakemap</span> <span class="o">=</span> <span class="n">allversions</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+    <span class="n">infobytes</span><span class="p">,</span> <span class="n">url</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getContentBytes</span><span class="p">(</span><span class="s1">&#39;info.json&#39;</span><span class="p">)</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">infobytes</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">info</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">shakemap</span></div>
+
+
+<div class="viewcode-block" id="parseMapConfig"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.parseMapConfig">[docs]</a><span class="k">def</span> <span class="nf">parseMapConfig</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">fileext</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse config for mapping options.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config (ConfigObj): ConfigObj object.</span>
+<span class="sd">        fileext (str): File extension to add to relative filepaths, will be</span>
+<span class="sd">            prepended to any file paths in config.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Dictionary of map options pulled from config file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">topofile</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">roadfolder</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cityfile</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">roadcolor</span> <span class="o">=</span> <span class="s1">&#39;6E6E6E&#39;</span>
+    <span class="n">countrycolor</span> <span class="o">=</span> <span class="s1">&#39;177F10&#39;</span>
+    <span class="n">watercolor</span> <span class="o">=</span> <span class="s1">&#39;B8EEFF&#39;</span>
+    <span class="n">ALPHA</span> <span class="o">=</span> <span class="mf">0.7</span>
+    <span class="n">oceanfile</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">oceanref</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">roadref</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">cityref</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">fileext</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fileext</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span>
+    <span class="k">if</span> <span class="s1">&#39;dem&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">topofile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fileext</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;dem&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">topofile</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;DEM not valid - hillshade will not be possible</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="s1">&#39;ocean&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">oceanfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fileext</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;ocean&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">oceanref</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;ocean&#39;</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">oceanref</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+    <span class="k">if</span> <span class="s1">&#39;roads&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">roadfolder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fileext</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;roads&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">roadfolder</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;roadfolder not valid - roads will not be displayed</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">roadfolder</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">roadref</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;roads&#39;</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">roadref</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+    <span class="k">if</span> <span class="s1">&#39;cities&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
+        <span class="n">cityfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fileext</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;cities&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">cityref</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;cities&#39;</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">]</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">cityref</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cityfile</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">BasemapCities</span><span class="o">.</span><span class="n">loadFromGeoNames</span><span class="p">(</span><span class="n">cityfile</span><span class="o">=</span><span class="n">cityfile</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;cities file not valid - cities will not be displayed</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">cityfile</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;cities file not valid - cities will not be displayed</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">cityfile</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="s1">&#39;roadcolor&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">]:</span>
+        <span class="n">roadcolor</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">][</span><span class="s1">&#39;roadcolor&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;countrycolor&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">]:</span>
+        <span class="n">countrycolor</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">][</span><span class="s1">&#39;countrycolor&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;watercolor&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">]:</span>
+        <span class="n">watercolor</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">][</span><span class="s1">&#39;watercolor&#39;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="s1">&#39;alpha&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">]:</span>
+        <span class="n">ALPHA</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;colors&#39;</span><span class="p">][</span><span class="s1">&#39;alpha&#39;</span><span class="p">])</span>
+
+    <span class="n">countrycolor</span> <span class="o">=</span> <span class="s1">&#39;#&#39;</span><span class="o">+</span><span class="n">countrycolor</span>
+    <span class="n">watercolor</span> <span class="o">=</span> <span class="s1">&#39;#&#39;</span><span class="o">+</span><span class="n">watercolor</span>
+    <span class="n">roadcolor</span> <span class="o">=</span> <span class="s1">&#39;#&#39;</span><span class="o">+</span><span class="n">roadcolor</span>
+
+    <span class="n">mapin</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;topofile&#39;</span><span class="p">:</span> <span class="n">topofile</span><span class="p">,</span> <span class="s1">&#39;roadfolder&#39;</span><span class="p">:</span> <span class="n">roadfolder</span><span class="p">,</span>
+             <span class="s1">&#39;cityfile&#39;</span><span class="p">:</span> <span class="n">cityfile</span><span class="p">,</span> <span class="s1">&#39;roadcolor&#39;</span><span class="p">:</span> <span class="n">roadcolor</span><span class="p">,</span>
+             <span class="s1">&#39;countrycolor&#39;</span><span class="p">:</span> <span class="n">countrycolor</span><span class="p">,</span> <span class="s1">&#39;watercolor&#39;</span><span class="p">:</span> <span class="n">watercolor</span><span class="p">,</span>
+             <span class="s1">&#39;ALPHA&#39;</span><span class="p">:</span> <span class="n">ALPHA</span><span class="p">,</span> <span class="s1">&#39;roadref&#39;</span><span class="p">:</span> <span class="n">roadref</span><span class="p">,</span>
+             <span class="s1">&#39;cityref&#39;</span><span class="p">:</span> <span class="n">cityref</span><span class="p">,</span> <span class="s1">&#39;oceanfile&#39;</span><span class="p">:</span> <span class="n">oceanfile</span><span class="p">,</span> <span class="s1">&#39;oceanref&#39;</span><span class="p">:</span> <span class="n">oceanref</span><span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">mapin</span></div>
+
+
+<div class="viewcode-block" id="parseConfigLayers"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.parseConfigLayers">[docs]</a><span class="k">def</span> <span class="nf">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse things that need to coodinate with each layer (like lims, logscale,</span>
+<span class="sd">    colormaps etc.) from config file, in right order, where the order is from</span>
+<span class="sd">    maplayers.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        maplayers (dict): Dictionary containing model output.</span>
+<span class="sd">        config (ConfigObj): Config object describing options for specific</span>
+<span class="sd">            model.</span>
+<span class="sd">        keys (list): List of keys of maplayers to process, e.g. ``[&#39;model&#39;]``.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: (plotorder, logscale, lims, colormaps, maskthreshes) where:</span>
+<span class="sd">            * plotorder: maplayers keys in order of plotting.</span>
+<span class="sd">            * logscale: list of logscale options from config corresponding to</span>
+<span class="sd">              keys in plotorder (same order).</span>
+<span class="sd">            * lims: list of colorbar limits from config corresponding to keys</span>
+<span class="sd">              in plotorder (same order).</span>
+<span class="sd">            * colormaps: list of colormaps from config corresponding to keys</span>
+<span class="sd">              in plotorder (same order),</span>
+<span class="sd">            * maskthreshes: list of mask thresholds from config corresponding</span>
+<span class="sd">              to keys in plotorder (same order).</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1">#TODO:</span>
+    <span class="c1">#    - Add ability to interpret custom color maps.</span>
+
+    <span class="c1"># get all key names, create a plotorder list in case maplayers is not an</span>
+    <span class="c1"># ordered dict, making sure that anything called &#39;model&#39; is first</span>
+    <span class="k">if</span> <span class="n">keys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">maplayers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">plotorder</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">limits</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;lims&#39;</span><span class="p">]</span>
+        <span class="n">lims</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">lims</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">limits</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;colors&#39;</span><span class="p">]</span>
+        <span class="n">colormaps</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">colormaps</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logs</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;logscale&#39;</span><span class="p">]</span>
+        <span class="n">logscale</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">logscale</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">logs</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">masks</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;maskthresholds&#39;</span><span class="p">]</span>
+        <span class="n">maskthreshes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">maskthreshes</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">masks</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">default</span> <span class="o">=</span> \
+            <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;colors&#39;</span><span class="p">][</span><span class="s1">&#39;default&#39;</span><span class="p">]</span>
+        <span class="n">default</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+    <span class="k">except</span><span class="p">:</span>
+        <span class="n">default</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">keys</span><span class="p">):</span>
+        <span class="n">plotorder</span> <span class="o">+=</span> <span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">limits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">limits</span><span class="p">:</span>
+                <span class="n">getlim</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">limits</span><span class="p">[</span><span class="n">l</span><span class="p">])</span> <span class="ow">is</span> <span class="nb">list</span><span class="p">:</span>
+                        <span class="n">getlim</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">limits</span><span class="p">[</span><span class="n">l</span><span class="p">])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">try</span><span class="p">:</span>
+                            <span class="n">getlim</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">limits</span><span class="p">[</span><span class="n">l</span><span class="p">])</span>
+                        <span class="k">except</span><span class="p">:</span>
+                            <span class="n">getlim</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="n">lims</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">getlim</span><span class="p">)</span>
+                    <span class="n">found</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">:</span>
+                <span class="n">lims</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">colors</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">colors</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="n">getcol</span> <span class="o">=</span> <span class="n">colors</span><span class="p">[</span><span class="n">c</span><span class="p">]</span>
+                    <span class="n">colorobject</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">getcol</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">colorobject</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">colorobject</span> <span class="o">=</span> <span class="n">default</span>
+                    <span class="n">colormaps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">colorobject</span><span class="p">)</span>
+                    <span class="n">found</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">:</span>
+                <span class="n">colormaps</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">logs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">logs</span><span class="p">:</span>
+                <span class="n">getlog</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="k">if</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">logs</span><span class="p">[</span><span class="n">g</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;true&#39;</span><span class="p">:</span>
+                        <span class="n">getlog</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">logscale</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">getlog</span><span class="p">)</span>
+                    <span class="n">found</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">:</span>
+                <span class="n">logscale</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">masks</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="kc">False</span>
+            <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">masks</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">key</span><span class="p">:</span>
+                    <span class="n">getmask</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">masks</span><span class="p">[</span><span class="n">m</span><span class="p">])</span>
+                    <span class="n">maskthreshes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">getmask</span><span class="p">)</span>
+                    <span class="n">found</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">found</span><span class="p">:</span>
+                <span class="n">maskthreshes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="c1"># Reorder everything so model is first, if it&#39;s not already</span>
+    <span class="k">if</span> <span class="n">plotorder</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;model&#39;</span><span class="p">:</span>
+        <span class="n">indx</span> <span class="o">=</span> <span class="p">[</span><span class="n">idx</span> <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">plotorder</span><span class="p">)</span> <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s1">&#39;model&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">indx</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">indx</span> <span class="o">=</span> <span class="n">indx</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">firstpo</span> <span class="o">=</span> <span class="n">plotorder</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">indx</span><span class="p">)</span>
+            <span class="n">plotorder</span> <span class="o">=</span> <span class="p">[</span><span class="n">firstpo</span><span class="p">]</span> <span class="o">+</span> <span class="n">plotorder</span>
+            <span class="n">firstlog</span> <span class="o">=</span> <span class="n">logscale</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">indx</span><span class="p">)</span>
+            <span class="n">logscale</span> <span class="o">=</span> <span class="p">[</span><span class="n">firstlog</span><span class="p">]</span> <span class="o">+</span> <span class="n">logscale</span>
+            <span class="n">firstlim</span> <span class="o">=</span> <span class="n">lims</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">indx</span><span class="p">)</span>
+            <span class="n">lims</span> <span class="o">=</span> <span class="p">[</span><span class="n">firstlim</span><span class="p">]</span> <span class="o">+</span> <span class="n">lims</span>
+            <span class="n">firstcol</span> <span class="o">=</span> <span class="n">colormaps</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">indx</span><span class="p">)</span>
+            <span class="n">colormaps</span> <span class="o">=</span> <span class="p">[</span><span class="n">firstcol</span><span class="p">]</span> <span class="o">+</span> <span class="n">colormaps</span>
+
+    <span class="k">return</span> <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span></div>
+
+
+<div class="viewcode-block" id="text_to_json"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.text_to_json">[docs]</a><span class="k">def</span> <span class="nf">text_to_json</span><span class="p">(</span><span class="n">input1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Simplification of text_to_json from shakelib.rupture.factory</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        input1 (str): url or filepath to text file</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        json formatted stream of input1</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">input1</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">input1</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">input1</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">z</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">reference</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+    <span class="c1"># convert to geojson</span>
+    <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">:</span>
+        <span class="n">sline</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">sline</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">):</span>
+            <span class="n">reference</span> <span class="o">+=</span> <span class="n">sline</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;#&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s1">&#39;Source: &#39;</span><span class="p">)</span>
+            <span class="k">continue</span>
+        <span class="k">if</span> <span class="n">sline</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;&gt;&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>  <span class="c1"># start of new line segment</span>
+                <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+                <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+                <span class="n">z</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="k">else</span><span class="p">:</span>  <span class="c1"># start of file</span>
+                <span class="k">continue</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">len</span><span class="p">(</span><span class="n">sline</span><span class="o">.</span><span class="n">strip</span><span class="p">()):</span>
+            <span class="k">continue</span>
+        <span class="n">parts</span> <span class="o">=</span> <span class="n">sline</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+
+        <span class="n">y</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">:</span>
+            <span class="n">z</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Fault file has no depths, assuming zero depth&#39;</span><span class="p">)</span>
+            <span class="n">z</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">poly</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">dep</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">z</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">lon</span><span class="p">):</span>
+                <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">poly</span><span class="p">)</span>
+                <span class="n">poly</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">poly</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">dep</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">poly</span> <span class="o">!=</span> <span class="p">[]:</span>
+            <span class="n">coords</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">poly</span><span class="p">)</span>
+
+    <span class="n">d</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;FeatureCollection&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;metadata&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s1">&#39;reference&#39;</span><span class="p">:</span> <span class="n">reference</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;features&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="p">{</span>
+                <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;Feature&quot;</span><span class="p">,</span>
+                <span class="s2">&quot;properties&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;rupture type&quot;</span><span class="p">:</span> <span class="s2">&quot;rupture extent&quot;</span>
+                <span class="p">},</span>
+                <span class="s2">&quot;geometry&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s2">&quot;type&quot;</span><span class="p">:</span> <span class="s2">&quot;MultiPolygon&quot;</span><span class="p">,</span>
+                    <span class="s2">&quot;coordinates&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">coords</span><span class="p">]</span>
+                <span class="p">}</span>
+            <span class="p">}</span>
+        <span class="p">]</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">d</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="write_floats"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.write_floats">[docs]</a><span class="k">def</span> <span class="nf">write_floats</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">grid2d</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a binary (with acc. header file) version of a Grid2D object.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        filename (str): String filename to write (i.e., &#39;probability.flt&#39;)</span>
+<span class="sd">        grid2d (Grid2D): MapIO Grid2D object.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Given a filename input of &quot;probability.flt&quot;, this function will</span>
+<span class="sd">        create that file, plus a text file called &quot;probability.hdr&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">geodict</span> <span class="o">=</span> <span class="n">grid2d</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">asDict</span><span class="p">()</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">grid2d</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float32&#39;</span><span class="p">)</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">array</span><span class="p">)</span>
+    <span class="n">npyfilename</span> <span class="o">=</span> <span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;.npy&#39;</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">npyfilename</span><span class="p">,</span> <span class="n">filename</span><span class="p">)</span>
+    <span class="n">fpath</span><span class="p">,</span> <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">fbase</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+    <span class="n">hdrfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fpath</span><span class="p">,</span> <span class="n">fbase</span> <span class="o">+</span> <span class="s1">&#39;.hdr&#39;</span><span class="p">)</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">hdrfile</span><span class="p">,</span> <span class="s1">&#39;wt&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">geodict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> = </span><span class="si">%i</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+            <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> = </span><span class="si">%.4f</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> = </span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">fmt</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="savelayers"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.savelayers">[docs]</a><span class="k">def</span> <span class="nf">savelayers</span><span class="p">(</span><span class="n">grids</span><span class="p">,</span> <span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Save ground failure layers object as a MultiHazard HDF file, preserving</span>
+<span class="sd">    metadata structures. All layers must have same geodictionary.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        grids: Ground failure layers object.</span>
+<span class="sd">        filename (str): Path to where you want to save this file.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        .hdf5 file containing ground failure layers</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">layers</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">metadata</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">grids</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="n">layers</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">grids</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+        <span class="n">metadata</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">grids</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">grids</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">grids</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;label&#39;</span><span class="p">]</span>
+        <span class="p">}</span>
+    <span class="n">origin</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">header</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">mgrid</span> <span class="o">=</span> <span class="n">MultiHazardGrid</span><span class="p">(</span><span class="n">layers</span><span class="p">,</span> <span class="n">grids</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">(),</span>
+                            <span class="n">origin</span><span class="p">,</span>
+                            <span class="n">header</span><span class="p">,</span>
+                            <span class="n">metadata</span><span class="o">=</span><span class="n">metadata</span><span class="p">)</span>
+    <span class="n">mgrid</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="loadlayers"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.loadlayers">[docs]</a><span class="k">def</span> <span class="nf">loadlayers</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load a MultiHazard HDF file back in as a ground failure layers object in</span>
+<span class="sd">    active memory (must have been saved for this purpose).</span>
+<span class="sd">    Args:</span>
+<span class="sd">        filename (str): Path to layers file (hdf5 extension).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Ground failure layers object</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mgrid</span> <span class="o">=</span> <span class="n">MultiHazardGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
+    <span class="n">grids</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">mgrid</span><span class="o">.</span><span class="n">getLayerNames</span><span class="p">():</span>
+        <span class="n">grids</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">mgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">()[</span><span class="n">key</span><span class="p">],</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">mgrid</span><span class="o">.</span><span class="n">getMetadata</span><span class="p">()[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="n">mgrid</span><span class="o">.</span><span class="n">getMetadata</span><span class="p">()[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;type&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="n">mgrid</span><span class="o">.</span><span class="n">getMetadata</span><span class="p">()[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;label&#39;</span><span class="p">]</span>
+        <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">grids</span></div>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../gfail.html">gfail</a></li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="../../search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

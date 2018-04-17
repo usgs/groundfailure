@@ -48,7 +48,7 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
         pop_file (str): File path to population file to use to compute exposure stats
 
     Returns:
-        Dictionary with the following keys:
+        dict: Dictionary with the following keys:
             - Max
             - Median
             - Std
@@ -133,9 +133,8 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi.
 
-    Returns:
-        Float if no shakethresh defined or only one shakethresh defined,
-        otherwise, a list of aggregate hazard for all shakethresh values.
+    Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh was defined,
+        otherwise, a list of floats of aggregate hazard for all shakethresh values.
     """
     Hagg = []
     bounds = grid2D.getBounds()
@@ -208,8 +207,9 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             pga, cm/s for pgv, float for mmi.
 
     Returns:
-        Float if no probthresh defined or only one probthresh defined,
-        otherwise, a list of Parea for all probthresh values.
+        Parea (float) if no or only one probthresh defined,
+        otherwise, a list of floats of Parea corresponding to all
+        specified probthresh values.
     """
     if type(probthresh) != list and type(probthresh) != np.ndarray:
         probthresh = [probthresh]

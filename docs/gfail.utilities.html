@@ -1,0 +1,287 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>gfail.utilities &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gfail.webpage" href="gfail.webpage.html" />
+    <link rel="prev" title="gfail.temphdf" href="gfail.temphdf.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.utilities">
+<span id="gfail-utilities"></span><h1>gfail.utilities<a class="headerlink" href="#module-gfail.utilities" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="gfail.utilities.get_event_comcat">
+<code class="descclassname">gfail.utilities.</code><code class="descname">get_event_comcat</code><span class="sig-paren">(</span><em>shakefile</em>, <em>timewindow=60</em>, <em>degwindow=0.3</em>, <em>magwindow=0.2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_event_comcat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_event_comcat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Find an event in comcat, searching first by event id and if that
+fails searching by magnitude, time, and location.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>shakefile</strong> (<em>str</em>) – path to shakemap .xml file of event to find</li>
+<li><strong>timewindow</strong> (<em>float</em>) – width of time window to search around time defined
+in shakefile (in seconds)</li>
+<li><strong>degwindow</strong> (<em>float</em>) – width of area to search around location specified in
+shakefile (in degrees).</li>
+<li><strong>magwindow</strong> (<em>float</em>) – width of magnitude window to search around the
+magnitude specified in shakefile.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
+<dt>None if event not found, else tuple (info, detail, shakemap) where,</dt>
+<dd><ul class="first last simple">
+<li>info: json formatted dictionary of info.json for the event</li>
+<li>detail: event detail from comcat</li>
+<li>shakemap: shakemap of event found (from comcat)</li>
+</ul>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.parseMapConfig">
+<code class="descclassname">gfail.utilities.</code><code class="descname">parseMapConfig</code><span class="sig-paren">(</span><em>config</em>, <em>fileext=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseMapConfig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseMapConfig" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse config for mapping options.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj object.</li>
+<li><strong>fileext</strong> (<em>str</em>) – File extension to add to relative filepaths, will be
+prepended to any file paths in config.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary of map options pulled from config file.</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.parseConfigLayers">
+<code class="descclassname">gfail.utilities.</code><code class="descname">parseConfigLayers</code><span class="sig-paren">(</span><em>maplayers</em>, <em>config</em>, <em>keys=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse things that need to coodinate with each layer (like lims, logscale,
+colormaps etc.) from config file, in right order, where the order is from
+maplayers.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>maplayers</strong> (<em>dict</em>) – Dictionary containing model output.</li>
+<li><strong>config</strong> (<em>ConfigObj</em>) – Config object describing options for specific
+model.</li>
+<li><strong>keys</strong> (<em>list</em>) – List of keys of maplayers to process, e.g. <code class="docutils literal"><span class="pre">['model']</span></code>.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>(plotorder, logscale, lims, colormaps, maskthreshes) where:</dt>
+<dd><ul class="first last simple">
+<li>plotorder: maplayers keys in order of plotting.</li>
+<li>logscale: list of logscale options from config corresponding to
+keys in plotorder (same order).</li>
+<li>lims: list of colorbar limits from config corresponding to keys
+in plotorder (same order).</li>
+<li>colormaps: list of colormaps from config corresponding to keys
+in plotorder (same order),</li>
+<li>maskthreshes: list of mask thresholds from config corresponding
+to keys in plotorder (same order).</li>
+</ul>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.text_to_json">
+<code class="descclassname">gfail.utilities.</code><code class="descname">text_to_json</code><span class="sig-paren">(</span><em>input1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#text_to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.text_to_json" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simplification of text_to_json from shakelib.rupture.factory</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>input1</strong> (<em>str</em>) – url or filepath to text file</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">json formatted stream of input1</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.write_floats">
+<code class="descclassname">gfail.utilities.</code><code class="descname">write_floats</code><span class="sig-paren">(</span><em>filename</em>, <em>grid2d</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#write_floats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.write_floats" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a binary (with acc. header file) version of a Grid2D object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>filename</strong> (<em>str</em>) – String filename to write (i.e., ‘probability.flt’)</li>
+<li><strong>grid2d</strong> (<em>Grid2D</em>) – MapIO Grid2D object.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Given a filename input of “probability.flt”, this function will
+create that file, plus a text file called “probability.hdr”.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.savelayers">
+<code class="descclassname">gfail.utilities.</code><code class="descname">savelayers</code><span class="sig-paren">(</span><em>grids</em>, <em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#savelayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.savelayers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save ground failure layers object as a MultiHazard HDF file, preserving
+metadata structures. All layers must have same geodictionary.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grids</strong> – Ground failure layers object.</li>
+<li><strong>filename</strong> (<em>str</em>) – Path to where you want to save this file.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">.hdf5 file containing ground failure layers</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.loadlayers">
+<code class="descclassname">gfail.utilities.</code><code class="descname">loadlayers</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#loadlayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.loadlayers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load a MultiHazard HDF file back in as a ground failure layers object in
+active memory (must have been saved for this purpose).
+:param filename: Path to layers file (hdf5 extension).
+:type filename: str</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Ground failure layers object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

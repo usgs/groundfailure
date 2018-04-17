@@ -33,9 +33,9 @@ def getProjectedShapes(shapes, xmin, xmax, ymin, ymax):
         ymax: Northern boundary of all shapes.
 
     Returns:
-       Tuple of
-           - Input sequence of shapes, projected to orthographic
-           - PyProj projection object used to transform input shapes
+        tuple: (pshapes, proj) where:
+            * pshapes: input sequence of shapes, projected to orthographic
+            * proj: PyProj projection object used to transform input shapes
     """
     latmiddle = ymin + (ymax - ymin) / 2.0
     lonmiddle = xmin + (xmax - xmin) / 2.0
@@ -71,18 +71,18 @@ def getYesPoints(pshapes, proj, dx, nmax, touch_center=True):
             number.
         nmax: Threshold maximum number of points in total data mesh.
         touch_center: Boolean indicating whether presence of polygon in each
-            grid cell is enough to turn that into a yes pixel.
-            ** This doc needs a better explanation! ** And I don't know what
-            does so I'm not the one to fix it.
+            grid cell is enough to turn that into a yes pixel (False) or
+            if the center of the grid cell must intersect a polygon (True).
 
     Returns:
-        A tuple of
-          - numpy 2-D array of X/Y coordinates inside hazard polygons.
-          - number of rows of resulting mesh
-          - number of columns of resulting mesh
-          - numpy array of x coordinate centers of columns
-          - numpy array of y coordinate centers of rows
-          - 1D array of indices where yes pixels are located (use np.unravel_index to unpack to 2D array)
+        tuple: (yespoints, nrows, ncols, xvar, yvar, idx) where:
+          - yespoints: numpy 2-D array of X/Y coordinates inside hazard polygons.
+          - nrows: number of rows of resulting mesh
+          - ncols: number of columns of resulting mesh
+          - xvar: numpy array of x coordinate centers of columns
+          - yvar: numpy array of y coordinate centers of rows
+          - idx: 1D array of indices where yes pixels are located
+            (use np.unravel_index to unpack to 2D array)
 
     """
 
@@ -189,11 +189,13 @@ def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None,
             describe the opposite of the usual meaning of this variable!**
 
     Returns:
-        Tuple of
-          - sequence of coordinates in lat/lon for: YesPoints, NoPoints
-          - numpy array of mesh column centers
-          - numpy array of mesh row centers
-          - PyProj object defining orthographic projection of xy points
+        tuple: (yespoints, nopoints, xvar, yvar, pshapes, proj) where:
+          - yespoints: sequence of coordinates in lat/lon for yespoints
+          - nopoints: same as above for no points
+          - xvar: numpy array of mesh column centers
+          - yvar: numpy array of mesh row centers
+          - pshapes: projected shapes
+          - proj: PyProj object defining orthographic projection of xy points
 
     """
     xmin, ymin, xmax, ymax = bounds
@@ -297,7 +299,7 @@ def rasterizeShapes(pshapes, geodict, all_touched=True):
 
     Args:
         pshapes: Sequence of orthographically projected shapes.
-        goedict: Mapio geodictionary.
+        geodict: Mapio geodictionary.
         all_touched: Turn pixel "on" if shape touches pixel, otherwise turn it
             on if the center of the pixel is contained within the shape. Note
             that the footprint of the shape is inflated and the amount of
