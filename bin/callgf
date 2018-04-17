@@ -10,6 +10,7 @@ import logging
 import logging.config
 import sqlite3
 from collections import OrderedDict
+import json
 
 # third party imports
 from impactutils.io.cmd import get_command_output
@@ -82,6 +83,8 @@ EVENT = OrderedDict([('id', 'INTEGER PRIMARY KEY'),
                      ('time', 'TIMESTAMP'),
                      ('mag', 'REAL'),
                      ('location', 'TEXT'),
+                     ('starttime', 'TIMESTAMP'),
+                     ('endtime', 'TIMESTAMP'),
                      ('finitefault', 'INTEGER'),
                      ('HaggLS', 'REAL'),
                      ('ExpPopLS', 'REAL'),
@@ -244,14 +247,15 @@ def insert_event(connection, cursor, eventid, event, version, eventdir):
     """
     cnames = ['eventcode', 'eventdir', 'version',
               'lat', 'lon', 'depth',
-              'time', 'mag', 'location']
+              'time', 'mag', 'location', 'starttime']
     columns = ','.join(cnames)
-    vfmt = '("%s","%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s")'
+    vfmt = '("%s","%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s","%s")'
     fmt = 'INSERT INTO shakemap (%s) VALUES %s' % (columns, vfmt)
+    tnowstr = datetime.utcnow().strftime(TIMEFMT)
     tpl = (eventid, eventdir, version,
            event['lat'], event['lon'],
            event['depth'], event['event_timestamp'].strftime(TIMEFMT),
-           event['magnitude'], event['event_description'])
+           event['magnitude'], event['event_description'], tnowstr)
     query = fmt % tpl
     cursor.execute(query)
     db_id = cursor.lastrowid
@@ -397,7 +401,7 @@ def process_shakemap(args, config):
         sys.exit(1)
 
     # Make info.json
-    logging.info("Staring create_info...")
+    logging.info("Starting create_info...")
     cmd = "create_info -e %s" % vdir
     rc, so, se = get_command_output(cmd)
     logging.info("Standard output: %s" % so.decode())
@@ -421,7 +425,32 @@ def process_shakemap(args, config):
         sys.exit(1)
 
     # Enter model results into the database.
-    # ??
+    jsonfile = os.path.join(vdir, 'info.json')
+    infodata = json.load(open(jsonfile, 'rt'))
+    landslides = infodata['Landslides']
+    landslide = None
+    for landslide in landslides:
+        if landslide['preferred']:
+            break
+    ls_hazard_value = landslide['hazard_alert']['value']
+    ls_pop_value = landslide['population_alert']['value']
+    liquefactions = infodata['Liquefactions']
+    liquefaction = None
+    for liquefaction in liquefactions:
+        if liquefaction['preferred']:
+            break
+
+    lq_hazard_value = liquefaction['hazard_alert']['value']
+    lq_pop_value = liquefaction['population_alert']['value']
+    values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
+    tnowstr = datetime.utcnow().strftime('TIMEFMT')
+    finite_fault = not infodata['Summary']['point_source']
+    qfmt = 'INSERT INTO shakemap %s VALUES ("%s",%i,%.3f,%.3f,%.3f,%.3f)'
+    query = qfmt % (values, tnowstr, finite_fault,
+                    ls_hazard_value, ls_pop_value,
+                    lq_hazard_value, lq_pop_value)
+    cursor.execute(query)
+    conn.commit()
 
     # close the database
     cursor.close()
