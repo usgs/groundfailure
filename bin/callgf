@@ -434,7 +434,7 @@ def process_shakemap(args, config):
             break
     ls_hazard_value = landslide['hazard_alert']['value']
     ls_pop_value = landslide['population_alert']['value']
-    liquefactions = infodata['Liquefactions']
+    liquefactions = infodata['Liquefaction']
     liquefaction = None
     for liquefaction in liquefactions:
         if liquefaction['preferred']:
