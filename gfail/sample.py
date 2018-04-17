@@ -16,6 +16,8 @@ from shapely.geometry import Polygon, shape, MultiPoint, Point
 
 from mapio.geodict import GeoDict
 import matplotlib.path as mplPath
+from rasterio.transform import Affine
+import rasterio
 
 
 def getProjectedShapes(shapes, xmin, xmax, ymin, ymax):
@@ -221,7 +223,7 @@ def pointsFromShapes(shapes, bounds, dx=10.0, nmax=None, Nsamp=None,
 
     # get the "yes" sample points
     yespoints, nrows, ncols, xvar, yvar, yesidx = getYesPoints(
-            pshapes, proj, dx, nmax=nmax, touch_center=touch_center)
+        pshapes, proj, dx, nmax=nmax, touch_center=touch_center)
 
     # sampleNo but with taking all of the points instead of just some of them
     # randomly flattened array of all indices in mesh
@@ -287,3 +289,29 @@ def projectBack(points, proj):
         coords.append((x, y))
     coords = np.array(coords)
     return coords
+
+
+def rasterizeShapes(pshapes, geodict, all_touched=True):
+    """
+    Rasterizing a shape
+
+    Args:
+        pshapes: Sequence of orthographically projected shapes.
+        goedict: Mapio geodictionary.
+        all_touched: Turn pixel "on" if shape touches pixel, otherwise turn it
+            on if the center of the pixel is contained within the shape. Note
+            that the footprint of the shape is inflated and the amount of
+            inflation depends on the pixel size if all_touched=True.
+
+    Returns:
+        Rasterio grid.
+    """
+    outshape = (geodict.ny, geodict.nx)
+    txmin = geodict.xmin - geodict.dx / 2.0
+    tymax = geodict.ymax + geodict.dy / 2.0
+    transform = Affine.from_gdal(
+        txmin, geodict.dx, 0.0, tymax, 0.0, -geodict.dy)
+    imgs = rasterio.features.rasterize(
+        pshapes, out_shape=outshape, fill=0.0, transform=transform,
+        all_touched=all_touched, default_value=1.0)
+    return imgs
