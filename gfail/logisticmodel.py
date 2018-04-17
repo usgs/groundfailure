@@ -52,6 +52,7 @@ class LogisticModel(object):
                  trimfile=None):
         """
         Set up the logistic model
+
         Args:
             shakefile (str): Path to shakemap grid.xml file for the event.
             config: configobj object defining the model and its inputs. Only
@@ -79,7 +80,8 @@ class LogisticModel(object):
                 degrees: e.g., ``np.arctan(slope) * 180. / np.pi`` or
                 ``slope/100.`` (note that this may be in the config file
                 already).
-            trimfile (str): shapefile of earth's landmasses to use to cut offshore areas
+            trimfile (str): shapefile of earth's landmasses to use to cut
+                offshore areas.
         """
         mnames = getLogisticModelNames(config)
         if len(mnames) == 0:
@@ -106,7 +108,7 @@ class LogisticModel(object):
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
         self.numstd = numstd
         self.clips = validateClips(cmodel, self.layers, self.gmused)
-        
+
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to '
                             'one of the files in the layer section.')
@@ -115,7 +117,7 @@ class LogisticModel(object):
             try:
                 self.slopefile = cmodel['slopefile']
             except:
-                #print('Slopefile not specified in config, no slope '
+                # print('Slopefile not specified in config, no slope '
                 #      'thresholds will be applied\n')
                 self.slopefile = None
         else:
@@ -129,7 +131,8 @@ class LogisticModel(object):
         # See if trimfile exists
         if trimfile is not None:
             if not os.path.exists(trimfile):
-                print('trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
+                print(
+                    'trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
                 self.trimfile = None
             elif os.path.splitext(trimfile)[1] != '.shp':
                 print('trimfile must be a shapefile, ocean will not be trimmed')
@@ -188,15 +191,20 @@ class LogisticModel(object):
             divfactor = float(self.config[self.model]['divfactor'])
             if divfactor != 1.:
                 # adjust sampledict so everything will be resampled
-                newxmin = sampledict.xmin - sampledict.dx/2. + sampledict.dx/(2.*divfactor)
-                newymin = sampledict.ymin - sampledict.dy/2. + sampledict.dy/(2.*divfactor)
-                newxmax = sampledict.xmax + sampledict.dx/2. - sampledict.dx/(2.*divfactor)
-                newymax = sampledict.ymax + sampledict.dy/2. - sampledict.dy/(2.*divfactor)
+                newxmin = sampledict.xmin - sampledict.dx / \
+                    2. + sampledict.dx/(2.*divfactor)
+                newymin = sampledict.ymin - sampledict.dy / \
+                    2. + sampledict.dy/(2.*divfactor)
+                newxmax = sampledict.xmax + sampledict.dx / \
+                    2. - sampledict.dx/(2.*divfactor)
+                newymax = sampledict.ymax + sampledict.dy / \
+                    2. - sampledict.dy/(2.*divfactor)
                 newdx = sampledict.dx/divfactor
                 newdy = sampledict.dy/divfactor
 
-                sampledict = GeoDict.createDictFromBox(newxmin, newxmax, newymin,
-                                                       newymax, newdx, newdy, inside=True)
+                sampledict = GeoDict.createDictFromBox(
+                    newxmin, newxmax, newymin,
+                    newymax, newdx, newdy, inside=True)
 
         # Find slope thresholds, if applicable
         self.slopemin = 'none'
@@ -206,8 +214,8 @@ class LogisticModel(object):
                 self.slopemin = float(config[self.model]['slopemin'])
                 self.slopemax = float(config[self.model]['slopemax'])
             except:
-                print('Could not find slopemin and/or slopemax in config, limits '
-                      'No slope thresholds will be applied.')
+                print('Could not find slopemin and/or slopemax in config, '
+                      'limits. No slope thresholds will be applied.')
                 self.slopemin = 'none'
                 self.slopemax = 'none'
 
@@ -215,11 +223,13 @@ class LogisticModel(object):
         self.tempdir = tempfile.mkdtemp()
 
         # now load the shakemap, resampling and padding if necessary
-        temp = ShakeGrid.load(shakefile)#, adjust='res')
+        temp = ShakeGrid.load(shakefile)  # , adjust='res')
         self.shakedict = temp.getShakeDict()
         self.eventdict = temp.getEventDict()
         self.shakemap = {}
-        for gm in ['pga', 'pgv']:  # Just read them both in, may need them for thresholds
+
+        # Read both PGA and PGV in, may need them for thresholds
+        for gm in ['pga', 'pgv']:
             junkfile = os.path.join(self.tempdir, 'temp.bil')
             GDALGrid.copyFromGrid(temp.getLayer(gm)).save(junkfile)
             if gm in self.interpolations.keys():
@@ -227,10 +237,12 @@ class LogisticModel(object):
             else:
                 intermeth = 'bilinear'
             junkgrid = quickcut(junkfile, sampledict, precise=True,
-                       method=intermeth)
+                                method=intermeth)
             if gm in self.clips:
-                junkgrid.setData(np.clip(junkgrid.getData(), self.clips[gm][0], self.clips[gm][1]))
-            self.shakemap[gm] = TempHdf(junkgrid, os.path.join(self.tempdir, '%s.hdf5' % gm))
+                junkgrid.setData(np.clip(junkgrid.getData(),
+                                         self.clips[gm][0], self.clips[gm][1]))
+            self.shakemap[gm] = TempHdf(
+                junkgrid, os.path.join(self.tempdir, '%s.hdf5' % gm))
             os.remove(junkfile)
         del(temp)
 
@@ -239,9 +251,10 @@ class LogisticModel(object):
 
         # take uncertainties into account, if available
         if uncertfile is not None:
-            self.uncert={}
+            self.uncert = {}
             try:
-                temp = ShakeGrid.load(uncertfile)  # Only read in the ones that will be needed
+                # Only read in the ones that will be needed
+                temp = ShakeGrid.load(uncertfile)
                 for gm in self.gmused:
                     if 'pgv' in gm:
                         gmsimp = 'pgv'
@@ -250,16 +263,21 @@ class LogisticModel(object):
                     elif 'mmi' in gm:
                         gmsimp = 'mmi'
                     junkfile = os.path.join(self.tempdir, 'temp.bil')
-                    GDALGrid.copyFromGrid(temp.getLayer('std%s' % gmsimp)).save(junkfile)
+                    GDALGrid.copyFromGrid(temp.getLayer(
+                        'std%s' % gmsimp)).save(junkfile)
                     if gmsimp in self.interpolations.keys():
                         intermeth = self.interpolations[gmsimp]
                     else:
                         intermeth = 'bilinear'
                     junkgrid = quickcut(junkfile, sampledict, precise=True,
-                               method=intermeth)
+                                        method=intermeth)
                     if gmsimp in self.clips:
-                        junkgrid.setData(np.clip(junkgrid.getData(), self.clips[gmsimp][0], self.clips[gmsimp][1]))
-                    self.uncert['std' + gmsimp] = TempHdf(junkgrid, os.path.join(self.tempdir, 'std%s.hdf5' % gmsimp))
+                        junkgrid.setData(
+                            np.clip(junkgrid.getData(), self.clips[gmsimp][0],
+                                    self.clips[gmsimp][1]))
+                    self.uncert['std' + gmsimp] = TempHdf(
+                        junkgrid, os.path.join(self.tempdir,
+                                               'std%s.hdf5' % gmsimp))
                     os.remove(junkfile)
                 del(temp)
             except:
@@ -288,24 +306,32 @@ class LogisticModel(object):
                             layerfile = lfile
                             ftype = getFileType(layerfile)
                             interp = self.interpolations[layername]
-                            temp = quickcut(layerfile, sampledict, precise=True,
-                                            method=interp)
+                            temp = quickcut(layerfile, sampledict,
+                                            precise=True, method=interp)
                             if layername in self.clips:
-                                temp.setData(np.clip(temp.getData(), self.clips[layername][0], self.clips[layername][1]))
+                                temp.setData(
+                                    np.clip(temp.getData(),
+                                            self.clips[layername][0],
+                                            self.clips[layername][1]))
                             self.layerdict[layername] = TempHdf(
                                 temp, os.path.join(self.tempdir,
                                                    '%s.hdf5' % layername))
                             del(temp)
             else:
                 interp = self.interpolations[layername]
-                temp = quickcut(layerfile, sampledict, precise=True, method=interp)
+                temp = quickcut(layerfile, sampledict,
+                                precise=True, method=interp)
                 if layername in self.clips:
-                    temp.setData(np.clip(temp.getData(), self.clips[layername][0], self.clips[layername][1]))
+                    temp.setData(
+                        np.clip(temp.getData(),
+                                self.clips[layername][0],
+                                self.clips[layername][1]))
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 td = temp.getGeoDict()
                 if td != sampledict:
-                    raise Exception('Geodictionaries of resampled files do not match')
+                    raise Exception(
+                        'Geodictionaries of resampled files do not match')
 
                 if layerfile == self.slopefile:
                     flag = 0
@@ -330,7 +356,8 @@ class LogisticModel(object):
                         del(slope1)
                         del(slope)
                     else:
-                        # Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
+                        # Still remove areas where the slope equals exactly
+                        # 0.0 to remove offshore liq areas.
                         nonzero = np.array([slope1 != 0.0])
                         self.nonzero = nonzero[0, :, :]
                         del(slope1)
@@ -365,7 +392,8 @@ class LogisticModel(object):
                 del(slope1)
                 del(slope)
             else:
-                ## Still remove areas where the slope equals exactly 0.0 to remove offshore liq areas
+                # Still remove areas where the slope equals exactly
+                # 0.0 to remove offshore liq areas.
                 nonzero = np.array([slope1 != 0.0])
                 self.nonzero = nonzero[0, :, :]
                 del(slope1)
@@ -389,12 +417,22 @@ class LogisticModel(object):
             # nuggets.
             for gm in ['pga', 'mmi', 'pgv']:
                 for k, nug in enumerate(self.nuggets):
-                    tempnug = "self.shakemap['%s'].getSlice(rowstart, rowend, colstart, colend, name='%s')" % (gm, gm)
+                    tempnug = ("self.shakemap['%s'].getSlice(rowstart, "
+                               "rowend, colstart, colend, name='%s')"
+                               % (gm, gm))
                     if tempnug in nug:
-                        newnug = "np.exp(np.log(%s) - self.numstd * self.uncert['std%s'].getSlice(rowstart, rowend, colstart, colend, name='std%s'))" % (tempnug, gm, gm)
-                        self.nugmin[k] = self.nugmin[k].replace(tempnug, newnug)
-                        newnug = "np.exp(np.log(%s) + self.numstd * self.uncert['std%s'].getSlice(rowstart, rowend, colstart, colend, name='std%s'))" % (tempnug, gm, gm)
-                        self.nugmax[k] = self.nugmax[k].replace(tempnug, newnug)
+                        newnug = ("np.exp(np.log(%s) - self.numstd * "
+                                  "self.uncert['std%s'].getSlice(rowstart, "
+                                  "rowend, colstart, colend, name='std%s'))"
+                                  % (tempnug, gm, gm))
+                        self.nugmin[k] = self.nugmin[k].replace(
+                            tempnug, newnug)
+                        newnug = ("np.exp(np.log(%s) + self.numstd * "
+                                  "self.uncert['std%s'].getSlice(rowstart, "
+                                  "rowend, colstart, colend, name='std%s'))"
+                                  % (tempnug, gm, gm))
+                        self.nugmax[k] = self.nugmax[k].replace(
+                            tempnug, newnug)
 
             self.equationmin = ' + '.join(self.nugmin)
             self.equationmax = ' + '.join(self.nugmax)
@@ -409,6 +447,7 @@ class LogisticModel(object):
         Method for LogisticModel class to extract strings defining the
         equations for the model for median ground motions and +/- one standard
         deviation (3 total).
+
         Returns:
             tuple: Three equations: equation, equationmin, equationmax, where
                 * equation is the equation for median ground motions,
@@ -422,6 +461,7 @@ class LogisticModel(object):
         """
         Returns the geodictionary of the LogisticModel class defining bounds
         and resolution of model inputs and outputs.
+
         Returns:
             geodict: mapio geodict object.
         """
@@ -430,6 +470,7 @@ class LogisticModel(object):
     def calculate(self, cleanup=True, rowmax=300, colmax=None):
         """
         Calculate the model.
+
         Args:
             cleanup (bool): Delete temporary hdf5 files?
             rowmax (int): Number of rows to compute at once; None does all at
@@ -463,11 +504,13 @@ class LogisticModel(object):
             P[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
 
         if 'minpgv' in self.config[self.model].keys():
-            pgv = self.shakemap['pgv'].getSlice(None, None, None, None, name='pgv')
+            pgv = self.shakemap['pgv'].getSlice(
+                None, None, None, None, name='pgv')
             P[pgv < float(self.config[self.model]['minpgv'])] = 0.0
 
         if 'minpga' in self.config[self.model].keys():
-            pga = self.shakemap['pga'].getSlice(None, None, None, None, name='pga')
+            pga = self.shakemap['pga'].getSlice(
+                None, None, None, None, name='pga')
             P[pga < float(self.config[self.model]['minpga'])] = 0.0
 
         if 'coverage' in self.config[self.model].keys():
@@ -561,7 +604,8 @@ class LogisticModel(object):
 
         Pgrid = Grid2D(P, self.geodict)
         if self.trimfile is not None:
-            Pgrid = trim_ocean(Pgrid, self.trimfile, nodata=float('nan'))  # Turn all offshore cells to nan
+            # Turn all offshore cells to nan
+            Pgrid = trim_ocean(Pgrid, self.trimfile, nodata=float('nan'))
         rdict = collections.OrderedDict()
         rdict['model'] = {
             'grid': Pgrid,
@@ -574,8 +618,10 @@ class LogisticModel(object):
             Pmingrid = Grid2D(Pmin, self.geodict)
             Pmaxgrid = Grid2D(Pmax, self.geodict)
             if self.trimfile is not None:
-                Pmingrid = trim_ocean(Pmingrid, self.trimfile, nodata=float('nan'))
-                Pmaxgrid = trim_ocean(Pmaxgrid, self.trimfile, nodata=float('nan'))
+                Pmingrid = trim_ocean(
+                    Pmingrid, self.trimfile, nodata=float('nan'))
+                Pmaxgrid = trim_ocean(
+                    Pmaxgrid, self.trimfile, nodata=float('nan'))
             rdict['modelmin'] = {
                 'grid': Pmingrid,
                 'label': ('%s %s (-%0.1f std ground motion)'
@@ -632,7 +678,6 @@ class LogisticModel(object):
 
                 if getkey in rdict:
                     continue
-                
 
                 layer = self.shakemap[getkey].getSlice(
                     None, None, None, None, name=getkey)
@@ -782,10 +827,10 @@ def validateClips(cmodel, layers, gmused):
             if key not in layers:
                 if key not in gmused:
                     x1 = [par for par in gmused if key in par]
-                    if len(x1)==0:
+                    if len(x1) == 0:
                         raise Exception(
-                                'Clipping key %s does not match any names of layers'
-                                % key)
+                            'Clipping key %s does not match any names of layers'
+                            % key)
             clips[key] = (float(value[0]), float(value[1]))
     return clips
 
@@ -898,6 +943,15 @@ def validateTerms(cmodel, coeffs, layers):
 
 
 def validateInterpolations(cmodel, layers):
+    """Validate logistic model interpolation.
+
+    Args:
+        cmodel (dict): Sub-dictionary from config for specific model.
+        layers (dict): Dictionary of file names for all input layers.
+
+    Returns:
+        dict: Model interpolation methods.
+    """
     interpolations = {}
     for key, value in cmodel['interpolations'].items():
         if key not in list(layers.keys()):
@@ -918,6 +972,15 @@ def validateInterpolations(cmodel, layers):
 
 
 def validateUnits(cmodel, layers):
+    """Validate model units.
+
+    Args:
+        cmodel (dict): Sub-dictionary from config for specific model.
+        layers (dict): Dictionary of file names for all input layers.
+
+    Returns:
+        dict: Model units.
+    """
     units = {}
     for key in cmodel['layers'].keys():
         if 'units' in cmodel['layers'][key]:
@@ -928,6 +991,15 @@ def validateUnits(cmodel, layers):
 
 
 def validateLogisticModels(config):
+    """Validate model names.
+
+    Args:
+        cmodel (dict): Sub-dictionary from config for specific model.
+        layers (dict): Dictionary of file names for all input layers.
+
+    Returns:
+        bool: Are the names valid?
+    """
     mnames = getLogisticModelNames(config)
     if len(mnames) > 1:
         raise Exception('Config file contains more than one model which is '
@@ -958,6 +1030,11 @@ def validateLogisticModels(config):
 
 
 def validateRefs(cmodel):
+    """Validate model references.
+
+    Args:
+
+    """
     longrefs = {}
     shortrefs = {}
     modelrefs = {}
