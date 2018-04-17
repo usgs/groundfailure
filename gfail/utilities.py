@@ -104,9 +104,9 @@ def parseMapConfig(config, fileext=None):
     watercolor = 'B8EEFF'
     ALPHA = 0.7
     oceanfile = None
-    oceanref = None
-    roadref = None
-    cityref = None
+    #oceanref = None
+    #roadref = None
+    #cityref = None
 
     if fileext is None:
         fileext = '.'
@@ -116,25 +116,25 @@ def parseMapConfig(config, fileext=None):
             print('DEM not valid - hillshade will not be possible\n')
     if 'ocean' in config:
         oceanfile = os.path.join(fileext, config['ocean']['file'])
-        try:
-            oceanref = config['ocean']['shortref']
-        except:
-            oceanref = 'unknown'
+        #try:
+        #    oceanref = config['ocean']['shortref']
+        #except:
+        #    oceanref = 'unknown'
     if 'roads' in config:
         roadfolder = os.path.join(fileext, config['roads']['file'])
         if os.path.exists(roadfolder) is False:
             print('roadfolder not valid - roads will not be displayed\n')
             roadfolder = None
-        try:
-            roadref = config['roads']['shortref']
-        except:
-            roadref = 'unknown'
+        #try:
+        #    roadref = config['roads']['shortref']
+        #except:
+        #    roadref = 'unknown'
     if 'cities' in config:
         cityfile = os.path.join(fileext, config['cities']['file'])
-        try:
-            cityref = config['cities']['shortref']
-        except:
-            cityref = 'unknown'
+        #try:
+        #    cityref = config['cities']['shortref']
+        #except:
+        #    cityref = 'unknown'
         if os.path.exists(cityfile):
             try:
                 BasemapCities.loadFromGeoNames(cityfile=cityfile)
@@ -161,8 +161,7 @@ def parseMapConfig(config, fileext=None):
     mapin = {'topofile': topofile, 'roadfolder': roadfolder,
              'cityfile': cityfile, 'roadcolor': roadcolor,
              'countrycolor': countrycolor, 'watercolor': watercolor,
-             'ALPHA': ALPHA, 'roadref': roadref,
-             'cityref': cityref, 'oceanfile': oceanfile, 'oceanref': oceanref}
+             'ALPHA': ALPHA, 'oceanfile': oceanfile}  # 'roadref': roadref, 'cityref': cityref, 'oceanref': oceanref
 
     return mapin
 
