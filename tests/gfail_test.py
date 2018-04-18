@@ -56,8 +56,8 @@ def test_zhu2015(tmpdir):
         rc3, so3, se3 = get_command_output('gfail --list-default-paths')
 
         # Run model with bounds
-        runcmd = "gfail data/test_configlist.txt %s -n -b 'zoom, pga, 2' -tr %s" % \
-            (shakegrid, trimfile)
+        runcmd = "gfail %s/test_configlist.txt %s -n -b 'zoom, pga, 2' -tr %s" % \
+            (datadir, shakegrid, trimfile)
         rc4, so4, se4 = get_command_output(runcmd)
 
         # Run model
