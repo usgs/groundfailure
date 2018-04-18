@@ -99,11 +99,11 @@ def test_zhu2015(tmpdir):
     # Test that everything ran
     np.testing.assert_equal(True, rc, 'gfail reset failed')
     np.testing.assert_equal(True, rc1, 'gfail path modification failed')
-    np.testing.assert_equal(True, rc2, 'gfail run failed')
+    np.testing.assert_equal(True, rc2, se2.decode())
     np.testing.assert_equal(True, rc3, 'gfail list-default-paths failed')
-    np.testing.assert_equal(True, rc4, 'gfail zoom bounds did not work')
+    np.testing.assert_equal(True, rc4, se4.decode())
 
-    # Then do test
+    # Then do test of values
     np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
@@ -136,10 +136,12 @@ def test_zhu2015_web(tmpdir):
 
         # Clear paths
         rc, so, se = get_command_output('gfail -reset')
+        np.testing.assert_equal(True, rc, 'gfail reset failed')
 
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc, so, se = get_command_output(pathcmd)
+        np.testing.assert_equal(True, rc, 'gfail path modification failed')
 
         with open(default_file, "a") as f:
             f.write("popfile = %s"
@@ -147,18 +149,21 @@ def test_zhu2015_web(tmpdir):
 
         # Run model
         conf = os.path.join(datadir, 'test_conf')
-        runcmd = "gfail %s %s -w -n" % (conf, shakegrid)
+        runcmd = "gfail %s %s -w --hdf5 -n" % (conf, shakegrid)
         rc, so, se = get_command_output(runcmd)
+        np.testing.assert_equal(True, rc, se.decode())
 
         event_dir = os.path.join(p, '19891018000415')
 
         # Make png
         cmd = 'create_png -e %s' % event_dir
         rc1, so1, se1 = get_command_output(cmd)
+        np.testing.assert_equal(True, rc1, se1.decode())
 
         # Make info
         cmd = 'create_info -e %s' % event_dir
         rc2, so2, se2 = get_command_output(cmd)
+        np.testing.assert_equal(True, rc2, se2.decode())
 
         # Make PDL directory
         pdldir = os.path.join(p, '19891018000415')
