@@ -53,6 +53,7 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     eventsourcecode = info_dict['Summary']['code']
     eventsource = info_dict['Summary']['net']
     shake_version = info_dict['Summary']['shakemap_version']
+    xmin, xmax, ymin, ymax = info_dict['Summary']['zoom_extent']
 
     pdl_type = 'ground-failure'
 
@@ -109,10 +110,10 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     # extent, which seems a bit pointless. But by providing the property, it
     # gives us the ability to update it later if we can come up with a more
     # sensible product extent.
-    prod_xmin = '"--property-minimum-longitude=%s" ' % ls_extent[0]
-    prod_xmax = '"--property-maximum-longitude=%s" ' % ls_extent[1]
-    prod_ymin = '"--property-minimum-latitude=%s" ' % ls_extent[2]
-    prod_ymax = '"--property-maximum-latitude=%s" ' % ls_extent[3]
+    prod_xmin = '"--property-minimum-longitude=%s" ' % xmin
+    prod_xmax = '"--property-maximum-longitude=%s" ' % xmax
+    prod_ymin = '"--property-minimum-latitude=%s" ' % ymin
+    prod_ymax = '"--property-maximum-latitude=%s" ' % ymax
 
     rupt_warn = '"--property-rupture-warning=%s" ' % \
                 info_dict['Summary']['rupture_warning']

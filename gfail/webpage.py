@@ -155,10 +155,12 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 ls_haz_alert, ls_pop_alert, _, _ = get_alert(
                     stats['Hagg_0.10g'], 0.,
                     stats['exp_pop_0.10g'], 0.)
+                lsext = get_extent(maplayer['model']['grid'])
             else:
                 on = False
                 ls_haz_alert = None
                 ls_pop_alert = None
+                lsext = None
 
             edict = dict(model=metadata['name'],  preferred=on,
                          probability_max=float("%.2f" % stats['Max']),
@@ -172,7 +174,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                          parameters=metadata['parameters'],
                          longref=metadata['longref'],
                          hazard_alert=ls_haz_alert,
-                         population_alert=ls_pop_alert,)
+                         population_alert=ls_pop_alert,
+                         lsext=lsext)
 
             lsmodels.append(edict)
 
@@ -207,10 +210,13 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 _, _, lq_haz_alert, lq_pop_alert = get_alert(
                     0., stats['Hagg_0.10g'],
                     0., stats['exp_pop_0.10g'])
+                lqext = get_extent(maplayer['model']['grid'])
+
             else:
                 on = False
                 lq_haz_alert = None
                 lq_pop_alert = None
+                lqext = None
 
             edict = dict(model=metadata['name'],  preferred=on,
                          probability_max=float("%.2f" % stats['Max']),
@@ -224,7 +230,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                          parameters=metadata['parameters'],
                          longref=metadata['longref'],
                          hazard_alert=lq_haz_alert,
-                         population_alert=lq_pop_alert,)
+                         population_alert=lq_pop_alert,
+                         lqext=lqext)
 
             lqmodels.append(edict)
 
@@ -431,12 +438,16 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         if len(ls_mod_file) == 1:
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
+            # get extents
+            lsext = get_extent(ls_mod['model']['grid'])
         else:
             raise OSError("Preferred landslide model result not found.")
         lq_mod_file = [f2 for f2 in files if 'zhu_2017_general.hdf5' in f2]
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
+            # get extents
+            lqext = get_extent(lq_mod['model']['grid'])
         else:
             raise OSError("Preferred liquefaction model result not found.")
 
@@ -581,6 +592,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     raise OSError("Landslide extent not found.")
                 lsm['extent'] = ls_extent
                 lsm['filename'] = flnm
+                lsext = lsm['lsext']  # Get zoom extent
 
         for lqm in lqmodels:
             if lqm['preferred']:
@@ -600,6 +612,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     raise OSError("Liquefaction extent not found.")
                 lqm['extent'] = lq_extent
                 lqm['filename'] = flnm
+                lqext = lqm['lqext']  # Get zoom extent
 
     # Try to get event info
     event_dict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
@@ -636,6 +649,12 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         detail_time = -999
         point = False
 
+    # Get extents that work for both
+    xmin = np.min((lqext['xmin'], lsext['xmin']))
+    xmax = np.max((lqext['xmax'], lsext['xmax']))
+    ymin = np.min((lqext['ymin'], lsext['ymin']))
+    ymax = np.max((lqext['ymax'], lsext['ymax']))
+
     # Should we display the warning about point source?
     rupture_warning = False
     if point and event_dict['magnitude'] > 6.5:
@@ -654,7 +673,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             'event_url': event_url,
             'shakemap_version': sm_dict['shakemap_version'],
             'rupture_warning': rupture_warning,
-            'point_source': point
+            'point_source': point,
+            'zoom_extent': [xmin, xmax, ymin, ymax]
         },
         'Landslides': lsmodels,
         'Liquefaction': lqmodels
@@ -750,3 +770,61 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
         popalertLQ = None
 
     return alertLS, popalertLS, alertLQ, popalertLQ
+
+
+def get_extent(grid, propofmax=0.4):
+    """
+    Get the extent that contains all values with probabilities exceeding a threshold
+    in order to determine ideal zoom level for interactive map
+    If nothing is above the threshold, uses the full extent
+
+    Args:
+        grid: grid2d of model output
+        propofmax (float): Proportion of maximum that should be fully included
+            within the bounds.
+
+    Returns:
+        tuple: (boundaries, zoomed) where,
+            * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and 'ymax' that
+                defines the boundaries in geographic coordinates.
+
+    """
+    maximum = np.nanmax(grid.getData())
+
+    xmin, xmax, ymin, ymax = grid.getBounds()
+    lons = np.linspace(xmin, xmax, grid.getGeoDict().nx)
+    lats = np.linspace(ymax, ymin, grid.getGeoDict().ny)
+
+    if maximum <= 0.:
+        boundaries1 = dict(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        # If nothing is above the threshold, use full extent
+        return boundaries1
+
+    threshold = propofmax * maximum
+
+    row, col = np.where(grid.getData() > float(threshold))
+    lonmin = lons[col].min()
+    lonmax = lons[col].max()
+    latmin = lats[row].min()
+    latmax = lats[row].max()
+
+    boundaries1 = {}
+
+    if xmin < lonmin:
+        boundaries1['xmin'] = lonmin
+    else:
+        boundaries1['xmin'] = xmin
+    if xmax > lonmax:
+        boundaries1['xmax'] = lonmax
+    else:
+        boundaries1['xmax'] = xmax
+    if ymin < latmin:
+        boundaries1['ymin'] = latmin
+    else:
+        boundaries1['ymin'] = ymin
+    if ymax > latmax:
+        boundaries1['ymax'] = latmax
+    else:
+        boundaries1['ymax'] = ymax
+
+    return boundaries1
