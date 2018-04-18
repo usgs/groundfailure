@@ -35,12 +35,12 @@ plt.switch_backend('agg')
 
 # hex versions:
 DFCOLORS = [
-    '#efefb3',
-    '#e5c72f',
-    '#ea7207',
-    '#c0375c',
-    '#5b28b2',
-    '#1e1e64'
+    '#efefb34D',  # 30% opaque 4D
+    '#e5c72f66',  # 40% opaque 66
+    '#ea720780',  # 50% opaque 80
+    '#c0375c99',  # 60% opaque 99
+    '#5b28b299',  # 60% opaque 99
+    '#1e1e6499'   # 60% opaque 99
 ]
 
 DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
