@@ -256,14 +256,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         for lq in lqmodels:
             lq['bin_colors'] = list(colorlistLQ)
 
-    # Create invisible pngs
-    out = create_png(outfolder, lsmodels=lsmodels, lqmodels=lqmodels)
-    filenames += out
-
-    # Create info.json
-    out = create_info(outfolder, lsmodels=lsmodels, lqmodels=lqmodels)
-    filenames += out
-
     return filenames
 
 
@@ -352,7 +344,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
             lq_mod = loadlayers(lq_file)
             levels = DFBINS
             colors1 = DFCOLORS
-            filesnippet = 'zhu_2017_general'
+            filesnippet = 'zhu_2017'
         else:
             raise OSError("Preferred liquefaction model result not found.")
     else:
@@ -453,13 +445,13 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         else:
             raise OSError("Landslide extent not found.")
         lq_extent_file = [
-            f for f in files if 'zhu_2017_general_extent.json' in f]
+            f for f in files if 'zhu_2017_extent.json' in f]
         if len(lq_extent_file) == 1:
             lq_file = os.path.join(event_dir, lq_extent_file[0])
             with open(lq_file) as f:
                 zhu_extent = json.load(f)
         else:
-            raise OSError("Landslide extent not found.")
+            raise OSError("Liquefaction extent not found.")
 
         # Read in default paths to get location of the population grid
         default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
