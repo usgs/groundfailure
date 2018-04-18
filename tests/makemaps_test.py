@@ -13,6 +13,9 @@ from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
 #import shutil
 import gfail.utilities as utilities
+import shutil
+from impactutils.io.cmd import get_command_output
+
 
 homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
@@ -78,9 +81,20 @@ modelLQ = {
             'b1': 2.,
             'b2': 0.3,
             'b3': -4.
+        },
+        'display_options': {
+            'lims': dict(model=[0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]),
+            'logscale': dict(model='True'),
+            'colors': dict(default='cm.jet', alpha=0.8, model='cm.CMRmap_r'),
+            'maskthresholds': dict(model='None')
         }
+
     }
 }
+
+modelLS = modelLQ
+modelLS['TestModelLQ']['description'] = 'This is a test landslide model'
+modelLS['TestModelLQ']['gfetype'] = 'landslide'
 
 
 def test_parseMapConfig():
@@ -127,9 +141,12 @@ def test_parseConfigLayers():
 #    makemaps.parseConfigLayers(tmp, config, keys=None)
 
 
-def test_modelMap():
+def test_maps():
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
+    ls = LM.LogisticModel(shakefile, modelLS, saveinputs=False)
+    maplayers2 = ls.calculate()
+
     # suptitle is None
     makemaps.modelMap(maplayers, shakefile, suptitle=None,
                       savepdf=False, savepng=False)  # outputdir=tempdir)
@@ -146,6 +163,24 @@ def test_modelMap():
     # logscale=!False
     makemaps.modelMap(maplayers, logscale=[False, False, True, True],
                       savepdf=False, savepng=False)
+
+    # Make a copy of current defaults
+    default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
+    if os.path.exists(default_file):
+        shutil.copy(default_file, default_file+'_bak')
+    try:
+        # Clear paths to avoid problems with stats.py trying to find pop_file
+        rc, so, se = get_command_output('gfail -reset')
+        # Then run GFSummary
+        makemaps.GFSummary([maplayers, maplayers2], [modelLQ, modelLS],
+                           os.path.join(upone, 'pelican', 'theme'), shakefile,
+                           pop_file=None)
+    except Exception as e:
+        print(e)
+
+    # Put defaults back
+    if os.path.exists(default_file+'_bak'):
+        shutil.copy(default_file+'_bak', default_file)
 
 
 def test_zoom():
@@ -178,7 +213,7 @@ if __name__ == "__main__":
     #    os.mkdir(td1)
     test_parseMapConfig()
     test_parseConfigLayers()
-    test_modelMap()
+    test_maps()
     test_zoom()
     # remove tempdir
     #shutil.rmtree(td1)

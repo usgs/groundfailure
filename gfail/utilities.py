@@ -200,29 +200,31 @@ def parseConfigLayers(maplayers, config, keys=None):
         keys = list(maplayers.keys())
     plotorder = []
 
+    configkeys = list(config.keys())
+
     try:
-        limits = config[config.keys()[0]]['display_options']['lims']
+        limits = config[configkeys[0]]['display_options']['lims']
         lims = []
     except:
         lims = None
         limits = None
 
     try:
-        colors = config[config.keys()[0]]['display_options']['colors']
+        colors = config[configkeys[0]]['display_options']['colors']
         colormaps = []
     except:
         colormaps = None
         colors = None
 
     try:
-        logs = config[config.keys()[0]]['display_options']['logscale']
+        logs = config[configkeys[0]]['display_options']['logscale']
         logscale = []
     except:
         logscale = False
         logs = None
 
     try:
-        masks = config[config.keys()[0]]['display_options']['maskthresholds']
+        masks = config[configkeys[0]]['display_options']['maskthresholds']
         maskthreshes = []
     except:
         maskthreshes = None
@@ -230,7 +232,7 @@ def parseConfigLayers(maplayers, config, keys=None):
 
     try:
         default = \
-            config[config.keys()[0]]['display_options']['colors']['default']
+            config[configkeys[0]]['display_options']['colors']['default']
         default = eval(default)
     except:
         default = None

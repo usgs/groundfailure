@@ -26,21 +26,23 @@ warnings.filterwarnings('ignore')
 
 plt.switch_backend('agg')
 
-# DFCOLORS = [[0.9403921568627451, 0.9403921568627451, 0.7019607843137254, 0.7],
-#            [0.9, 0.781764705882353, 0.18470588235294128, 0.7],
-#            [0.92, 0.45, 0.03, 0.7],
-#            [0.7552941176470588, 0.21941176470588236, 0.36411764705882355, 0.7],
-#            [0.35882352941176465, 0.15980392156862744, 0.7009803921568627, 0.7],
-#            [0.11764705882352941, 0.11764705882352941, 0.39215686274509803, 0.7]]
+# # hex versions:
+# DFCOLORS = [
+#     '#efefb34D',  # 30% opaque 4D
+#     '#e5c72f66',  # 40% opaque 66
+#     '#ea720780',  # 50% opaque 80
+#     '#c0375c99',  # 60% opaque 99
+#     '#5b28b299',  # 60% opaque 99
+#     '#1e1e6499'   # 60% opaque 99
+# ]
 
-# hex versions:
 DFCOLORS = [
-    '#efefb34D',  # 30% opaque 4D
-    '#e5c72f66',  # 40% opaque 66
-    '#ea720780',  # 50% opaque 80
-    '#c0375c99',  # 60% opaque 99
-    '#5b28b299',  # 60% opaque 99
-    '#1e1e6499'   # 60% opaque 99
+    [0.94, 0.94, 0.70, 0.3],
+    [0.90, 0.78, 0.18, 0.4],
+    [0.92, 0.45, 0.03, 0.5],
+    [0.75, 0.22, 0.36, 0.6],
+    [0.36, 0.16, 0.70, 0.6],
+    [0.12, 0.12, 0.39, 0.6]
 ]
 
 DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
@@ -67,7 +69,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         configs (list): List of dictionaries of config files corresponding to
             each model in maplayerlist and in the same order
         shakemap (str): path to shakemap .xml file
-        outfolder (str): Location in which to save outputs. If None, will use current directory 
+        outfolder (str): Location in which to save outputs. If None, will use current directory
         alpha (float): Transparency to use for overlay pngs, value from 0 to 1.
         shakethreshtype (str): Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'.
         probthresh: Optional. Float or list of probability thresholds to apply before computing stats.
@@ -327,6 +329,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
     cmap = mpl.colors.ListedColormap(colors1)
     norm = mpl.colors.BoundaryNorm(levels, cmap.N)
     ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
+    #scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+    #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
     rgba_img = cmap(norm(ls_data2))
     filen = os.path.join(event_dir, '%s.png' % filesnippet)
     plt.imsave(filen,
@@ -338,7 +342,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
 
     if lqmodels is None:
         # read in preferred model for liquefaction if none specified
-        lq_mod_file = [f for f in files if 'zhu_2017_general.hdf5' in f]
+        lq_mod_file = [f2 for f2 in files if 'zhu_2017_general.hdf5' in f2]
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
@@ -359,7 +363,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
                     filesnippet = 'zhu_2015'
 
         fsh = '%s.hdf5' % filesnippet
-        lq_mod_file = [f for f in files if fsh in f]
+        lq_mod_file = [f2 for f2 in files if fsh in f2]
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
@@ -423,13 +427,13 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     if lsmodels is None or lqmodels is None:
 
         # Read in the "preferred" model for landslides and liquefaction
-        ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
+        ls_mod_file = [f2 for f2 in files if 'jessee_2017.hdf5' in f2]
         if len(ls_mod_file) == 1:
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
         else:
             raise OSError("Preferred landslide model result not found.")
-        lq_mod_file = [f for f in files if 'zhu_2017_general.hdf5' in f]
+        lq_mod_file = [f2 for f2 in files if 'zhu_2017_general.hdf5' in f2]
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
@@ -437,7 +441,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             raise OSError("Preferred liquefaction model result not found.")
 
         # Read in extents
-        ls_extent_file = [f for f in files if 'jessee_2017_extent.json' in f]
+        ls_extent_file = [f2 for f2 in files if 'jessee_2017_extent.json' in f2]
         if len(ls_extent_file) == 1:
             ls_file = os.path.join(event_dir, ls_extent_file[0])
             with open(ls_file) as f:
@@ -445,7 +449,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         else:
             raise OSError("Landslide extent not found.")
         lq_extent_file = [
-            f for f in files if 'zhu_2017_extent.json' in f]
+            f2 for f2 in files if 'zhu_2017_extent.json' in f2]
         if len(lq_extent_file) == 1:
             lq_file = os.path.join(event_dir, lq_extent_file[0])
             with open(lq_file) as f:
@@ -587,7 +591,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     filesnippet = 'zhu_2015'
                 # Read in extents
                 flnm = '%s_extent.json' % filesnippet
-                lq_extent_file = [f for f in files if flnm in f]
+                lq_extent_file = [f2 for f2 in files if flnm in f2]
                 if len(lq_extent_file) == 1:
                     lq_file = os.path.join(event_dir, lq_extent_file[0])
                     with open(lq_file) as f:
