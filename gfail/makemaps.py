@@ -1584,7 +1584,9 @@ def GFSummary(maplayerlist, configs, web_template, shakemap, outfolder=None,
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
                                  shakefile=shakemap,
-                                 shakethresh=shakethresh)
+                                 shakethresh=shakethresh,
+                                 statprobthresh=statprobthresh,
+                                 pop_file=pop_file)
 
             if iq == 0:
                 on = True
