@@ -445,10 +445,22 @@ def process_shakemap(args, config):
     values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
-    qfmt = 'INSERT INTO shakemap %s VALUES ("%s",%i,%.3f,%.3f,%.3f,%.3f)'
-    query = qfmt % (values, tnowstr, finite_fault,
-                    ls_hazard_value, ls_pop_value,
-                    lq_hazard_value, lq_pop_value)
+    query = '''UPDATE shakemap SET 
+               endtime = "%s",
+               finitefault = %i,
+               HaggLS = %.3f,
+               ExpPopLS = %.3f,
+               HaggLQ = %.3f,
+               ExpPopLQ = %.3f
+               WHERE id = %i
+
+''' % (tnowstr, finite_fault,
+       ls_hazard_value, ls_pop_value,
+       lq_hazard_value, lq_pop_value, db_id)
+
+    # this is a little trick to get rid of extra whitespace created
+    # by multiline string above
+    query = ' '.join(query.split())
     cursor.execute(query)
     conn.commit()
 
