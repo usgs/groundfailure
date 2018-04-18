@@ -10,6 +10,7 @@ import tempfile
 from mapio.gdal import GDALGrid
 from impactutils.io.cmd import get_command_output
 import gfail.pdl as pdl
+from gfail.gfailrun import getGridURL, isURL
 
 # where is this script?
 homedir = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +31,8 @@ def test_zhu2015(tmpdir):
         -md %s/loma_prieta/mapping_inputs
     """ % (datadir, upone, upone, datadir)
 
+    trimfile = '%s/loma_prieta/mapping_inputs/ne_10m_ocean/ne_10m_ocean.shp' % datadir
+
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
     if os.path.exists(default_file):
@@ -48,6 +51,14 @@ def test_zhu2015(tmpdir):
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc1, so1, se1 = get_command_output(pathcmd)
+
+        # List paths
+        rc3, so3, se3 = get_command_output('gfail --list-default-paths')
+
+        # Run model with bounds
+        runcmd = "gfail data/test_configlist.txt %s -n -b 'zoom, pga, 2' -tr %s" % \
+            (shakegrid, trimfile)
+        rc4, so4, se4 = get_command_output(runcmd)
 
         # Run model
         runcmd = "gfail zhu_2015.ini %s --gis -pn -pi -pd -n" % (shakegrid)
@@ -84,6 +95,13 @@ def test_zhu2015(tmpdir):
     if os.path.exists(default_file+'_bak'):
         os.remove(default_file+'_bak')
     shutil.rmtree(p)
+
+    # Test that everything ran
+    np.testing.assert_equal(True, rc, 'gfail reset failed')
+    np.testing.assert_equal(True, rc1, 'gfail path modification failed')
+    np.testing.assert_equal(True, rc2, 'gfail run failed')
+    np.testing.assert_equal(True, rc3, 'gfail list-default-paths failed')
+    np.testing.assert_equal(True, rc4, 'gfail zoom bounds did not work')
 
     # Then do test
     np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
@@ -129,7 +147,7 @@ def test_zhu2015_web(tmpdir):
 
         # Run model
         conf = os.path.join(datadir, 'test_conf')
-        runcmd = "gfail %s %s -w --hdf5 --alert -n" % (conf, shakegrid)
+        runcmd = "gfail %s %s -w -n" % (conf, shakegrid)
         rc, so, se = get_command_output(runcmd)
 
         event_dir = os.path.join(p, '19891018000415')
@@ -165,8 +183,18 @@ def test_zhu2015_web(tmpdir):
     shutil.rmtree(p)
 
 
+def misc():
+    gridurl = 'https://earthquake.usgs.gov/archive/product/shakemap/atlas19891018000415/atlas/1508184913111/download/grid.xml'
+    test1 = isURL(gridurl)
+    test2 = getGridURL(gridurl)
+    np.testing.assert_equal(True, test1, 'isURL did not work')
+    np.testing.assert_equal(True, os.path.exists(test2), 'URL was not downloaded')
+
+
 if __name__ == "__main__":
     td1 = tempfile.TemporaryDirectory()
     test_zhu2015(td1)
     td2 = tempfile.TemporaryDirectory()
     test_zhu2015_web(td2)
+    misc()
+    print('gfail tests passed')
