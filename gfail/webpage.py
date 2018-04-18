@@ -427,13 +427,13 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     if lsmodels is None or lqmodels is None:
 
         # Read in the "preferred" model for landslides and liquefaction
-        ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
+        ls_mod_file = [f2 for f2 in files if 'jessee_2017.hdf5' in f2]
         if len(ls_mod_file) == 1:
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
         else:
             raise OSError("Preferred landslide model result not found.")
-        lq_mod_file = [f for f in files if 'zhu_2017_general.hdf5' in f]
+        lq_mod_file = [f2 for f2 in files if 'zhu_2017_general.hdf5' in f2]
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
@@ -441,7 +441,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             raise OSError("Preferred liquefaction model result not found.")
 
         # Read in extents
-        ls_extent_file = [f for f in files if 'jessee_2017_extent.json' in f]
+        ls_extent_file = [f2 for f2 in files if 'jessee_2017_extent.json' in f2]
         if len(ls_extent_file) == 1:
             ls_file = os.path.join(event_dir, ls_extent_file[0])
             with open(ls_file) as f:
@@ -449,7 +449,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         else:
             raise OSError("Landslide extent not found.")
         lq_extent_file = [
-            f for f in files if 'zhu_2017_extent.json' in f]
+            f2 for f2 in files if 'zhu_2017_extent.json' in f2]
         if len(lq_extent_file) == 1:
             lq_file = os.path.join(event_dir, lq_extent_file[0])
             with open(lq_file) as f:
@@ -591,7 +591,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     filesnippet = 'zhu_2015'
                 # Read in extents
                 flnm = '%s_extent.json' % filesnippet
-                lq_extent_file = [f for f in files if flnm in f]
+                lq_extent_file = [f2 for f2 in files if flnm in f2]
                 if len(lq_extent_file) == 1:
                     lq_file = os.path.join(event_dir, lq_extent_file[0])
                     with open(lq_file) as f:
