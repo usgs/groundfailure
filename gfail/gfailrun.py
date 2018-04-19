@@ -289,6 +289,7 @@ def run_gfail(args):
                 if os.path.exists(filenameh):
                     os.remove(filenameh)
                 savelayers(maplayers, os.path.join(outfolder, filenameh))
+                filenames.append(filenameh)
 
             if args.make_static_pdfs or args.make_static_pngs:
                 plotorder, logscale, lims, colormaps, maskthreshes = \
