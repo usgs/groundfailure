@@ -16,6 +16,7 @@ import json
 from impactutils.io.cmd import get_command_output
 from impactutils.comcat.query import GeoServe
 from mapio.shake import getHeaderData
+from mapio.shake import ShakeGrid
 import configobj
 
 import fiona
@@ -302,6 +303,17 @@ def process_shakemap(args, config):
                    % gridfile)
             logging.info(msg)
             sys.exit(1)
+
+    logging.info('Checking if Shakemap extends outside of latitude range of '
+                 'slope data ...')
+    shake_bounds = ShakeGrid.load(gridfile, adjust='res').getBounds()
+    lat_min = shake_bounds[2]
+    lat_max = shake_bounds[3]
+    if (lat_min < -56.0000) or (lat_max > 84.0000):
+        msg = ('Shakemap extends outside of latitude range of slope data. '
+               'Existing.')
+        logging.info(msg)
+        sys.exit(1)
 
     logging.info('Checking source...')
     if args.preferred_eventsource not in WHITELIST:
