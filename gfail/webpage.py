@@ -10,6 +10,7 @@ from configobj import ConfigObj
 from gfail.makemaps import setupsync
 from gfail.utilities import parseConfigLayers
 from gfail.stats import computeStats
+from folium.utilities import mercator_transform
 from mapio.shake import ShakeGrid
 import matplotlib.cm as cm
 
@@ -273,7 +274,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     return filenames
 
 
-def create_png(event_dir, lsmodels=None, lqmodels=None):
+def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
     """
     Creates transparent PNG file for website.
 
@@ -284,6 +285,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
             the hdf5 files for the preferred model and will create this dictionary
             and will apply default colorbars and bins.
         lqmodels (list): Same as above for liquefaction.
+        mercator (bool): Project raster to web mercator
 
     Returns:
         .png map overlays and .json files specifying their mapped extents
@@ -344,6 +346,10 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
     #scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
     #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
     rgba_img = cmap(norm(ls_data2))
+    if mercator:
+        rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
+                                      origin='upper')
+
     filen = os.path.join(event_dir, '%s.png' % filesnippet)
     plt.imsave(filen,
                rgba_img,
@@ -403,6 +409,9 @@ def create_png(event_dir, lsmodels=None, lqmodels=None):
     norm = mpl.colors.BoundaryNorm(levels, cmap.N)
     lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
     rgba_img = cmap(norm(lq_data2))
+    if mercator:
+        rgba_img = mercator_transform(rgba_img, (lq_extent[2], lq_extent[3]),
+                                      origin='upper')
     filen = os.path.join(event_dir, '%s.png' % filesnippet)
     plt.imsave(filen,
                rgba_img,
