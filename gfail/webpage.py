@@ -18,6 +18,7 @@ from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
 import pytz
 
 from gfail.utilities import get_event_comcat, loadlayers
+from gfail.utilities import is_grid_point_source
 
 
 # temporary until mapio is updated
@@ -65,25 +66,29 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     Assumes gfail has been run already with -w flag
 
     Args:
-        maplayerlist (list): List of model outputs from gfail
+        maplayerlist (list): List of model outputs from gfail.
         configs (list): List of dictionaries of config files corresponding to
-            each model in maplayerlist and in the same order
-        shakemap (str): path to shakemap .xml file
-        outfolder (str): Location in which to save outputs. If None, will use current directory
+            each model in maplayerlist and in the same order.
+        shakemap (str): path to shakemap .xml file.
+        outfolder (str): Location in which to save outputs. If None, will use
+            current directory.
         alpha (float): Transparency to use for overlay pngs, value from 0 to 1.
-        shakethreshtype (str): Type of ground motion to use for shakethresh, 'pga', 'pgv', or 'mmi'.
-        probthresh: Optional. Float or list of probability thresholds to apply before computing stats.
-        shakethresh: Float or list of shaking thresholds in %g for pga, cm/s for pgv, float for mmi.
-            Used for Hagg and Exposure computation
-        prefLS (str): shortref of "preferred" landslide model
-        prefLQ (str): shortref of "preferred" liquefaction model
-        pop_filt (str): file path to population file used to compute population-based
-            alert levels.
+        shakethreshtype (str): Type of ground motion to use for shakethresh,
+            'pga', 'pgv', or 'mmi'.
+        probthresh: Optional. Float or list of probability thresholds to apply
+            before computing stats.
+        shakethresh: Float or list of shaking thresholds in %g for pga, cm/s
+            for pgv, float for mmi. Used for Hagg and Exposure computation.
+        prefLS (str): shortref of "preferred" landslide model.
+        prefLQ (str): shortref of "preferred" liquefaction model.
+        pop_filt (str): file path to population file used to compute
+            population-based alert levels.
 
     Returns:
-        Files that need to be sent to comcat for hazdev to create the product webpage including:
-            info.json
-            transparent png overlays of all models
+        Files that need to be sent to comcat for hazdev to create the product
+            webpage including:
+                - info.json
+                - transparent png overlays of all models
     """
     event_id = maplayerlist[0]['model']['description']['event_id']
 
@@ -417,8 +422,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         event_dir (srt): Directory containing ground failure results.
         lsmodels (list): List of dictionaries of model summary info compiled
             by the hazdev function. If not specified, code will search for
-            the hdf5 files for the preferred model and will create this dictionary
-            and will apply default colorbars and bins.
+            the hdf5 files for the preferred model and will create this
+            dictionary and will apply default colorbars and bins.
         lqmodels (list): Same as above for liquefaction.
 
     Returns:
@@ -452,7 +457,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             raise OSError("Preferred liquefaction model result not found.")
 
         # Read in extents
-        ls_extent_file = [f2 for f2 in files if 'jessee_2017_extent.json' in f2]
+        ls_extent_file = [
+            f2 for f2 in files if 'jessee_2017_extent.json' in f2]
         if len(ls_extent_file) == 1:
             ls_file = os.path.join(event_dir, ls_extent_file[0])
             with open(ls_file) as f:
@@ -615,9 +621,14 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 lqext = lqm['lqext']  # Get zoom extent
 
     # Try to get event info
-    event_dict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
-    sm_dict = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
+    shake_grid = ShakeGrid.load(shakefile, adjust='res')
+    event_dict = shake_grid.getEventDict()
+    sm_dict = shake_grid.getShakeDict()
     base_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/'
+
+    # Is this a point source?
+    point = is_grid_point_source(shake_grid)
+
     try:
         # Hopefully this will eventually be more reliable once we get the
         # comcat info directly from the shakemap grid, rather than rely on
@@ -629,25 +640,12 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         utc = pytz.utc
         detail_time = ShakeDateTime.fromtimestamp(detail['time']/1000.0, utc)
 
-        # ---------------------------------------------------------------------
-        # Finite fault stuff:
-        #    Other sections of the code do some relatively complicated stuff to
-        #    try to sort out the finite fault. Here, I'm just simplifying it so
-        #    that it checks comcat for a finite fault file.
-        # ---------------------------------------------------------------------
-        fault_file = shakemap_info['input']['event_information']['faultfiles']
-        if len(fault_file) > 0:
-            point = False
-        else:
-            point = True
-
     except:
         # Hopefully we can eventually remove this....
         event_url = '%s%s#executive' % (base_url, event_dict['event_id'])
         code = 'unknown'
         net = 'unknown'
         detail_time = -999
-        point = False
 
     # Get extents that work for both
     xmin = np.min((lqext['xmin'], lsext['xmin']))

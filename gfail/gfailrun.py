@@ -1,6 +1,7 @@
 # stdlib imports
 from configobj import ConfigObj
 import os
+import shutil
 import numpy as np
 import tempfile
 import urllib
@@ -27,7 +28,8 @@ def run_gfail(args):
     """Runs ground failure.
 
     Args:
-        args: dictionary or argument parser Namespace output by bin/gfail program.
+        args: dictionary or argument parser Namespace output by bin/gfail
+            program.
 
     Returns:
         list: Names of created files.
@@ -99,10 +101,19 @@ def run_gfail(args):
         else:
             outfolder = outdir
 
+        # Copy shake grid into output directory
+        # --- this is base on advice from Mike that when running in production
+        #     the shake grids are not archived and so if we need/want to have
+        #     the exact grid used for the calculation later if there's every a
+        #     question about how the calculation was done, the safest thing is
+        #     to store a copy of it here.
+        shake_copy = os.path.join(outfolder, "grid.xml")
+        shutil.copyfile(shakefile, shake_copy)
+
         # Write shakefile to a file for use later
         shakename = os.path.join(outfolder, "shakefile.txt")
-        shake_file = open(shakename, "w")
-        shake_file.write(shakefile)
+        shake_file = open(shakename, "wt")
+        shake_file.write(shake_copy)
         shake_file.close()
         filenames.append(shakename)
 

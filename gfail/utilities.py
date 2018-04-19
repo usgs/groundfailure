@@ -17,6 +17,30 @@ from mapio.multihaz import MultiHazardGrid
 import matplotlib.cm as cm  # Don't delete this, it's needed in an eval function
 
 
+def is_grid_point_source(grid):
+    """Was the shakemap grid constructed with a point source?
+
+    This makes use of the 'urat' layer, which is the ratio of the predicted ground motion
+    standard deviation to the GMPE standard deviation. The only reason this could ever be
+    greater than 1.0 is if the uncertainty of the prediction is inflated due to the point
+    source approxmiation; further, if a point source was used, there will always be some
+    locations with 'urat' > 1.0.
+
+    Args:
+        grid (ShakeGrid): A ShakeGrid object from MapIO.
+
+    Returns:
+        bool: True if point rupture. 
+    """
+    data = grid.getData()
+    urat = data['urat'].getData()
+    max_urat = np.max(urat)
+    if max_urat > (1 + np.finfo(float).eps):
+        return True
+    else:
+        return False
+
+    
 def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     """
     Find an event in comcat, searching first by event id and if that
