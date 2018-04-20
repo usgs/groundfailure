@@ -80,7 +80,7 @@ conda env create -f $env_file --force
 
 # Activate the new environment
 echo "Activating the $VENV virtual environment"
-conda activate $VENV
+source activate $VENV
 
 # This package
 echo "Installing $VENV"
