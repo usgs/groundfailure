@@ -23,7 +23,7 @@ from shapely.geometry import shape, box
 
 # local imports
 from gfail.gfailrun import run_gfail
-from gfail_transfer import gf_transfer
+from .gfail_transfer import gf_transfer
 
 # config parameters required for this program to run
 REQUIRED_CONFIG = ['log_filepath', 'output_filepath',
