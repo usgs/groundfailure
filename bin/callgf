@@ -411,7 +411,7 @@ def process_shakemap(args, config):
             'make_static_pdfs': False,
             'make_interactive_plots': False,
             'nest_folder': False,
-            'config': None,
+            'config': model_file,
             'set_bounds': None,
             'make_summary': False,
             'finite_fault': None,
