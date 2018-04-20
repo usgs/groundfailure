@@ -401,7 +401,23 @@ def process_shakemap(args, config):
     args = {'hdf5': True,
             'make_webpage': True,
             'trimfile': landfile,
-            'output_filepath': vdir}
+            'set_default_paths': False,
+            'list_default_paths': False,
+            'reset_default_paths': False,
+            'make_webpage': False,
+            'shakefile': gridfile,
+            'make_static_pngs': False,
+            'make_static_pdfs': False,
+            'make_interactive_plots': False,
+            'nest_folder': False,
+            'config': None,
+            'set_bounds': None,
+            'make_summary': False,
+            'finite_fault': None,
+            'uncertfile': None,
+            'save_inputs': False,
+            'std': 1.0,
+            'appendname': None}
 
     try:
         outfiles = run_gfail(args)
