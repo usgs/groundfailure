@@ -206,7 +206,6 @@ dependencies:
   - util-linux=2.21=0
   - pip:
     - dask==0.17.2
-    - groundfailure==0.1.dev0
     - pockets==0.6.2
     - sphinx-argparse==0.2.2
     - sphinx-rtd-theme==0.2.4
