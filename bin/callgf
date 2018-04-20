@@ -418,7 +418,16 @@ def process_shakemap(args, config):
             'uncertfile': None,
             'save_inputs': False,
             'std': 1.0,
-            'appendname': None}
+            'appendname': None,
+            'data_path': config['data_path'],
+            'output_filepath': vdir,
+            'config_filepath': config['config_filepath'],
+            'mapconfig': config['mapconfig'],
+            'mapdata_filepath': config['mapdata_filepath'],
+            'web_template': config['web_template'],
+            'trimfile': landfile,
+            'popfile': config['popfile'],
+            }
 
     try:
         outfiles = run_gfail(args)
