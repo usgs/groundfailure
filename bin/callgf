@@ -427,6 +427,7 @@ def process_shakemap(args, config):
             'web_template': config['web_template'],
             'trimfile': landfile,
             'popfile': config['popfile'],
+            'dry_run': args.dry_run,
             }
 
     try:
