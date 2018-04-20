@@ -399,6 +399,7 @@ def process_shakemap(args, config):
 
     logging.info("Starting gfail...")
     args = {'hdf5': True,
+            'gis': True,
             'make_webpage': True,
             'trimfile': landfile,
             'set_default_paths': False,
