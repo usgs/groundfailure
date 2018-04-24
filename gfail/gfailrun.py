@@ -17,7 +17,7 @@ from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
 from gfail.makemaps import (modelMap, interactiveMap, GFSummary)
-from gfail.webpage import hazdev
+from gfail.webpage import hazdev, create_png, create_info
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
     parseMapConfig, text_to_json, write_floats,
@@ -88,7 +88,6 @@ def run_gfail(args):
             else:
                 raise NameError('Could not find "%s" as a file or a valid url'
                                 % (shakefile))
-                return
         eventid = getHeaderData(shakefile)[0]['event_id']
 
         # Get entire path so won't break if running gfail with relative path
@@ -410,6 +409,14 @@ def run_gfail(args):
                                 shakefile, outfolder=outfolder, cleanup=True,
                                 faultfile=ffault, point=point, pop_file=args.popfile)
             filenames = filenames + outputs
+
+        # create transparent png file
+        outputs = create_png(outdir)
+        filenames = filenames + outputs
+
+        # create info file
+        infofile = create_info(outdir)
+        filenames = filenames + infofile
 
         print('\nFiles created:\n')
         for filen in filenames:

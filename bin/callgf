@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import matplotlib
+matplotlib.use('Agg')
+
 # stdlib imports
 import argparse
 import os.path
@@ -18,9 +21,12 @@ from impactutils.comcat.query import GeoServe
 from mapio.shake import getHeaderData
 from mapio.shake import ShakeGrid
 import configobj
-
 import fiona
 from shapely.geometry import shape, box
+
+# local imports
+from gfail.gfailrun import run_gfail
+from gfail.transfer import gf_transfer
 
 # config parameters required for this program to run
 REQUIRED_CONFIG = ['log_filepath', 'output_filepath',
@@ -392,34 +398,45 @@ def process_shakemap(args, config):
         config['data_path'], 'autogf_models')
 
     logging.info("Starting gfail...")
-    cmd = ("gfail %s %s --hdf5 --make-webpage "
-           "--trimfile %s --output-filepath %s" %
-           (model_file, gridfile, landfile, vdir))
-    rc, so, se = get_command_output(cmd)
-    logging.info("Standard output: %s" % so.decode())
-    logging.info("Standard error: %s" % se.decode())
-    if not rc:
-        logging.info("gfail command failed.")
-        sys.exit(1)
+    pargs = {'hdf5': True,
+             'gis': True,
+             'make_webpage': True,
+             'trimfile': landfile,
+             'set_default_paths': False,
+             'list_default_paths': False,
+             'reset_default_paths': False,
+             'make_webpage': False,
+             'shakefile': gridfile,
+             'make_static_pngs': False,
+             'make_static_pdfs': False,
+             'make_interactive_plots': False,
+             'nest_folder': False,
+             'config': model_file,
+             'set_bounds': None,
+             'make_summary': False,
+             'finite_fault': None,
+             'uncertfile': None,
+             'save_inputs': False,
+             'std': 1.0,
+             'appendname': None,
+             'data_path': config['data_path'],
+             'output_filepath': vdir,
+             'config_filepath': config['config_filepath'],
+             'mapconfig': config['mapconfig'],
+             'mapdata_filepath': config['mapdata_filepath'],
+             'web_template': config['web_template'],
+             'trimfile': landfile,
+             'popfile': config['popfile'],
+             'dry_run': args.dry_run,
+             }
 
-    # Make overlay PNGs for website
-    logging.info("Starting create_png...")
-    cmd = "create_png -e %s" % vdir
-    rc, so, se = get_command_output(cmd)
-    logging.info("Standard output: %s" % so.decode())
-    logging.info("Standard error: %s" % se.decode())
-    if not rc:
-        logging.info("create_png command failed.")
-        sys.exit(1)
-
-    # Make info.json
-    logging.info("Starting create_info...")
-    cmd = "create_info -e %s" % vdir
-    rc, so, se = get_command_output(cmd)
-    logging.info("Standard output: %s" % so.decode())
-    logging.info("Standard error: %s" % se.decode())
-    if not rc:
-        logging.info("create_info command failed.")
+    try:
+        outfiles = run_gfail(pargs)
+        if outfiles is None:
+            logging.info("run_gfail failed.")
+            sys.exit(1)
+    except Exception as e:
+        logging.critical('Failure running run_gfail... "%s"' % (str(e)))
         sys.exit(1)
 
     # Transfer
@@ -427,13 +444,10 @@ def process_shakemap(args, config):
     pdl_conf_file = config['pdl_config']
     dry = ""
     if args.dry_run:
-        dry = " -d "
-    cmd = "gfail_transfer -e %s -c %s %s" % (vdir, pdl_conf_file, dry)
-    rc, so, se = get_command_output(cmd)
-    logging.info("Standard output: %s" % so.decode())
-    logging.info("Standard error: %s" % se.decode())
-    if not rc:
-        logging.info("gfail_transfer command failed.")
+        dry = True
+    success, feed = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
+    if not success:
+        logging.info("gf_transfer failed.")
         sys.exit(1)
 
     # Enter model results into the database.

@@ -82,6 +82,9 @@ conda env create -f $env_file --force
 echo "Activating the $VENV virtual environment"
 conda activate $VENV
 
+echo "Confirming that we are in the gf environment..."
+conda info --envs
+
 # This package
 echo "Installing $VENV"
 pip install -e .
