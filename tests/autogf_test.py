@@ -15,12 +15,13 @@ upone = os.path.join(homedir, os.pardir)
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
 
-def test_autogf(tmpdir):
+def old_test_autogf(tmpdir):
     """
     Runs with current feed, sometimes will run an event, sometimes not
     """
     config = os.path.join(datadir, 'test_autoconfig.ini')
-    gconfig = os.path.join(upone, 'defaultconfigfiles', 'models', 'jessee_2017.ini')
+    gconfig = os.path.join(upone, 'defaultconfigfiles',
+                           'models', 'jessee_2017.ini')
 
     # Set gfail defaults
     pathcmd = """
@@ -58,7 +59,7 @@ def test_autogf(tmpdir):
 
         rc2, so2, se2 = get_command_output(agfcmd)
 
-        #print(agfcmd)
+        # print(agfcmd)
         temp = so2.decode().split('\n')[-2]
     except Exception as e:  # To make sure defaults are replaced
         print(e)
