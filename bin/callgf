@@ -14,6 +14,7 @@ import logging.config
 import sqlite3
 from collections import OrderedDict
 import json
+import re
 
 # third party imports
 from impactutils.io.cmd import get_command_output
@@ -113,7 +114,8 @@ def get_next_version(eventdir):
     if not len(vfolders):
         return 1
     vfolders = sorted(vfolders)
-    version = int(vfolders[-1][-1]) + 1
+    old_version = int(re.search('[0-9]+', vfolders[-1]).group())
+    version = old_version + 1
     return version
 
 
