@@ -158,7 +158,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if title == prefLS:
                 on = True
-                ls_haz_alert, ls_pop_alert, _, _ = get_alert(
+                ls_haz_alert, ls_pop_alert, _, _, _, _ = get_alert(
                     stats['Hagg_0.10g'], 0.,
                     stats['exp_pop_0.10g'], 0.)
                 lsext = get_extent(maplayer['model']['grid'])
@@ -213,7 +213,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if title == prefLQ:
                 on = True
-                _, _, lq_haz_alert, lq_pop_alert = get_alert(
+                _, _, lq_haz_alert, lq_pop_alert, _, _ = get_alert(
                     0., stats['Hagg_0.10g'],
                     0., stats['exp_pop_0.10g'])
                 lqext = get_extent(maplayer['model']['grid'])
@@ -529,7 +529,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                                ls_pop_level, lq_pop_level)
         # Unpack info (I think we are now assuming that the statements will be
         # constructed on the website and so we don't need them here)
-        ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert = alert_info
+        ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert, \
+            ls_alert, lq_alert = alert_info
 
         if lsmodels is None:
             lsmodels = [{
@@ -539,6 +540,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 'extent': jessee_extent,
                 'units': "Proportiona of area affected",
                 'preferred': True,
+                'alert': ls_alert,
                 'hazard_alert': {
                     'color': ls_haz_alert,
                     'value': set_num_precision(ls_haz_level, 2, 'float'),
@@ -565,6 +567,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 'extent': zhu_extent,
                 'units': "Proportiona of area affected",
                 'preferred': True,
+                'alert': lq_alert,
                 'hazard_alert': {
                     'color': lq_haz_alert,
                     'value': set_num_precision(lq_haz_level, 2, 'float'),
@@ -717,66 +720,86 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
 
     Returns:
         Returns:
-            tuple: (alertLS, popalertLS, alertLQ, popalertLQ) where:
-                * alertLS: the landslide hazard alert level (str)
-                * popalertLS: the landslide population alert level (str)
-                * alertLQ: the liquefaction hazard alert level (str)
-                * popalertLQ: the liquefaction population alert level (str)
+            tuple: (hazLS, popLS, hazLQ, popLQ, LS, LQ) where:
+                * hazLS: the landslide hazard alert level (str)
+                * popLS: the landslide population alert level (str)
+                * hazLQ: the liquefaction hazard alert level (str)
+                * popLQ: the liquefaction population alert level (str)
+                * LS: the overall landslide alert level (str)
+                * LQ: the overall liquefaction alert level (str)
 
     """
     if paramalertLS is None:
-        alertLS = None
+        hazLS = None
     elif paramalertLS < hazbinLS[0]:
-        alertLS = 'green'
+        hazLS = 'green'
     elif paramalertLS >= hazbinLS[0] and paramalertLS < hazbinLS[1]:
-        alertLS = 'yellow'
+        hazLS = 'yellow'
     elif paramalertLS >= hazbinLS[1] and paramalertLS < hazbinLS[2]:
-        alertLS = 'orange'
+        hazLS = 'orange'
     elif paramalertLS > hazbinLS[2]:
-        alertLS = 'red'
+        hazLS = 'red'
     else:
-        alertLS = None
+        hazLS = None
 
     if parampopLS is None:
-        popalertLS = None
+        popLS = None
     elif parampopLS < popbinLS[0]:
-        popalertLS = 'green'
+        popLS = 'green'
     elif parampopLS >= popbinLS[0] and parampopLS < popbinLS[1]:
-        popalertLS = 'yellow'
+        popLS = 'yellow'
     elif parampopLS >= popbinLS[1] and parampopLS < popbinLS[2]:
-        popalertLS = 'orange'
+        popLS = 'orange'
     elif parampopLS > popbinLS[2]:
-        popalertLS = 'red'
+        popLS = 'red'
     else:
-        popalertLS = None
+        popLS = None
 
     if paramalertLQ is None:
-        alertLQ = None
+        hazLQ = None
     elif paramalertLQ < hazbinLQ[0]:
-        alertLQ = 'green'
+        hazLQ = 'green'
     elif paramalertLQ >= hazbinLQ[0] and paramalertLQ < hazbinLQ[1]:
-        alertLQ = 'yellow'
+        hazLQ = 'yellow'
     elif paramalertLQ >= hazbinLQ[1] and paramalertLQ < hazbinLQ[2]:
-        alertLQ = 'orange'
+        hazLQ = 'orange'
     elif paramalertLQ > hazbinLQ[2]:
-        alertLQ = 'red'
+        hazLQ = 'red'
     else:
-        alertLQ = None
+        hazLQ = None
 
     if parampopLQ is None:
-        popalertLQ = None
+        popLQ = None
     elif parampopLQ < popbinLQ[0]:
-        popalertLQ = 'green'
+        popLQ = 'green'
     elif parampopLQ >= popbinLQ[0] and parampopLQ < popbinLQ[1]:
-        popalertLQ = 'yellow'
+        popLQ = 'yellow'
     elif parampopLQ >= popbinLQ[1] and parampopLQ < popbinLQ[2]:
-        popalertLQ = 'orange'
+        popLQ = 'orange'
     elif parampopLQ > popbinLQ[2]:
-        popalertLQ = 'red'
+        popLQ = 'red'
     else:
-        popalertLQ = None
+        popLQ = None
 
-    return alertLS, popalertLS, alertLQ, popalertLQ
+    num2color = {
+        '1': 'green',
+        '2': 'yellow',
+        '3': 'orange',
+        '4': 'red'
+    }
+    col2num = dict((v, k) for k, v in num2color.items())
+
+    LSnum1 = col2num[hazLS]
+    LSnum2 = col2num[popLS]
+    LSnum = str(np.max([int(LSnum1), int(LSnum2)]))
+    LS = num2color[LSnum]
+
+    LQnum1 = col2num[hazLQ]
+    LQnum2 = col2num[popLQ]
+    LQnum = str(np.max([int(LQnum1), int(LQnum2)]))
+    LQ = num2color[LQnum]
+
+    return hazLS, popLS, hazLQ, popLQ, LS, LQ
 
 
 def get_extent(grid, propofmax=0.4):
