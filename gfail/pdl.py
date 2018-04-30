@@ -61,6 +61,11 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     lq_pref = info_dict['Liquefaction'][0]
     ls_pref = info_dict['Landslides'][0]
 
+    ls_alert = '"--property-landslide-alert=%s" ' % \
+        lq_pref['alert']
+    lq_alert = '"--property-liquefaction-alert=%s" ' % \
+        lq_pref['alert']
+
     lq_haz_alert = '"--property-liquefaction-hazard-alert-color=%s" ' % \
         lq_pref['hazard_alert']['color']
     ls_haz_alert = '"--property-landslide-hazard-alert-color=%s" ' % \
@@ -133,6 +138,7 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         '--eventtime=%s ' % time_stamp +
         '--type=%s ' % pdl_type +
         '--directory=%s ' % pdl_dir +
+        ls_alert + lq_alert +
         lq_haz_alert + ls_haz_alert + lq_pop_alert + ls_pop_alert +
         lq_haz_alert_value + ls_haz_alert_value +
         lq_pop_alert_value + ls_pop_alert_value +
