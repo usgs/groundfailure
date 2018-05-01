@@ -283,92 +283,94 @@ def process_shakemap(args, config):
     logging.info('###### Event source code: %s' %
                  args.preferred_eventsourcecode)
     logging.info('args: \n%s' % str(args))
-    if args.status == 'DELETE':
-        # look at this with respect to archiving and sending cancel messages
-        msg = 'No action to take with delete messages.'
-        logging.info(msg)
-        sys.exit(1)
 
-    logging.info('Checking if status is update...')
-    if args.status != 'UPDATE':
-        msg = 'No action to take with %s messages.' % args.status
-        logging.info(msg)
-        sys.exit(1)
-
-    logging.info('Checking action...')
-    if args.action not in ('EVENT_ADDED', 'EVENT_UPDATED',
-                           'PRODUCT_ADDED', 'PRODUCT_UPDATED'):
-        msg = 'No action to take with %s messages.' % args.action
-        logging.info(msg)
-        sys.exit(1)
-
-    logging.info('Checking gridfile...')
-    gridfile = os.path.join(args.directory, 'download', 'grid.xml')
-    if not os.path.isfile(gridfile):
-        gridfile = os.path.join(args.directory, 'grid.xml')
-        if not os.path.isfile(gridfile):
-            msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
-                   % gridfile)
+    if not args.force:
+        if args.status == 'DELETE':
+            # look at this with respect to archiving and sending cancel messages
+            msg = 'No action to take with delete messages.'
             logging.info(msg)
             sys.exit(1)
 
-    logging.info('Checking if Shakemap extends outside of latitude range of '
-                 'slope data ...')
-    shake_bounds = ShakeGrid.load(gridfile, adjust='res').getBounds()
-    lat_min = shake_bounds[2]
-    lat_max = shake_bounds[3]
-    if (lat_min < -56.0000) or (lat_max > 84.0000):
-        msg = ('Shakemap extends outside of latitude range of slope data. '
-               'Existing.')
-        logging.info(msg)
-        sys.exit(1)
+        logging.info('Checking if status is update...')
+        if args.status != 'UPDATE':
+            msg = 'No action to take with %s messages.' % args.status
+            logging.info(msg)
+            sys.exit(1)
 
-    logging.info('Checking source...')
-    if args.preferred_eventsource not in WHITELIST:
-        msg = ('Input ShakeMaps must be from an approved list of sources: %s. '
-               'Exiting.' % str(WHITELIST))
-        logging.info(msg)
-        sys.exit(1)
+        logging.info('Checking action...')
+        if args.action not in ('EVENT_ADDED', 'EVENT_UPDATED',
+                               'PRODUCT_ADDED', 'PRODUCT_UPDATED'):
+            msg = 'No action to take with %s messages.' % args.action
+            logging.info(msg)
+            sys.exit(1)
 
-    logging.info('Checking magnitude...')
-    if args.magnitude < MAG_THRESHOLD:
-        msg = ('Input ShakeMaps must be larger than M%.1f. Exiting.'
-               % MAG_THRESHOLD)
-        logging.info(msg)
-        sys.exit(1)
+        logging.info('Checking gridfile...')
+        gridfile = os.path.join(args.directory, 'download', 'grid.xml')
+        if not os.path.isfile(gridfile):
+            gridfile = os.path.join(args.directory, 'grid.xml')
+            if not os.path.isfile(gridfile):
+                msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
+                       % gridfile)
+                logging.info(msg)
+                sys.exit(1)
 
-    # Use lat,lon and source to exclude ShakeMap providers who are playing
-    # outside their sandbox
-    logging.info('Checking for authoritativeness...')
+        logging.info('Checking if Shakemap extends outside of latitude range of '
+                     'slope data ...')
+        shake_bounds = ShakeGrid.load(gridfile, adjust='res').getBounds()
+        lat_min = shake_bounds[2]
+        lat_max = shake_bounds[3]
+        if (lat_min < -56.0000) or (lat_max > 84.0000):
+            msg = ('Shakemap extends outside of latitude range of slope data. '
+                   'Existing.')
+            logging.info(msg)
+            sys.exit(1)
 
-    # we'll default to letting the event run if we can't figure out who's
-    # authoritative
-    authtype = 'anss'
-    authsrc = args.preferred_eventsource
-    try:
-        gs = GeoServe(args.preferred_latitude, args.preferred_longitude)
-        authsrc, authtype = gs.getAuthoritative()
-    except Exception as e:
-        logging.info('Unable to connect to GeoServe, assuming "%s" is '
-                     'authoritative.' % args.source)
-    if authtype != 'anss':
-        authsrc = 'us'
-    is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
-    if not is_authoritative and authsrc.lower() not in NO_SHAKEMAPS:
-        msg = ('Source %s is not authoritative for this region (%s is). '
-               'Exiting.' % (args.source, authsrc))
-        logging.info(msg)
-        sys.exit(1)
+        logging.info('Checking source...')
+        if args.preferred_eventsource not in WHITELIST:
+            msg = ('Input ShakeMaps must be from an approved list of sources: %s. '
+                   'Exiting.' % str(WHITELIST))
+            logging.info(msg)
+            sys.exit(1)
 
-    logging.info('Checking to see if ShakeMap is over any land...')
-    landfile = config['trimfile']
-    hdrtuple = getHeaderData(gridfile)
-    grid = hdrtuple[2]
-    event = hdrtuple[1]
-    if not shakemap_over_land(landfile, grid):
-        msg = 'Input ShakeMap is completely over water. Exiting.'
-        logging.info(msg)
-        sys.exit(1)
+        logging.info('Checking magnitude...')
+        if args.magnitude < MAG_THRESHOLD:
+            msg = ('Input ShakeMaps must be larger than M%.1f. Exiting.'
+                   % MAG_THRESHOLD)
+            logging.info(msg)
+            sys.exit(1)
+
+        # Use lat,lon and source to exclude ShakeMap providers who are playing
+        # outside their sandbox
+        logging.info('Checking for authoritativeness...')
+
+        # we'll default to letting the event run if we can't figure out who's
+        # authoritative
+        authtype = 'anss'
+        authsrc = args.preferred_eventsource
+        try:
+            gs = GeoServe(args.preferred_latitude, args.preferred_longitude)
+            authsrc, authtype = gs.getAuthoritative()
+        except Exception as e:
+            logging.info('Unable to connect to GeoServe, assuming "%s" is '
+                         'authoritative.' % args.source)
+        if authtype != 'anss':
+            authsrc = 'us'
+        is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
+        if not is_authoritative and authsrc.lower() not in NO_SHAKEMAPS:
+            msg = ('Source %s is not authoritative for this region (%s is). '
+                   'Exiting.' % (args.source, authsrc))
+            logging.info(msg)
+            sys.exit(1)
+
+        logging.info('Checking to see if ShakeMap is over any land...')
+        landfile = config['trimfile']
+        hdrtuple = getHeaderData(gridfile)
+        grid = hdrtuple[2]
+        event = hdrtuple[1]
+        if not shakemap_over_land(landfile, grid):
+            msg = 'Input ShakeMap is completely over water. Exiting.'
+            logging.info(msg)
+            sys.exit(1)
 
     # connect to the database, creating it if necessary
     dbfile = config['dbfile']
@@ -381,7 +383,7 @@ def process_shakemap(args, config):
     # get the event ID for this event
     eventsource = args.preferred_eventsource
     eventcode = args.preferred_eventsourcecode
-    eventid = eventsource+eventcode
+    eventid = eventsource + eventcode
 
     # Get the directory for this new version
     vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
@@ -576,6 +578,10 @@ dbfile = Path to a SQLITE file containing event and version run information.
     argparser.add_argument("--dry-run",
                            action='store_true', default=False,
                            help="Do not transfer result to PDL.")
+    argparser.add_argument("-f", "--force",
+                           action='store_true', default=False,
+                           help="Force ground-failure run; ignore "
+                                "authoritativeness checks.")
 
     pargs, unknown = argparser.parse_known_args()
 
