@@ -358,13 +358,13 @@ def process_shakemap(args, config):
         authsrc, authtype = gs.getAuthoritative()
     except Exception as e:
         logging.info('Unable to connect to GeoServe, assuming "%s" is '
-                     'authoritative.' % args.source)
+                     'authoritative.' % args.preferred_eventsource)
     if authtype != 'anss':
         authsrc = 'us'
     is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
     if not is_authoritative and authsrc.lower() not in NO_SHAKEMAPS:
         msg = ('Source %s is not authoritative for this region (%s is). '
-               'Exiting.' % (args.source, authsrc))
+               'Exiting.' % (args.preferred_eventsource, authsrc))
         logging.info(msg)
         if not args.force:
             sys.exit(1)
