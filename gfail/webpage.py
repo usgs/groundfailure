@@ -842,7 +842,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
 
 def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
               hazbinLS=[1., 10., 100.], popbinLS=[100, 1000, 10000],
-              hazbinLQ=[10., 100., 1000.], popbinLQ=[100, 1000, 10000]):
+              hazbinLQ=[10., 100., 1000.], popbinLQ=[1000, 10000, 100000]):
     """
     Get alert levels
 
