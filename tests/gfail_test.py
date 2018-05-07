@@ -195,6 +195,7 @@ def test_zhu2015_web(tmpdir):
 
 
 def misc():
+    # Note, the url used below may need to be updated if the location of this external resource changes
     gridurl = 'https://earthquake.usgs.gov/archive/product/shakemap/atlas19891018000415/atlas/1508184913111/download/grid.xml'
     test1 = isURL(gridurl)
     test2 = getGridURL(gridurl)

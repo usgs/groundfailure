@@ -457,7 +457,7 @@ def process_shakemap(args, config):
     dry = ""
     if args.dry_run:
         dry = True
-    success, feed = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
+    success = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
     if not success:
         logging.info("gf_transfer failed.")
         sys.exit(1)

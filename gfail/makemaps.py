@@ -1920,8 +1920,8 @@ def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
         file1.write('Based on ground motion estimates from '
                     '<a href=%s>ShakeMap</a> version %1.1f %s<br></p>'
                     % (shake_url, smdict['shakemap_version'], faulttype))
-        statement = ('%s<br>Refer to the <a href=https://dev-earthquake.cr.usgs.gov/data/'
-                     'grdfailure/background.php>Ground Failure Background</a>'
+        statement = ('%s<br>Refer to the <a https://earthquake.usgs.gov/data/'
+                     'ground-failure/background.php>Ground Failure Background</a>'
                      ' page for more details.' % statement)
 
         if statement is not None:

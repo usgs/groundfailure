@@ -37,29 +37,12 @@ def gf_transfer(event_dir, pdl_config=None, dry_run=False):
         if log['rc'] is True and dry_run is False:
             print('Successful PDL transfer.')
             success = True
-
-            # Construct URL to index.html
-            se_lines = log['se'].decode().split("\n")
-            info_line = [l for l in se_lines if 'send complete Socket' in l][0]
-            info = info_line.split(':')
-            eventid = info[-2]
-            source = info[-4]
-
-            # URL for event's detail feed
-            feed = ('https://dev01-earthquake.cr.usgs.gov/fdsnws/event/1/'
-                    'query?eventid=[EVENTID]&format=geojson')
-            feed = feed.replace('[EVENTID]', source+eventid)
-
-            # Print to screen/logger
-            print("Event detail JSON feed: \n%s " % feed)
         elif log['rc'] is True and dry_run is True:
             print("Dry run complete, no transfer attempted.")
             success = True
-            feed = ''
         else:
             print('PDL transfer failed.')
             print(log['so'].decode())
             success = False
-            feed = ''
 
-        return success, feed
+        return success

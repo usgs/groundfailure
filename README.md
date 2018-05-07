@@ -12,20 +12,41 @@ near-real-time, triggered by the Shakemaps.
 
 ## Documentation
 
+Information about the methodology can be found on the 
+[Ground Failure Scientific Background webpage](https://earthquake.usgs.gov/data/ground-failure/background.php)
+and the corresponding [Ground Failure References webpage](https://earthquake.usgs.gov/data/ground-failure/references.php).
+
 The API docs can be found [here](http://usgs.github.io/groundfailure/). 
-Besides the API, there are two command-line programs:
+Besides the API, there are five command-line programs:
 
 `gfail` - runs ground failure models
 
-`autogf` - automation wrapper for gfail that can be run as a cron job
+`callgf` - automation wrapper for gfail
+
+`gfail_transfer` - transfers model results to USGS comcat
+
+`create_info` - creates info.json required for web rendering
+
+`create_png` - creates transparent png of model results required for web rendering
 
 Documentation for the use of these programs can be seen by calling them
 with the `-h` flag. 
 
 ## Installation and Dependencies
 
-The install.sh script installs this package and all dependencies. It is
-regularly tested on OSX and Ubuntu.
+The install.sh script installs this package and dependencies. It is
+regularly tested on OSX and Ubuntu. For a full list of dependencies, refer to
+[environment.yml](https://github.com/usgs/groundfailure/blob/master/environment.yml).
+
+If anaconda is not already installed on your system, the install script
+will install miniconda and create a virtual environment called gf. Once
+installed, type 'conda activate gf' in the command line each time a new
+terminal is opened in order to activate this new virtual environment and
+to run the groundfailure package.
+
+Some functions of this program require the use of the USGS Product Distribution
+Layer (PDL). This must be installed separately. See the [PDL User Guide](https://usgs.github.io/pdl)
+for installation information.
 
 ## Configuration
 
@@ -395,3 +416,30 @@ def failure_model():
 
     return output
 ```
+
+## Sources of test datasets
+
+### Datasets for example notebooks
+
+We have extracted the input datasets required to run the models demonstrated in the [example notebooks](https://github.com/usgs/groundfailure/tree/master/notebooks) for the 
+1994 Northridge, CA, earthquake, including the [USGS ShakeMap, from the ShakeMap Atlas (v1)](https://earthquake.usgs.gov/earthquakes/eventpage/ci3144585#shakemap).
+The sources of the input files are listed in the [default config file](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/models) for each model.
+The reference for each filename is listed as a  "longref" ([example:](https://github.com/usgs/groundfailure/blob/master/defaultconfigfiles/models/jessee_2017.ini#L27)) in the section of the
+config file below the corresponding filename, defined as "file: ([example](https://github.com/usgs/groundfailure/blob/master/defaultconfigfiles/models/jessee_2017.ini#L25)).
+A digital terrain model is also provided for mapping purposes. It is extracted from the [GMTED2010 Terrain Elevation model](https://topotools.cr.usgs.gov/gmted_viewer).
+The extracted input data files are located with the notebooks in the [data folder](https://github.com/usgs/groundfailure/tree/master/notebooks/data).
+
+### Datasets for testing
+
+Test input datasets are included with the repository in order to run the [tests](https://github.com/usgs/groundfailure/tree/master/tests).
+Some tests used artificial datasets, but others use input datasets for a subsection
+of the area affected by the 1989 Loma Prieta, CA, earthquake. These extracted
+sections of the input datasets are located with the tests in the [data folder](https://github.com/usgs/groundfailure/tree/master/tests/data/loma_prieta).
+The input layers for each model can be found in the [default config file](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/models) for each model,
+as described above. Additional layers used in the tests were extracted from the global input layers defined below:
+
+* ne_10m_ocean: [Natural Earth (2016) Ocean polygon](http://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-ocean) last accessed 17 Nov 2017
+* cities1000.txt: Global city information from [GeoNames](http://geonames.org) last accessed 2 Sept 2015.
+* md30_gmted_gmt.grd: [GMTED2010 Terrain Elevation model](https://topotools.cr.usgs.gov/gmted_viewer)
+* gmted_global_hillshade.grd: Hillshade created from md30_gmted_gmt.grd
+* lspop2016_lp.flt: [LandScan (2016)™ High Resolution global Population Data Set](https://landscan.ornl.gov/)

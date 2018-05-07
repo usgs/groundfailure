@@ -20,7 +20,6 @@
 import os
 import sys
 sys.path.append(os.path.join(os.path.dirname(__name__), 'gfail'))
-# sys.path.insert(0, '/Users/cbworden/Unix/python/shakelib/shakelib')
 
 #import sphinx_readable_theme
 #import sphinx_rtd_theme

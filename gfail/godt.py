@@ -6,7 +6,7 @@ mechanistic landslide models.
 
 # stdlib imports
 import os.path
-import warnings
+#import warnings
 import collections
 import tempfile
 import shutil
@@ -19,9 +19,6 @@ from gfail.spatial import quickcut, trim_ocean
 
 # third party imports
 import numpy as np
-
-# turn off all warnings...
-warnings.filterwarnings('ignore')
 
 
 def godt2008(shakefile, config, uncertfile=None, saveinputs=False,

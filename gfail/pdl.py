@@ -13,7 +13,8 @@ from impactutils.io.cmd import get_command_output
 
 def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     """
-    This is to transfer the event's 'pdl_directory' to comcat.
+    This is to transfer the event's 'pdl_directory' to comcat. PDL must be
+    installed separately, see https://usgs.github.io/pdl/ for information.
 
     Args:
         event_dir (str): File path to location of results for event
