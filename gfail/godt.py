@@ -381,7 +381,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     description = {
         'name': modelsref,
         'longref': modellref,
-        'units': 'coverage',
+        'units': 'Proportion of Area Affected',
         'shakemap': shakedetail,
         'event_id': event_id,
         'parameters': {
@@ -400,7 +400,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     maplayers['model'] = {
         'grid': PROBgrid,
-        'label': 'Landslide Areal coverage',
+        'label': 'Proportion of Area Affected',
         'type': 'output',
         'description': description
     }

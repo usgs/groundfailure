@@ -410,13 +410,13 @@ def run_gfail(args):
                                 faultfile=ffault, point=point, pop_file=args.popfile)
             filenames = filenames + outputs
 
-        # create transparent png file
-        outputs = create_png(outdir)
-        filenames = filenames + outputs
-
-        # create info file
-        infofile = create_info(outdir)
-        filenames = filenames + infofile
+#        # create transparent png file
+#        outputs = create_png(outdir)
+#        filenames = filenames + outputs
+#
+#        # create info file
+#        infofile = create_info(outdir)
+#        filenames = filenames + infofile
 
         print('\nFiles created:\n')
         for filen in filenames:

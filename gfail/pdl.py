@@ -63,7 +63,7 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     ls_pref = info_dict['Landslides'][0]
 
     ls_alert = '"--property-landslide-alert=%s" ' % \
-        lq_pref['alert']
+        ls_pref['alert']
     lq_alert = '"--property-liquefaction-alert=%s" ' % \
         lq_pref['alert']
 
