@@ -171,7 +171,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 ls_pop_value = None
                 ls_alert = None
                 lsext = None
-             
+
             edict = {
                 'id': id1,
                 'title': metadata['name'],
@@ -299,15 +299,15 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             ls['bin_colors'] = DFCOLORS
         for lq in lqmodels:
             lq['bin_colors'] = DFCOLORS
-        
+
     else:
         defaultcolormap = cm.CMRmap_r
-    
+
         # Get colors and stuff into dictionaries
         sync, colorlistLS, reflims = setupsync(prefLS, concLS, limLS, colLS,
                                                defaultcolormap, logscale=logLS,
                                                alpha=alpha)
-    
+
         if reflims is None:
             raise Exception('Check input config files, they must all have the '
                             'same number of bin edges')
@@ -315,7 +315,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             # Stuff colors into dictionary
             for ls in lsmodels:
                 ls['bin_colors'] = list(colorlistLS)
-    
+
         sync, colorlistLQ, reflims = setupsync(prefLQ, concLQ, limLQ, colLQ,
                                                defaultcolormap, logscale=logLQ,
                                                alpha=alpha)
@@ -326,11 +326,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             # Stuff colors into dictionary
             for lq in lqmodels:
                 lq['bin_colors'] = list(colorlistLQ)
-            
+
     # Create pngs
     pngfiles = create_png(outfolder, lsmodels, lqmodels)
     filenames.append(pngfiles)
-    
+
     # Create info.json
     infojson = create_info(outfolder, lsmodels, lqmodels)
     filenames.append(infojson)
@@ -391,7 +391,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             if mercator:
                 rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
                                               origin='upper')
-        
+
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
                        rgba_img,
@@ -442,7 +442,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             if mercator:
                 rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
                                               origin='upper')
-        
+
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
                        rgba_img,
@@ -473,7 +473,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             filenames.append(filen)
             with open(filen, 'w') as f:
                 json.dump(lq_extent, f)
-        
+
             lmin = levels[0]
             lmax = levels[-1]
             lq_data2 = np.clip(lq_data, lmin, lmax)
@@ -508,7 +508,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
                 lq_mod = loadlayers(lq_file)
             else:
                 raise OSError("Specified liquefaction model result (%s) not found." % fsh)
-    
+
             lq_grid = lq_mod['model']['grid']
             lq_data = lq_grid.getData()
             lq_geodict = lq_grid.getGeoDict()
@@ -522,7 +522,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             filenames.append(filen)
             with open(filen, 'w') as f:
                 json.dump(lq_extent, f)
-        
+
             lmin = levels[0]
             lmax = levels[-1]
             lq_data2 = np.clip(lq_data, lmin, lmax)
@@ -753,7 +753,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 lqm['extent'] = lq_extent
                 #lqm['filename'] = flnm
                 lqext = lqm['zoomext']  # Get zoom extent
-                lq_alert = lqm['alert']                
+                lq_alert = lqm['alert']
                 rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
             else:
                 # Remove any alert keys
@@ -944,7 +944,7 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
     return hazLS, popLS, hazLQ, popLQ, LS, LQ
 
 
-def get_extent(grid, propofmax=0.4):
+def get_extent(grid, propofmax=0.3):
     """
     Get the extent that contains all values with probabilities exceeding a threshold
     in order to determine ideal zoom level for interactive map

@@ -5,7 +5,7 @@
 import argparse
 
 # local imports
-from gail.transfer import gf_transfer
+from gfail.transfer import gf_transfer
 
 
 def main(event_dir, pdl_conf, dry_run):
@@ -18,7 +18,7 @@ def main(event_dir, pdl_conf, dry_run):
         dry_run (bool): Dry run means do not transfer.
     """
 
-    success, jsonfeed = gf_transfer(event_dir, pdl_conf, dry_run)
+    success = gf_transfer(event_dir, pdl_conf, dry_run)
 
 
 if __name__ == '__main__':
