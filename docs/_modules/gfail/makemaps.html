@@ -1625,7 +1625,9 @@
             <span class="n">stats</span> <span class="o">=</span> <span class="n">computeStats</span><span class="p">(</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">],</span>
                                  <span class="n">probthresh</span><span class="o">=</span><span class="n">probthresh</span><span class="p">,</span>
                                  <span class="n">shakefile</span><span class="o">=</span><span class="n">shakemap</span><span class="p">,</span>
-                                 <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">)</span>
+                                 <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">,</span>
+                                 <span class="n">statprobthresh</span><span class="o">=</span><span class="n">statprobthresh</span><span class="p">,</span>
+                                 <span class="n">pop_file</span><span class="o">=</span><span class="n">pop_file</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">iq</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                 <span class="n">on</span> <span class="o">=</span> <span class="kc">True</span>
@@ -1959,8 +1961,8 @@
         <span class="n">file1</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;Based on ground motion estimates from &#39;</span>
                     <span class="s1">&#39;&lt;a href=</span><span class="si">%s</span><span class="s1">&gt;ShakeMap&lt;/a&gt; version </span><span class="si">%1.1f</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&lt;br&gt;&lt;/p&gt;&#39;</span>
                     <span class="o">%</span> <span class="p">(</span><span class="n">shake_url</span><span class="p">,</span> <span class="n">smdict</span><span class="p">[</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">],</span> <span class="n">faulttype</span><span class="p">))</span>
-        <span class="n">statement</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&lt;br&gt;Refer to the &lt;a href=https://dev-earthquake.cr.usgs.gov/data/&#39;</span>
-                     <span class="s1">&#39;grdfailure/background.php&gt;Ground Failure Background&lt;/a&gt;&#39;</span>
+        <span class="n">statement</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&lt;br&gt;Refer to the &lt;a https://earthquake.usgs.gov/data/&#39;</span>
+                     <span class="s1">&#39;ground-failure/background.php&gt;Ground Failure Background&lt;/a&gt;&#39;</span>
                      <span class="s1">&#39; page for more details.&#39;</span> <span class="o">%</span> <span class="n">statement</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="n">statement</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>

@@ -51,6 +51,7 @@
 <span class="kn">from</span> <span class="nn">gfail.makemaps</span> <span class="k">import</span> <span class="n">setupsync</span>
 <span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="k">import</span> <span class="n">parseConfigLayers</span>
 <span class="kn">from</span> <span class="nn">gfail.stats</span> <span class="k">import</span> <span class="n">computeStats</span>
+<span class="kn">from</span> <span class="nn">folium.utilities</span> <span class="k">import</span> <span class="n">mercator_transform</span>
 <span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
 <span class="kn">import</span> <span class="nn">matplotlib.cm</span> <span class="k">as</span> <span class="nn">cm</span>
 
@@ -59,6 +60,7 @@
 <span class="kn">import</span> <span class="nn">pytz</span>
 
 <span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="k">import</span> <span class="n">get_event_comcat</span><span class="p">,</span> <span class="n">loadlayers</span>
+<span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="k">import</span> <span class="n">is_grid_point_source</span>
 
 
 <span class="c1"># temporary until mapio is updated</span>
@@ -67,62 +69,62 @@
 
 <span class="n">plt</span><span class="o">.</span><span class="n">switch_backend</span><span class="p">(</span><span class="s1">&#39;agg&#39;</span><span class="p">)</span>
 
-<span class="c1"># DFCOLORS = [[0.9403921568627451, 0.9403921568627451, 0.7019607843137254, 0.7],</span>
-<span class="c1">#            [0.9, 0.781764705882353, 0.18470588235294128, 0.7],</span>
-<span class="c1">#            [0.92, 0.45, 0.03, 0.7],</span>
-<span class="c1">#            [0.7552941176470588, 0.21941176470588236, 0.36411764705882355, 0.7],</span>
-<span class="c1">#            [0.35882352941176465, 0.15980392156862744, 0.7009803921568627, 0.7],</span>
-<span class="c1">#            [0.11764705882352941, 0.11764705882352941, 0.39215686274509803, 0.7]]</span>
+<span class="c1"># # hex versions:</span>
+<span class="c1"># DFCOLORS = [</span>
+<span class="c1">#     &#39;#efefb34D&#39;,  # 30% opaque 4D</span>
+<span class="c1">#     &#39;#e5c72f66&#39;,  # 40% opaque 66</span>
+<span class="c1">#     &#39;#ea720780&#39;,  # 50% opaque 80</span>
+<span class="c1">#     &#39;#c0375c99&#39;,  # 60% opaque 99</span>
+<span class="c1">#     &#39;#5b28b299&#39;,  # 60% opaque 99</span>
+<span class="c1">#     &#39;#1e1e6499&#39;   # 60% opaque 99</span>
+<span class="c1"># ]</span>
 
-<span class="c1"># hex versions:</span>
 <span class="n">DFCOLORS</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="s1">&#39;#efefb3&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;#e5c72f&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;#ea7207&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;#c0375c&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;#5b28b2&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;#1e1e64&#39;</span>
+    <span class="p">[</span><span class="mf">0.94</span><span class="p">,</span> <span class="mf">0.94</span><span class="p">,</span> <span class="mf">0.70</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.90</span><span class="p">,</span> <span class="mf">0.78</span><span class="p">,</span> <span class="mf">0.18</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.92</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">0.03</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.75</span><span class="p">,</span> <span class="mf">0.22</span><span class="p">,</span> <span class="mf">0.36</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.36</span><span class="p">,</span> <span class="mf">0.16</span><span class="p">,</span> <span class="mf">0.70</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span>
+    <span class="p">[</span><span class="mf">0.12</span><span class="p">,</span> <span class="mf">0.12</span><span class="p">,</span> <span class="mf">0.39</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">]</span>
 <span class="p">]</span>
 
 <span class="n">DFBINS</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.005</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]</span>
-
-<span class="c1"># reformat for info.json</span>
-<span class="n">color_bins</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">DFCOLORS</span><span class="p">)):</span>
-    <span class="n">color_bins</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
-        <span class="s1">&#39;min&#39;</span><span class="p">:</span> <span class="n">DFBINS</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
-        <span class="s1">&#39;max&#39;</span><span class="p">:</span> <span class="n">DFBINS</span><span class="p">[</span><span class="n">i</span><span class="o">+</span><span class="mi">1</span><span class="p">],</span>
-        <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="n">DFCOLORS</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
-    <span class="p">})</span>
 
 
 <div class="viewcode-block" id="hazdev"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.hazdev">[docs]</a><span class="k">def</span> <span class="nf">hazdev</span><span class="p">(</span><span class="n">maplayerlist</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span> <span class="n">shakemap</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
            <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">10.</span><span class="p">,</span>
            <span class="n">prefLS</span><span class="o">=</span><span class="s1">&#39;Nowicki Jessee (2017)&#39;</span><span class="p">,</span> <span class="n">prefLQ</span><span class="o">=</span><span class="s1">&#39;Zhu and others (2017)&#39;</span><span class="p">,</span>
-           <span class="n">pop_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+           <span class="n">pop_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">defaultcolors</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Create all files needed for product page creation</span>
 <span class="sd">    Assumes gfail has been run already with -w flag</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        maplayerlist (list): List of model outputs from gfail</span>
+<span class="sd">        maplayerlist (list): List of model outputs from gfail.</span>
 <span class="sd">        configs (list): List of dictionaries of config files corresponding to</span>
-<span class="sd">            each model in maplayerlist and in the same order</span>
-<span class="sd">        shakemap (str): path to shakemap .xml file</span>
-<span class="sd">        outfolder (str): Location in which to save outputs. If None, will use current directory </span>
+<span class="sd">            each model in maplayerlist and in the same order.</span>
+<span class="sd">        shakemap (str): path to shakemap .xml file.</span>
+<span class="sd">        outfolder (str): Location in which to save outputs. If None, will use</span>
+<span class="sd">            current directory.</span>
 <span class="sd">        alpha (float): Transparency to use for overlay pngs, value from 0 to 1.</span>
-<span class="sd">        shakethreshtype (str): Type of ground motion to use for shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
-<span class="sd">        probthresh: Optional. Float or list of probability thresholds to apply before computing stats.</span>
-<span class="sd">        shakethresh: Float or list of shaking thresholds in %g for pga, cm/s for pgv, float for mmi.</span>
-<span class="sd">            Used for Hagg and Exposure computation</span>
-<span class="sd">        prefLS (str): shortref of &quot;preferred&quot; landslide model</span>
-<span class="sd">        prefLQ (str): shortref of &quot;preferred&quot; liquefaction model</span>
-<span class="sd">        pop_filt (str): file path to population file used to compute population-based</span>
-<span class="sd">            alert levels.</span>
+<span class="sd">        shakethreshtype (str): Type of ground motion to use for shakethresh,</span>
+<span class="sd">            &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
+<span class="sd">        probthresh: Optional. Float or list of probability thresholds to apply</span>
+<span class="sd">            before computing stats.</span>
+<span class="sd">        shakethresh: Float or list of shaking thresholds in %g for pga, cm/s</span>
+<span class="sd">            for pgv, float for mmi. Used for Hagg and Exposure computation.</span>
+<span class="sd">        prefLS (str): shortref of &quot;preferred&quot; landslide model.</span>
+<span class="sd">        prefLQ (str): shortref of &quot;preferred&quot; liquefaction model.</span>
+<span class="sd">        pop_filt (str): file path to population file used to compute</span>
+<span class="sd">            population-based alert levels.</span>
+<span class="sd">        defaultcolors (bool): If True, will use DFCOLORS for all layers instead</span>
+<span class="sd">            of determining new ones. This will crash if any of the layers have</span>
+<span class="sd">            a different number of bins than the number of DFCOLORS</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        Files that need to be sent to comcat for hazdev to create the product webpage including:</span>
-<span class="sd">            info.json</span>
-<span class="sd">            transparent png overlays of all models</span>
+<span class="sd">        Files that need to be sent to comcat for hazdev to create the product</span>
+<span class="sd">            webpage including:</span>
+<span class="sd">                - info.json</span>
+<span class="sd">                - transparent png overlays of all models</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">event_id</span> <span class="o">=</span> <span class="n">maplayerlist</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
 
@@ -166,10 +168,15 @@
 
             <span class="k">if</span> <span class="s1">&#39;godt&#39;</span> <span class="ow">in</span> <span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
                 <span class="n">statprobthresh</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">id1</span> <span class="o">=</span> <span class="s1">&#39;godt_2008&#39;</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># Since logistic models can&#39;t equal one, need to eliminate</span>
                 <span class="c1"># placeholder zeros before computing stats</span>
                 <span class="n">statprobthresh</span> <span class="o">=</span> <span class="mf">0.0</span>
+                <span class="k">if</span> <span class="s1">&#39;jessee&#39;</span> <span class="ow">in</span> <span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                    <span class="n">id1</span> <span class="o">=</span> <span class="s1">&#39;jessee_2017&#39;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">id1</span> <span class="o">=</span> <span class="s1">&#39;nowicki_2014_global&#39;</span>
 
             <span class="n">stats</span> <span class="o">=</span> <span class="n">computeStats</span><span class="p">(</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">],</span>
                                  <span class="n">probthresh</span><span class="o">=</span><span class="n">probthresh</span><span class="p">,</span>
@@ -191,27 +198,52 @@
 
             <span class="k">if</span> <span class="n">title</span> <span class="o">==</span> <span class="n">prefLS</span><span class="p">:</span>
                 <span class="n">on</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="n">ls_haz_alert</span><span class="p">,</span> <span class="n">ls_pop_alert</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_alert</span><span class="p">(</span>
+                <span class="n">ls_haz_alert</span><span class="p">,</span> <span class="n">ls_pop_alert</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">ls_alert</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">get_alert</span><span class="p">(</span>
                     <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">],</span> <span class="mf">0.</span><span class="p">,</span>
                     <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">],</span> <span class="mf">0.</span><span class="p">)</span>
+                <span class="n">lsext</span> <span class="o">=</span> <span class="n">get_extent</span><span class="p">(</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span>
+                <span class="n">ls_haz_value</span> <span class="o">=</span> <span class="n">set_num_precision</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">)</span>
+                <span class="n">ls_pop_value</span> <span class="o">=</span> <span class="n">set_num_precision</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;int&#39;</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">on</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="n">ls_haz_alert</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="n">ls_pop_alert</span> <span class="o">=</span> <span class="kc">None</span>
-
-            <span class="n">edict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span>  <span class="n">preferred</span><span class="o">=</span><span class="n">on</span><span class="p">,</span>
-                         <span class="n">probability_max</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]),</span>
-                         <span class="n">probability_std</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]),</span>
-                         <span class="n">units</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">],</span> <span class="n">bin_edges</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
-                         <span class="n">bin_colors</span><span class="o">=</span><span class="p">[],</span> <span class="n">filename</span><span class="o">=</span><span class="p">[],</span> <span class="n">extent</span><span class="o">=</span><span class="p">[],</span>
-                         <span class="n">hazard_alert_value</span><span class="o">=</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">],</span>
-                         <span class="n">populate_alert_value</span><span class="o">=</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">],</span>
-                         <span class="n">hazard_alert_parameter</span><span class="o">=</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">,</span>
-                         <span class="n">population_alert_parameter</span><span class="o">=</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">,</span>
-                         <span class="n">parameters</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">],</span>
-                         <span class="n">longref</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;longref&#39;</span><span class="p">],</span>
-                         <span class="n">hazard_alert</span><span class="o">=</span><span class="n">ls_haz_alert</span><span class="p">,</span>
-                         <span class="n">population_alert</span><span class="o">=</span><span class="n">ls_pop_alert</span><span class="p">,)</span>
+                <span class="n">ls_haz_value</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">ls_pop_value</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">ls_alert</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">lsext</span> <span class="o">=</span> <span class="kc">None</span>
+             
+            <span class="n">edict</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">id1</span><span class="p">,</span>
+                <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;overlay&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">id1</span><span class="p">,</span>
+                <span class="s1">&#39;extent&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">id1</span><span class="p">,</span>
+                <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;preferred&#39;</span><span class="p">:</span> <span class="n">on</span><span class="p">,</span>
+                <span class="s1">&#39;alert&#39;</span><span class="p">:</span> <span class="n">ls_alert</span><span class="p">,</span>
+                <span class="s1">&#39;hazard_alert&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="n">ls_haz_alert</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">ls_haz_value</span><span class="p">,</span>
+                    <span class="s1">&#39;parameter&#39;</span><span class="p">:</span> <span class="s1">&#39;Aggregate Hazard&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;km^2&#39;</span>
+                <span class="p">},</span>
+                <span class="s1">&#39;population_alert&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="n">ls_pop_alert</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">ls_pop_value</span><span class="p">,</span>
+                    <span class="s1">&#39;parameter&#39;</span><span class="p">:</span> <span class="s1">&#39;Population exposure&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;people&#39;</span>
+                <span class="p">},</span>
+                <span class="s1">&#39;bin_edges&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                <span class="s1">&#39;probability&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;max&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;hagg0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;popexp0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">])</span>
+                <span class="p">},</span>
+                <span class="s1">&#39;longref&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;longref&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;zoomext&#39;</span><span class="p">:</span> <span class="n">lsext</span>
+            <span class="p">}</span>
 
             <span class="n">lsmodels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">edict</span><span class="p">)</span>
 
@@ -223,6 +255,11 @@
             <span class="n">limLQ</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">colLQ</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">colormaps</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">concLQ</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="s1">&#39;2015&#39;</span> <span class="ow">in</span> <span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="n">id1</span> <span class="o">=</span> <span class="s1">&#39;zhu_2015&#39;</span>
+            <span class="k">elif</span> <span class="s1">&#39;2017&#39;</span> <span class="ow">in</span> <span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
+                <span class="n">id1</span> <span class="o">=</span> <span class="s1">&#39;zhu_2017_general&#39;</span>
 
             <span class="n">stats</span> <span class="o">=</span> <span class="n">computeStats</span><span class="p">(</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">],</span>
                                  <span class="n">probthresh</span><span class="o">=</span><span class="n">probthresh</span><span class="p">,</span>
@@ -243,27 +280,53 @@
 
             <span class="k">if</span> <span class="n">title</span> <span class="o">==</span> <span class="n">prefLQ</span><span class="p">:</span>
                 <span class="n">on</span> <span class="o">=</span> <span class="kc">True</span>
-                <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">lq_haz_alert</span><span class="p">,</span> <span class="n">lq_pop_alert</span> <span class="o">=</span> <span class="n">get_alert</span><span class="p">(</span>
+                <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">lq_haz_alert</span><span class="p">,</span> <span class="n">lq_pop_alert</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">lq_alert</span> <span class="o">=</span> <span class="n">get_alert</span><span class="p">(</span>
                     <span class="mf">0.</span><span class="p">,</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">],</span>
                     <span class="mf">0.</span><span class="p">,</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">])</span>
+                <span class="n">lqext</span> <span class="o">=</span> <span class="n">get_extent</span><span class="p">(</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span>
+                <span class="n">lq_haz_value</span> <span class="o">=</span> <span class="n">set_num_precision</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">)</span>
+                <span class="n">lq_pop_value</span> <span class="o">=</span> <span class="n">set_num_precision</span><span class="p">(</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">],</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;int&#39;</span><span class="p">)</span>
+
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">on</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="n">lq_haz_alert</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="n">lq_pop_alert</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">lq_haz_value</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">lq_pop_value</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">lq_alert</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">lqext</span> <span class="o">=</span> <span class="kc">None</span>
 
-            <span class="n">edict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span>  <span class="n">preferred</span><span class="o">=</span><span class="n">on</span><span class="p">,</span>
-                         <span class="n">probability_max</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]),</span>
-                         <span class="n">probability_std</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]),</span>
-                         <span class="n">units</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">],</span> <span class="n">bin_edges</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
-                         <span class="n">bin_colors</span><span class="o">=</span><span class="p">[],</span> <span class="n">filename</span><span class="o">=</span><span class="p">[],</span> <span class="n">extent</span><span class="o">=</span><span class="p">[],</span>
-                         <span class="n">hazard_alert_value</span><span class="o">=</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">],</span>
-                         <span class="n">populate_alert_value</span><span class="o">=</span><span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">],</span>
-                         <span class="n">hazard_alert_parameter</span><span class="o">=</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">,</span>
-                         <span class="n">population_alert_parameter</span><span class="o">=</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">,</span>
-                         <span class="n">parameters</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">],</span>
-                         <span class="n">longref</span><span class="o">=</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;longref&#39;</span><span class="p">],</span>
-                         <span class="n">hazard_alert</span><span class="o">=</span><span class="n">lq_haz_alert</span><span class="p">,</span>
-                         <span class="n">population_alert</span><span class="o">=</span><span class="n">lq_pop_alert</span><span class="p">,)</span>
+            <span class="n">edict</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;id&#39;</span><span class="p">:</span> <span class="n">id1</span><span class="p">,</span>
+                <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;name&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;overlay&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">id1</span><span class="p">,</span>
+                <span class="s1">&#39;extent&#39;</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">id1</span><span class="p">,</span>
+                <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;preferred&#39;</span><span class="p">:</span> <span class="n">on</span><span class="p">,</span>
+                <span class="s1">&#39;alert&#39;</span><span class="p">:</span> <span class="n">lq_alert</span><span class="p">,</span>
+                <span class="s1">&#39;hazard_alert&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="n">lq_haz_alert</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">lq_haz_value</span><span class="p">,</span>
+                    <span class="s1">&#39;parameter&#39;</span><span class="p">:</span> <span class="s1">&#39;Aggregate Hazard&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;km^2&#39;</span>
+                <span class="p">},</span>
+                <span class="s1">&#39;population_alert&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="n">lq_pop_alert</span><span class="p">,</span>
+                    <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">lq_pop_value</span><span class="p">,</span>
+                    <span class="s1">&#39;parameter&#39;</span><span class="p">:</span> <span class="s1">&#39;Population exposure&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;people&#39;</span>
+                <span class="p">},</span>
+                <span class="s1">&#39;bin_edges&#39;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span>
+                <span class="s1">&#39;probability&#39;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="s1">&#39;max&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;hagg0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;popexp0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">])</span>
+                <span class="p">},</span>
+                <span class="s1">&#39;longref&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;longref&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;parameters&#39;</span><span class="p">],</span>
+                <span class="s1">&#39;zoomext&#39;</span><span class="p">:</span> <span class="n">lqext</span>
+            <span class="p">}</span>
 
             <span class="n">lqmodels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">edict</span><span class="p">)</span>
 
@@ -271,44 +334,52 @@
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;model type is undefined, check &quot;</span>
                             <span class="s2">&quot;maplayer[&#39;model&#39;][&#39;parameters&#39;]&quot;</span>
                             <span class="s2">&quot;[&#39;modeltype&#39;] to ensure it is defined&quot;</span><span class="p">)</span>
-    <span class="n">defaultcolormap</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">CMRmap_r</span>
 
-    <span class="c1"># Get colors and stuff into dictionaries</span>
-    <span class="n">sync</span><span class="p">,</span> <span class="n">colorlistLS</span><span class="p">,</span> <span class="n">reflims</span> <span class="o">=</span> <span class="n">setupsync</span><span class="p">(</span><span class="n">prefLS</span><span class="p">,</span> <span class="n">concLS</span><span class="p">,</span> <span class="n">limLS</span><span class="p">,</span> <span class="n">colLS</span><span class="p">,</span>
-                                           <span class="n">defaultcolormap</span><span class="p">,</span> <span class="n">logscale</span><span class="o">=</span><span class="n">logLS</span><span class="p">,</span>
-                                           <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
-
-    <span class="k">if</span> <span class="n">reflims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Check input config files, they must all have the &#39;</span>
-                        <span class="s1">&#39;same number of bin edges&#39;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Stuff colors into dictionary</span>
+    <span class="k">if</span> <span class="n">defaultcolors</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">ls</span> <span class="ow">in</span> <span class="n">lsmodels</span><span class="p">:</span>
-            <span class="n">ls</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">colorlistLS</span><span class="p">)</span>
-
-    <span class="n">sync</span><span class="p">,</span> <span class="n">colorlistLQ</span><span class="p">,</span> <span class="n">reflims</span> <span class="o">=</span> <span class="n">setupsync</span><span class="p">(</span><span class="n">prefLQ</span><span class="p">,</span> <span class="n">concLQ</span><span class="p">,</span> <span class="n">limLQ</span><span class="p">,</span> <span class="n">colLQ</span><span class="p">,</span>
-                                           <span class="n">defaultcolormap</span><span class="p">,</span> <span class="n">logscale</span><span class="o">=</span><span class="n">logLQ</span><span class="p">,</span>
-                                           <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">reflims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Check input config files, they must all have the &#39;</span>
-                        <span class="s1">&#39;same number of bin edges&#39;</span><span class="p">)</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="c1"># Stuff colors into dictionary</span>
+            <span class="n">ls</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DFCOLORS</span>
         <span class="k">for</span> <span class="n">lq</span> <span class="ow">in</span> <span class="n">lqmodels</span><span class="p">:</span>
-            <span class="n">lq</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">colorlistLQ</span><span class="p">)</span>
-
-    <span class="c1"># Create invisible pngs</span>
-    <span class="n">out</span> <span class="o">=</span> <span class="n">create_png</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">lsmodels</span><span class="o">=</span><span class="n">lsmodels</span><span class="p">,</span> <span class="n">lqmodels</span><span class="o">=</span><span class="n">lqmodels</span><span class="p">)</span>
-    <span class="n">filenames</span> <span class="o">+=</span> <span class="n">out</span>
-
+            <span class="n">lq</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">DFCOLORS</span>
+        
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">defaultcolormap</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">CMRmap_r</span>
+    
+        <span class="c1"># Get colors and stuff into dictionaries</span>
+        <span class="n">sync</span><span class="p">,</span> <span class="n">colorlistLS</span><span class="p">,</span> <span class="n">reflims</span> <span class="o">=</span> <span class="n">setupsync</span><span class="p">(</span><span class="n">prefLS</span><span class="p">,</span> <span class="n">concLS</span><span class="p">,</span> <span class="n">limLS</span><span class="p">,</span> <span class="n">colLS</span><span class="p">,</span>
+                                               <span class="n">defaultcolormap</span><span class="p">,</span> <span class="n">logscale</span><span class="o">=</span><span class="n">logLS</span><span class="p">,</span>
+                                               <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+    
+        <span class="k">if</span> <span class="n">reflims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Check input config files, they must all have the &#39;</span>
+                            <span class="s1">&#39;same number of bin edges&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Stuff colors into dictionary</span>
+            <span class="k">for</span> <span class="n">ls</span> <span class="ow">in</span> <span class="n">lsmodels</span><span class="p">:</span>
+                <span class="n">ls</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">colorlistLS</span><span class="p">)</span>
+    
+        <span class="n">sync</span><span class="p">,</span> <span class="n">colorlistLQ</span><span class="p">,</span> <span class="n">reflims</span> <span class="o">=</span> <span class="n">setupsync</span><span class="p">(</span><span class="n">prefLQ</span><span class="p">,</span> <span class="n">concLQ</span><span class="p">,</span> <span class="n">limLQ</span><span class="p">,</span> <span class="n">colLQ</span><span class="p">,</span>
+                                               <span class="n">defaultcolormap</span><span class="p">,</span> <span class="n">logscale</span><span class="o">=</span><span class="n">logLQ</span><span class="p">,</span>
+                                               <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">reflims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Check input config files, they must all have the &#39;</span>
+                            <span class="s1">&#39;same number of bin edges&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Stuff colors into dictionary</span>
+            <span class="k">for</span> <span class="n">lq</span> <span class="ow">in</span> <span class="n">lqmodels</span><span class="p">:</span>
+                <span class="n">lq</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">colorlistLQ</span><span class="p">)</span>
+            
+    <span class="c1"># Create pngs</span>
+    <span class="n">pngfiles</span> <span class="o">=</span> <span class="n">create_png</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">lsmodels</span><span class="p">,</span> <span class="n">lqmodels</span><span class="p">)</span>
+    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pngfiles</span><span class="p">)</span>
+    
     <span class="c1"># Create info.json</span>
-    <span class="n">out</span> <span class="o">=</span> <span class="n">create_info</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">lsmodels</span><span class="o">=</span><span class="n">lsmodels</span><span class="p">,</span> <span class="n">lqmodels</span><span class="o">=</span><span class="n">lqmodels</span><span class="p">)</span>
-    <span class="n">filenames</span> <span class="o">+=</span> <span class="n">out</span>
+    <span class="n">infojson</span> <span class="o">=</span> <span class="n">create_info</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">lsmodels</span><span class="p">,</span> <span class="n">lqmodels</span><span class="p">)</span>
+    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">infojson</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">filenames</span></div>
 
 
-<div class="viewcode-block" id="create_png"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.create_png">[docs]</a><span class="k">def</span> <span class="nf">create_png</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lsmodels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lqmodels</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="create_png"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.create_png">[docs]</a><span class="k">def</span> <span class="nf">create_png</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lsmodels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lqmodels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mercator</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Creates transparent PNG file for website.</span>
 
@@ -319,6 +390,7 @@
 <span class="sd">            the hdf5 files for the preferred model and will create this dictionary</span>
 <span class="sd">            and will apply default colorbars and bins.</span>
 <span class="sd">        lqmodels (list): Same as above for liquefaction.</span>
+<span class="sd">        mercator (bool): Project raster to web mercator</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        .png map overlays and .json files specifying their mapped extents</span>
@@ -334,116 +406,182 @@
             <span class="n">levels</span> <span class="o">=</span> <span class="n">DFBINS</span>
             <span class="n">colors1</span> <span class="o">=</span> <span class="n">DFCOLORS</span>
             <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;jessee_2017&#39;</span>
+            <span class="n">ls_grid</span> <span class="o">=</span> <span class="n">ls_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span>
+            <span class="n">ls_data</span> <span class="o">=</span> <span class="n">ls_grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+            <span class="n">ls_geodict</span> <span class="o">=</span> <span class="n">ls_grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+            <span class="n">ls_extent</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+            <span class="p">]</span>
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">ls_extent</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+            <span class="n">lmin</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lmax</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">ls_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">ls_data</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">)</span>
+            <span class="n">cmap</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">ListedColormap</span><span class="p">(</span><span class="n">colors1</span><span class="p">)</span>
+            <span class="n">norm</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">ls_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ls_data2</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ls_data</span><span class="p">))</span>
+            <span class="c1">#scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)</span>
+            <span class="c1">#rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)</span>
+            <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">ls_data2</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">mercator</span><span class="p">:</span>
+                <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">mercator_transform</span><span class="p">(</span><span class="n">rgba_img</span><span class="p">,</span> <span class="p">(</span><span class="n">ls_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
+                                              <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+        
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span>
+                       <span class="n">rgba_img</span><span class="p">,</span>
+                       <span class="n">vmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span>
+                       <span class="n">vmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+                       <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span>
+                       <span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred landslide model result not found.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred landslide model result (</span><span class="si">%s</span><span class="s2">) not found.&quot;</span> <span class="o">%</span> <span class="n">ls_mod_file</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">lsm</span> <span class="ow">in</span> <span class="n">lsmodels</span><span class="p">:</span>
-            <span class="k">if</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;preferred&#39;</span><span class="p">]:</span>
-                <span class="n">levels</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;bin_edges&#39;</span><span class="p">]</span>
-                <span class="n">colors1</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span>
-                <span class="n">shortname</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span>
-                <span class="k">if</span> <span class="s1">&#39;Jessee (2017)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;jessee_2017&#39;</span>
-                <span class="k">elif</span> <span class="s1">&#39;Nowicki and others (2014)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;nowicki_2014_global&#39;</span>
-                <span class="k">elif</span> <span class="s1">&#39;godt&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;godt_2008&#39;</span>
-        <span class="n">fsh</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span>
-        <span class="n">ls_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="n">fsh</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ls_mod_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">ls_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">ls_mod_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">ls_mod</span> <span class="o">=</span> <span class="n">loadlayers</span><span class="p">(</span><span class="n">ls_file</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred landslide model result not found.&quot;</span><span class="p">)</span>
+            <span class="c1">#if lsm[&#39;preferred&#39;]:</span>
+            <span class="n">levels</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;bin_edges&#39;</span><span class="p">]</span>
+            <span class="n">colors1</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span>
+            <span class="n">filesnippet</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
 
-    <span class="n">ls_grid</span> <span class="o">=</span> <span class="n">ls_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span>
-    <span class="n">ls_data</span> <span class="o">=</span> <span class="n">ls_grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
-    <span class="n">ls_geodict</span> <span class="o">=</span> <span class="n">ls_grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
-    <span class="n">ls_extent</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">ls_geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
-        <span class="n">ls_geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
-        <span class="n">ls_geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
-        <span class="n">ls_geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
-    <span class="p">]</span>
-    <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
-    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">ls_extent</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+            <span class="n">fsh</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span>
+            <span class="n">ls_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="n">fsh</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ls_mod_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">ls_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">ls_mod_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">ls_mod</span> <span class="o">=</span> <span class="n">loadlayers</span><span class="p">(</span><span class="n">ls_file</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Specified landslide model result (</span><span class="si">%s</span><span class="s2">) not found.&quot;</span> <span class="o">%</span> <span class="n">fsh</span><span class="p">)</span>
 
-    <span class="n">lmin</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">lmax</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">ls_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">ls_data</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">)</span>
-    <span class="n">cmap</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">ListedColormap</span><span class="p">(</span><span class="n">colors1</span><span class="p">)</span>
-    <span class="n">norm</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
-    <span class="n">ls_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ls_data2</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ls_data</span><span class="p">))</span>
-    <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">ls_data2</span><span class="p">))</span>
-    <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span>
-               <span class="n">rgba_img</span><span class="p">,</span>
-               <span class="n">vmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span>
-               <span class="n">vmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
-               <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span>
-               <span class="p">)</span>
+            <span class="n">ls_grid</span> <span class="o">=</span> <span class="n">ls_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span>
+            <span class="n">ls_data</span> <span class="o">=</span> <span class="n">ls_grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+            <span class="n">ls_geodict</span> <span class="o">=</span> <span class="n">ls_grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+            <span class="n">ls_extent</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+                <span class="n">ls_geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">ls_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+            <span class="p">]</span>
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">ls_extent</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+            <span class="n">lmin</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lmax</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">ls_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">ls_data</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">)</span>
+            <span class="n">cmap</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">ListedColormap</span><span class="p">(</span><span class="n">colors1</span><span class="p">)</span>
+            <span class="n">norm</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">ls_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ls_data2</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ls_data</span><span class="p">))</span>
+            <span class="c1">#scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)</span>
+            <span class="c1">#rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)</span>
+            <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">ls_data2</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">mercator</span><span class="p">:</span>
+                <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">mercator_transform</span><span class="p">(</span><span class="n">rgba_img</span><span class="p">,</span> <span class="p">(</span><span class="n">ls_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
+                                              <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+        
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span>
+                       <span class="n">rgba_img</span><span class="p">,</span>
+                       <span class="n">vmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span>
+                       <span class="n">vmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+                       <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span>
+                       <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">lqmodels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># read in preferred model for liquefaction if none specified</span>
-        <span class="n">lq_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;zhu_2017_general.hdf5&#39;</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+        <span class="n">lq_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f2</span> <span class="k">for</span> <span class="n">f2</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;zhu_2017_general.hdf5&#39;</span> <span class="ow">in</span> <span class="n">f2</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lq_mod_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">lq_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lq_mod_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">lq_mod</span> <span class="o">=</span> <span class="n">loadlayers</span><span class="p">(</span><span class="n">lq_file</span><span class="p">)</span>
             <span class="n">levels</span> <span class="o">=</span> <span class="n">DFBINS</span>
             <span class="n">colors1</span> <span class="o">=</span> <span class="n">DFCOLORS</span>
             <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;zhu_2017_general&#39;</span>
+            <span class="n">lq_grid</span> <span class="o">=</span> <span class="n">lq_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span>
+            <span class="n">lq_data</span> <span class="o">=</span> <span class="n">lq_grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+            <span class="n">lq_geodict</span> <span class="o">=</span> <span class="n">lq_grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+            <span class="n">lq_extent</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+            <span class="p">]</span>
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">lq_extent</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        
+            <span class="n">lmin</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lmax</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">lq_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lq_data</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">)</span>
+            <span class="n">cmap</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">ListedColormap</span><span class="p">(</span><span class="n">colors1</span><span class="p">)</span>
+            <span class="n">norm</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">lq_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lq_data2</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">lq_data</span><span class="p">))</span>
+            <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">lq_data2</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">mercator</span><span class="p">:</span>
+                <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">mercator_transform</span><span class="p">(</span><span class="n">rgba_img</span><span class="p">,</span> <span class="p">(</span><span class="n">lq_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">lq_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
+                                              <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span>
+                       <span class="n">rgba_img</span><span class="p">,</span>
+                       <span class="n">vmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span>
+                       <span class="n">vmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+                       <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span>
+                       <span class="p">)</span>
+            <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred liquefaction model result not found.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred liquefaction model result (</span><span class="si">%s</span><span class="s2">) not found.&quot;</span> <span class="o">%</span> <span class="n">lq_mod_file</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">lqm</span> <span class="ow">in</span> <span class="n">lqmodels</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;preferred&#39;</span><span class="p">]:</span>
                 <span class="n">levels</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;bin_edges&#39;</span><span class="p">]</span>
                 <span class="n">colors1</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;bin_colors&#39;</span><span class="p">]</span>
-                <span class="n">shortname</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span>
-                <span class="k">if</span> <span class="s1">&#39;Zhu and others (2017)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;zhu_2017_general&#39;</span>
-                <span class="k">elif</span> <span class="s1">&#39;Zhu and others (2015)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;zhu_2015&#39;</span>
+                <span class="n">filesnippet</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
 
-        <span class="n">fsh</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span>
-        <span class="n">lq_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="n">fsh</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lq_mod_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">lq_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lq_mod_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
-            <span class="n">lq_mod</span> <span class="o">=</span> <span class="n">loadlayers</span><span class="p">(</span><span class="n">lq_file</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred liquefaction model result not found.&quot;</span><span class="p">)</span>
-
-    <span class="n">lq_grid</span> <span class="o">=</span> <span class="n">lq_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span>
-    <span class="n">lq_data</span> <span class="o">=</span> <span class="n">lq_grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
-    <span class="n">lq_geodict</span> <span class="o">=</span> <span class="n">lq_grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
-    <span class="n">lq_extent</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">lq_geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
-        <span class="n">lq_geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
-        <span class="n">lq_geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
-        <span class="n">lq_geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
-    <span class="p">]</span>
-    <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
-    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-        <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">lq_extent</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
-
-    <span class="n">lmin</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">lmax</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">lq_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lq_data</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">)</span>
-    <span class="n">cmap</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">ListedColormap</span><span class="p">(</span><span class="n">colors1</span><span class="p">)</span>
-    <span class="n">norm</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
-    <span class="n">lq_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lq_data2</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">lq_data</span><span class="p">))</span>
-    <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">lq_data2</span><span class="p">))</span>
-    <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
-    <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span>
-               <span class="n">rgba_img</span><span class="p">,</span>
-               <span class="n">vmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span>
-               <span class="n">vmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
-               <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span>
-               <span class="p">)</span>
-    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+            <span class="n">fsh</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span>
+            <span class="n">lq_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f2</span> <span class="k">for</span> <span class="n">f2</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="n">fsh</span> <span class="ow">in</span> <span class="n">f2</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lq_mod_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">lq_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lq_mod_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">lq_mod</span> <span class="o">=</span> <span class="n">loadlayers</span><span class="p">(</span><span class="n">lq_file</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Specified liquefaction model result (</span><span class="si">%s</span><span class="s2">) not found.&quot;</span> <span class="o">%</span> <span class="n">fsh</span><span class="p">)</span>
+    
+            <span class="n">lq_grid</span> <span class="o">=</span> <span class="n">lq_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span>
+            <span class="n">lq_data</span> <span class="o">=</span> <span class="n">lq_grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+            <span class="n">lq_geodict</span> <span class="o">=</span> <span class="n">lq_grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
+            <span class="n">lq_extent</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dx</span><span class="p">,</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+                <span class="n">lq_geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="mf">0.5</span><span class="o">*</span><span class="n">lq_geodict</span><span class="o">.</span><span class="n">dy</span><span class="p">,</span>
+            <span class="p">]</span>
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">lq_extent</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+        
+            <span class="n">lmin</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">lmax</span> <span class="o">=</span> <span class="n">levels</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">lq_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">lq_data</span><span class="p">,</span> <span class="n">lmin</span><span class="p">,</span> <span class="n">lmax</span><span class="p">)</span>
+            <span class="n">cmap</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">ListedColormap</span><span class="p">(</span><span class="n">colors1</span><span class="p">)</span>
+            <span class="n">norm</span> <span class="o">=</span> <span class="n">mpl</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">BoundaryNorm</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">cmap</span><span class="o">.</span><span class="n">N</span><span class="p">)</span>
+            <span class="n">lq_data2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ma</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">lq_data2</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">lq_data</span><span class="p">))</span>
+            <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">cmap</span><span class="p">(</span><span class="n">norm</span><span class="p">(</span><span class="n">lq_data2</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">mercator</span><span class="p">:</span>
+                <span class="n">rgba_img</span> <span class="o">=</span> <span class="n">mercator_transform</span><span class="p">(</span><span class="n">rgba_img</span><span class="p">,</span> <span class="p">(</span><span class="n">lq_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">lq_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]),</span>
+                                              <span class="n">origin</span><span class="o">=</span><span class="s1">&#39;upper&#39;</span><span class="p">)</span>
+            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.png&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span><span class="p">)</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">imsave</span><span class="p">(</span><span class="n">filen</span><span class="p">,</span>
+                       <span class="n">rgba_img</span><span class="p">,</span>
+                       <span class="n">vmin</span><span class="o">=</span><span class="n">lmin</span><span class="p">,</span>
+                       <span class="n">vmax</span><span class="o">=</span><span class="n">lmax</span><span class="p">,</span>
+                       <span class="n">cmap</span><span class="o">=</span><span class="n">cmap</span>
+                       <span class="p">)</span>
+            <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">filenames</span></div>
 
@@ -455,8 +593,8 @@
 <span class="sd">        event_dir (srt): Directory containing ground failure results.</span>
 <span class="sd">        lsmodels (list): List of dictionaries of model summary info compiled</span>
 <span class="sd">            by the hazdev function. If not specified, code will search for</span>
-<span class="sd">            the hdf5 files for the preferred model and will create this dictionary</span>
-<span class="sd">            and will apply default colorbars and bins.</span>
+<span class="sd">            the hdf5 files for the preferred model and will create this</span>
+<span class="sd">            dictionary and will apply default colorbars and bins.</span>
 <span class="sd">        lqmodels (list): Same as above for liquefaction.</span>
 
 <span class="sd">    Returns:</span>
@@ -469,24 +607,29 @@
 
     <span class="n">files</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">event_dir</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">lsmodels</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">lqmodels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">lsmodels</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lqmodels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
 
         <span class="c1"># Read in the &quot;preferred&quot; model for landslides and liquefaction</span>
-        <span class="n">ls_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;jessee_2017.hdf5&#39;</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+        <span class="n">ls_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f2</span> <span class="k">for</span> <span class="n">f2</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;jessee_2017.hdf5&#39;</span> <span class="ow">in</span> <span class="n">f2</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ls_mod_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">ls_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">ls_mod_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">ls_mod</span> <span class="o">=</span> <span class="n">loadlayers</span><span class="p">(</span><span class="n">ls_file</span><span class="p">)</span>
+            <span class="c1"># get extents</span>
+            <span class="n">lsext</span> <span class="o">=</span> <span class="n">get_extent</span><span class="p">(</span><span class="n">ls_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred landslide model result not found.&quot;</span><span class="p">)</span>
-        <span class="n">lq_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;zhu_2017_general.hdf5&#39;</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+        <span class="n">lq_mod_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f2</span> <span class="k">for</span> <span class="n">f2</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;zhu_2017_general.hdf5&#39;</span> <span class="ow">in</span> <span class="n">f2</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lq_mod_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">lq_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lq_mod_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="n">lq_mod</span> <span class="o">=</span> <span class="n">loadlayers</span><span class="p">(</span><span class="n">lq_file</span><span class="p">)</span>
+            <span class="c1"># get extents</span>
+            <span class="n">lqext</span> <span class="o">=</span> <span class="n">get_extent</span><span class="p">(</span><span class="n">lq_mod</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Preferred liquefaction model result not found.&quot;</span><span class="p">)</span>
 
         <span class="c1"># Read in extents</span>
-        <span class="n">ls_extent_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;jessee_2017_extent.json&#39;</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+        <span class="n">ls_extent_file</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">f2</span> <span class="k">for</span> <span class="n">f2</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;jessee_2017_extent.json&#39;</span> <span class="ow">in</span> <span class="n">f2</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ls_extent_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">ls_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">ls_extent_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">ls_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
@@ -494,13 +637,13 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Landslide extent not found.&quot;</span><span class="p">)</span>
         <span class="n">lq_extent_file</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;zhu_2017_general_extent.json&#39;</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+            <span class="n">f2</span> <span class="k">for</span> <span class="n">f2</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="s1">&#39;zhu_2017_general_extent.json&#39;</span> <span class="ow">in</span> <span class="n">f2</span><span class="p">]</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lq_extent_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
             <span class="n">lq_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lq_extent_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
             <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">lq_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">zhu_extent</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Landslide extent not found.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Liquefaction extent not found.&quot;</span><span class="p">)</span>
 
         <span class="c1"># Read in default paths to get location of the population grid</span>
         <span class="n">default_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.gfail_defaults&#39;</span><span class="p">)</span>
@@ -548,7 +691,8 @@
                                <span class="n">ls_pop_level</span><span class="p">,</span> <span class="n">lq_pop_level</span><span class="p">)</span>
         <span class="c1"># Unpack info (I think we are now assuming that the statements will be</span>
         <span class="c1"># constructed on the website and so we don&#39;t need them here)</span>
-        <span class="n">ls_haz_alert</span><span class="p">,</span> <span class="n">ls_pop_alert</span><span class="p">,</span> <span class="n">lq_haz_alert</span><span class="p">,</span> <span class="n">lq_pop_alert</span> <span class="o">=</span> <span class="n">alert_info</span>
+        <span class="n">ls_haz_alert</span><span class="p">,</span> <span class="n">ls_pop_alert</span><span class="p">,</span> <span class="n">lq_haz_alert</span><span class="p">,</span> <span class="n">lq_pop_alert</span><span class="p">,</span> \
+            <span class="n">ls_alert</span><span class="p">,</span> <span class="n">lq_alert</span> <span class="o">=</span> <span class="n">alert_info</span>
 
         <span class="k">if</span> <span class="n">lsmodels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">lsmodels</span> <span class="o">=</span> <span class="p">[{</span>
@@ -556,8 +700,9 @@
                 <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="s1">&#39;Nowicki Jessee (2017)&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;overlay&#39;</span><span class="p">:</span> <span class="s1">&#39;jessee_2017.png&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;extent&#39;</span><span class="p">:</span> <span class="n">jessee_extent</span><span class="p">,</span>
-                <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s2">&quot;Proportiona of area affected&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s2">&quot;Proportion of area affected&quot;</span><span class="p">,</span>
                 <span class="s1">&#39;preferred&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s1">&#39;alert&#39;</span><span class="p">:</span> <span class="n">ls_alert</span><span class="p">,</span>
                 <span class="s1">&#39;hazard_alert&#39;</span><span class="p">:</span> <span class="p">{</span>
                     <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="n">ls_haz_alert</span><span class="p">,</span>
                     <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">set_num_precision</span><span class="p">(</span><span class="n">ls_haz_level</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">),</span>
@@ -570,10 +715,11 @@
                     <span class="s1">&#39;parameter&#39;</span><span class="p">:</span> <span class="s1">&#39;Population exposure&#39;</span><span class="p">,</span>
                     <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;people&#39;</span>
                 <span class="p">},</span>
-                <span class="s1">&#39;color_bins&#39;</span><span class="p">:</span> <span class="n">color_bins</span><span class="p">,</span>
                 <span class="s1">&#39;probability&#39;</span><span class="p">:</span> <span class="p">{</span>
                     <span class="s1">&#39;max&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ls_stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]),</span>
-                    <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ls_stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">])</span>
+                    <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ls_stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;hagg0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ls_stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;popexp0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ls_stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">])</span>
                 <span class="p">}</span>
             <span class="p">}]</span>
         <span class="k">if</span> <span class="n">lqmodels</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -582,8 +728,9 @@
                 <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="s1">&#39;Zhu and others (2017)&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;overlay&#39;</span><span class="p">:</span> <span class="s1">&#39;zhu_2017.png&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;extent&#39;</span><span class="p">:</span> <span class="n">zhu_extent</span><span class="p">,</span>
-                <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s2">&quot;Proportiona of area affected&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s2">&quot;Proportion of area affected&quot;</span><span class="p">,</span>
                 <span class="s1">&#39;preferred&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="s1">&#39;alert&#39;</span><span class="p">:</span> <span class="n">lq_alert</span><span class="p">,</span>
                 <span class="s1">&#39;hazard_alert&#39;</span><span class="p">:</span> <span class="p">{</span>
                     <span class="s1">&#39;color&#39;</span><span class="p">:</span> <span class="n">lq_haz_alert</span><span class="p">,</span>
                     <span class="s1">&#39;value&#39;</span><span class="p">:</span> <span class="n">set_num_precision</span><span class="p">(</span><span class="n">lq_haz_level</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;float&#39;</span><span class="p">),</span>
@@ -596,10 +743,11 @@
                     <span class="s1">&#39;parameter&#39;</span><span class="p">:</span> <span class="s1">&#39;Population exposure&#39;</span><span class="p">,</span>
                     <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;people&#39;</span>
                 <span class="p">},</span>
-                <span class="s1">&#39;color_bins&#39;</span><span class="p">:</span> <span class="n">color_bins</span><span class="p">,</span>
                 <span class="s1">&#39;probability&#39;</span><span class="p">:</span> <span class="p">{</span>
                     <span class="s1">&#39;max&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">lq_stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]),</span>
-                    <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">lq_stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">])</span>
+                    <span class="s1">&#39;std&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">lq_stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;hagg0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ls_stats</span><span class="p">[</span><span class="s1">&#39;Hagg_0.10g&#39;</span><span class="p">]),</span>
+                    <span class="s1">&#39;popexp0.1g&#39;</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%.2f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">ls_stats</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.10g&#39;</span><span class="p">])</span>
                 <span class="p">}</span>
             <span class="p">}]</span>
     <span class="k">else</span><span class="p">:</span>
@@ -608,13 +756,7 @@
         <span class="k">for</span> <span class="n">lsm</span> <span class="ow">in</span> <span class="n">lsmodels</span><span class="p">:</span>
             <span class="c1"># Add extent and filename for preferred model</span>
             <span class="k">if</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;preferred&#39;</span><span class="p">]:</span>
-                <span class="n">shortname</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span>
-                <span class="k">if</span> <span class="s1">&#39;Jessee (2017)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;jessee_2017&#39;</span>
-                <span class="k">elif</span> <span class="s1">&#39;Nowicki and others (2014)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;nowicki_2014_global&#39;</span>
-                <span class="k">elif</span> <span class="s1">&#39;godt&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="o">.</span><span class="n">lower</span><span class="p">():</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;godt_2008&#39;</span>
+                <span class="n">filesnippet</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
                 <span class="c1"># Read in extents</span>
                 <span class="n">flnm</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span>
                 <span class="n">ls_extent_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="n">flnm</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
@@ -625,18 +767,24 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Landslide extent not found.&quot;</span><span class="p">)</span>
                 <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;extent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ls_extent</span>
-                <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">flnm</span>
+                <span class="c1">#lsm[&#39;filename&#39;] = flnm</span>
+                <span class="n">lsext</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;zoomext&#39;</span><span class="p">]</span>  <span class="c1"># Get zoom extent</span>
+                <span class="n">ls_alert</span> <span class="o">=</span> <span class="n">lsm</span><span class="p">[</span><span class="s1">&#39;alert&#39;</span><span class="p">]</span>
+                <span class="n">rmkeys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bin_edges&#39;</span><span class="p">,</span> <span class="s1">&#39;bin_colors&#39;</span><span class="p">,</span> <span class="s1">&#39;zoomext&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Remove any alert keys</span>
+                <span class="n">rmkeys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bin_edges&#39;</span><span class="p">,</span> <span class="s1">&#39;bin_colors&#39;</span><span class="p">,</span> <span class="s1">&#39;zoomext&#39;</span><span class="p">,</span> <span class="s1">&#39;population_alert&#39;</span><span class="p">,</span>
+                          <span class="s1">&#39;alert&#39;</span><span class="p">,</span> <span class="s1">&#39;hazard_alert&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">rmkeys</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">lsm</span><span class="p">:</span>
+                    <span class="n">lsm</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">lqm</span> <span class="ow">in</span> <span class="n">lqmodels</span><span class="p">:</span>
             <span class="k">if</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;preferred&#39;</span><span class="p">]:</span>
-                <span class="n">shortname</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span>
-                <span class="k">if</span> <span class="s1">&#39;Zhu and others (2017)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;zhu_2017_general&#39;</span>
-                <span class="k">elif</span> <span class="s1">&#39;Zhu and others (2015)&#39;</span> <span class="ow">in</span> <span class="n">shortname</span><span class="p">:</span>
-                    <span class="n">filesnippet</span> <span class="o">=</span> <span class="s1">&#39;zhu_2015&#39;</span>
+                <span class="n">filesnippet</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;id&#39;</span><span class="p">]</span>
                 <span class="c1"># Read in extents</span>
                 <span class="n">flnm</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_extent.json&#39;</span> <span class="o">%</span> <span class="n">filesnippet</span>
-                <span class="n">lq_extent_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="n">flnm</span> <span class="ow">in</span> <span class="n">f</span><span class="p">]</span>
+                <span class="n">lq_extent_file</span> <span class="o">=</span> <span class="p">[</span><span class="n">f2</span> <span class="k">for</span> <span class="n">f2</span> <span class="ow">in</span> <span class="n">files</span> <span class="k">if</span> <span class="n">flnm</span> <span class="ow">in</span> <span class="n">f2</span><span class="p">]</span>
                 <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lq_extent_file</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
                     <span class="n">lq_file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">lq_extent_file</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
                     <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">lq_file</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
@@ -644,12 +792,27 @@
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;Liquefaction extent not found.&quot;</span><span class="p">)</span>
                 <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;extent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lq_extent</span>
-                <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;filename&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">flnm</span>
+                <span class="c1">#lqm[&#39;filename&#39;] = flnm</span>
+                <span class="n">lqext</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;zoomext&#39;</span><span class="p">]</span>  <span class="c1"># Get zoom extent</span>
+                <span class="n">lq_alert</span> <span class="o">=</span> <span class="n">lqm</span><span class="p">[</span><span class="s1">&#39;alert&#39;</span><span class="p">]</span>                
+                <span class="n">rmkeys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bin_edges&#39;</span><span class="p">,</span> <span class="s1">&#39;bin_colors&#39;</span><span class="p">,</span> <span class="s1">&#39;zoomext&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># Remove any alert keys</span>
+                <span class="n">rmkeys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bin_edges&#39;</span><span class="p">,</span> <span class="s1">&#39;bin_colors&#39;</span><span class="p">,</span> <span class="s1">&#39;zoomext&#39;</span><span class="p">,</span> <span class="s1">&#39;population_alert&#39;</span><span class="p">,</span>
+                          <span class="s1">&#39;alert&#39;</span><span class="p">,</span> <span class="s1">&#39;hazard_alert&#39;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">rmkeys</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">lqm</span><span class="p">:</span>
+                    <span class="n">lqm</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
 
     <span class="c1"># Try to get event info</span>
-    <span class="n">event_dict</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()</span>
-    <span class="n">sm_dict</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">getShakeDict</span><span class="p">()</span>
+    <span class="n">shake_grid</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
+    <span class="n">event_dict</span> <span class="o">=</span> <span class="n">shake_grid</span><span class="o">.</span><span class="n">getEventDict</span><span class="p">()</span>
+    <span class="n">sm_dict</span> <span class="o">=</span> <span class="n">shake_grid</span><span class="o">.</span><span class="n">getShakeDict</span><span class="p">()</span>
     <span class="n">base_url</span> <span class="o">=</span> <span class="s1">&#39;https://earthquake.usgs.gov/earthquakes/eventpage/&#39;</span>
+
+    <span class="c1"># Is this a point source?</span>
+    <span class="n">point</span> <span class="o">=</span> <span class="n">is_grid_point_source</span><span class="p">(</span><span class="n">shake_grid</span><span class="p">)</span>
+
     <span class="k">try</span><span class="p">:</span>
         <span class="c1"># Hopefully this will eventually be more reliable once we get the</span>
         <span class="c1"># comcat info directly from the shakemap grid, rather than rely on</span>
@@ -661,25 +824,29 @@
         <span class="n">utc</span> <span class="o">=</span> <span class="n">pytz</span><span class="o">.</span><span class="n">utc</span>
         <span class="n">detail_time</span> <span class="o">=</span> <span class="n">ShakeDateTime</span><span class="o">.</span><span class="n">fromtimestamp</span><span class="p">(</span><span class="n">detail</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">]</span><span class="o">/</span><span class="mf">1000.0</span><span class="p">,</span> <span class="n">utc</span><span class="p">)</span>
 
-        <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="c1"># Finite fault stuff:</span>
-        <span class="c1">#    Other sections of the code do some relatively complicated stuff to</span>
-        <span class="c1">#    try to sort out the finite fault. Here, I&#39;m just simplifying it so</span>
-        <span class="c1">#    that it checks comcat for a finite fault file.</span>
-        <span class="c1"># ---------------------------------------------------------------------</span>
-        <span class="n">fault_file</span> <span class="o">=</span> <span class="n">shakemap_info</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;event_information&#39;</span><span class="p">][</span><span class="s1">&#39;faultfiles&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fault_file</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">point</span> <span class="o">=</span> <span class="kc">True</span>
-
     <span class="k">except</span><span class="p">:</span>
         <span class="c1"># Hopefully we can eventually remove this....</span>
         <span class="n">event_url</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">#executive&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">event_dict</span><span class="p">[</span><span class="s1">&#39;event_id&#39;</span><span class="p">])</span>
         <span class="n">code</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
         <span class="n">net</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
         <span class="n">detail_time</span> <span class="o">=</span> <span class="o">-</span><span class="mi">999</span>
-        <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="c1"># Get extents that work for both unless one is green and the other isn&#39;t</span>
+    <span class="k">if</span> <span class="n">lq_alert</span> <span class="o">==</span> <span class="s1">&#39;green&#39;</span> <span class="ow">and</span> <span class="n">ls_alert</span> <span class="o">!=</span> <span class="s1">&#39;green&#39;</span> <span class="ow">and</span> <span class="n">ls_alert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">xmin</span> <span class="o">=</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span>
+        <span class="n">xmax</span> <span class="o">=</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span>
+        <span class="n">ymin</span> <span class="o">=</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span>
+        <span class="n">ymax</span> <span class="o">=</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span>
+    <span class="k">elif</span> <span class="n">lq_alert</span> <span class="o">!=</span> <span class="s1">&#39;green&#39;</span> <span class="ow">and</span> <span class="n">ls_alert</span> <span class="o">==</span> <span class="s1">&#39;green&#39;</span> <span class="ow">and</span> <span class="n">lq_alert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">xmin</span> <span class="o">=</span> <span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span>
+        <span class="n">xmax</span> <span class="o">=</span> <span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span>
+        <span class="n">ymin</span> <span class="o">=</span> <span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span>
+        <span class="n">ymax</span> <span class="o">=</span> <span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">xmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">],</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]))</span>
+        <span class="n">xmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">],</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]))</span>
+        <span class="n">ymin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">],</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]))</span>
+        <span class="n">ymax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="n">lqext</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">],</span> <span class="n">lsext</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]))</span>
 
     <span class="c1"># Should we display the warning about point source?</span>
     <span class="n">rupture_warning</span> <span class="o">=</span> <span class="kc">False</span>
@@ -699,7 +866,8 @@
             <span class="s1">&#39;event_url&#39;</span><span class="p">:</span> <span class="n">event_url</span><span class="p">,</span>
             <span class="s1">&#39;shakemap_version&#39;</span><span class="p">:</span> <span class="n">sm_dict</span><span class="p">[</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">],</span>
             <span class="s1">&#39;rupture_warning&#39;</span><span class="p">:</span> <span class="n">rupture_warning</span><span class="p">,</span>
-            <span class="s1">&#39;point_source&#39;</span><span class="p">:</span> <span class="n">point</span>
+            <span class="s1">&#39;point_source&#39;</span><span class="p">:</span> <span class="n">point</span><span class="p">,</span>
+            <span class="s1">&#39;zoom_extent&#39;</span><span class="p">:</span> <span class="p">[</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="p">]</span>
         <span class="p">},</span>
         <span class="s1">&#39;Landslides&#39;</span><span class="p">:</span> <span class="n">lsmodels</span><span class="p">,</span>
         <span class="s1">&#39;Liquefaction&#39;</span><span class="p">:</span> <span class="n">lqmodels</span>
@@ -715,7 +883,7 @@
 
 <div class="viewcode-block" id="get_alert"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.get_alert">[docs]</a><span class="k">def</span> <span class="nf">get_alert</span><span class="p">(</span><span class="n">paramalertLS</span><span class="p">,</span> <span class="n">paramalertLQ</span><span class="p">,</span> <span class="n">parampopLS</span><span class="p">,</span> <span class="n">parampopLQ</span><span class="p">,</span>
               <span class="n">hazbinLS</span><span class="o">=</span><span class="p">[</span><span class="mf">1.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">,</span> <span class="mf">100.</span><span class="p">],</span> <span class="n">popbinLS</span><span class="o">=</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">],</span>
-              <span class="n">hazbinLQ</span><span class="o">=</span><span class="p">[</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">100.</span><span class="p">,</span> <span class="mf">1000.</span><span class="p">],</span> <span class="n">popbinLQ</span><span class="o">=</span><span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">]):</span>
+              <span class="n">hazbinLQ</span><span class="o">=</span><span class="p">[</span><span class="mf">10.</span><span class="p">,</span> <span class="mf">100.</span><span class="p">,</span> <span class="mf">1000.</span><span class="p">],</span> <span class="n">popbinLQ</span><span class="o">=</span><span class="p">[</span><span class="mi">1000</span><span class="p">,</span> <span class="mi">10000</span><span class="p">,</span> <span class="mi">100000</span><span class="p">]):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get alert levels</span>
 
@@ -735,66 +903,144 @@
 
 <span class="sd">    Returns:</span>
 <span class="sd">        Returns:</span>
-<span class="sd">            tuple: (alertLS, popalertLS, alertLQ, popalertLQ) where:</span>
-<span class="sd">                * alertLS: the landslide hazard alert level (str)</span>
-<span class="sd">                * popalertLS: the landslide population alert level (str)</span>
-<span class="sd">                * alertLQ: the liquefaction hazard alert level (str)</span>
-<span class="sd">                * popalertLQ: the liquefaction population alert level (str)</span>
+<span class="sd">            tuple: (hazLS, popLS, hazLQ, popLQ, LS, LQ) where:</span>
+<span class="sd">                * hazLS: the landslide hazard alert level (str)</span>
+<span class="sd">                * popLS: the landslide population alert level (str)</span>
+<span class="sd">                * hazLQ: the liquefaction hazard alert level (str)</span>
+<span class="sd">                * popLQ: the liquefaction population alert level (str)</span>
+<span class="sd">                * LS: the overall landslide alert level (str)</span>
+<span class="sd">                * LQ: the overall liquefaction alert level (str)</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">paramalertLS</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">alertLS</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">hazLS</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">elif</span> <span class="n">paramalertLS</span> <span class="o">&lt;</span> <span class="n">hazbinLS</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-        <span class="n">alertLS</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
+        <span class="n">hazLS</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
     <span class="k">elif</span> <span class="n">paramalertLS</span> <span class="o">&gt;=</span> <span class="n">hazbinLS</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">paramalertLS</span> <span class="o">&lt;</span> <span class="n">hazbinLS</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-        <span class="n">alertLS</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
+        <span class="n">hazLS</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
     <span class="k">elif</span> <span class="n">paramalertLS</span> <span class="o">&gt;=</span> <span class="n">hazbinLS</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="n">paramalertLS</span> <span class="o">&lt;</span> <span class="n">hazbinLS</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">alertLS</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
+        <span class="n">hazLS</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
     <span class="k">elif</span> <span class="n">paramalertLS</span> <span class="o">&gt;</span> <span class="n">hazbinLS</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">alertLS</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
+        <span class="n">hazLS</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">alertLS</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">hazLS</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">if</span> <span class="n">parampopLS</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">popalertLS</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">popLS</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">elif</span> <span class="n">parampopLS</span> <span class="o">&lt;</span> <span class="n">popbinLS</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-        <span class="n">popalertLS</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
+        <span class="n">popLS</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
     <span class="k">elif</span> <span class="n">parampopLS</span> <span class="o">&gt;=</span> <span class="n">popbinLS</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">parampopLS</span> <span class="o">&lt;</span> <span class="n">popbinLS</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-        <span class="n">popalertLS</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
+        <span class="n">popLS</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
     <span class="k">elif</span> <span class="n">parampopLS</span> <span class="o">&gt;=</span> <span class="n">popbinLS</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="n">parampopLS</span> <span class="o">&lt;</span> <span class="n">popbinLS</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">popalertLS</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
+        <span class="n">popLS</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
     <span class="k">elif</span> <span class="n">parampopLS</span> <span class="o">&gt;</span> <span class="n">popbinLS</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">popalertLS</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
+        <span class="n">popLS</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">popalertLS</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">popLS</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">if</span> <span class="n">paramalertLQ</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">alertLQ</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">hazLQ</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">elif</span> <span class="n">paramalertLQ</span> <span class="o">&lt;</span> <span class="n">hazbinLQ</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-        <span class="n">alertLQ</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
+        <span class="n">hazLQ</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
     <span class="k">elif</span> <span class="n">paramalertLQ</span> <span class="o">&gt;=</span> <span class="n">hazbinLQ</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">paramalertLQ</span> <span class="o">&lt;</span> <span class="n">hazbinLQ</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-        <span class="n">alertLQ</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
+        <span class="n">hazLQ</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
     <span class="k">elif</span> <span class="n">paramalertLQ</span> <span class="o">&gt;=</span> <span class="n">hazbinLQ</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="n">paramalertLQ</span> <span class="o">&lt;</span> <span class="n">hazbinLQ</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">alertLQ</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
+        <span class="n">hazLQ</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
     <span class="k">elif</span> <span class="n">paramalertLQ</span> <span class="o">&gt;</span> <span class="n">hazbinLQ</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">alertLQ</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
+        <span class="n">hazLQ</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">alertLQ</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">hazLQ</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">if</span> <span class="n">parampopLQ</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">popalertLQ</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">popLQ</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">elif</span> <span class="n">parampopLQ</span> <span class="o">&lt;</span> <span class="n">popbinLQ</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-        <span class="n">popalertLQ</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
+        <span class="n">popLQ</span> <span class="o">=</span> <span class="s1">&#39;green&#39;</span>
     <span class="k">elif</span> <span class="n">parampopLQ</span> <span class="o">&gt;=</span> <span class="n">popbinLQ</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">and</span> <span class="n">parampopLQ</span> <span class="o">&lt;</span> <span class="n">popbinLQ</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
-        <span class="n">popalertLQ</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
+        <span class="n">popLQ</span> <span class="o">=</span> <span class="s1">&#39;yellow&#39;</span>
     <span class="k">elif</span> <span class="n">parampopLQ</span> <span class="o">&gt;=</span> <span class="n">popbinLQ</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">and</span> <span class="n">parampopLQ</span> <span class="o">&lt;</span> <span class="n">popbinLQ</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">popalertLQ</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
+        <span class="n">popLQ</span> <span class="o">=</span> <span class="s1">&#39;orange&#39;</span>
     <span class="k">elif</span> <span class="n">parampopLQ</span> <span class="o">&gt;</span> <span class="n">popbinLQ</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
-        <span class="n">popalertLQ</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
+        <span class="n">popLQ</span> <span class="o">=</span> <span class="s1">&#39;red&#39;</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">popalertLQ</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">popLQ</span> <span class="o">=</span> <span class="kc">None</span>
 
-    <span class="k">return</span> <span class="n">alertLS</span><span class="p">,</span> <span class="n">popalertLS</span><span class="p">,</span> <span class="n">alertLQ</span><span class="p">,</span> <span class="n">popalertLQ</span></div>
+    <span class="n">num2color</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;1&#39;</span><span class="p">:</span> <span class="s1">&#39;green&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;2&#39;</span><span class="p">:</span> <span class="s1">&#39;yellow&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;3&#39;</span><span class="p">:</span> <span class="s1">&#39;orange&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;4&#39;</span><span class="p">:</span> <span class="s1">&#39;red&#39;</span>
+    <span class="p">}</span>
+    <span class="n">col2num</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">((</span><span class="n">v</span><span class="p">,</span> <span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">num2color</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+
+    <span class="n">LSnum1</span> <span class="o">=</span> <span class="n">col2num</span><span class="p">[</span><span class="n">hazLS</span><span class="p">]</span>
+    <span class="n">LSnum2</span> <span class="o">=</span> <span class="n">col2num</span><span class="p">[</span><span class="n">popLS</span><span class="p">]</span>
+    <span class="n">LSnum</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">LSnum1</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">LSnum2</span><span class="p">)]))</span>
+    <span class="n">LS</span> <span class="o">=</span> <span class="n">num2color</span><span class="p">[</span><span class="n">LSnum</span><span class="p">]</span>
+
+    <span class="n">LQnum1</span> <span class="o">=</span> <span class="n">col2num</span><span class="p">[</span><span class="n">hazLQ</span><span class="p">]</span>
+    <span class="n">LQnum2</span> <span class="o">=</span> <span class="n">col2num</span><span class="p">[</span><span class="n">popLQ</span><span class="p">]</span>
+    <span class="n">LQnum</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">([</span><span class="nb">int</span><span class="p">(</span><span class="n">LQnum1</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">LQnum2</span><span class="p">)]))</span>
+    <span class="n">LQ</span> <span class="o">=</span> <span class="n">num2color</span><span class="p">[</span><span class="n">LQnum</span><span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">hazLS</span><span class="p">,</span> <span class="n">popLS</span><span class="p">,</span> <span class="n">hazLQ</span><span class="p">,</span> <span class="n">popLQ</span><span class="p">,</span> <span class="n">LS</span><span class="p">,</span> <span class="n">LQ</span></div>
+
+
+<div class="viewcode-block" id="get_extent"><a class="viewcode-back" href="../../gfail.webpage.html#gfail.webpage.get_extent">[docs]</a><span class="k">def</span> <span class="nf">get_extent</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">propofmax</span><span class="o">=</span><span class="mf">0.4</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the extent that contains all values with probabilities exceeding a threshold</span>
+<span class="sd">    in order to determine ideal zoom level for interactive map</span>
+<span class="sd">    If nothing is above the threshold, uses the full extent</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        grid: grid2d of model output</span>
+<span class="sd">        propofmax (float): Proportion of maximum that should be fully included</span>
+<span class="sd">            within the bounds.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple: (boundaries, zoomed) where,</span>
+<span class="sd">            * boundaries: a dictionary with keys &#39;xmin&#39;, &#39;xmax&#39;, &#39;ymin&#39;, and &#39;ymax&#39; that</span>
+<span class="sd">                defines the boundaries in geographic coordinates.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">maximum</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">())</span>
+
+    <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
+    <span class="n">lons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">nx</span><span class="p">)</span>
+    <span class="n">lats</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">ymax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">ny</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">maximum</span> <span class="o">&lt;=</span> <span class="mf">0.</span><span class="p">:</span>
+        <span class="n">boundaries1</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">xmin</span><span class="o">=</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="o">=</span><span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="o">=</span><span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span><span class="o">=</span><span class="n">ymax</span><span class="p">)</span>
+        <span class="c1"># If nothing is above the threshold, use full extent</span>
+        <span class="k">return</span> <span class="n">boundaries1</span>
+
+    <span class="n">threshold</span> <span class="o">=</span> <span class="n">propofmax</span> <span class="o">*</span> <span class="n">maximum</span>
+
+    <span class="n">row</span><span class="p">,</span> <span class="n">col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="n">threshold</span><span class="p">))</span>
+    <span class="n">lonmin</span> <span class="o">=</span> <span class="n">lons</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">lonmax</span> <span class="o">=</span> <span class="n">lons</span><span class="p">[</span><span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="n">latmin</span> <span class="o">=</span> <span class="n">lats</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span>
+    <span class="n">latmax</span> <span class="o">=</span> <span class="n">lats</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+    <span class="n">boundaries1</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">if</span> <span class="n">xmin</span> <span class="o">&lt;</span> <span class="n">lonmin</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmin</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmin</span>
+    <span class="k">if</span> <span class="n">xmax</span> <span class="o">&gt;</span> <span class="n">lonmax</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmax</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmax</span>
+    <span class="k">if</span> <span class="n">ymin</span> <span class="o">&lt;</span> <span class="n">latmin</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmin</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymin</span>
+    <span class="k">if</span> <span class="n">ymax</span> <span class="o">&gt;</span> <span class="n">latmax</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmax</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymax</span>
+
+    <span class="k">return</span> <span class="n">boundaries1</span></div>
 </pre></div>
 
           </div>

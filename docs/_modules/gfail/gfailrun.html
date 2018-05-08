@@ -42,6 +42,7 @@
 <span></span><span class="c1"># stdlib imports</span>
 <span class="kn">from</span> <span class="nn">configobj</span> <span class="k">import</span> <span class="n">ConfigObj</span>
 <span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
 <span class="kn">import</span> <span class="nn">urllib</span>
@@ -57,7 +58,7 @@
 <span class="kn">import</span> <span class="nn">gfail.logisticmodel</span> <span class="k">as</span> <span class="nn">LM</span>
 <span class="kn">from</span> <span class="nn">gfail.godt</span> <span class="k">import</span> <span class="n">godt2008</span>
 <span class="kn">from</span> <span class="nn">gfail.makemaps</span> <span class="k">import</span> <span class="p">(</span><span class="n">modelMap</span><span class="p">,</span> <span class="n">interactiveMap</span><span class="p">,</span> <span class="n">GFSummary</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="k">import</span> <span class="n">hazdev</span>
+<span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="k">import</span> <span class="n">hazdev</span><span class="p">,</span> <span class="n">create_png</span><span class="p">,</span> <span class="n">create_info</span>
 <span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="k">import</span> <span class="p">(</span>
     <span class="n">get_event_comcat</span><span class="p">,</span> <span class="n">parseConfigLayers</span><span class="p">,</span>
     <span class="n">parseMapConfig</span><span class="p">,</span> <span class="n">text_to_json</span><span class="p">,</span> <span class="n">write_floats</span><span class="p">,</span>
@@ -68,7 +69,8 @@
     <span class="sd">&quot;&quot;&quot;Runs ground failure.</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        args: dictionary or argument parser Namespace output by bin/gfail program.</span>
+<span class="sd">        args: dictionary or argument parser Namespace output by bin/gfail</span>
+<span class="sd">            program.</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        list: Names of created files.</span>
@@ -127,23 +129,32 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s1">&#39;Could not find &quot;</span><span class="si">%s</span><span class="s1">&quot; as a file or a valid url&#39;</span>
                                 <span class="o">%</span> <span class="p">(</span><span class="n">shakefile</span><span class="p">))</span>
-                <span class="k">return</span>
         <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
 
         <span class="c1"># Get entire path so won&#39;t break if running gfail with relative path</span>
         <span class="n">shakefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">nest_folder</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">extract_contents</span><span class="p">:</span>
+            <span class="n">outfolder</span> <span class="o">=</span> <span class="n">outdir</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># Nest in a folder named by eventid</span>
             <span class="n">outfolder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="n">eventid</span><span class="p">)</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outfolder</span><span class="p">):</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outfolder</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">outfolder</span> <span class="o">=</span> <span class="n">outdir</span>
+            
+
+        <span class="c1"># Copy shake grid into output directory</span>
+        <span class="c1"># --- this is base on advice from Mike that when running in production</span>
+        <span class="c1">#     the shake grids are not archived and so if we need/want to have</span>
+        <span class="c1">#     the exact grid used for the calculation later if there&#39;s every a</span>
+        <span class="c1">#     question about how the calculation was done, the safest thing is</span>
+        <span class="c1">#     to store a copy of it here.</span>
+        <span class="n">shake_copy</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;grid.xml&quot;</span><span class="p">)</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">shake_copy</span><span class="p">)</span>
 
         <span class="c1"># Write shakefile to a file for use later</span>
         <span class="n">shakename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;shakefile.txt&quot;</span><span class="p">)</span>
-        <span class="n">shake_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">shakename</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span>
-        <span class="n">shake_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+        <span class="n">shake_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">shakename</span><span class="p">,</span> <span class="s2">&quot;wt&quot;</span><span class="p">)</span>
+        <span class="n">shake_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">shake_copy</span><span class="p">)</span>
         <span class="n">shake_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">shakename</span><span class="p">)</span>
 
@@ -319,6 +330,7 @@
                 <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filenameh</span><span class="p">):</span>
                     <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filenameh</span><span class="p">)</span>
                 <span class="n">savelayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">filenameh</span><span class="p">))</span>
+                <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filenameh</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span><span class="p">:</span>
                 <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
@@ -439,6 +451,14 @@
                                 <span class="n">shakefile</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                                 <span class="n">faultfile</span><span class="o">=</span><span class="n">ffault</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">,</span> <span class="n">pop_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
             <span class="n">filenames</span> <span class="o">=</span> <span class="n">filenames</span> <span class="o">+</span> <span class="n">outputs</span>
+
+<span class="c1">#        # create transparent png file</span>
+<span class="c1">#        outputs = create_png(outdir)</span>
+<span class="c1">#        filenames = filenames + outputs</span>
+<span class="c1">#</span>
+<span class="c1">#        # create info file</span>
+<span class="c1">#        infofile = create_info(outdir)</span>
+<span class="c1">#        filenames = filenames + infofile</span>
 
         <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Files created:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
@@ -590,6 +610,37 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for ocean trimming file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
                       <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;pdl_config&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;pdl_config&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for pdl config file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;log_filepath&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;log_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for log file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dbfile&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;dbfile&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for database file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">)</span>
+
     <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;New default paths set.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">D</span><span class="p">:</span>

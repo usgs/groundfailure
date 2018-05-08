@@ -43,7 +43,7 @@
 <span id="gfail-webpage"></span><h1>gfail.webpage<a class="headerlink" href="#module-gfail.webpage" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.webpage.hazdev">
-<code class="descclassname">gfail.webpage.</code><code class="descname">hazdev</code><span class="sig-paren">(</span><em>maplayerlist</em>, <em>configs</em>, <em>shakemap</em>, <em>outfolder=None</em>, <em>alpha=0.7</em>, <em>shakethreshtype='pga'</em>, <em>probthresh=None</em>, <em>shakethresh=10.0</em>, <em>prefLS='Nowicki Jessee (2017)'</em>, <em>prefLQ='Zhu and others (2017)'</em>, <em>pop_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#hazdev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.hazdev" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.webpage.</code><code class="descname">hazdev</code><span class="sig-paren">(</span><em>maplayerlist</em>, <em>configs</em>, <em>shakemap</em>, <em>outfolder=None</em>, <em>alpha=0.7</em>, <em>shakethreshtype='pga'</em>, <em>probthresh=None</em>, <em>shakethresh=10.0</em>, <em>prefLS='Nowicki Jessee (2017)'</em>, <em>prefLQ='Zhu and others (2017)'</em>, <em>pop_file=None</em>, <em>defaultcolors=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#hazdev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.hazdev" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create all files needed for product page creation
 Assumes gfail has been run already with -w flag</p>
 <table class="docutils field-list" frame="void" rules="none">
@@ -51,28 +51,42 @@ Assumes gfail has been run already with -w flag</p>
 <col class="field-body" />
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>maplayerlist</strong> (<em>list</em>) – List of model outputs from gfail</li>
+<li><strong>maplayerlist</strong> (<em>list</em>) – List of model outputs from gfail.</li>
 <li><strong>configs</strong> (<em>list</em>) – List of dictionaries of config files corresponding to
-each model in maplayerlist and in the same order</li>
-<li><strong>shakemap</strong> (<em>str</em>) – path to shakemap .xml file</li>
-<li><strong>outfolder</strong> (<em>str</em>) – Location in which to save outputs. If None, will use current directory</li>
+each model in maplayerlist and in the same order.</li>
+<li><strong>shakemap</strong> (<em>str</em>) – path to shakemap .xml file.</li>
+<li><strong>outfolder</strong> (<em>str</em>) – Location in which to save outputs. If None, will use
+current directory.</li>
 <li><strong>alpha</strong> (<em>float</em>) – Transparency to use for overlay pngs, value from 0 to 1.</li>
-<li><strong>shakethreshtype</strong> (<em>str</em>) – Type of ground motion to use for shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</li>
-<li><strong>probthresh</strong> – Optional. Float or list of probability thresholds to apply before computing stats.</li>
-<li><strong>shakethresh</strong> – Float or list of shaking thresholds in %g for pga, cm/s for pgv, float for mmi.
-Used for Hagg and Exposure computation</li>
-<li><strong>prefLS</strong> (<em>str</em>) – shortref of “preferred” landslide model</li>
-<li><strong>prefLQ</strong> (<em>str</em>) – shortref of “preferred” liquefaction model</li>
-<li><strong>pop_filt</strong> (<em>str</em>) – file path to population file used to compute population-based
-alert levels.</li>
+<li><strong>shakethreshtype</strong> (<em>str</em>) – Type of ground motion to use for shakethresh,
+‘pga’, ‘pgv’, or ‘mmi’.</li>
+<li><strong>probthresh</strong> – Optional. Float or list of probability thresholds to apply
+before computing stats.</li>
+<li><strong>shakethresh</strong> – Float or list of shaking thresholds in %g for pga, cm/s
+for pgv, float for mmi. Used for Hagg and Exposure computation.</li>
+<li><strong>prefLS</strong> (<em>str</em>) – shortref of “preferred” landslide model.</li>
+<li><strong>prefLQ</strong> (<em>str</em>) – shortref of “preferred” liquefaction model.</li>
+<li><strong>pop_filt</strong> (<em>str</em>) – file path to population file used to compute
+population-based alert levels.</li>
+<li><strong>defaultcolors</strong> (<em>bool</em>) – If True, will use DFCOLORS for all layers instead
+of determining new ones. This will crash if any of the layers have
+a different number of bins than the number of DFCOLORS</li>
 </ul>
 </td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">info.json
-transparent png overlays of all models</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Files that need to be sent to comcat for hazdev to create the product webpage including</p>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
+<dt>Files that need to be sent to comcat for hazdev to create the product</dt>
+<dd><dl class="first last docutils">
+<dt>webpage including:</dt>
+<dd><ul class="first last simple">
+<li>info.json</li>
+<li>transparent png overlays of all models</li>
+</ul>
+</dd>
+</dl>
+</dd>
+</dl>
+</p>
 </td>
 </tr>
 </tbody>
@@ -81,7 +95,7 @@ transparent png overlays of all models</p>
 
 <dl class="function">
 <dt id="gfail.webpage.create_png">
-<code class="descclassname">gfail.webpage.</code><code class="descname">create_png</code><span class="sig-paren">(</span><em>event_dir</em>, <em>lsmodels=None</em>, <em>lqmodels=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#create_png"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.create_png" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.webpage.</code><code class="descname">create_png</code><span class="sig-paren">(</span><em>event_dir</em>, <em>lsmodels=None</em>, <em>lqmodels=None</em>, <em>mercator=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#create_png"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.create_png" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates transparent PNG file for website.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -94,6 +108,7 @@ by the hazdev function. If not specified, code will search for
 the hdf5 files for the preferred model and will create this dictionary
 and will apply default colorbars and bins.</li>
 <li><strong>lqmodels</strong> (<em>list</em>) – Same as above for liquefaction.</li>
+<li><strong>mercator</strong> (<em>bool</em>) – Project raster to web mercator</li>
 </ul>
 </td>
 </tr>
@@ -116,8 +131,8 @@ and will apply default colorbars and bins.</li>
 <li><strong>event_dir</strong> (<em>srt</em>) – Directory containing ground failure results.</li>
 <li><strong>lsmodels</strong> (<em>list</em>) – List of dictionaries of model summary info compiled
 by the hazdev function. If not specified, code will search for
-the hdf5 files for the preferred model and will create this dictionary
-and will apply default colorbars and bins.</li>
+the hdf5 files for the preferred model and will create this
+dictionary and will apply default colorbars and bins.</li>
 <li><strong>lqmodels</strong> (<em>list</em>) – Same as above for liquefaction.</li>
 </ul>
 </td>
@@ -131,7 +146,7 @@ and will apply default colorbars and bins.</li>
 
 <dl class="function">
 <dt id="gfail.webpage.get_alert">
-<code class="descclassname">gfail.webpage.</code><code class="descname">get_alert</code><span class="sig-paren">(</span><em>paramalertLS, paramalertLQ, parampopLS, parampopLQ, hazbinLS=[1.0, 10.0, 100.0], popbinLS=[100, 1000, 10000], hazbinLQ=[10.0, 100.0, 1000.0], popbinLQ=[100, 1000, 10000]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#get_alert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.get_alert" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">gfail.webpage.</code><code class="descname">get_alert</code><span class="sig-paren">(</span><em>paramalertLS, paramalertLQ, parampopLS, parampopLQ, hazbinLS=[1.0, 10.0, 100.0], popbinLS=[100, 1000, 10000], hazbinLQ=[10.0, 100.0, 1000.0], popbinLQ=[1000, 10000, 100000]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#get_alert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.get_alert" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get alert levels</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -154,12 +169,14 @@ and Red.</li>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>tuple: (alertLS, popalertLS, alertLQ, popalertLQ) where:</dt>
+<dt>tuple: (hazLS, popLS, hazLQ, popLQ, LS, LQ) where:</dt>
 <dd><ul class="first last simple">
-<li>alertLS: the landslide hazard alert level (str)</li>
-<li>popalertLS: the landslide population alert level (str)</li>
-<li>alertLQ: the liquefaction hazard alert level (str)</li>
-<li>popalertLQ: the liquefaction population alert level (str)</li>
+<li>hazLS: the landslide hazard alert level (str)</li>
+<li>popLS: the landslide population alert level (str)</li>
+<li>hazLQ: the liquefaction hazard alert level (str)</li>
+<li>popLQ: the liquefaction population alert level (str)</li>
+<li>LS: the overall landslide alert level (str)</li>
+<li>LQ: the overall liquefaction alert level (str)</li>
 </ul>
 </dd>
 </dl>
@@ -167,6 +184,44 @@ and Red.</li>
 </td>
 </tr>
 <tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">Returns</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.get_extent">
+<code class="descclassname">gfail.webpage.</code><code class="descname">get_extent</code><span class="sig-paren">(</span><em>grid</em>, <em>propofmax=0.4</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#get_extent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.get_extent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the extent that contains all values with probabilities exceeding a threshold
+in order to determine ideal zoom level for interactive map
+If nothing is above the threshold, uses the full extent</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>grid</strong> – grid2d of model output</li>
+<li><strong>propofmax</strong> (<em>float</em>) – Proportion of maximum that should be fully included
+within the bounds.</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
+<dt>(boundaries, zoomed) where,</dt>
+<dd><ul class="first last simple">
+<li><dl class="first docutils">
+<dt>boundaries: a dictionary with keys ‘xmin’, ‘xmax’, ‘ymin’, and ‘ymax’ that</dt>
+<dd>defines the boundaries in geographic coordinates.</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
 </td>
 </tr>
 </tbody>
@@ -204,6 +259,7 @@ and Red.</li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.transfer.html">gfail.transfer</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.webpage</a></li>
 </ul>

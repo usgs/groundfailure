@@ -54,7 +54,8 @@
 
 <div class="viewcode-block" id="transfer"><a class="viewcode-back" href="../../gfail.pdl.html#gfail.pdl.transfer">[docs]</a><span class="k">def</span> <span class="nf">transfer</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">pdl_conf</span><span class="p">,</span> <span class="n">pdl_bin</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">&quot;us&quot;</span><span class="p">,</span> <span class="n">dryrun</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    This is to transfer the event&#39;s &#39;pdl_directory&#39; to comcat.</span>
+<span class="sd">    This is to transfer the event&#39;s &#39;pdl_directory&#39; to comcat. PDL must be</span>
+<span class="sd">    installed separately, see https://usgs.github.io/pdl/ for information.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        event_dir (str): File path to location of results for event</span>
@@ -94,12 +95,25 @@
     <span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;code&#39;</span><span class="p">]</span>
     <span class="n">eventsource</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;net&#39;</span><span class="p">]</span>
     <span class="n">shake_version</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]</span>
+    <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;zoom_extent&#39;</span><span class="p">]</span>
 
     <span class="n">pdl_type</span> <span class="o">=</span> <span class="s1">&#39;ground-failure&#39;</span>
 
     <span class="c1"># PDL properties</span>
-    <span class="n">lq_pref</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Liquefaction&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">ls_pref</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Landslides&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Get preferred models to extract PDL properties</span>
+    <span class="n">lqs</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Liquefaction&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">lq</span> <span class="ow">in</span> <span class="n">lqs</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">lq</span><span class="p">[</span><span class="s1">&#39;preferred&#39;</span><span class="p">]:</span>
+            <span class="n">lq_pref</span> <span class="o">=</span> <span class="n">lq</span>
+    <span class="n">lss</span> <span class="o">=</span> <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Landslides&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">ls</span> <span class="ow">in</span> <span class="n">lss</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">ls</span><span class="p">[</span><span class="s1">&#39;preferred&#39;</span><span class="p">]:</span>
+            <span class="n">ls_pref</span> <span class="o">=</span> <span class="n">ls</span>
+
+    <span class="n">ls_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-alert=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;alert&#39;</span><span class="p">]</span>
+    <span class="n">lq_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-alert=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+        <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;alert&#39;</span><span class="p">]</span>
 
     <span class="n">lq_haz_alert</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-alert-color=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
         <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;color&#39;</span><span class="p">]</span>
@@ -150,10 +164,10 @@
     <span class="c1"># extent, which seems a bit pointless. But by providing the property, it</span>
     <span class="c1"># gives us the ability to update it later if we can come up with a more</span>
     <span class="c1"># sensible product extent.</span>
-    <span class="n">prod_xmin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-minimum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="n">prod_xmax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-maximum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
-    <span class="n">prod_ymin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-minimum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
-    <span class="n">prod_ymax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-maximum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ls_extent</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+    <span class="n">prod_xmin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-minimum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">xmin</span>
+    <span class="n">prod_xmax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-maximum-longitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">xmax</span>
+    <span class="n">prod_ymin</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-minimum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ymin</span>
+    <span class="n">prod_ymax</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-maximum-latitude=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> <span class="n">ymax</span>
 
     <span class="n">rupt_warn</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-rupture-warning=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
                 <span class="n">info_dict</span><span class="p">[</span><span class="s1">&#39;Summary&#39;</span><span class="p">][</span><span class="s1">&#39;rupture_warning&#39;</span><span class="p">]</span>
@@ -173,6 +187,7 @@
         <span class="s1">&#39;--eventtime=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">time_stamp</span> <span class="o">+</span>
         <span class="s1">&#39;--type=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_type</span> <span class="o">+</span>
         <span class="s1">&#39;--directory=</span><span class="si">%s</span><span class="s1"> &#39;</span> <span class="o">%</span> <span class="n">pdl_dir</span> <span class="o">+</span>
+        <span class="n">ls_alert</span> <span class="o">+</span> <span class="n">lq_alert</span> <span class="o">+</span>
         <span class="n">lq_haz_alert</span> <span class="o">+</span> <span class="n">ls_haz_alert</span> <span class="o">+</span> <span class="n">lq_pop_alert</span> <span class="o">+</span> <span class="n">ls_pop_alert</span> <span class="o">+</span>
         <span class="n">lq_haz_alert_value</span> <span class="o">+</span> <span class="n">ls_haz_alert_value</span> <span class="o">+</span>
         <span class="n">lq_pop_alert_value</span> <span class="o">+</span> <span class="n">ls_pop_alert_value</span> <span class="o">+</span>
@@ -240,7 +255,9 @@
 
     <span class="c1"># Also the png files (default models for website interactive map,</span>
     <span class="c1"># not static maps)</span>
-    <span class="n">png_files</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;jessee_2017.png&#39;</span><span class="p">,</span> <span class="s1">&#39;zhu_2017.png&#39;</span><span class="p">]</span>
+    <span class="c1">#png_files = [&#39;jessee_2017.png&#39;, &#39;zhu_2017_general.png&#39;]</span>
+    <span class="n">png_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
+                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.png&#39;</span><span class="p">)]</span>
     <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">png_files</span><span class="p">)):</span>
         <span class="n">src</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">png_files</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
         <span class="n">tfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
@@ -302,9 +319,9 @@
 
     <span class="c1"># Godt section</span>
     <span class="n">godt_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Godt 2008&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;godt_2008&#39;</span><span class="p">)</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Godt and others 2008&quot;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;godt_2008&#39;</span><span class="p">)</span>
     <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">godt_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Godt 2008 Model&#39;</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Godt and others 2008 Model&#39;</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">godt_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
                      <span class="n">href</span><span class="o">=</span><span class="s1">&#39;godt_2008.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">godt_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
@@ -325,10 +342,10 @@
 
     <span class="c1"># Nowicki section</span>
     <span class="n">nowicki_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Nowicki 2014&quot;</span><span class="p">,</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Nowicki and others 2014&quot;</span><span class="p">,</span>
         <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;nowicki_2014&#39;</span><span class="p">)</span>
     <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">nowicki_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Nowicki 2014 Model&#39;</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Nowicki and others 2014 Model&#39;</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">nowicki_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
                      <span class="n">href</span><span class="o">=</span><span class="s1">&#39;nowicki_2014_global.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">nowicki_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
@@ -336,10 +353,10 @@
 
     <span class="c1"># zhu 2015 section</span>
     <span class="n">zhu2015_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Zhu 2015&quot;</span><span class="p">,</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Zhu and others 2015&quot;</span><span class="p">,</span>
         <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;zhu_2015&#39;</span><span class="p">)</span>
     <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2015_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Zhu 2015 Model&#39;</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Zhu and others 2015 Model&#39;</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2015_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
                      <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2015.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2015_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
@@ -347,10 +364,10 @@
 
     <span class="c1"># Zhu 2017 section</span>
     <span class="n">zhu2017_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span>
-        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Zhu 2017&quot;</span><span class="p">,</span>
+        <span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Zhu and others 2017&quot;</span><span class="p">,</span>
         <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;zhu_2017&#39;</span><span class="p">)</span>
     <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
-    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Zhu 2017 Model&#39;</span>
+    <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Outputs for Zhu and others 2017 Model&#39;</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
                      <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2017_general.hdf5&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">hdf_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
