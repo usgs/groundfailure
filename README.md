@@ -40,6 +40,7 @@ with the `-h` flag.
     Anaconda will also work, but is a larger installation and is not necessary
     unless you want to use it for other purposes. Take note of the folder name
     where it is installed (e.g., miniconda or miniconda3)
+
 2. The current version of miniconda requires that you manually edit your .bash_profile.
     Make the following changes, updating the path below with whatever folder miniconda was installed in:
     * delete the line that miniconda added that looks like this:
@@ -49,13 +50,14 @@ with the `-h` flag.
     * Save and exit and either close the terminal and open a new one or source
         the .bash_profile ```source ~/.bash_profile```
     * Type ```which conda``` in terminal to make sure conda is found.
+
 3. Clone the groundfailure repository in the location where you want it installed:
 ```sh
 cd Users/YourName
 git clone https://github.com/usgs/groundfailure.git
 ```
-    There will now be a folder called groundfailure in Users/YourName that contains
-    all of the files.
+There will now be a folder called groundfailure in Users/YourName that contains
+all of the files.
 
 4. Run the install.sh script located in the main repository directory:
 ```sh
@@ -63,25 +65,28 @@ cd groundfailure
 bash install.sh
 ```
 This will take a while and will show numerous dependencies being installed.
+
 5. The previous step installs a self-contained virtual environment called gf.
     To ensure the virtual environment was successfully installed,
     type ```conda activate gf```. You will need to activate the gf environment
     every time you want to run groundfailure.
+
 6. With the gf virtual environment active, type ```gfail -h``` to ensure gfail
     was correctly installed. If successful, you will see the help section of
     the gfail code.
 
 ### Updating
 
+To ensure all of your dependencies are up to date, reinstall completely starting
+at Step 3 above.
+
 To update groundfailure to the current master branch without altering dependencies
-and assuming you haven't altered the original codes:
+(if you have altered the master branch, you will first need to stash your changes):
 ```sh
 cd Users/YourName/groundfailure
 git remote -add upstream https://github.com/usgs/groundfailure.git
 git pull --rebase upstream master
 ```
-To ensure all of your dependencies are up to date, reinstall completely starting
-at Step 3 above.
 
 ### Uninstalling
 
@@ -89,16 +94,16 @@ To uninstall, delete the virtual environment:
 ```sh
 conda remove --name gf --all
 ```
-And remove the groundfailure folder you cloned in step 3.
+And remove the groundfailure folder that was cloned in step 3.
 
 ### Troubleshooting
 
 * Check step 2 from the installation steps above, make sure paths in .bash_profile are correct
     and point to the actual location of miniconda on your machine.
 
-* Try opening a new terminal in case your updated .bash_profile was not sourced in the current terminal.
+* Try opening a new terminal in case the updated .bash_profile was not sourced in the current terminal window.
 
-* Uninstall or move your current anaconda or conda installation and reinstall from scratch. 
+* Uninstall (or move) your current anaconda or conda installation and reinstall from scratch. 
     Due to recent conda updates, older preexisting installations of anaconda or 
     miniconda may not function with our installer.
     
@@ -111,12 +116,6 @@ And remove the groundfailure folder you cloned in step 3.
 The install.sh script installs this package and dependencies. It is
 regularly tested on OSX and Ubuntu. For a full list of dependencies, refer to
 [environment.yml](https://github.com/usgs/groundfailure/blob/master/environment.yml).
-
-If anaconda is not already installed on your system, the install script
-will install miniconda and create a virtual environment called gf. Once
-installed, type 'conda activate gf' in the command line each time a new
-terminal is opened in order to activate this new virtual environment and
-to run the groundfailure package.
 
 Some functions of this program require the use of the USGS Product Distribution
 Layer (PDL). This must be installed separately. See the [PDL User Guide](https://usgs.github.io/pdl)
@@ -169,30 +168,6 @@ gfail modelconfig.ini shakefile.xml -s -pd -pi
 * the pd flag outputs static pdfs of model results
 * the pi flag creates interactive plots as html files
 * type gfail -h to see all options
-
-### autogf configuration
-
-Prior to running autogf, the defaults needs to be set for gfail (see above).
-Additionally, a configuration file is required if the user wants to set
-thresholds for when the ground failure models will run and also the information
-required to send out automated emails. The file should follow the convention
-below (excluding the notes after # sounds):
-
-```sh
-[THRESHOLDS] # If any of these are met or exceeded, the ground failure models will run
-eis = yellow  # PAGER alert level
-mag = 6.5  # Magnitude
-mmi = 7  # Intensity
-
-[MAIL]
-server = someserversomewhere.usgs.gov
-sender = example@usgs.gov
-stype = email
-recipients = person1@usgs.gov, person2@usgs.gov  # comma separated email addresses
-```
-
-An example file is available [here](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/autoconfig.ini).
-
 
 ### Model config file format
 
