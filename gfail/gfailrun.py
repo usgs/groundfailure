@@ -93,12 +93,13 @@ def run_gfail(args):
         # Get entire path so won't break if running gfail with relative path
         shakefile = os.path.abspath(shakefile)
 
-        if args.nest_folder:
+        if args.extract_contents:
+            outfolder = outdir
+        else:  # Nest in a folder named by eventid
             outfolder = os.path.join(outdir, eventid)
             if not os.path.exists(outfolder):
                 os.makedirs(outfolder)
-        else:
-            outfolder = outdir
+            
 
         # Copy shake grid into output directory
         # --- this is base on advice from Mike that when running in production

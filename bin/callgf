@@ -431,7 +431,7 @@ def process_shakemap(args, config):
              'make_static_pngs': False,
              'make_static_pdfs': False,
              'make_interactive_plots': False,
-             'nest_folder': False,
+             'extract_contents': True,
              'config': model_file,
              'set_bounds': None,
              'make_summary': False,

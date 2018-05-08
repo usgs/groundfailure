@@ -179,8 +179,9 @@ if __name__ == '__main__':
         '-w', '--make-webpage', action='store_true', default=False,
         help='Create all files needed for product page creation and compute alerts')
     parser.add_argument(
-        '-n', '--nest-folder', action='store_true', default=False,
-        help='Nest results in subfolder within output folder named by eventid')
+        '-ext', '--extract-contents', action='store_true', default=False,
+        help='All files will be placed directly in output folder, will not be nested '
+             'in a subfolder named by eventid')
 
     pargs = parser.parse_args()
     run_gfail(pargs)
