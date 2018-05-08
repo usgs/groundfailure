@@ -43,7 +43,7 @@ with the `-h` flag.
 
 2. The current version of miniconda requires that you manually edit your .bash_profile.
     Make the following changes, updating the path below with whatever folder miniconda was installed in:
-    * delete the line that miniconda added that looks like this:
+    * If the installation added a line that looks like this, delete it:
         export PATH="/Users/YourName/miniconda3/bin:$PATH
     * add this line:
         . $HOME/miniconda3/etc/profile.d/conda.sh
@@ -84,8 +84,7 @@ To update groundfailure to the current master branch without altering dependenci
 (if you have altered the master branch, you will first need to stash your changes):
 ```sh
 cd Users/YourName/groundfailure
-git remote -add upstream https://github.com/usgs/groundfailure.git
-git pull --rebase upstream master
+git pull
 ```
 
 ### Uninstalling
