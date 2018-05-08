@@ -39,7 +39,7 @@ WHITELIST = ['us', 'ci', 'nc', 'nn', 'hv', 'uw', 'nn', 'uu', 'ak']
 
 # what are the networks that have origins but not ShakeMaps
 NO_SHAKEMAPS = ['mb', 'ecx', 'tul', 'ismp',
-                'nm', 'se', 'ogso', 'pr', 'neic', 'ld', 'wy']
+                'nm', 'se', 'ogso', 'pr', 'neic', 'ld', 'wy', 'hv']
 
 # minimum magnitude to be processed
 MAG_THRESHOLD = 4.0
@@ -372,10 +372,11 @@ def process_shakemap(args, config):
         authsrc = 'us'
     is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
     if not is_authoritative and authsrc.lower() not in NO_SHAKEMAPS:
-        msg = ('Source %s is not authoritative for this region (%s is). '
-               'Exiting.' % (args.preferred_eventsource, authsrc))
+        msg = ('Source %s is not authoritative for this region (%s is).'
+               % (args.preferred_eventsource, authsrc))
         logging.info(msg)
         if not args.force:
+            logging.info('Exiting.')
             sys.exit(1)
 
     logging.info('Checking to see if ShakeMap is over any land...')

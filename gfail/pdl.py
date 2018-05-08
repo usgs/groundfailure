@@ -59,8 +59,15 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     pdl_type = 'ground-failure'
 
     # PDL properties
-    lq_pref = info_dict['Liquefaction'][0]
-    ls_pref = info_dict['Landslides'][0]
+    # Get preferred models to extract PDL properties
+    lqs = info_dict['Liquefaction']
+    for lq in lqs:
+        if lq['preferred']:
+            lq_pref = lq
+    lss = info_dict['Landslides']
+    for ls in lss:
+        if ls['preferred']:
+            ls_pref = ls
 
     ls_alert = '"--property-landslide-alert=%s" ' % \
         ls_pref['alert']
