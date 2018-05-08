@@ -34,6 +34,80 @@ with the `-h` flag.
 
 ## Installation and Dependencies
 
+1. If a current version of conda is not already installed, install Miniconda 
+    with Python 3.6 (or greater) following the directions provided on the 
+    [conda webpage.](https://conda.io/docs/user-guide/install/index.html). 
+    Anaconda will also work, but is a larger installation and is not necessary
+    unless you want to use it for other purposes. Take note of the folder name
+    where it is installed (e.g., miniconda or miniconda3)
+2. The current version of miniconda requires that you manually edit your .bash_profile.
+    Make the following changes, updating the path below with whatever folder miniconda was installed in:
+    * delete the line that miniconda added that looks like this:
+        export PATH="/Users/YourName/miniconda3/bin:$PATH
+    * add this line:
+        . $HOME/miniconda3/etc/profile.d/conda.sh
+    * Save and exit and either close the terminal and open a new one or source
+        the .bash_profile ```source ~/.bash_profile```
+    * Type ```which conda``` in terminal to make sure conda is found.
+3. Clone the groundfailure repository in the location where you want it installed:
+```sh
+cd Users/YourName
+git clone https://github.com/usgs/groundfailure.git
+```
+    There will now be a folder called groundfailure in Users/YourName that contains
+    all of the files.
+
+4. Run the install.sh script located in the main repository directory:
+```sh
+cd groundfailure
+bash install.sh
+```
+This will take a while and will show numerous dependencies being installed.
+5. The previous step installs a self-contained virtual environment called gf.
+    To ensure the virtual environment was successfully installed,
+    type ```conda activate gf```. You will need to activate the gf environment
+    every time you want to run groundfailure.
+6. With the gf virtual environment active, type ```gfail -h``` to ensure gfail
+    was correctly installed. If successful, you will see the help section of
+    the gfail code.
+
+### Updating
+
+To update groundfailure to the current master branch without altering dependencies
+and assuming you haven't altered the original codes:
+```sh
+cd Users/YourName/groundfailure
+git remote -add upstream https://github.com/usgs/groundfailure.git
+git pull --rebase upstream master
+```
+To ensure all of your dependencies are up to date, reinstall completely starting
+at Step 3 above.
+
+### Uninstalling
+
+To uninstall, delete the virtual environment:
+```sh
+conda remove --name gf --all
+```
+And remove the groundfailure folder you cloned in step 3.
+
+### Troubleshooting
+
+* Check step 2 from the installation steps above, make sure paths in .bash_profile are correct
+    and point to the actual location of miniconda on your machine.
+
+* Try opening a new terminal in case your updated .bash_profile was not sourced in the current terminal.
+
+* Uninstall or move your current anaconda or conda installation and reinstall from scratch. 
+    Due to recent conda updates, older preexisting installations of anaconda or 
+    miniconda may not function with our installer.
+    
+* Ensure that miniconda is in your user directory or somewhere that does not
+    require admin permissions.
+
+
+## Dependencies
+
 The install.sh script installs this package and dependencies. It is
 regularly tested on OSX and Ubuntu. For a full list of dependencies, refer to
 [environment.yml](https://github.com/usgs/groundfailure/blob/master/environment.yml).
