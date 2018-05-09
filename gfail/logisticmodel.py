@@ -576,13 +576,13 @@ class LogisticModel(object):
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
             if 'coverage' not in self.config[self.model].keys():
-                units5 = 'relative hazard'
+                units5 = 'Relative Hazard'
             else:
-                units5 = 'areal coverage'
+                units5 = 'Proportion of area affected'
         elif 'Zhu' in self.modelrefs['shortref']:
-            units5 = 'areal coverage'
+            units5 = 'Proportion of area affected'
         else:
-            units5 = 'probability'
+            units5 = 'Probability of any occurrence'
 
         shakedetail = (
             '%s_ver%s'

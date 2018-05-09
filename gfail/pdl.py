@@ -13,7 +13,8 @@ from impactutils.io.cmd import get_command_output
 
 def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     """
-    This is to transfer the event's 'pdl_directory' to comcat.
+    This is to transfer the event's 'pdl_directory' to comcat. PDL must be
+    installed separately, see https://usgs.github.io/pdl/ for information.
 
     Args:
         event_dir (str): File path to location of results for event
@@ -58,11 +59,18 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     pdl_type = 'ground-failure'
 
     # PDL properties
-    lq_pref = info_dict['Liquefaction'][0]
-    ls_pref = info_dict['Landslides'][0]
+    # Get preferred models to extract PDL properties
+    lqs = info_dict['Liquefaction']
+    for lq in lqs:
+        if lq['preferred']:
+            lq_pref = lq
+    lss = info_dict['Landslides']
+    for ls in lss:
+        if ls['preferred']:
+            ls_pref = ls
 
     ls_alert = '"--property-landslide-alert=%s" ' % \
-        lq_pref['alert']
+        ls_pref['alert']
     lq_alert = '"--property-liquefaction-alert=%s" ' % \
         lq_pref['alert']
 
@@ -206,7 +214,9 @@ def prepare_pdl_directory(event_dir):
 
     # Also the png files (default models for website interactive map,
     # not static maps)
-    png_files = ['jessee_2017.png', 'zhu_2017.png']
+    #png_files = ['jessee_2017.png', 'zhu_2017_general.png']
+    png_files = [os.path.join(event_dir, a)
+                 for a in all_files if a.endswith('.png')]
     for i in range(len(png_files)):
         src = os.path.join(event_dir, png_files[i])
         tfile = os.path.basename(src)
@@ -268,9 +278,9 @@ def prepare_pdl_directory(event_dir):
 
     # Godt section
     godt_tree = etree.SubElement(
-        contents, "file", title="Godt 2008", id='godt_2008')
+        contents, "file", title="Godt and others 2008", id='godt_2008')
     file_caps = etree.SubElement(godt_tree, "caption")
-    file_caps.text = 'Outputs for Godt 2008 Model'
+    file_caps.text = 'Outputs for Godt and others 2008 Model'
     etree.SubElement(godt_tree, "format",
                      href='godt_2008.hdf5', type=hdf_mime)
     etree.SubElement(godt_tree, "format",
@@ -291,10 +301,10 @@ def prepare_pdl_directory(event_dir):
 
     # Nowicki section
     nowicki_tree = etree.SubElement(
-        contents, "file", title="Nowicki 2014",
+        contents, "file", title="Nowicki and others 2014",
         id='nowicki_2014')
     file_caps = etree.SubElement(nowicki_tree, "caption")
-    file_caps.text = 'Outputs for Nowicki 2014 Model'
+    file_caps.text = 'Outputs for Nowicki and others 2014 Model'
     etree.SubElement(nowicki_tree, "format",
                      href='nowicki_2014_global.hdf5', type=hdf_mime)
     etree.SubElement(nowicki_tree, "format",
@@ -302,10 +312,10 @@ def prepare_pdl_directory(event_dir):
 
     # zhu 2015 section
     zhu2015_tree = etree.SubElement(
-        contents, "file", title="Zhu 2015",
+        contents, "file", title="Zhu and others 2015",
         id='zhu_2015')
     file_caps = etree.SubElement(zhu2015_tree, "caption")
-    file_caps.text = 'Outputs for Zhu 2015 Model'
+    file_caps.text = 'Outputs for Zhu and others 2015 Model'
     etree.SubElement(zhu2015_tree, "format",
                      href='zhu_2015.hdf5', type=hdf_mime)
     etree.SubElement(zhu2015_tree, "format",
@@ -313,10 +323,10 @@ def prepare_pdl_directory(event_dir):
 
     # Zhu 2017 section
     zhu2017_tree = etree.SubElement(
-        contents, "file", title="Zhu 2017",
+        contents, "file", title="Zhu and others 2017",
         id='zhu_2017')
     file_caps = etree.SubElement(zhu2017_tree, "caption")
-    file_caps.text = 'Outputs for Zhu 2017 Model'
+    file_caps.text = 'Outputs for Zhu and others 2017 Model'
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",

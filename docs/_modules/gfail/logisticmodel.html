@@ -617,13 +617,13 @@
         <span class="c1"># Stuff into Grid2D object</span>
         <span class="k">if</span> <span class="s1">&#39;Jessee&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
             <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;relative hazard&#39;</span>
+                <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Relative Hazard&#39;</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;areal coverage&#39;</span>
+                <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Proportion of area affected&#39;</span>
         <span class="k">elif</span> <span class="s1">&#39;Zhu&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
-            <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;areal coverage&#39;</span>
+            <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Proportion of area affected&#39;</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;probability&#39;</span>
+            <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Probability of any occurrence&#39;</span>
 
         <span class="n">shakedetail</span> <span class="o">=</span> <span class="p">(</span>
             <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_ver</span><span class="si">%s</span><span class="s1">&#39;</span>

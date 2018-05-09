@@ -26,6 +26,9 @@ done
 
 # Is conda installed?
 conda --version
+
+# THIS SECTION IS MAINLY FOR TRAVIS, FOR REAL INSTALLATIONS, FOLLOW README.md DIRECTIONS
+#-------------------------------------------
 if [ $? -ne 0 ]; then
     echo "No conda detected, installing miniconda..."
     curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
@@ -34,6 +37,7 @@ if [ $? -ne 0 ]; then
     bash miniconda.sh -f -b -p $HOME/miniconda
     # Need this to get conda into path
     . $HOME/miniconda/etc/profile.d/conda.sh
+#-------------------------------------------
 else
     echo "conda detected, installing $VENV environment..."
 fi

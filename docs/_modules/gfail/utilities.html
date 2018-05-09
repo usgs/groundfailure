@@ -58,6 +58,30 @@
 <span class="kn">import</span> <span class="nn">matplotlib.cm</span> <span class="k">as</span> <span class="nn">cm</span>  <span class="c1"># Don&#39;t delete this, it&#39;s needed in an eval function</span>
 
 
+<div class="viewcode-block" id="is_grid_point_source"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.is_grid_point_source">[docs]</a><span class="k">def</span> <span class="nf">is_grid_point_source</span><span class="p">(</span><span class="n">grid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Was the shakemap grid constructed with a point source?</span>
+
+<span class="sd">    This makes use of the &#39;urat&#39; layer, which is the ratio of the predicted ground motion</span>
+<span class="sd">    standard deviation to the GMPE standard deviation. The only reason this could ever be</span>
+<span class="sd">    greater than 1.0 is if the uncertainty of the prediction is inflated due to the point</span>
+<span class="sd">    source approxmiation; further, if a point source was used, there will always be some</span>
+<span class="sd">    locations with &#39;urat&#39; &gt; 1.0.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        grid (ShakeGrid): A ShakeGrid object from MapIO.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: True if point rupture. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+    <span class="n">urat</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;urat&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+    <span class="n">max_urat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">urat</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">max_urat</span> <span class="o">&gt;</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">finfo</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span><span class="o">.</span><span class="n">eps</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+    
 <div class="viewcode-block" id="get_event_comcat"><a class="viewcode-back" href="../../gfail.utilities.html#gfail.utilities.get_event_comcat">[docs]</a><span class="k">def</span> <span class="nf">get_event_comcat</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">timewindow</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">degwindow</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">magwindow</span><span class="o">=</span><span class="mf">0.2</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Find an event in comcat, searching first by event id and if that</span>
@@ -145,9 +169,9 @@
     <span class="n">watercolor</span> <span class="o">=</span> <span class="s1">&#39;B8EEFF&#39;</span>
     <span class="n">ALPHA</span> <span class="o">=</span> <span class="mf">0.7</span>
     <span class="n">oceanfile</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">oceanref</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">roadref</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">cityref</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1">#oceanref = None</span>
+    <span class="c1">#roadref = None</span>
+    <span class="c1">#cityref = None</span>
 
     <span class="k">if</span> <span class="n">fileext</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">fileext</span> <span class="o">=</span> <span class="s1">&#39;.&#39;</span>
@@ -157,25 +181,25 @@
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;DEM not valid - hillshade will not be possible</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
     <span class="k">if</span> <span class="s1">&#39;ocean&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
         <span class="n">oceanfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fileext</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;ocean&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">oceanref</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;ocean&#39;</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">]</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="n">oceanref</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+        <span class="c1">#try:</span>
+        <span class="c1">#    oceanref = config[&#39;ocean&#39;][&#39;shortref&#39;]</span>
+        <span class="c1">#except:</span>
+        <span class="c1">#    oceanref = &#39;unknown&#39;</span>
     <span class="k">if</span> <span class="s1">&#39;roads&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
         <span class="n">roadfolder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fileext</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;roads&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">roadfolder</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;roadfolder not valid - roads will not be displayed</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
             <span class="n">roadfolder</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">roadref</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;roads&#39;</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">]</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="n">roadref</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+        <span class="c1">#try:</span>
+        <span class="c1">#    roadref = config[&#39;roads&#39;][&#39;shortref&#39;]</span>
+        <span class="c1">#except:</span>
+        <span class="c1">#    roadref = &#39;unknown&#39;</span>
     <span class="k">if</span> <span class="s1">&#39;cities&#39;</span> <span class="ow">in</span> <span class="n">config</span><span class="p">:</span>
         <span class="n">cityfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">fileext</span><span class="p">,</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;cities&#39;</span><span class="p">][</span><span class="s1">&#39;file&#39;</span><span class="p">])</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">cityref</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;cities&#39;</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">]</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="n">cityref</span> <span class="o">=</span> <span class="s1">&#39;unknown&#39;</span>
+        <span class="c1">#try:</span>
+        <span class="c1">#    cityref = config[&#39;cities&#39;][&#39;shortref&#39;]</span>
+        <span class="c1">#except:</span>
+        <span class="c1">#    cityref = &#39;unknown&#39;</span>
         <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">cityfile</span><span class="p">):</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">BasemapCities</span><span class="o">.</span><span class="n">loadFromGeoNames</span><span class="p">(</span><span class="n">cityfile</span><span class="o">=</span><span class="n">cityfile</span><span class="p">)</span>
@@ -202,8 +226,7 @@
     <span class="n">mapin</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;topofile&#39;</span><span class="p">:</span> <span class="n">topofile</span><span class="p">,</span> <span class="s1">&#39;roadfolder&#39;</span><span class="p">:</span> <span class="n">roadfolder</span><span class="p">,</span>
              <span class="s1">&#39;cityfile&#39;</span><span class="p">:</span> <span class="n">cityfile</span><span class="p">,</span> <span class="s1">&#39;roadcolor&#39;</span><span class="p">:</span> <span class="n">roadcolor</span><span class="p">,</span>
              <span class="s1">&#39;countrycolor&#39;</span><span class="p">:</span> <span class="n">countrycolor</span><span class="p">,</span> <span class="s1">&#39;watercolor&#39;</span><span class="p">:</span> <span class="n">watercolor</span><span class="p">,</span>
-             <span class="s1">&#39;ALPHA&#39;</span><span class="p">:</span> <span class="n">ALPHA</span><span class="p">,</span> <span class="s1">&#39;roadref&#39;</span><span class="p">:</span> <span class="n">roadref</span><span class="p">,</span>
-             <span class="s1">&#39;cityref&#39;</span><span class="p">:</span> <span class="n">cityref</span><span class="p">,</span> <span class="s1">&#39;oceanfile&#39;</span><span class="p">:</span> <span class="n">oceanfile</span><span class="p">,</span> <span class="s1">&#39;oceanref&#39;</span><span class="p">:</span> <span class="n">oceanref</span><span class="p">}</span>
+             <span class="s1">&#39;ALPHA&#39;</span><span class="p">:</span> <span class="n">ALPHA</span><span class="p">,</span> <span class="s1">&#39;oceanfile&#39;</span><span class="p">:</span> <span class="n">oceanfile</span><span class="p">}</span>  <span class="c1"># &#39;roadref&#39;: roadref, &#39;cityref&#39;: cityref, &#39;oceanref&#39;: oceanref</span>
 
     <span class="k">return</span> <span class="n">mapin</span></div>
 
@@ -242,29 +265,31 @@
         <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">maplayers</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
     <span class="n">plotorder</span> <span class="o">=</span> <span class="p">[]</span>
 
+    <span class="n">configkeys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">limits</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;lims&#39;</span><span class="p">]</span>
+        <span class="n">limits</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">configkeys</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;lims&#39;</span><span class="p">]</span>
         <span class="n">lims</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">except</span><span class="p">:</span>
         <span class="n">lims</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">limits</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">colors</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;colors&#39;</span><span class="p">]</span>
+        <span class="n">colors</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">configkeys</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;colors&#39;</span><span class="p">]</span>
         <span class="n">colormaps</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">except</span><span class="p">:</span>
         <span class="n">colormaps</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="n">colors</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">logs</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;logscale&#39;</span><span class="p">]</span>
+        <span class="n">logs</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">configkeys</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;logscale&#39;</span><span class="p">]</span>
         <span class="n">logscale</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">except</span><span class="p">:</span>
         <span class="n">logscale</span> <span class="o">=</span> <span class="kc">False</span>
         <span class="n">logs</span> <span class="o">=</span> <span class="kc">None</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">masks</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;maskthresholds&#39;</span><span class="p">]</span>
+        <span class="n">masks</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="n">configkeys</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;maskthresholds&#39;</span><span class="p">]</span>
         <span class="n">maskthreshes</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">except</span><span class="p">:</span>
         <span class="n">maskthreshes</span> <span class="o">=</span> <span class="kc">None</span>
@@ -272,7 +297,7 @@
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">default</span> <span class="o">=</span> \
-            <span class="n">config</span><span class="p">[</span><span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;colors&#39;</span><span class="p">][</span><span class="s1">&#39;default&#39;</span><span class="p">]</span>
+            <span class="n">config</span><span class="p">[</span><span class="n">configkeys</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="s1">&#39;display_options&#39;</span><span class="p">][</span><span class="s1">&#39;colors&#39;</span><span class="p">][</span><span class="s1">&#39;default&#39;</span><span class="p">]</span>
         <span class="n">default</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">default</span><span class="p">)</span>
     <span class="k">except</span><span class="p">:</span>
         <span class="n">default</span> <span class="o">=</span> <span class="kc">None</span>

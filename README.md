@@ -12,20 +12,113 @@ near-real-time, triggered by the Shakemaps.
 
 ## Documentation
 
+Information about the methodology can be found on the 
+[Ground Failure Scientific Background webpage](https://earthquake.usgs.gov/data/ground-failure/background.php)
+and the corresponding [Ground Failure References webpage](https://earthquake.usgs.gov/data/ground-failure/references.php).
+
 The API docs can be found [here](http://usgs.github.io/groundfailure/). 
-Besides the API, there are two command-line programs:
+Besides the API, there are five command-line programs:
 
 `gfail` - runs ground failure models
 
-`autogf` - automation wrapper for gfail that can be run as a cron job
+`callgf` - automation wrapper for gfail
+
+`gfail_transfer` - transfers model results to USGS comcat
+
+`create_info` - creates info.json required for web rendering
+
+`create_png` - creates transparent png of model results required for web rendering
 
 Documentation for the use of these programs can be seen by calling them
 with the `-h` flag. 
 
 ## Installation and Dependencies
 
-The install.sh script installs this package and all dependencies. It is
-regularly tested on OSX and Ubuntu.
+1. If a current version of conda is not already installed, install Miniconda 
+    with Python 3.6 (or greater) following the directions provided on the 
+    [conda webpage.](https://conda.io/docs/user-guide/install/index.html). 
+    Anaconda will also work, but is a larger installation and is not necessary
+    unless you want to use it for other purposes. Take note of the folder name
+    where it is installed (e.g., miniconda or miniconda3)
+
+2. The current version of miniconda requires that you manually edit your .bash_profile.
+    Make the following changes, updating the path below with whatever folder miniconda was installed in:
+    * If the installation added a line that looks like this, delete it:
+        export PATH="/Users/YourName/miniconda3/bin:$PATH
+    * add this line:
+        . $HOME/miniconda3/etc/profile.d/conda.sh
+    * Save and exit and either close the terminal and open a new one or source
+        the .bash_profile ```source ~/.bash_profile```
+    * Type ```which conda``` in terminal to make sure conda is found.
+
+3. Clone the groundfailure repository in the location where you want it installed:
+```sh
+cd Users/YourName
+git clone https://github.com/usgs/groundfailure.git
+```
+There will now be a folder called groundfailure in Users/YourName that contains
+all of the files.
+
+4. Run the install.sh script located in the main repository directory:
+```sh
+cd groundfailure
+bash install.sh
+```
+This will take a while and will show numerous dependencies being installed.
+
+5. The previous step installs a self-contained virtual environment called gf.
+    To ensure the virtual environment was successfully installed,
+    type ```conda activate gf```. You will need to activate the gf environment
+    every time you want to run groundfailure.
+
+6. With the gf virtual environment active, type ```gfail -h``` to ensure gfail
+    was correctly installed. If successful, you will see the help section of
+    the gfail code.
+
+### Updating
+
+To ensure all of your dependencies are up to date, reinstall completely starting
+at Step 3 above.
+
+To update groundfailure to the current master branch without altering dependencies
+(if you have altered the master branch, you will first need to stash your changes):
+```sh
+cd Users/YourName/groundfailure
+git pull
+```
+
+### Uninstalling
+
+To uninstall, delete the virtual environment:
+```sh
+conda remove --name gf --all
+```
+And remove the groundfailure folder that was cloned in step 3.
+
+### Troubleshooting
+
+* Check step 2 from the installation steps above, make sure paths in .bash_profile are correct
+    and point to the actual location of miniconda on your machine.
+
+* Try opening a new terminal in case the updated .bash_profile was not sourced in the current terminal window.
+
+* Uninstall (or move) your current anaconda or conda installation and reinstall from scratch. 
+    Due to recent conda updates, older preexisting installations of anaconda or 
+    miniconda may not function with our installer.
+    
+* Ensure that miniconda is in your user directory or somewhere that does not
+    require admin permissions.
+
+
+## Dependencies
+
+The install.sh script installs this package and dependencies. It is
+regularly tested on OSX and Ubuntu. For a full list of dependencies, refer to
+[environment.yml](https://github.com/usgs/groundfailure/blob/master/environment.yml).
+
+Some functions of this program require the use of the USGS Product Distribution
+Layer (PDL). This must be installed separately. See the [PDL User Guide](https://usgs.github.io/pdl)
+for installation information.
 
 ## Configuration
 
@@ -74,30 +167,6 @@ gfail modelconfig.ini shakefile.xml -s -pd -pi
 * the pd flag outputs static pdfs of model results
 * the pi flag creates interactive plots as html files
 * type gfail -h to see all options
-
-### autogf configuration
-
-Prior to running autogf, the defaults needs to be set for gfail (see above).
-Additionally, a configuration file is required if the user wants to set
-thresholds for when the ground failure models will run and also the information
-required to send out automated emails. The file should follow the convention
-below (excluding the notes after # sounds):
-
-```sh
-[THRESHOLDS] # If any of these are met or exceeded, the ground failure models will run
-eis = yellow  # PAGER alert level
-mag = 6.5  # Magnitude
-mmi = 7  # Intensity
-
-[MAIL]
-server = someserversomewhere.usgs.gov
-sender = example@usgs.gov
-stype = email
-recipients = person1@usgs.gov, person2@usgs.gov  # comma separated email addresses
-```
-
-An example file is available [here](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/autoconfig.ini).
-
 
 ### Model config file format
 
@@ -395,3 +464,30 @@ def failure_model():
 
     return output
 ```
+
+## Sources of test datasets
+
+### Datasets for example notebooks
+
+We have extracted the input datasets required to run the models demonstrated in the [example notebooks](https://github.com/usgs/groundfailure/tree/master/notebooks) for the 
+1994 Northridge, CA, earthquake, including the [USGS ShakeMap, from the ShakeMap Atlas (v1)](https://earthquake.usgs.gov/earthquakes/eventpage/ci3144585#shakemap).
+The sources of the input files are listed in the [default config file](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/models) for each model.
+The reference for each filename is listed as a  "longref" ([example:](https://github.com/usgs/groundfailure/blob/master/defaultconfigfiles/models/jessee_2017.ini#L27)) in the section of the
+config file below the corresponding filename, defined as "file: ([example](https://github.com/usgs/groundfailure/blob/master/defaultconfigfiles/models/jessee_2017.ini#L25)).
+A digital terrain model is also provided for mapping purposes. It is extracted from the [GMTED2010 Terrain Elevation model](https://topotools.cr.usgs.gov/gmted_viewer).
+The extracted input data files are located with the notebooks in the [data folder](https://github.com/usgs/groundfailure/tree/master/notebooks/data).
+
+### Datasets for testing
+
+Test input datasets are included with the repository in order to run the [tests](https://github.com/usgs/groundfailure/tree/master/tests).
+Some tests used artificial datasets, but others use input datasets for a subsection
+of the area affected by the 1989 Loma Prieta, CA, earthquake. These extracted
+sections of the input datasets are located with the tests in the [data folder](https://github.com/usgs/groundfailure/tree/master/tests/data/loma_prieta).
+The input layers for each model can be found in the [default config file](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/models) for each model,
+as described above. Additional layers used in the tests were extracted from the global input layers defined below:
+
+* ne_10m_ocean: [Natural Earth (2016) Ocean polygon](http://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-ocean) last accessed 17 Nov 2017
+* cities1000.txt: Global city information from [GeoNames](http://geonames.org) last accessed 2 Sept 2015.
+* md30_gmted_gmt.grd: [GMTED2010 Terrain Elevation model](https://topotools.cr.usgs.gov/gmted_viewer)
+* gmted_global_hillshade.grd: Hillshade created from md30_gmted_gmt.grd
+* lspop2016_lp.flt: [LandScan (2016)™ High Resolution global Population Data Set](https://landscan.ornl.gov/)

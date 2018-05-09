@@ -24,7 +24,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.webpage" href="gfail.webpage.html" />
-    <link rel="prev" title="gfail.temphdf" href="gfail.temphdf.html" />
+    <link rel="prev" title="gfail.transfer" href="gfail.transfer.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -42,6 +42,29 @@
             
   <div class="section" id="module-gfail.utilities">
 <span id="gfail-utilities"></span><h1>gfail.utilities<a class="headerlink" href="#module-gfail.utilities" title="Permalink to this headline">¶</a></h1>
+<dl class="function">
+<dt id="gfail.utilities.is_grid_point_source">
+<code class="descclassname">gfail.utilities.</code><code class="descname">is_grid_point_source</code><span class="sig-paren">(</span><em>grid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#is_grid_point_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.is_grid_point_source" title="Permalink to this definition">¶</a></dt>
+<dd><p>Was the shakemap grid constructed with a point source?</p>
+<p>This makes use of the ‘urat’ layer, which is the ratio of the predicted ground motion
+standard deviation to the GMPE standard deviation. The only reason this could ever be
+greater than 1.0 is if the uncertainty of the prediction is inflated due to the point
+source approxmiation; further, if a point source was used, there will always be some
+locations with ‘urat’ &gt; 1.0.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>grid</strong> (<em>ShakeGrid</em>) – A ShakeGrid object from MapIO.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if point rupture.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
 <dl class="function">
 <dt id="gfail.utilities.get_event_comcat">
 <code class="descclassname">gfail.utilities.</code><code class="descname">get_event_comcat</code><span class="sig-paren">(</span><em>shakefile</em>, <em>timewindow=60</em>, <em>degwindow=0.3</em>, <em>magwindow=0.2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_event_comcat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_event_comcat" title="Permalink to this definition">¶</a></dt>
@@ -254,6 +277,7 @@ active memory (must have been saved for this purpose).
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.transfer.html">gfail.transfer</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.utilities</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
 </ul>

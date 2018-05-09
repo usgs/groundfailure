@@ -24,6 +24,7 @@ from mapio.shake import ShakeGrid
 import configobj
 import fiona
 from shapely.geometry import shape, box
+from mpl_toolkits.basemap import Basemap
 
 # local imports
 from gfail.gfailrun import run_gfail
@@ -38,7 +39,7 @@ WHITELIST = ['us', 'ci', 'nc', 'nn', 'hv', 'uw', 'nn', 'uu', 'ak']
 
 # what are the networks that have origins but not ShakeMaps
 NO_SHAKEMAPS = ['mb', 'ecx', 'tul', 'ismp',
-                'nm', 'se', 'ogso', 'pr', 'neic', 'ld', 'wy']
+                'nm', 'se', 'ogso', 'pr', 'neic', 'ld', 'wy', 'hv']
 
 # minimum magnitude to be processed
 MAG_THRESHOLD = 4.0
@@ -133,6 +134,8 @@ def shakemap_over_land(landfile, grid):
         bool: True if over land, False if not.
     """
     # Check if ShakeMap is entirely in water
+    on_land = False
+
     box_tuple = (grid['lon_min'], grid['lat_min'],
                  grid['lon_max'], grid['lat_max'])
     grid_box = box(*box_tuple)
@@ -141,7 +144,7 @@ def shakemap_over_land(landfile, grid):
         tfeatures = shapefile.items(bbox=box_tuple)
         features = [shape(feature[1]["geometry"]) for feature in tfeatures]
 
-    on_land = False
+    
     for feature in features:
         if feature.intersects(grid_box):
             on_land = True
@@ -254,19 +257,25 @@ def insert_event(connection, cursor, eventid, event, version, eventdir):
     Returns:
         int: Database ID of event row inserted.
     """
-    cnames = ['eventcode', 'eventdir', 'version',
-              'lat', 'lon', 'depth',
-              'time', 'mag', 'location', 'starttime']
-    columns = ','.join(cnames)
-    vfmt = '("%s","%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s","%s")'
-    fmt = 'INSERT INTO shakemap (%s) VALUES %s' % (columns, vfmt)
+    #cnames = ['eventcode', 'eventdir', 'version',
+    #          'lat', 'lon', 'depth',
+    #          'time', 'mag', 'location', 'starttime']
+    #columns = ','.join(cnames)
+    #vfmt = '("%s","%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s","%s")'
+    vfmt = ("%s", "%s", "%i", "%.4f", "%.4f", "%.1f", "%s", "%.1f", "%s", "%s")   
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     tpl = (eventid, eventdir, version,
            event['lat'], event['lon'],
            event['depth'], event['event_timestamp'].strftime(TIMEFMT),
            event['magnitude'], event['event_description'], tnowstr)
-    query = fmt % tpl
-    cursor.execute(query)
+    list1 = []
+    for fm, tp in zip(vfmt, tpl):
+        list1.append(fm % tp)
+    cursor.execute("""INSERT INTO shakemap (eventcode, eventdir, version, lat,
+                   lon, depth, time, mag, location, starttime)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   (list1))
+
     db_id = cursor.lastrowid
     connection.commit()
     return db_id
@@ -363,10 +372,11 @@ def process_shakemap(args, config):
         authsrc = 'us'
     is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
     if not is_authoritative and authsrc.lower() not in NO_SHAKEMAPS:
-        msg = ('Source %s is not authoritative for this region (%s is). '
-               'Exiting.' % (args.preferred_eventsource, authsrc))
+        msg = ('Source %s is not authoritative for this region (%s is).'
+               % (args.preferred_eventsource, authsrc))
         logging.info(msg)
         if not args.force:
+            logging.info('Exiting.')
             sys.exit(1)
 
     logging.info('Checking to see if ShakeMap is over any land...')
@@ -417,12 +427,11 @@ def process_shakemap(args, config):
              'set_default_paths': False,
              'list_default_paths': False,
              'reset_default_paths': False,
-             'make_webpage': False,
              'shakefile': gridfile,
              'make_static_pngs': False,
              'make_static_pdfs': False,
              'make_interactive_plots': False,
-             'nest_folder': False,
+             'extract_contents': True,
              'config': model_file,
              'set_bounds': None,
              'make_summary': False,
@@ -437,7 +446,6 @@ def process_shakemap(args, config):
              'mapconfig': config['mapconfig'],
              'mapdata_filepath': config['mapdata_filepath'],
              'web_template': config['web_template'],
-             'trimfile': landfile,
              'popfile': config['popfile'],
              'dry_run': args.dry_run,
              }
@@ -457,7 +465,7 @@ def process_shakemap(args, config):
     dry = ""
     if args.dry_run:
         dry = True
-    success, feed = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
+    success = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
     if not success:
         logging.info("gf_transfer failed.")
         sys.exit(1)
@@ -550,7 +558,10 @@ log_filepath = A directory where rotating log files will be written.
 output_filepath = A directory where event sub-directories will be created.
 trimfile = Path to a shapefile containing GADM shapefile of country landmasses.
 dbfile = Path to a SQLITE file containing event and version run information.
+data_path = Path to model input data
 
+A file called "autogf_models" that lists the models to run must be placed in the 
+data_path directory.
 """
     argparser = argparse.ArgumentParser(
         description=desc,

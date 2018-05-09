@@ -15,6 +15,7 @@ Submodules
    gfail.spatial
    gfail.stats
    gfail.temphdf
+   gfail.transfer
    gfail.utilities
    gfail.webpage
 

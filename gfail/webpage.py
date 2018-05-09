@@ -49,20 +49,11 @@ DFCOLORS = [
 
 DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
-# reformat for info.json
-color_bins = []
-for i in range(len(DFCOLORS)):
-    color_bins.append({
-        'min': DFBINS[i],
-        'max': DFBINS[i+1],
-        'color': DFCOLORS[i]
-    })
-
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            shakethreshtype='pga', probthresh=None, shakethresh=10.,
            prefLS='Nowicki Jessee (2017)', prefLQ='Zhu and others (2017)',
-           pop_file=None):
+           pop_file=None, defaultcolors=True):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
 
@@ -84,6 +75,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         prefLQ (str): shortref of "preferred" liquefaction model.
         pop_filt (str): file path to population file used to compute
             population-based alert levels.
+        defaultcolors (bool): If True, will use DFCOLORS for all layers instead
+            of determining new ones. This will crash if any of the layers have
+            a different number of bins than the number of DFCOLORS
 
     Returns:
         Files that need to be sent to comcat for hazdev to create the product
@@ -133,10 +127,15 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if 'godt' in maplayer['model']['description']['name'].lower():
                 statprobthresh = None
+                id1 = 'godt_2008'
             else:
                 # Since logistic models can't equal one, need to eliminate
                 # placeholder zeros before computing stats
                 statprobthresh = 0.0
+                if 'jessee' in maplayer['model']['description']['name'].lower():
+                    id1 = 'jessee_2017'
+                else:
+                    id1 = 'nowicki_2014_global'
 
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
@@ -158,30 +157,52 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if title == prefLS:
                 on = True
-                ls_haz_alert, ls_pop_alert, _, _, _, _ = get_alert(
+                ls_haz_alert, ls_pop_alert, _, _, ls_alert, _ = get_alert(
                     stats['Hagg_0.10g'], 0.,
                     stats['exp_pop_0.10g'], 0.)
                 lsext = get_extent(maplayer['model']['grid'])
+                ls_haz_value = set_num_precision(stats['Hagg_0.10g'], 2, 'float')
+                ls_pop_value = set_num_precision(stats['exp_pop_0.10g'], 2, 'int')
             else:
                 on = False
                 ls_haz_alert = None
                 ls_pop_alert = None
+                ls_haz_value = None
+                ls_pop_value = None
+                ls_alert = None
                 lsext = None
 
-            edict = dict(model=metadata['name'],  preferred=on,
-                         probability_max=float("%.2f" % stats['Max']),
-                         probability_std=float("%.2f" % stats['Std']),
-                         units=metadata['units'], bin_edges=list(lims[0]),
-                         bin_colors=[], filename=[], extent=[],
-                         hazard_alert_value=stats['Hagg_0.10g'],
-                         populate_alert_value=stats['exp_pop_0.10g'],
-                         hazard_alert_parameter='Hagg_0.10g',
-                         population_alert_parameter='exp_pop_0.10g',
-                         parameters=metadata['parameters'],
-                         longref=metadata['longref'],
-                         hazard_alert=ls_haz_alert,
-                         population_alert=ls_pop_alert,
-                         lsext=lsext)
+            edict = {
+                'id': id1,
+                'title': metadata['name'],
+                'overlay': '%s.png' % id1,
+                'extent': '%s_extent.json' % id1,
+                'units': metadata['units'],
+                'preferred': on,
+                'alert': ls_alert,
+                'hazard_alert': {
+                    'color': ls_haz_alert,
+                    'value': ls_haz_value,
+                    'parameter': 'Aggregate Hazard',
+                    'units': 'km^2'
+                },
+                'population_alert': {
+                    'color': ls_pop_alert,
+                    'value': ls_pop_value,
+                    'parameter': 'Population exposure',
+                    'units': 'people'
+                },
+                'bin_edges': list(lims[0]),
+                'probability': {
+                    'max': float("%.2f" % stats['Max']),
+                    'std': float("%.2f" % stats['Std']),
+                    'hagg0.1g': float("%.2f" % stats['Hagg_0.10g']),
+                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'])
+                },
+                'longref': metadata['longref'],
+                'parameters': metadata['parameters'],
+                'zoomext': lsext
+            }
 
             lsmodels.append(edict)
 
@@ -193,6 +214,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             limLQ.append(lims[0])
             colLQ.append(colormaps[0])
             concLQ.append(title)
+            
+            if '2015' in maplayer['model']['description']['name'].lower():
+                id1 = 'zhu_2015'
+            elif '2017' in maplayer['model']['description']['name'].lower():
+                id1 = 'zhu_2017_general'
 
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
@@ -213,31 +239,53 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if title == prefLQ:
                 on = True
-                _, _, lq_haz_alert, lq_pop_alert, _, _ = get_alert(
+                _, _, lq_haz_alert, lq_pop_alert, _, lq_alert = get_alert(
                     0., stats['Hagg_0.10g'],
                     0., stats['exp_pop_0.10g'])
                 lqext = get_extent(maplayer['model']['grid'])
+                lq_haz_value = set_num_precision(stats['Hagg_0.10g'], 2, 'float')
+                lq_pop_value = set_num_precision(stats['exp_pop_0.10g'], 2, 'int')
 
             else:
                 on = False
                 lq_haz_alert = None
                 lq_pop_alert = None
+                lq_haz_value = None
+                lq_pop_value = None
+                lq_alert = None
                 lqext = None
 
-            edict = dict(model=metadata['name'],  preferred=on,
-                         probability_max=float("%.2f" % stats['Max']),
-                         probability_std=float("%.2f" % stats['Std']),
-                         units=metadata['units'], bin_edges=list(lims[0]),
-                         bin_colors=[], filename=[], extent=[],
-                         hazard_alert_value=stats['Hagg_0.10g'],
-                         populate_alert_value=stats['exp_pop_0.10g'],
-                         hazard_alert_parameter='Hagg_0.10g',
-                         population_alert_parameter='exp_pop_0.10g',
-                         parameters=metadata['parameters'],
-                         longref=metadata['longref'],
-                         hazard_alert=lq_haz_alert,
-                         population_alert=lq_pop_alert,
-                         lqext=lqext)
+            edict = {
+                'id': id1,
+                'title': metadata['name'],
+                'overlay': '%s.png' % id1,
+                'extent': '%s_extent.json' % id1,
+                'units': metadata['units'],
+                'preferred': on,
+                'alert': lq_alert,
+                'hazard_alert': {
+                    'color': lq_haz_alert,
+                    'value': lq_haz_value,
+                    'parameter': 'Aggregate Hazard',
+                    'units': 'km^2'
+                },
+                'population_alert': {
+                    'color': lq_pop_alert,
+                    'value': lq_pop_value,
+                    'parameter': 'Population exposure',
+                    'units': 'people'
+                },
+                'bin_edges': list(lims[0]),
+                'probability': {
+                    'max': float("%.2f" % stats['Max']),
+                    'std': float("%.2f" % stats['Std']),
+                    'hagg0.1g': float("%.2f" % stats['Hagg_0.10g']),
+                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'])
+                },
+                'longref': metadata['longref'],
+                'parameters': metadata['parameters'],
+                'zoomext': lqext
+            }
 
             lqmodels.append(edict)
 
@@ -245,31 +293,47 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             raise Exception("model type is undefined, check "
                             "maplayer['model']['parameters']"
                             "['modeltype'] to ensure it is defined")
-    defaultcolormap = cm.CMRmap_r
 
-    # Get colors and stuff into dictionaries
-    sync, colorlistLS, reflims = setupsync(prefLS, concLS, limLS, colLS,
-                                           defaultcolormap, logscale=logLS,
-                                           alpha=alpha)
-
-    if reflims is None:
-        raise Exception('Check input config files, they must all have the '
-                        'same number of bin edges')
-    else:
-        # Stuff colors into dictionary
+    if defaultcolors:
         for ls in lsmodels:
-            ls['bin_colors'] = list(colorlistLS)
-
-    sync, colorlistLQ, reflims = setupsync(prefLQ, concLQ, limLQ, colLQ,
-                                           defaultcolormap, logscale=logLQ,
-                                           alpha=alpha)
-    if reflims is None:
-        raise Exception('Check input config files, they must all have the '
-                        'same number of bin edges')
-    else:
-        # Stuff colors into dictionary
+            ls['bin_colors'] = DFCOLORS
         for lq in lqmodels:
-            lq['bin_colors'] = list(colorlistLQ)
+            lq['bin_colors'] = DFCOLORS
+
+    else:
+        defaultcolormap = cm.CMRmap_r
+
+        # Get colors and stuff into dictionaries
+        sync, colorlistLS, reflims = setupsync(prefLS, concLS, limLS, colLS,
+                                               defaultcolormap, logscale=logLS,
+                                               alpha=alpha)
+
+        if reflims is None:
+            raise Exception('Check input config files, they must all have the '
+                            'same number of bin edges')
+        else:
+            # Stuff colors into dictionary
+            for ls in lsmodels:
+                ls['bin_colors'] = list(colorlistLS)
+
+        sync, colorlistLQ, reflims = setupsync(prefLQ, concLQ, limLQ, colLQ,
+                                               defaultcolormap, logscale=logLQ,
+                                               alpha=alpha)
+        if reflims is None:
+            raise Exception('Check input config files, they must all have the '
+                            'same number of bin edges')
+        else:
+            # Stuff colors into dictionary
+            for lq in lqmodels:
+                lq['bin_colors'] = list(colorlistLQ)
+
+    # Create pngs
+    pngfiles = create_png(outfolder, lsmodels, lqmodels)
+    filenames.append(pngfiles)
+
+    # Create info.json
+    infojson = create_info(outfolder, lsmodels, lqmodels)
+    filenames.append(infojson)
 
     return filenames
 
@@ -301,62 +365,91 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             levels = DFBINS
             colors1 = DFCOLORS
             filesnippet = 'jessee_2017'
+            ls_grid = ls_mod['model']['grid']
+            ls_data = ls_grid.getData()
+            ls_geodict = ls_grid.getGeoDict()
+            ls_extent = [
+                ls_geodict.xmin - 0.5*ls_geodict.dx,
+                ls_geodict.xmax + 0.5*ls_geodict.dx,
+                ls_geodict.ymin - 0.5*ls_geodict.dy,
+                ls_geodict.ymax + 0.5*ls_geodict.dy,
+            ]
+            filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
+            filenames.append(filen)
+            with open(filen, 'w') as f:
+                json.dump(ls_extent, f)
+
+            lmin = levels[0]
+            lmax = levels[-1]
+            ls_data2 = np.clip(ls_data, lmin, lmax)
+            cmap = mpl.colors.ListedColormap(colors1)
+            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+            ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
+            #scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+            #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
+            rgba_img = cmap(norm(ls_data2))
+            if mercator:
+                rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
+                                              origin='upper')
+
+            filen = os.path.join(event_dir, '%s.png' % filesnippet)
+            plt.imsave(filen,
+                       rgba_img,
+                       vmin=lmin,
+                       vmax=lmax,
+                       cmap=cmap
+                       )
         else:
-            raise OSError("Preferred landslide model result not found.")
+            raise OSError("Preferred landslide model result (%s) not found." % ls_mod_file)
     else:
         for lsm in lsmodels:
-            if lsm['preferred']:
-                levels = lsm['bin_edges']
-                colors1 = lsm['bin_colors']
-                shortname = lsm['model']
-                if 'Jessee (2017)' in shortname:
-                    filesnippet = 'jessee_2017'
-                elif 'Nowicki and others (2014)' in shortname:
-                    filesnippet = 'nowicki_2014_global'
-                elif 'godt' in shortname.lower():
-                    filesnippet = 'godt_2008'
-        fsh = '%s.hdf5' % filesnippet
-        ls_mod_file = [f for f in files if fsh in f]
-        if len(ls_mod_file) == 1:
-            ls_file = os.path.join(event_dir, ls_mod_file[0])
-            ls_mod = loadlayers(ls_file)
-        else:
-            raise OSError("Preferred landslide model result not found.")
+            #if lsm['preferred']:
+            levels = lsm['bin_edges']
+            colors1 = lsm['bin_colors']
+            filesnippet = lsm['id']
 
-    ls_grid = ls_mod['model']['grid']
-    ls_data = ls_grid.getData()
-    ls_geodict = ls_grid.getGeoDict()
-    ls_extent = [
-        ls_geodict.xmin - 0.5*ls_geodict.dx,
-        ls_geodict.xmax + 0.5*ls_geodict.dx,
-        ls_geodict.ymin - 0.5*ls_geodict.dy,
-        ls_geodict.ymax + 0.5*ls_geodict.dy,
-    ]
-    filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
-    filenames.append(filen)
-    with open(filen, 'w') as f:
-        json.dump(ls_extent, f)
+            fsh = '%s.hdf5' % filesnippet
+            ls_mod_file = [f for f in files if fsh in f]
+            if len(ls_mod_file) == 1:
+                ls_file = os.path.join(event_dir, ls_mod_file[0])
+                ls_mod = loadlayers(ls_file)
+            else:
+                raise OSError("Specified landslide model result (%s) not found." % fsh)
 
-    lmin = levels[0]
-    lmax = levels[-1]
-    ls_data2 = np.clip(ls_data, lmin, lmax)
-    cmap = mpl.colors.ListedColormap(colors1)
-    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-    ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
-    #scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-    #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
-    rgba_img = cmap(norm(ls_data2))
-    if mercator:
-        rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
-                                      origin='upper')
+            ls_grid = ls_mod['model']['grid']
+            ls_data = ls_grid.getData()
+            ls_geodict = ls_grid.getGeoDict()
+            ls_extent = [
+                ls_geodict.xmin - 0.5*ls_geodict.dx,
+                ls_geodict.xmax + 0.5*ls_geodict.dx,
+                ls_geodict.ymin - 0.5*ls_geodict.dy,
+                ls_geodict.ymax + 0.5*ls_geodict.dy,
+            ]
+            filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
+            filenames.append(filen)
+            with open(filen, 'w') as f:
+                json.dump(ls_extent, f)
 
-    filen = os.path.join(event_dir, '%s.png' % filesnippet)
-    plt.imsave(filen,
-               rgba_img,
-               vmin=lmin,
-               vmax=lmax,
-               cmap=cmap
-               )
+            lmin = levels[0]
+            lmax = levels[-1]
+            ls_data2 = np.clip(ls_data, lmin, lmax)
+            cmap = mpl.colors.ListedColormap(colors1)
+            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+            ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
+            #scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+            #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
+            rgba_img = cmap(norm(ls_data2))
+            if mercator:
+                rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
+                                              origin='upper')
+
+            filen = os.path.join(event_dir, '%s.png' % filesnippet)
+            plt.imsave(filen,
+                       rgba_img,
+                       vmin=lmin,
+                       vmax=lmax,
+                       cmap=cmap
+                       )
 
     if lqmodels is None:
         # read in preferred model for liquefaction if none specified
@@ -366,60 +459,88 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             lq_mod = loadlayers(lq_file)
             levels = DFBINS
             colors1 = DFCOLORS
-            filesnippet = 'zhu_2017'
+            filesnippet = 'zhu_2017_general'
+            lq_grid = lq_mod['model']['grid']
+            lq_data = lq_grid.getData()
+            lq_geodict = lq_grid.getGeoDict()
+            lq_extent = [
+                lq_geodict.xmin - 0.5*lq_geodict.dx,
+                lq_geodict.xmax + 0.5*lq_geodict.dx,
+                lq_geodict.ymin - 0.5*lq_geodict.dy,
+                lq_geodict.ymax + 0.5*lq_geodict.dy,
+            ]
+            filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
+            filenames.append(filen)
+            with open(filen, 'w') as f:
+                json.dump(lq_extent, f)
+
+            lmin = levels[0]
+            lmax = levels[-1]
+            lq_data2 = np.clip(lq_data, lmin, lmax)
+            cmap = mpl.colors.ListedColormap(colors1)
+            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+            lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
+            rgba_img = cmap(norm(lq_data2))
+            if mercator:
+                rgba_img = mercator_transform(rgba_img, (lq_extent[2], lq_extent[3]),
+                                              origin='upper')
+            filen = os.path.join(event_dir, '%s.png' % filesnippet)
+            plt.imsave(filen,
+                       rgba_img,
+                       vmin=lmin,
+                       vmax=lmax,
+                       cmap=cmap
+                       )
+            filenames.append(filen)
         else:
-            raise OSError("Preferred liquefaction model result not found.")
+            raise OSError("Preferred liquefaction model result (%s) not found." % lq_mod_file)
     else:
         for lqm in lqmodels:
             if lqm['preferred']:
                 levels = lqm['bin_edges']
                 colors1 = lqm['bin_colors']
-                shortname = lqm['model']
-                if 'Zhu and others (2017)' in shortname:
-                    filesnippet = 'zhu_2017_general'
-                elif 'Zhu and others (2015)' in shortname:
-                    filesnippet = 'zhu_2015'
+                filesnippet = lqm['id']
 
-        fsh = '%s.hdf5' % filesnippet
-        lq_mod_file = [f2 for f2 in files if fsh in f2]
-        if len(lq_mod_file) == 1:
-            lq_file = os.path.join(event_dir, lq_mod_file[0])
-            lq_mod = loadlayers(lq_file)
-        else:
-            raise OSError("Preferred liquefaction model result not found.")
+            fsh = '%s.hdf5' % filesnippet
+            lq_mod_file = [f2 for f2 in files if fsh in f2]
+            if len(lq_mod_file) == 1:
+                lq_file = os.path.join(event_dir, lq_mod_file[0])
+                lq_mod = loadlayers(lq_file)
+            else:
+                raise OSError("Specified liquefaction model result (%s) not found." % fsh)
 
-    lq_grid = lq_mod['model']['grid']
-    lq_data = lq_grid.getData()
-    lq_geodict = lq_grid.getGeoDict()
-    lq_extent = [
-        lq_geodict.xmin - 0.5*lq_geodict.dx,
-        lq_geodict.xmax + 0.5*lq_geodict.dx,
-        lq_geodict.ymin - 0.5*lq_geodict.dy,
-        lq_geodict.ymax + 0.5*lq_geodict.dy,
-    ]
-    filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
-    filenames.append(filen)
-    with open(filen, 'w') as f:
-        json.dump(lq_extent, f)
+            lq_grid = lq_mod['model']['grid']
+            lq_data = lq_grid.getData()
+            lq_geodict = lq_grid.getGeoDict()
+            lq_extent = [
+                lq_geodict.xmin - 0.5*lq_geodict.dx,
+                lq_geodict.xmax + 0.5*lq_geodict.dx,
+                lq_geodict.ymin - 0.5*lq_geodict.dy,
+                lq_geodict.ymax + 0.5*lq_geodict.dy,
+            ]
+            filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
+            filenames.append(filen)
+            with open(filen, 'w') as f:
+                json.dump(lq_extent, f)
 
-    lmin = levels[0]
-    lmax = levels[-1]
-    lq_data2 = np.clip(lq_data, lmin, lmax)
-    cmap = mpl.colors.ListedColormap(colors1)
-    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-    lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
-    rgba_img = cmap(norm(lq_data2))
-    if mercator:
-        rgba_img = mercator_transform(rgba_img, (lq_extent[2], lq_extent[3]),
-                                      origin='upper')
-    filen = os.path.join(event_dir, '%s.png' % filesnippet)
-    plt.imsave(filen,
-               rgba_img,
-               vmin=lmin,
-               vmax=lmax,
-               cmap=cmap
-               )
-    filenames.append(filen)
+            lmin = levels[0]
+            lmax = levels[-1]
+            lq_data2 = np.clip(lq_data, lmin, lmax)
+            cmap = mpl.colors.ListedColormap(colors1)
+            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+            lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
+            rgba_img = cmap(norm(lq_data2))
+            if mercator:
+                rgba_img = mercator_transform(rgba_img, (lq_extent[2], lq_extent[3]),
+                                              origin='upper')
+            filen = os.path.join(event_dir, '%s.png' % filesnippet)
+            plt.imsave(filen,
+                       rgba_img,
+                       vmin=lmin,
+                       vmax=lmax,
+                       cmap=cmap
+                       )
+            filenames.append(filen)
 
     return filenames
 
@@ -445,7 +566,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
 
     files = os.listdir(event_dir)
 
-    if lsmodels is None or lqmodels is None:
+    if lsmodels is None and lqmodels is None:
 
         # Read in the "preferred" model for landslides and liquefaction
         ls_mod_file = [f2 for f2 in files if 'jessee_2017.hdf5' in f2]
@@ -475,7 +596,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         else:
             raise OSError("Landslide extent not found.")
         lq_extent_file = [
-            f2 for f2 in files if 'zhu_2017_extent.json' in f2]
+            f2 for f2 in files if 'zhu_2017_general_extent.json' in f2]
         if len(lq_extent_file) == 1:
             lq_file = os.path.join(event_dir, lq_extent_file[0])
             with open(lq_file) as f:
@@ -538,7 +659,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 'title': 'Nowicki Jessee (2017)',
                 'overlay': 'jessee_2017.png',
                 'extent': jessee_extent,
-                'units': "Proportiona of area affected",
+                'units': "Proportion of area affected",
                 'preferred': True,
                 'alert': ls_alert,
                 'hazard_alert': {
@@ -553,10 +674,11 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     'parameter': 'Population exposure',
                     'units': 'people'
                 },
-                'color_bins': color_bins,
                 'probability': {
                     'max': float("%.2f" % ls_stats['Max']),
-                    'std': float("%.2f" % ls_stats['Std'])
+                    'std': float("%.2f" % ls_stats['Std']),
+                    'hagg0.1g': float("%.2f" % ls_stats['Hagg_0.10g']),
+                    'popexp0.1g': float("%.2f" % ls_stats['exp_pop_0.10g'])
                 }
             }]
         if lqmodels is None:
@@ -565,7 +687,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 'title': 'Zhu and others (2017)',
                 'overlay': 'zhu_2017.png',
                 'extent': zhu_extent,
-                'units': "Proportiona of area affected",
+                'units': "Proportion of area affected",
                 'preferred': True,
                 'alert': lq_alert,
                 'hazard_alert': {
@@ -580,10 +702,11 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                     'parameter': 'Population exposure',
                     'units': 'people'
                 },
-                'color_bins': color_bins,
                 'probability': {
                     'max': float("%.2f" % lq_stats['Max']),
-                    'std': float("%.2f" % lq_stats['Std'])
+                    'std': float("%.2f" % lq_stats['Std']),
+                    'hagg0.1g': float("%.2f" % ls_stats['Hagg_0.10g']),
+                    'popexp0.1g': float("%.2f" % ls_stats['exp_pop_0.10g'])
                 }
             }]
     else:
@@ -592,13 +715,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         for lsm in lsmodels:
             # Add extent and filename for preferred model
             if lsm['preferred']:
-                shortname = lsm['model']
-                if 'Jessee (2017)' in shortname:
-                    filesnippet = 'jessee_2017'
-                elif 'Nowicki and others (2014)' in shortname:
-                    filesnippet = 'nowicki_2014_global'
-                elif 'godt' in shortname.lower():
-                    filesnippet = 'godt_2008'
+                filesnippet = lsm['id']
                 # Read in extents
                 flnm = '%s_extent.json' % filesnippet
                 ls_extent_file = [f for f in files if flnm in f]
@@ -609,16 +726,21 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 else:
                     raise OSError("Landslide extent not found.")
                 lsm['extent'] = ls_extent
-                lsm['filename'] = flnm
-                lsext = lsm['lsext']  # Get zoom extent
+                #lsm['filename'] = flnm
+                lsext = lsm['zoomext']  # Get zoom extent
+                ls_alert = lsm['alert']
+                rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
+            else:
+                # Remove any alert keys
+                rmkeys = ['bin_edges', 'bin_colors', 'zoomext', 'population_alert',
+                          'alert', 'hazard_alert']
+            for key in rmkeys:
+                if key in lsm:
+                    lsm.pop(key)
 
         for lqm in lqmodels:
             if lqm['preferred']:
-                shortname = lqm['model']
-                if 'Zhu and others (2017)' in shortname:
-                    filesnippet = 'zhu_2017_general'
-                elif 'Zhu and others (2015)' in shortname:
-                    filesnippet = 'zhu_2015'
+                filesnippet = lqm['id']
                 # Read in extents
                 flnm = '%s_extent.json' % filesnippet
                 lq_extent_file = [f2 for f2 in files if flnm in f2]
@@ -629,8 +751,17 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 else:
                     raise OSError("Liquefaction extent not found.")
                 lqm['extent'] = lq_extent
-                lqm['filename'] = flnm
-                lqext = lqm['lqext']  # Get zoom extent
+                #lqm['filename'] = flnm
+                lqext = lqm['zoomext']  # Get zoom extent
+                lq_alert = lqm['alert']
+                rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
+            else:
+                # Remove any alert keys
+                rmkeys = ['bin_edges', 'bin_colors', 'zoomext', 'population_alert',
+                          'alert', 'hazard_alert']
+            for key in rmkeys:
+                if key in lqm:
+                    lqm.pop(key)
 
     # Try to get event info
     shake_grid = ShakeGrid.load(shakefile, adjust='res')
@@ -659,11 +790,22 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         net = 'unknown'
         detail_time = -999
 
-    # Get extents that work for both
-    xmin = np.min((lqext['xmin'], lsext['xmin']))
-    xmax = np.max((lqext['xmax'], lsext['xmax']))
-    ymin = np.min((lqext['ymin'], lsext['ymin']))
-    ymax = np.max((lqext['ymax'], lsext['ymax']))
+    # Get extents that work for both unless one is green and the other isn't
+    if lq_alert == 'green' and ls_alert != 'green' and ls_alert is not None:
+        xmin = lsext['xmin']
+        xmax = lsext['xmax']
+        ymin = lsext['ymin']
+        ymax = lsext['ymax']
+    elif lq_alert != 'green' and ls_alert == 'green' and lq_alert is not None:
+        xmin = lqext['xmin']
+        xmax = lqext['xmax']
+        ymin = lqext['ymin']
+        ymax = lqext['ymax']
+    else:
+        xmin = np.min((lqext['xmin'], lsext['xmin']))
+        xmax = np.max((lqext['xmax'], lsext['xmax']))
+        ymin = np.min((lqext['ymin'], lsext['ymin']))
+        ymax = np.max((lqext['ymax'], lsext['ymax']))
 
     # Should we display the warning about point source?
     rupture_warning = False
@@ -700,7 +842,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
 
 def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
               hazbinLS=[1., 10., 100.], popbinLS=[100, 1000, 10000],
-              hazbinLQ=[10., 100., 1000.], popbinLQ=[100, 1000, 10000]):
+              hazbinLQ=[10., 100., 1000.], popbinLQ=[1000, 10000, 100000]):
     """
     Get alert levels
 
@@ -802,7 +944,7 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
     return hazLS, popLS, hazLQ, popLQ, LS, LQ
 
 
-def get_extent(grid, propofmax=0.4):
+def get_extent(grid, propofmax=0.3):
     """
     Get the extent that contains all values with probabilities exceeding a threshold
     in order to determine ideal zoom level for interactive map

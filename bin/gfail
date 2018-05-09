@@ -28,6 +28,9 @@ if __name__ == '__main__':
         os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
         'pelican', 'theme')
     trimfile = None
+    pdl_config = None
+    log_filepath = None
+    dbfile = None
 
     if os.path.exists(defaults):
         D = ConfigObj(defaults)
@@ -48,6 +51,13 @@ if __name__ == '__main__':
                 trimfile = D[key]
             elif key == 'popfile':
                 popfile = D[key]
+            elif key == 'pdl_config':
+                pdl_config = D[key]
+            elif key == 'log_filepath':
+                pdl_config = D[key]
+            elif key == 'dbfile':
+                pdl_config = D[key]
+            
 
     parser = argparse.ArgumentParser(
         description='Run ground failure models on input ShakeMap grid.',
@@ -103,6 +113,15 @@ if __name__ == '__main__':
         '-tr', '--trimfile', metavar='trimocean', nargs='?', default=trimfile,
         help=('Location of shapefile of land masses to use to trim areas '
               'over water'))
+    parser.add_argument(
+        '-pdl', '--pdl-config', metavar='pdlconfig', nargs='?', default=pdl_config,
+        help=('Location of config file for pdl (optional)'))
+    parser.add_argument(
+        '-log', '--log-filepath', metavar='logfilepath', nargs='?', default=log_filepath,
+        help=('Location of log filepath'))
+    parser.add_argument(
+        '-db', '--dbfile', metavar='dbfile', nargs='?', default=dbfile,
+        help=('Location of database'))
 
     parser.add_argument(
         '-b', '--set-bounds', type=str,
@@ -160,8 +179,9 @@ if __name__ == '__main__':
         '-w', '--make-webpage', action='store_true', default=False,
         help='Create all files needed for product page creation and compute alerts')
     parser.add_argument(
-        '-n', '--nest-folder', action='store_true', default=False,
-        help='Nest results in subfolder within output folder named by eventid')
+        '-ext', '--extract-contents', action='store_true', default=False,
+        help='All files will be placed directly in output folder, will not be nested '
+             'in a subfolder named by eventid')
 
     pargs = parser.parse_args()
     run_gfail(pargs)

@@ -93,12 +93,13 @@ def run_gfail(args):
         # Get entire path so won't break if running gfail with relative path
         shakefile = os.path.abspath(shakefile)
 
-        if args.nest_folder:
+        if args.extract_contents:
+            outfolder = outdir
+        else:  # Nest in a folder named by eventid
             outfolder = os.path.join(outdir, eventid)
             if not os.path.exists(outfolder):
                 os.makedirs(outfolder)
-        else:
-            outfolder = outdir
+            
 
         # Copy shake grid into output directory
         # --- this is base on advice from Mike that when running in production
@@ -410,13 +411,13 @@ def run_gfail(args):
                                 faultfile=ffault, point=point, pop_file=args.popfile)
             filenames = filenames + outputs
 
-        # create transparent png file
-        outputs = create_png(outdir)
-        filenames = filenames + outputs
-
-        # create info file
-        infofile = create_info(outdir)
-        filenames = filenames + infofile
+#        # create transparent png file
+#        outputs = create_png(outdir)
+#        filenames = filenames + outputs
+#
+#        # create info file
+#        infofile = create_info(outdir)
+#        filenames = filenames + infofile
 
         print('\nFiles created:\n')
         for filen in filenames:
@@ -568,6 +569,37 @@ def set_default_paths(args):
             else:
                 print('Path given for ocean trimming file does not exist: %s'
                       % args.trimfile)
+    if args.pdl_config is not None:
+        if args.pdl_config == 'reset':
+            D.pop('pdl_config')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.pdl_config):
+                D.update({'pdl_config': args.pdl_config})
+            else:
+                print('Path given for pdl config file does not exist: %s'
+                      % args.pdl_config)
+    if args.log_filepath is not None:
+        if args.log_filepath == 'reset':
+            D.pop('log_filepath')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.log_filepath):
+                D.update({'log_filepath': args.log_filepath})
+            else:
+                print('Path given for log file does not exist: %s'
+                      % args.log_filepath)
+    if args.dbfile is not None:
+        if args.dbfile == 'reset':
+            D.pop('dbfile')
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.dbfile):
+                D.update({'dbfile': args.dbfile})
+            else:
+                print('Path given for database file does not exist: %s'
+                      % args.dbfile)
+
     print('New default paths set.\n')
 
     if D:
