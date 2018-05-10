@@ -41,6 +41,8 @@ all uses of the work, to the fullest extent permitted by applicable law.
 When using or citing the work, you should not imply endorsement by the
 author or the affirmer.
 
+There are dependencies on numerous third party software packages, as detailed
+in environment.yml, all of which are open-source.
 
 
 [1]: https://creativecommons.org/publicdomain/zero/1.0/legalcode
