@@ -109,6 +109,10 @@ And remove the groundfailure folder that was cloned in step 3.
 * Ensure that miniconda is in your user directory or somewhere that does not
     require admin permissions.
 
+### Releases
+
+* [v1.0](https://github.com/usgs/groundfailure/releases/tag/1.0) of this software was reviewed and released on 11 May 2018. 
+* The Digital Object Identifier of this software is: https://doi.org/10.5066/P91G4NS4
 
 ## Dependencies
 
