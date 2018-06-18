@@ -115,7 +115,8 @@ def get_next_version(eventdir):
     if not len(vfolders):
         return 1
     vfolders = sorted(vfolders)
-    old_version = int(re.search('[0-9]+', vfolders[-1]).group())
+    lastfold = os.path.basename(vfolders[-1])
+    old_version = int(re.search('[0-9]+', lastfold).group())
     version = old_version + 1
     return version
 
