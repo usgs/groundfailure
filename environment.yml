@@ -6,7 +6,6 @@ dependencies:
 - affine
 - basemap
 - basemap-data-hires
-- beautifulsoup4
 - branca
 - configobj
 - descartes

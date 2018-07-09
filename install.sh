@@ -2,65 +2,88 @@
 
 unamestr=`uname`
 if [ "$unamestr" == 'Linux' ]; then
-    source ~/.bashrc
+    prof=~/.bashrc
+    mini_conda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh
+    matplotlibdir=~/.config/matplotlib
 elif [ "$unamestr" == 'FreeBSD' ] || [ "$unamestr" == 'Darwin' ]; then
-    source ~/.bash_profile
+    prof=~/.bash_profile
+    mini_conda_url=https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh
+    matplotlibdir=~/.matplotlib
+else
+    echo "Unsupported environment. Exiting."
+    exit
 fi
 
-echo "Path:"
-echo $PATH
+source $prof
 
 # Name of new environment (must also change this in .yml files)
 VENV=gf
 
-# Are the reset/travis flags set?
-reset=0
-while getopts rt FLAG; do
-  case $FLAG in
-    r)
-        reset=1;;
-
-  esac
-done
+# create a matplotlibrc file with the non-interactive backend "Agg" in it.
+if [ ! -d "$matplotlibdir" ]; then
+    mkdir -p $matplotlibdir
+    # if mkdir fails, bow out gracefully
+    if [ $? -ne 0 ];then
+        echo "Failed to create matplotlib configuration file. Exiting."
+        exit 1
+    fi
+fi
+matplotlibrc=$matplotlibdir/matplotlibrc
+if [ ! -e "$matplotlibrc" ]; then
+    echo "backend : Agg" > "$matplotlibrc"
+    echo "NOTE: A non-interactive matplotlib backend (Agg) has been set for this user."
+elif grep -Fxq "backend : Agg" $matplotlibrc ; then
+    :
+elif [ ! grep -Fxq "backend" $matplotlibrc ]; then
+    echo "backend : Agg" >> $matplotlibrc
+    echo "NOTE: A non-interactive matplotlib backend (Agg) has been set for this user."
+else
+    sed -i '' 's/backend.*/backend : Agg/' $matplotlibrc
+    echo "###############"
+    echo "NOTE: $matplotlibrc has been changed to set 'backend : Agg'"
+    echo "###############"
+fi
 
 
 # Is conda installed?
 conda --version
-
-# THIS SECTION IS MAINLY FOR TRAVIS, FOR REAL INSTALLATIONS, FOLLOW README.md DIRECTIONS
-#-------------------------------------------
 if [ $? -ne 0 ]; then
     echo "No conda detected, installing miniconda..."
-    curl https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh \
-         -o miniconda.sh;
+
+    curl $mini_conda_url -o miniconda.sh;
+
+    # if curl fails, bow out gracefully
+    if [ $? -ne 0 ];then
+        echo "Failed to create download miniconda installer shell script. Exiting."
+        exit 1
+    fi
+    
     echo "Install directory: $HOME/miniconda"
+
     bash miniconda.sh -f -b -p $HOME/miniconda
-    # Need this to get conda into path
+
+    # if miniconda.sh fails, bow out gracefully
+    if [ $? -ne 0 ];then
+        echo "Failed to run miniconda installer shell script. Exiting."
+        exit 1
+    fi
+    
     . $HOME/miniconda/etc/profile.d/conda.sh
-#-------------------------------------------
 else
     echo "conda detected, installing $VENV environment..."
 fi
 
-echo "PATH:"
-echo $PATH
-echo ""
+# echo "PATH:"
+# echo $PATH
+# echo ""
 
-# Choose an environment file based on platform
-unamestr=`uname`
-if [ "$unamestr" == 'Linux' ]; then
-    env_file=environment_linux.yml
-elif [ "$unamestr" == 'FreeBSD' ] || [ "$unamestr" == 'Darwin' ]; then
-    env_file=environment_osx.yml
+# add source command to profile file if it isn't already there
+grep "/etc/profile.d/conda.sh" $prof
+if [ $? -ne 0 ]; then
+    echo ". $_CONDA_ROOT/etc/profile.d/conda.sh" >> $prof
 fi
 
-# If the user has specified the -r (reset) flag, then create an
-# environment based on only the named dependencies, without
-# any versions of packages specified.
-if [ $reset == 1 ]; then
-    echo "Ignoring platform, letting conda sort out dependencies..."
-    env_file=environment.yml
-fi
+env_file=environment.yml
 
 # Start in conda base environment
 echo "Activate base virtual environment"
@@ -82,9 +105,30 @@ fi
 echo "Activating the $VENV virtual environment"
 conda activate $VENV
 
+# if conda activate fails, bow out gracefully
+if [ $? -ne 0 ];then
+    echo "Failed to activate ${VENV} conda environment. Exiting."
+    exit 1
+fi
+
+# upgrade pip, mostly so pip doesn't complain about not being new...
+pip install --upgrade pip
+
+# if pip upgrade fails, complain but try to keep going
+if [ $? -ne 0 ];then
+    echo "Failed to upgrade pip, trying to continue..."
+    exit 1
+fi
+
 # This package
 echo "Installing $VENV"
 pip install -e .
+
+# if pip install fails, bow out gracefully
+if [ $? -ne 0 ];then
+    echo "Failed to pip install this package. Exiting."
+    exit 1
+fi
 
 # Tell the user they have to activate this environment
 echo "Type 'conda activate $VENV' to use this new virtual environment."
