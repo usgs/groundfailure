@@ -15,6 +15,7 @@ import sqlite3
 from collections import OrderedDict
 import json
 import re
+import shutil
 
 # third party imports
 #from impactutils.io.cmd import get_command_output
@@ -84,6 +85,7 @@ TIMEFMT = '%Y-%m-%d %H:%M:%S'
 # schema definition of the event table in the sqlite database
 EVENT = OrderedDict([('id', 'INTEGER PRIMARY KEY'),
                      ('eventcode', 'TEXT'),
+                     ('note', 'TEXT'),
                      ('eventdir', 'TEXT'),
                      ('version', 'INTEGER'),
                      ('lat', 'REAL'),
@@ -261,21 +263,31 @@ def insert_event(connection, cursor, eventid, args, version):
     #          'time', 'mag', 'location', 'starttime']
     #columns = ','.join(cnames)
     #vfmt = '("%s","%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s","%s")'
-    vfmt = ("%s", "%i", "%.4f", "%.4f", "%s", "%.1f", "%s", "%s")
+    vfmt = ("%s", "%i", "%.4f", "%.4f", "%s", "%.1f", "%s", "%s", "%s", "%.1f")
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     if args.time is None:
         time = 'unknown'
     else:
-        time = args.time.strftime(TIMEFMT)
+        time = args.time
+    if args.depth is None:
+        depth = ''
+    else:
+        depth = args.depth
+    if args.description is None:
+        description = ''
+    else:
+        description = args.description
+
     tpl = (eventid, version,
            args.latitude, args.longitude, time,
-           args.magnitude, '', tnowstr)
+           args.magnitude, description, tnowstr,
+           'Currently running...', depth)
     list1 = []
     for fm, tp in zip(vfmt, tpl):
         list1.append(fm % tp)
     cursor.execute("""INSERT INTO shakemap (eventcode, version, lat,
-                   lon, time, mag, location, starttime)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                   lon, time, mag, location, starttime, note, depth)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                    (list1))
 
     db_id = cursor.lastrowid
@@ -283,7 +295,7 @@ def insert_event(connection, cursor, eventid, args, version):
     return db_id
 
 
-def update_event_fail(connection, cursor, db_id, msg, time=None, description=None):
+def update_event_fail(connection, cursor, db_id, msg, deletedir=None):
     """Update event that failed to pass later filters. Print error messages in eventdir field.
     Closes the database after.
 
@@ -292,27 +304,20 @@ def update_event_fail(connection, cursor, db_id, msg, time=None, description=Non
         cursor (sqlite cursor): cursor object.
         db_id (int): database id for current event
         msg (str): error message
-        time (datetime): event time in datetime format, update optional
-        description (str): event name, update optional
+        deletedir (str): directory to remove upon failure
     """
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
-    cursor.execute('UPDATE shakemap SET endtime = ?, eventdir = ?, WHERE id = ?',
+    cursor.execute('UPDATE shakemap SET endtime = ?, note = ? WHERE id = ?',
                    (tnowstr, msg, db_id))
     connection.commit()
-
-    if time is not None:
-        cursor.execute('UPDATE shakemap SET time = ? WHERE id = ?',
-                       (time.strftime(TIMEFMT),))
-        connection.commit()
-
-    if description is not None:
-        cursor.execute('UPDATE shakemap SET location = ? WHERE id = ?',
-                       (description,))
-        connection.commit()
 
     # close the database
     cursor.close()
     connection.close()
+
+    # Delete directory, if necessary
+    if deletedir is not None:
+        shutil.rmtree(deletedir)
 
 
 def process_shakemap(args, config):
@@ -327,6 +332,9 @@ def process_shakemap(args, config):
                  args.preferred_eventsourcecode)
     logging.info('args: \n%s' % str(args))
 
+    tnowstr = datetime.utcnow().strftime(TIMEFMT)
+    logging.info('Starting run at %s' % (tnowstr,))
+
     if args.status == 'DELETE':
         # look at this with respect to archiving and sending cancel messages
         msg = 'No action to take with delete messages.'
@@ -340,6 +348,7 @@ def process_shakemap(args, config):
         logging.info(msg)
         if not args.force:
             sys.exit(1)
+    logging.info('Status is update. Check passed.')
 
     logging.info('Checking action...')
     if args.action not in ('EVENT_ADDED', 'EVENT_UPDATED',
@@ -348,6 +357,8 @@ def process_shakemap(args, config):
         logging.info(msg)
         if not args.force:
             sys.exit(1)
+    else:
+        logging.info('Action check passed.')
 
     logging.info('Checking magnitude...')
     if args.magnitude < MAG_THRESHOLD:
@@ -356,29 +367,35 @@ def process_shakemap(args, config):
         logging.info(msg)
         if not args.force:
             sys.exit(1)
+    else:
+        logging.info('Magnitude check passed')
 
     # ----------------------------------------------------------------------
     # passed initial filters, enter in database before next set of filters
     # ----------------------------------------------------------------------
 
-    # connect to the database, creating it if necessary
-    dbfile = config['dbfile']
-    conn, cursor = connect_database(dbfile)
+    try:
+        # connect to the database, creating it if necessary
+        dbfile = config['dbfile']
+        conn, cursor = connect_database(dbfile)
 
-    # get the database ID and directory of the event we have
-    # db_id = -1 and eventdir is None if event not in database
-    db_id, eventdir = get_event_dir(args, cursor)
+        # get the database ID and directory of the event we have
+        # db_id = -1 and eventdir is None if event not in database
+        db_id, eventdir = get_event_dir(args, cursor)
 
-    # get the event ID for this event
-    eventsource = args.preferred_eventsource
-    eventcode = args.preferred_eventsourcecode
-    eventid = eventsource + eventcode
+        # get the event ID for this event
+        eventsource = args.preferred_eventsource
+        eventcode = args.preferred_eventsourcecode
+        eventid = eventsource + eventcode
 
-    # Get the directory for this new version
-    vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
+        # Get the directory for this new version
+        vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
 
-    # insert what we know about the event into the database
-    db_id = insert_event(conn, cursor, eventid, args, version)
+        # insert what we know about the event into the database
+        db_id = insert_event(conn, cursor, eventid, args, version)
+        logging.info('Inserted event placeholder into database')
+    except Exception as e:
+        logging.exception('Database entry failed: %s' % e)
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
@@ -399,6 +416,7 @@ def process_shakemap(args, config):
     hdrtuple = getHeaderData(gridfile)
     grid = hdrtuple[2]
     event = hdrtuple[1]
+    logging.info('Shakemap gridfile found and successfully read.')
 
     logging.info('Checking if Shakemap extends outside of latitude range of '
                  'slope data ...')
@@ -410,9 +428,9 @@ def process_shakemap(args, config):
                'Exiting.')
         logging.info(msg)
         if not args.force:
-            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
-                              description=event['event_description'])
+            update_event_fail(conn, cursor, db_id, msg)
             sys.exit(1)
+    logging.info('Shakemap bounds check passed.')
 
     logging.info('Checking source...')
     if args.preferred_eventsource not in WHITELIST:
@@ -420,9 +438,9 @@ def process_shakemap(args, config):
                'Exiting.' % str(WHITELIST))
         logging.info(msg)
         if not args.force:
-            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
-                              description=event['event_description'])
+            update_event_fail(conn, cursor, db_id, msg)
             sys.exit(1)
+    logging.info('Shakemap from approved source list. Check passed.')
 
     # Use lat,lon and source to exclude ShakeMap providers who are playing
     # outside their sandbox
@@ -446,9 +464,9 @@ def process_shakemap(args, config):
                % (args.preferred_eventsource, authsrc))
         logging.info(msg)
         if not args.force:
-            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
-                              description=event['event_description'])
+            update_event_fail(conn, cursor, db_id, msg)
             sys.exit(1)
+    logging.info('Source is authoritative. Check passed.')
 
     logging.info('Checking to see if ShakeMap is over any land...')
     landfile = config['trimfile']
@@ -456,9 +474,10 @@ def process_shakemap(args, config):
         msg = 'Input ShakeMap is completely over water. Exiting.'
         logging.info(msg)
         if not args.force:
-            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
-                              description=event['event_description'])
+            update_event_fail(conn, cursor, db_id, msg)
             sys.exit(1)
+    else:
+        logging.info('Shakemap is over land. Check passed.')
 
     # ----------------------------------------------------------------------
     # passed initial filters, enter in database before next set of filters
@@ -466,6 +485,7 @@ def process_shakemap(args, config):
 
     # Make directory since it's going to run
     os.makedirs(vdir)
+    logging.info('Initial filters passed, directory created: %s' % vdir)
 
     # ----------------------------------------------------------------------
     # We've passed all the filters, so call gfail
@@ -474,7 +494,7 @@ def process_shakemap(args, config):
     # File containing list of model configs to include
     model_file = os.path.join(config['data_path'], 'autogf_models')
 
-    logging.info("Starting gfail...")
+    logging.info("Starting run_gfail")
     pargs = {'hdf5': True,
              'gis': True,
              'make_webpage': True,
@@ -508,17 +528,17 @@ def process_shakemap(args, config):
     try:
         outfiles = run_gfail(pargs)
         if outfiles is None:
-            logging.info("run_gfail failed.")
+            logging.critical("run_gfail failed - no files created.")
             sys.exit(1)
     except Exception as e:
-        msg = 'Failure running run_gfail... "%s"' % (str(e))
+        msg = 'Failure running run_gfail: "%s"' % (str(e))
         logging.critical(msg)
-        update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
-                          description=event['event_description'])
+        update_event_fail(conn, cursor, db_id, msg)
         sys.exit(1)
+    logging.info('run_gfail completed')
 
     # Transfer
-    logging.info("Starting gfail_transfer...")
+    logging.info("Starting gfail_transfer")
     pdl_conf_file = config['pdl_config']
     # dry = ""
     # if args.dry_run:
@@ -526,10 +546,10 @@ def process_shakemap(args, config):
     success = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
     if not success:
         msg = "gf_transfer failed."
-        logging.info(msg)
-        update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
-                          description=event['event_description'])
+        logging.crtical(msg)
+        update_event_fail(conn, cursor, db_id, msg)
         sys.exit(1)
+    logging.info('gf_transfer completed')
 
     # Enter model results into the database.
     jsonfile = os.path.join(vdir, 'info.json')
@@ -552,24 +572,30 @@ def process_shakemap(args, config):
     #values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
-    cursor.execute("UPDATE shakemap SET endtime = ?, finitefault = ?, HaggLS = ?,"
-                   "ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?, eventdir = ?,"
-                   "time = ?, depth = ?, location = ? WHERE id = ?",
-                   (tnowstr, '%i' % finite_fault,
-                    '%.3f' % ls_hazard_value,
-                    '%.3f' % ls_pop_value,
-                    '%.3f' % lq_hazard_value,
-                    '%.3f' % lq_pop_value,
-                    eventdir,
-                    event['event_timestamp'].strftime(TIMEFMT),
-                    '%.1f' % event['depth'],
-                    event['event_description'],
-                    '%i' % db_id))
-    conn.commit()
+    try:
+        cursor.execute("UPDATE shakemap SET endtime = ?, finitefault = ?, HaggLS = ?,"
+                       "ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?, eventdir = ?,"
+                       "time = ?, depth = ?, location = ?, note = ? WHERE id = ?",
+                       (tnowstr, '%i' % finite_fault,
+                        '%.3f' % ls_hazard_value,
+                        '%.3f' % ls_pop_value,
+                        '%.3f' % lq_hazard_value,
+                        '%.3f' % lq_pop_value,
+                        eventdir,
+                        event['event_timestamp'].strftime(TIMEFMT),
+                        '%.1f' % event['depth'],
+                        event['event_description'],
+                        '',
+                        '%i' % db_id))
+        conn.commit()
+        logging.info('Final event information entered in database.')
+    except Exception as e:
+        logging.exception('Final database entry failed: %s' % e)
 
     # close the database
     cursor.close()
     conn.close()
+    logging.info('Completed gfail run of %s' % eventid)
 
 
 def main(args, config):
@@ -593,6 +619,8 @@ def main(args, config):
         log_cfg['handlers']['default']['filename'] = logfile
     logging.config.dictConfig(log_cfg)
     logger = logging.getLogger()
+    logging.info('---------------------------------------------------------')
+    logging.info('Running process_shakemap')
 
     if args.type == 'shakemap':
         process_shakemap(args, config)
@@ -658,6 +686,10 @@ data_path directory.
                            action='store_true', default=False,
                            help="Force ground-failure run; ignore "
                                 "authoritativeness checks.")
+    #argparser.add_argument("--preferred-eventid",
+    #                       help="Event id", metavar='eventid', dest='eventid')
+    argparser.add_argument("--property-event-description",
+                           help="Event description", metavar='description', dest='description')
 
     pargs, unknown = argparser.parse_known_args()
 
