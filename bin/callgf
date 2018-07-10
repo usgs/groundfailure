@@ -17,14 +17,14 @@ import json
 import re
 
 # third party imports
-from impactutils.io.cmd import get_command_output
+#from impactutils.io.cmd import get_command_output
 from impactutils.comcat.query import GeoServe
 from mapio.shake import getHeaderData
 from mapio.shake import ShakeGrid
 import configobj
 import fiona
 from shapely.geometry import shape, box
-from mpl_toolkits.basemap import Basemap
+#from mpl_toolkits.basemap import Basemap
 
 # local imports
 from gfail.gfailrun import run_gfail
@@ -115,7 +115,8 @@ def get_next_version(eventdir):
     if not len(vfolders):
         return 1
     vfolders = sorted(vfolders)
-    old_version = int(re.search('[0-9]+', vfolders[-1]).group())
+    lastfold = os.path.basename(vfolders[-1])
+    old_version = int(re.search('[0-9]+', lastfold).group())
     version = old_version + 1
     return version
 
@@ -144,7 +145,6 @@ def shakemap_over_land(landfile, grid):
         tfeatures = shapefile.items(bbox=box_tuple)
         features = [shape(feature[1]["geometry"]) for feature in tfeatures]
 
-    
     for feature in features:
         if feature.intersects(grid_box):
             on_land = True
@@ -244,16 +244,15 @@ def get_event_dir(args, cursor):
     return (db_id, eventdir)
 
 
-def insert_event(connection, cursor, eventid, event, version, eventdir):
+def insert_event(connection, cursor, eventid, args, version):
     """Insert known event information into database.
 
     Args:
         connection (sqlite connection): connection object.
         cursor (sqlite cursor): cursor object.
         eventid (str): Event ID.
-        event (dict): Event dictionary.
+        args (arparser Namespace): Input arguments
         version (int): Groundfailure version number.
-        eventdir (str): Path to groundfailure event directory.
     Returns:
         int: Database ID of event row inserted.
     """
@@ -262,23 +261,58 @@ def insert_event(connection, cursor, eventid, event, version, eventdir):
     #          'time', 'mag', 'location', 'starttime']
     #columns = ','.join(cnames)
     #vfmt = '("%s","%s",%i,%.4f,%.4f,%.1f,"%s",%.1f,"%s","%s")'
-    vfmt = ("%s", "%s", "%i", "%.4f", "%.4f", "%.1f", "%s", "%.1f", "%s", "%s")   
+    vfmt = ("%s", "%i", "%.4f", "%.4f", "%s", "%.1f", "%s", "%s")
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
-    tpl = (eventid, eventdir, version,
-           event['lat'], event['lon'],
-           event['depth'], event['event_timestamp'].strftime(TIMEFMT),
-           event['magnitude'], event['event_description'], tnowstr)
+    if args.time is None:
+        time = 'unknown'
+    else:
+        time = args.time.strftime(TIMEFMT)
+    tpl = (eventid, version,
+           args.latitude, args.longitude, time,
+           args.magnitude, '', tnowstr)
     list1 = []
     for fm, tp in zip(vfmt, tpl):
         list1.append(fm % tp)
-    cursor.execute("""INSERT INTO shakemap (eventcode, eventdir, version, lat,
-                   lon, depth, time, mag, location, starttime)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+    cursor.execute("""INSERT INTO shakemap (eventcode, version, lat,
+                   lon, time, mag, location, starttime)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                    (list1))
 
     db_id = cursor.lastrowid
     connection.commit()
     return db_id
+
+
+def update_event_fail(connection, cursor, db_id, msg, time=None, description=None):
+    """Update event that failed to pass later filters. Print error messages in eventdir field.
+    Closes the database after.
+
+    Args:
+        connection (sqlite connection): connection object.
+        cursor (sqlite cursor): cursor object.
+        db_id (int): database id for current event
+        msg (str): error message
+        time (datetime): event time in datetime format, update optional
+        description (str): event name, update optional
+    """
+    tnowstr = datetime.utcnow().strftime(TIMEFMT)
+    cursor.execute('UPDATE shakemap SET endtime = ?, eventdir = ?, WHERE id = ?',
+                   (tnowstr, msg, db_id))
+    connection.commit()
+
+    if time is not None:
+        cursor.execute('UPDATE shakemap SET time = ? WHERE id = ?',
+                       (time.strftime(TIMEFMT),))
+        connection.commit()
+
+    if description is not None:
+        cursor.execute('UPDATE shakemap SET location = ? WHERE id = ?',
+                       (description,))
+        connection.commit()
+
+    # close the database
+    cursor.close()
+    connection.close()
 
 
 def process_shakemap(args, config):
@@ -315,6 +349,41 @@ def process_shakemap(args, config):
         if not args.force:
             sys.exit(1)
 
+    logging.info('Checking magnitude...')
+    if args.magnitude < MAG_THRESHOLD:
+        msg = ('Input ShakeMaps must be larger than M%.1f. Exiting.'
+               % MAG_THRESHOLD)
+        logging.info(msg)
+        if not args.force:
+            sys.exit(1)
+
+    # ----------------------------------------------------------------------
+    # passed initial filters, enter in database before next set of filters
+    # ----------------------------------------------------------------------
+
+    # connect to the database, creating it if necessary
+    dbfile = config['dbfile']
+    conn, cursor = connect_database(dbfile)
+
+    # get the database ID and directory of the event we have
+    # db_id = -1 and eventdir is None if event not in database
+    db_id, eventdir = get_event_dir(args, cursor)
+
+    # get the event ID for this event
+    eventsource = args.preferred_eventsource
+    eventcode = args.preferred_eventsourcecode
+    eventid = eventsource + eventcode
+
+    # Get the directory for this new version
+    vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
+
+    # insert what we know about the event into the database
+    db_id = insert_event(conn, cursor, eventid, args, version)
+
+    # ----------------------------------------------------------------------
+    # Additional filters for things we'd want to know about in database file
+    # ----------------------------------------------------------------------
+
     logging.info('Checking gridfile...')
     gridfile = os.path.join(args.directory, 'download', 'grid.xml')
     if not os.path.isfile(gridfile):
@@ -324,7 +393,12 @@ def process_shakemap(args, config):
                    % gridfile)
             logging.info(msg)
             if not args.force:
+                update_event_fail(conn, cursor, db_id, msg)
                 sys.exit(1)
+
+    hdrtuple = getHeaderData(gridfile)
+    grid = hdrtuple[2]
+    event = hdrtuple[1]
 
     logging.info('Checking if Shakemap extends outside of latitude range of '
                  'slope data ...')
@@ -333,9 +407,11 @@ def process_shakemap(args, config):
     lat_max = shake_bounds[3]
     if (lat_min < -56.0000) or (lat_max > 84.0000):
         msg = ('Shakemap extends outside of latitude range of slope data. '
-               'Existing.')
+               'Exiting.')
         logging.info(msg)
         if not args.force:
+            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
+                              description=event['event_description'])
             sys.exit(1)
 
     logging.info('Checking source...')
@@ -344,14 +420,8 @@ def process_shakemap(args, config):
                'Exiting.' % str(WHITELIST))
         logging.info(msg)
         if not args.force:
-            sys.exit(1)
-
-    logging.info('Checking magnitude...')
-    if args.magnitude < MAG_THRESHOLD:
-        msg = ('Input ShakeMaps must be larger than M%.1f. Exiting.'
-               % MAG_THRESHOLD)
-        logging.info(msg)
-        if not args.force:
+            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
+                              description=event['event_description'])
             sys.exit(1)
 
     # Use lat,lon and source to exclude ShakeMap providers who are playing
@@ -376,48 +446,33 @@ def process_shakemap(args, config):
                % (args.preferred_eventsource, authsrc))
         logging.info(msg)
         if not args.force:
-            logging.info('Exiting.')
+            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
+                              description=event['event_description'])
             sys.exit(1)
 
     logging.info('Checking to see if ShakeMap is over any land...')
     landfile = config['trimfile']
-    hdrtuple = getHeaderData(gridfile)
-    grid = hdrtuple[2]
-    event = hdrtuple[1]
     if not shakemap_over_land(landfile, grid):
         msg = 'Input ShakeMap is completely over water. Exiting.'
         logging.info(msg)
         if not args.force:
+            update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
+                              description=event['event_description'])
             sys.exit(1)
 
-    # connect to the database, creating it if necessary
-    dbfile = config['dbfile']
-    conn, cursor = connect_database(dbfile)
+    # ----------------------------------------------------------------------
+    # passed initial filters, enter in database before next set of filters
+    # ----------------------------------------------------------------------
 
-    # get the database ID and directory of the event we have
-    # db_id = -1 and eventdir is None if event not in database
-    db_id, eventdir = get_event_dir(args, cursor)
-
-    # get the event ID for this event
-    eventsource = args.preferred_eventsource
-    eventcode = args.preferred_eventsourcecode
-    eventid = eventsource + eventcode
-
-    # Get the directory for this new version
-    vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
+    # Make directory since it's going to run
     os.makedirs(vdir)
-
-    # insert what we know about the event into the database
-    db_id = insert_event(conn, cursor, eventid, event,
-                         version, eventdir)
 
     # ----------------------------------------------------------------------
     # We've passed all the filters, so call gfail
     # ----------------------------------------------------------------------
 
     # File containing list of model configs to include
-    model_file = os.path.join(
-        config['data_path'], 'autogf_models')
+    model_file = os.path.join(config['data_path'], 'autogf_models')
 
     logging.info("Starting gfail...")
     pargs = {'hdf5': True,
@@ -456,18 +511,24 @@ def process_shakemap(args, config):
             logging.info("run_gfail failed.")
             sys.exit(1)
     except Exception as e:
-        logging.critical('Failure running run_gfail... "%s"' % (str(e)))
+        msg = 'Failure running run_gfail... "%s"' % (str(e))
+        logging.critical(msg)
+        update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
+                          description=event['event_description'])
         sys.exit(1)
 
     # Transfer
     logging.info("Starting gfail_transfer...")
     pdl_conf_file = config['pdl_config']
-    dry = ""
-    if args.dry_run:
-        dry = True
+    # dry = ""
+    # if args.dry_run:
+    #     dry = True
     success = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
     if not success:
-        logging.info("gf_transfer failed.")
+        msg = "gf_transfer failed."
+        logging.info(msg)
+        update_event_fail(conn, cursor, db_id, msg, time=event['event_timestamp'],
+                          description=event['event_description'])
         sys.exit(1)
 
     # Enter model results into the database.
@@ -488,26 +549,22 @@ def process_shakemap(args, config):
 
     lq_hazard_value = liquefaction['hazard_alert']['value']
     lq_pop_value = liquefaction['population_alert']['value']
-    values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
+    #values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
-    query = '''UPDATE shakemap SET 
-               endtime = "%s",
-               finitefault = %i,
-               HaggLS = %.3f,
-               ExpPopLS = %.3f,
-               HaggLQ = %.3f,
-               ExpPopLQ = %.3f
-               WHERE id = %i
-
-''' % (tnowstr, finite_fault,
-       ls_hazard_value, ls_pop_value,
-       lq_hazard_value, lq_pop_value, db_id)
-
-    # this is a little trick to get rid of extra whitespace created
-    # by multiline string above
-    query = ' '.join(query.split())
-    cursor.execute(query)
+    cursor.execute("UPDATE shakemap SET endtime = ?, finitefault = ?, HaggLS = ?,"
+                   "ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?, eventdir = ?,"
+                   "time = ?, depth = ?, location = ? WHERE id = ?",
+                   (tnowstr, '%i' % finite_fault,
+                    '%.3f' % ls_hazard_value,
+                    '%.3f' % ls_pop_value,
+                    '%.3f' % lq_hazard_value,
+                    '%.3f' % lq_pop_value,
+                    eventdir,
+                    event['event_timestamp'].strftime(TIMEFMT),
+                    '%.1f' % event['depth'],
+                    event['event_description'],
+                    '%i' % db_id))
     conn.commit()
 
     # close the database
@@ -560,7 +617,7 @@ trimfile = Path to a shapefile containing GADM shapefile of country landmasses.
 dbfile = Path to a SQLITE file containing event and version run information.
 data_path = Path to model input data
 
-A file called "autogf_models" that lists the models to run must be placed in the 
+A file called "autogf_models" that lists the models to run must be placed in the
 data_path directory.
 """
     argparser = argparse.ArgumentParser(
@@ -583,11 +640,11 @@ data_path directory.
     argparser.add_argument("--action",
                            help="Product action", metavar='ACTION')
     argparser.add_argument("--preferred-latitude", type=float,
-                           help="Event latitude")
+                           help="Event latitude", dest='latitude')
     argparser.add_argument("--preferred-longitude", type=float,
-                           help="Event longitude", )
+                           help="Event longitude", dest='longitude')
     argparser.add_argument("--preferred-depth", type=float,
-                           help="Event depth")
+                           help="Event depth", dest='depth')
     argparser.add_argument("--preferred-magnitude", type=float,
                            help="Event magnitude", metavar='MAG',
                            dest='magnitude')

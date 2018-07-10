@@ -214,7 +214,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             limLQ.append(lims[0])
             colLQ.append(colormaps[0])
             concLQ.append(title)
-            
+
             if '2015' in maplayer['model']['description']['name'].lower():
                 id1 = 'zhu_2015'
             elif '2017' in maplayer['model']['description']['name'].lower():
@@ -772,23 +772,23 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     # Is this a point source?
     point = is_grid_point_source(shake_grid)
 
-    try:
-        # Hopefully this will eventually be more reliable once we get the
-        # comcat info directly from the shakemap grid, rather than rely on
-        # magnitude/location/time association.
-        shakemap_info, detail, temp = get_event_comcat(shakefile)
-        event_url = detail.url
-        code = detail['code']
-        net = detail['net']
-        utc = pytz.utc
-        detail_time = ShakeDateTime.fromtimestamp(detail['time']/1000.0, utc)
+    #try:
+    # Hopefully this will eventually be more reliable once we get the
+    # comcat info directly from the shakemap grid, rather than rely on
+    # magnitude/location/time association.
+    shakemap_info, detail, temp = get_event_comcat(shakefile)
+    event_url = detail.url
+    code = detail['code']
+    net = detail['net']
+    utc = pytz.utc
+    detail_time = ShakeDateTime.fromtimestamp(detail['time']/1000.0, utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    except:
-        # Hopefully we can eventually remove this....
-        event_url = '%s%s#executive' % (base_url, event_dict['event_id'])
-        code = 'unknown'
-        net = 'unknown'
-        detail_time = -999
+    # except:
+    #     # Hopefully we can eventually remove this....
+    #     event_url = '%s%s#executive' % (base_url, event_dict['event_id'])
+    #     code = 'unknown'
+    #     net = 'unknown'
+    #     detail_time = -999
 
     # Get extents that work for both unless one is green and the other isn't
     if lq_alert == 'green' and ls_alert != 'green' and ls_alert is not None:
@@ -819,7 +819,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             'net': net,
             'magnitude': event_dict['magnitude'],
             'depth': event_dict['depth'],
-            'time': detail_time.strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'time': detail_time,
             'lat': event_dict['lat'],
             'lon': event_dict['lon'],
             'event_url': event_url,
