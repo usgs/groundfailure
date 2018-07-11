@@ -276,22 +276,12 @@ def prepare_pdl_directory(event_dir):
     file_caps.text = 'Info json file'
     etree.SubElement(j_tree, "format", href='info.json', type=json_mime)
 
-    # Godt section
-    godt_tree = etree.SubElement(
-        contents, "file", title="Godt and others 2008", id='godt_2008')
-    file_caps = etree.SubElement(godt_tree, "caption")
-    file_caps.text = 'Outputs for Godt and others 2008 Model'
-    etree.SubElement(godt_tree, "format",
-                     href='godt_2008.hdf5', type=hdf_mime)
-    etree.SubElement(godt_tree, "format",
-                     href='godt_2008_model.tif', type=gtif_mime)
-
     # Jessee section
     jessee_tree = etree.SubElement(
-        contents, "file", title="Nowicki Jessee 2017",
+        contents, "file", title="Preferred Landslide Model (displayed)",
         id='nowicki_jessee_2017')
     file_caps = etree.SubElement(jessee_tree, "caption")
-    file_caps.text = 'Outputs for Nowicki Jessee 2017 Model'
+    file_caps.text = 'Outputs for Nowicki Jessee and others (2017) Landslide Model'
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
@@ -299,40 +289,48 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017.png', type=png_mime)
 
-    # Nowicki section
-    nowicki_tree = etree.SubElement(
-        contents, "file", title="Nowicki and others 2014",
-        id='nowicki_2014')
-    file_caps = etree.SubElement(nowicki_tree, "caption")
-    file_caps.text = 'Outputs for Nowicki and others 2014 Model'
-    etree.SubElement(nowicki_tree, "format",
-                     href='nowicki_2014_global.hdf5', type=hdf_mime)
-    etree.SubElement(nowicki_tree, "format",
-                     href='nowicki_2014_global_model.tif', type=gtif_mime)
-
-    # zhu 2015 section
-    zhu2015_tree = etree.SubElement(
-        contents, "file", title="Zhu and others 2015",
-        id='zhu_2015')
-    file_caps = etree.SubElement(zhu2015_tree, "caption")
-    file_caps.text = 'Outputs for Zhu and others 2015 Model'
-    etree.SubElement(zhu2015_tree, "format",
-                     href='zhu_2015.hdf5', type=hdf_mime)
-    etree.SubElement(zhu2015_tree, "format",
-                     href='zhu_2015_model.tif', type=gtif_mime)
-
     # Zhu 2017 section
     zhu2017_tree = etree.SubElement(
-        contents, "file", title="Zhu and others 2017",
+        contents, "file", title="Preferred Liquefaction Model (displayed)",
         id='zhu_2017')
     file_caps = etree.SubElement(zhu2017_tree, "caption")
-    file_caps.text = 'Outputs for Zhu and others 2017 Model'
+    file_caps.text = 'Outputs for Zhu and others (2017) Model'
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general_model.tif', type=gtif_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017.png', type=png_mime)
+
+    altLS_tree = etree.SubElement(
+        contents, "file", title='Alternative Landslide Models (not displayed)')
+
+    # Godt section
+    file_caps = etree.SubElement(altLS_tree, "caption")
+    file_caps.text = 'Outputs for Godt and others (2008) Model'
+    etree.SubElement(altLS_tree, "format",
+                     href='godt_2008.hdf5', type=hdf_mime)
+    etree.SubElement(altLS_tree, "format",
+                     href='godt_2008_model.tif', type=gtif_mime)
+
+    # Nowicki section
+    file_caps = etree.SubElement(altLS_tree, "caption")
+    file_caps.text = 'Outputs for Nowicki and others (2014) Model'
+    etree.SubElement(altLS_tree, "format",
+                     href='nowicki_2014_global.hdf5', type=hdf_mime)
+    etree.SubElement(altLS_tree, "format",
+                     href='nowicki_2014_global_model.tif', type=gtif_mime)
+
+    # zhu 2015 section
+    zhu2015_tree = etree.SubElement(
+        contents, "file", title="Alternative Liquefaction Model (not displayed)",
+        id='zhu_2015')
+    file_caps = etree.SubElement(zhu2015_tree, "caption")
+    file_caps.text = 'Outputs for Zhu and others (2015) Model'
+    etree.SubElement(zhu2015_tree, "format",
+                     href='zhu_2015.hdf5', type=hdf_mime)
+    etree.SubElement(zhu2015_tree, "format",
+                     href='zhu_2015_model.tif', type=gtif_mime)
 
     # Copy over legend files
 #    data_dir = pkg_resources.resource_filename('gfail', 'data')
