@@ -205,11 +205,11 @@ def get_version_dir(eventid, eventdir, config):
         if os.path.isdir(eventdir):  # how did this happen??
             version = get_next_version(eventdir)
         else:
-            os.makedirs(eventdir)
+            #os.makedirs(eventdir)
             version = 1
     else:
         if not os.path.isdir(eventdir):  # this shouldn't happen either...
-            os.makedirs(eventdir)
+            #os.makedirs(eventdir)
             version = 1
         else:
             version = get_next_version(eventdir)
