@@ -16,6 +16,7 @@ from collections import OrderedDict
 import json
 import re
 import shutil
+import numpy as np
 
 # third party imports
 #from impactutils.io.cmd import get_command_output
@@ -227,13 +228,13 @@ def get_event_dir(args, connection):
         connection (sqlite connection): Database connection object.
 
     Returns:
-        int: Database ID of event (-1 if not found).
         str: Event directory (None if not found).
+        int: Most recent Shakemap version that was run already (0 if not found)
     """
     # get all the event IDS associated with this event, then we can scan the
     # database to see if we have processed this event before.
     eventdir = None
-    db_id = -1
+    shakemap_version = 0
     eventids = args.eventids.split(',')
     for eventid in eventids:
         with connection:
@@ -242,10 +243,21 @@ def get_event_dir(args, connection):
             row = cursor.fetchone()
         if row is None:
             continue
-        db_id, eventdir = row
+        id1, eventdir = row
+
+        if eventdir == '':
+            eventdir = None
+
+        # Get latest shakemap version
+        with connection:
+            cursor = connection.cursor()
+            cursor.execute('SELECT shakemap_version FROM shakemap WHERE eventcode=?', (eventid,))
+            data1 = cursor.fetchall()
+        if len(data1) > 0:
+            shakemap_version = np.max([dat[0] for dat in data1])
         break
 
-    return (db_id, eventdir)
+    return (eventdir, shakemap_version)
 
 
 def insert_event(connection, eventid, args, version):
@@ -369,29 +381,29 @@ def process_shakemap(args, config):
     # passed initial filters, enter in database before next set of filters
     # ----------------------------------------------------------------------
 
-    try:
-        # connect to the database, creating it if necessary
-        dbfile = config['dbfile']
-        conn = connect_database(dbfile)
+    #try:
+    # connect to the database, creating it if necessary
+    dbfile = config['dbfile']
+    conn = connect_database(dbfile)
 
-        # get the database ID and directory of the event we have
-        # db_id = -1 and eventdir is None if event not in database
-        db_id, eventdir = get_event_dir(args, conn)
+    # get the database ID and directory of the event we have
+    eventdir, shakemap_version = get_event_dir(args, conn)
 
-        # get the event ID for this event
-        eventsource = args.preferred_eventsource
-        eventcode = args.preferred_eventsourcecode
-        eventid = eventsource + eventcode
+    # get the event ID for this event
+    eventsource = args.preferred_eventsource
+    eventcode = args.preferred_eventsourcecode
+    eventid = eventsource + eventcode
 
-        # Get the directory for this new version
-        vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
+    # Get the directory for this new version
+    vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
 
-        # insert what we know about the event into the database
-        db_id = insert_event(conn, eventid, args, version)
-        logging.info('Inserted event placeholder into database')
-    except Exception as e:
-        logging.critical('Database entry failed: %s' % e)
-        logging.info('Continuing to run without database.')
+    # insert what we know about the event into the database
+    db_id = insert_event(conn, eventid, args, version)
+    logging.info('Inserted event placeholder into database')
+    #except Exception as e:
+    #    logging.critical('Database entry failed: %s' % e)
+    #    logging.info('Continuing to run without database.')
+    #    shakemap_version = 0
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
@@ -421,6 +433,14 @@ def process_shakemap(args, config):
         logging.info('Found gridfile for shakemap version %i' % hdrtuple[0]['shakemap_version'])
     except Exception as e:
         logging.critical(e)
+
+    # Check if ShakeMap version was already run, if so, delete database entry and exit
+    if shakemap_version == hdrtuple[0]['shakemap_version']:
+        with conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM shakemap WHERE id = ?", (db_id,))
+        logging.info('ShakeMap version %i already run. Exiting.' % shakemap_version)
+        sys.exit(1)
 
     logging.info('Checking if Shakemap extends outside of latitude range of '
                  'slope data ...')
