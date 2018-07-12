@@ -303,7 +303,7 @@ def prepare_pdl_directory(event_dir):
                      href='zhu_2017_general.png', type=png_mime)
 
     # Godt section
-    godt_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model (not displayed)')
+    godt_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model 1 (not displayed)')
     file_caps = etree.SubElement(godt_tree, "caption")
     file_caps.text = 'Godt and others (2008)'
     etree.SubElement(godt_tree, "format",
@@ -312,9 +312,9 @@ def prepare_pdl_directory(event_dir):
                      href='godt_2008_model.tif', type=gtif_mime)
 
     # Nowicki section
-    now_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model (not displayed)')
+    now_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model 2 (not displayed)')
     file_caps = etree.SubElement(now_tree, "caption")
-    file_caps.text = 'Outputs for Nowicki and others (2014) Model'
+    file_caps.text = 'Nowicki and others (2014)'
     etree.SubElement(now_tree, "format",
                      href='nowicki_2014_global.hdf5', type=hdf_mime)
     etree.SubElement(now_tree, "format",
