@@ -302,22 +302,19 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.png', type=png_mime)
 
-    altLS_tree = etree.SubElement(
-        contents, "file", title='Alternative Landslide Models (not displayed)')
-
     # Godt section
-    godt_tree = etree.SubElement(altLS_tree, "file", title='Godt and Others (2008)')
-    #file_caps = etree.SubElement(altLS_tree, "caption")
-    #file_caps.text = 'Outputs for Godt and others (2008) Model'
+    godt_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model (not displayed)')
+    file_caps = etree.SubElement(godt_tree, "caption")
+    file_caps.text = 'Godt and others (2008)'
     etree.SubElement(godt_tree, "format",
                      href='godt_2008.hdf5', type=hdf_mime)
     etree.SubElement(godt_tree, "format",
                      href='godt_2008_model.tif', type=gtif_mime)
 
     # Nowicki section
-    now_tree = etree.SubElement(altLS_tree, "file", title='Nowicki and others (2014)')
-    #file_caps = etree.SubElement(altLS_tree, "caption")
-    #file_caps.text = 'Outputs for Nowicki and others (2014) Model'
+    now_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model (not displayed)')
+    file_caps = etree.SubElement(now_tree, "caption")
+    file_caps.text = 'Outputs for Nowicki and others (2014) Model'
     etree.SubElement(now_tree, "format",
                      href='nowicki_2014_global.hdf5', type=hdf_mime)
     etree.SubElement(now_tree, "format",

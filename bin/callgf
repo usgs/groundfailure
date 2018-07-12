@@ -318,7 +318,7 @@ def update_event_fail(connection, db_id, msg, deletedir=None):
     with connection:
         cursor = connection.cursor()
         cursor.execute('UPDATE shakemap SET endtime = ?, note = ?, version=? WHERE id = ?',
-                       (tnowstr, msg, 'Null', db_id))
+                       (tnowstr, msg, None, db_id))
     # Close the database
     connection.close()
 
