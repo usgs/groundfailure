@@ -86,10 +86,9 @@ TIMEFMT = '%Y-%m-%d %H:%M:%S'
 # schema definition of the event table in the sqlite database
 EVENT = OrderedDict([('id', 'INTEGER PRIMARY KEY'),
                      ('eventcode', 'TEXT'),
-                     ('note', 'TEXT'),
-                     ('eventdir', 'TEXT'),
-                     ('version', 'INTEGER'),
                      ('shakemap_version', 'INTEGER'),
+                     ('note', 'TEXT'),
+                     ('version', 'INTEGER'),
                      ('lat', 'REAL'),
                      ('lon', 'REAL'),
                      ('depth', 'REAL'),
@@ -98,6 +97,7 @@ EVENT = OrderedDict([('id', 'INTEGER PRIMARY KEY'),
                      ('location', 'TEXT'),
                      ('starttime', 'TIMESTAMP'),
                      ('endtime', 'TIMESTAMP'),
+                     ('eventdir', 'TEXT'),
                      ('finitefault', 'INTEGER'),
                      ('HaggLS', 'REAL'),
                      ('ExpPopLS', 'REAL'),
@@ -317,14 +317,45 @@ def update_event_fail(connection, db_id, msg, deletedir=None):
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     with connection:
         cursor = connection.cursor()
-        cursor.execute('UPDATE shakemap SET endtime = ?, note = ? WHERE id = ?',
-                       (tnowstr, msg, db_id))
+        cursor.execute('UPDATE shakemap SET endtime = ?, note = ?, version=? WHERE id = ?',
+                       (tnowstr, msg, 'Null', db_id))
     # Close the database
     connection.close()
 
     # Delete directory, if necessary
     if deletedir is not None:
         shutil.rmtree(deletedir)
+
+
+def cleanup_database(connection, config):
+    """
+    Cleans up any events that were stopped mid-run so they will run again
+
+    Args:
+        connection (sqlite connection): connection object.
+    """
+    with connection:
+        cursor = connection.cursor()
+        # Check if "currently running" in note, if it is, we do want to rerun because it didn't finish
+        cursor.execute("SELECT id, note, eventcode, version FROM shakemap")
+        lines = cursor.fetchall()
+        for line in lines:
+            id1, note1, eventid, ver = line
+            if 'Currently running...' in note1:
+                # Delete it from the table
+                cursor.execute("DELETE FROM shakemap WHERE id = ?", (id1,))
+                # Delete the version directory, if it exists
+                verdirs = glob.glob(os.path.join(config['output_filepath'], '%s*' % eventid, 'version.%03i' % ver))
+                if len(verdirs) > 0:
+                    for verd in verdirs:
+                        shutil.rmtree(verd)
+
+    # Delete any empty output directories (might have been left from failed runs)
+    for entry in os.scandir(config['output_filepath']):
+        if entry.is_dir():
+            files = glob.glob(os.path.join(entry.path, '*'))
+            if len(files) == 0:
+                shutil.rmtree(entry.path)
 
 
 def process_shakemap(args, config):
@@ -338,9 +369,6 @@ def process_shakemap(args, config):
     logging.info('###### Event source code: %s' %
                  args.preferred_eventsourcecode)
     logging.info('args: \n%s' % str(args))
-
-    tnowstr = datetime.utcnow().strftime(TIMEFMT)
-    logging.info('Starting run at %s' % (tnowstr,))
 
     if args.status == 'DELETE':
         # look at this with respect to archiving and sending cancel messages
@@ -381,29 +409,32 @@ def process_shakemap(args, config):
     # passed initial filters, enter in database before next set of filters
     # ----------------------------------------------------------------------
 
-    #try:
-    # connect to the database, creating it if necessary
-    dbfile = config['dbfile']
-    conn = connect_database(dbfile)
+    try:
+        # connect to the database, creating it if necessary
+        dbfile = config['dbfile']
+        conn = connect_database(dbfile)
 
-    # get the database ID and directory of the event we have
-    eventdir, shakemap_version = get_event_dir(args, conn)
+        # Clean up any unfinished runs so they will rerun (e.g., if stopped halfway)
+        cleanup_database(conn, config)
 
-    # get the event ID for this event
-    eventsource = args.preferred_eventsource
-    eventcode = args.preferred_eventsourcecode
-    eventid = eventsource + eventcode
+        # get the database ID and directory of the event we have
+        eventdir, shakemap_version = get_event_dir(args, conn)
 
-    # Get the directory for this new version
-    vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
+        # get the event ID for this event
+        eventsource = args.preferred_eventsource
+        eventcode = args.preferred_eventsourcecode
+        eventid = eventsource + eventcode
 
-    # insert what we know about the event into the database
-    db_id = insert_event(conn, eventid, args, version)
-    logging.info('Inserted event placeholder into database')
-    #except Exception as e:
-    #    logging.critical('Database entry failed: %s' % e)
-    #    logging.info('Continuing to run without database.')
-    #    shakemap_version = 0
+        # Get the directory for this new version
+        vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
+
+        # insert what we know about the event into the database
+        db_id = insert_event(conn, eventid, args, version)
+        logging.info('Inserted event placeholder into database')
+    except Exception as e:
+        logging.critical('Database entry failed: %s' % e)
+        logging.info('Continuing to run without database.')
+        shakemap_version = 0
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
@@ -438,6 +469,7 @@ def process_shakemap(args, config):
     if shakemap_version == hdrtuple[0]['shakemap_version']:
         with conn:
             cursor = conn.cursor()
+            # Delete current run, because found other complete run
             cursor.execute("DELETE FROM shakemap WHERE id = ?", (db_id,))
         logging.info('ShakeMap version %i already run. Exiting.' % shakemap_version)
         sys.exit(1)

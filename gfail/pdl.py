@@ -281,7 +281,7 @@ def prepare_pdl_directory(event_dir):
         contents, "file", title="Preferred Landslide Model (displayed)",
         id='nowicki_jessee_2017')
     file_caps = etree.SubElement(jessee_tree, "caption")
-    file_caps.text = 'Outputs for Nowicki Jessee and others (2017) Landslide Model'
+    file_caps.text = 'Nowicki Jessee and others (2017)'
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
@@ -294,31 +294,33 @@ def prepare_pdl_directory(event_dir):
         contents, "file", title="Preferred Liquefaction Model (displayed)",
         id='zhu_2017')
     file_caps = etree.SubElement(zhu2017_tree, "caption")
-    file_caps.text = 'Outputs for Zhu and others (2017) Model'
+    file_caps.text = 'Zhu and others (2017)'
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general_model.tif', type=gtif_mime)
     etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017.png', type=png_mime)
+                     href='zhu_2017_general.png', type=png_mime)
 
     altLS_tree = etree.SubElement(
         contents, "file", title='Alternative Landslide Models (not displayed)')
 
     # Godt section
-    file_caps = etree.SubElement(altLS_tree, "caption")
-    file_caps.text = 'Outputs for Godt and others (2008) Model'
-    etree.SubElement(altLS_tree, "format",
+    godt_tree = etree.SubElement(altLS_tree, "file", title='Godt and Others (2008)')
+    #file_caps = etree.SubElement(altLS_tree, "caption")
+    #file_caps.text = 'Outputs for Godt and others (2008) Model'
+    etree.SubElement(godt_tree, "format",
                      href='godt_2008.hdf5', type=hdf_mime)
-    etree.SubElement(altLS_tree, "format",
+    etree.SubElement(godt_tree, "format",
                      href='godt_2008_model.tif', type=gtif_mime)
 
     # Nowicki section
-    file_caps = etree.SubElement(altLS_tree, "caption")
-    file_caps.text = 'Outputs for Nowicki and others (2014) Model'
-    etree.SubElement(altLS_tree, "format",
+    now_tree = etree.SubElement(altLS_tree, "file", title='Nowicki and others (2014)')
+    #file_caps = etree.SubElement(altLS_tree, "caption")
+    #file_caps.text = 'Outputs for Nowicki and others (2014) Model'
+    etree.SubElement(now_tree, "format",
                      href='nowicki_2014_global.hdf5', type=hdf_mime)
-    etree.SubElement(altLS_tree, "format",
+    etree.SubElement(now_tree, "format",
                      href='nowicki_2014_global_model.tif', type=gtif_mime)
 
     # zhu 2015 section
@@ -326,7 +328,7 @@ def prepare_pdl_directory(event_dir):
         contents, "file", title="Alternative Liquefaction Model (not displayed)",
         id='zhu_2015')
     file_caps = etree.SubElement(zhu2015_tree, "caption")
-    file_caps.text = 'Outputs for Zhu and others (2015) Model'
+    file_caps.text = 'Zhu and others (2015)'
     etree.SubElement(zhu2015_tree, "format",
                      href='zhu_2015.hdf5', type=hdf_mime)
     etree.SubElement(zhu2015_tree, "format",
