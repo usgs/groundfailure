@@ -8,6 +8,7 @@ import os
 import json
 import shutil
 from lxml import etree
+from configobj import ConfigObj
 from impactutils.io.cmd import get_command_output
 
 
@@ -131,6 +132,14 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
     rupt_warn = '"--property-rupture-warning=%s" ' % \
                 info_dict['Summary']['rupture_warning']
 
+    # Check for PDL key:
+    defaults = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    configs = ConfigObj(defaults)
+    if 'key' in configs.keys():
+        pdl_key = configs['key']
+    else:
+        pdl_key = None
+
     # Construct PDL command
     pdl_cmd = (
         'java -jar %s ' % pdl_bin +
@@ -159,6 +168,9 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         rupt_warn +
         '"--property-shakemap-version=%s" ' % shake_version
     )
+
+    if pdl_key is not None:
+        pdl_cmd = pdl_cmd + " --privateKey=%s " % pdl_key
 
     if not dryrun:
         rc, so, se = get_command_output(pdl_cmd)
@@ -303,7 +315,8 @@ def prepare_pdl_directory(event_dir):
                      href='zhu_2017_general.png', type=png_mime)
 
     # Godt section
-    godt_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model 1 (not displayed)')
+    godt_tree = etree.SubElement(
+        contents, "file", title='Alternative Landslide Model 1 (not displayed)')
     file_caps = etree.SubElement(godt_tree, "caption")
     file_caps.text = 'Godt and others (2008)'
     etree.SubElement(godt_tree, "format",
@@ -312,7 +325,8 @@ def prepare_pdl_directory(event_dir):
                      href='godt_2008_model.tif', type=gtif_mime)
 
     # Nowicki section
-    now_tree = etree.SubElement(contents, "file", title='Alternative Landslide Model 2 (not displayed)')
+    now_tree = etree.SubElement(
+        contents, "file", title='Alternative Landslide Model 2 (not displayed)')
     file_caps = etree.SubElement(now_tree, "caption")
     file_caps.text = 'Nowicki and others (2014)'
     etree.SubElement(now_tree, "format",
