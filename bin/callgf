@@ -19,14 +19,14 @@ import shutil
 import numpy as np
 
 # third party imports
-#from impactutils.io.cmd import get_command_output
+# from impactutils.io.cmd import get_command_output
 from impactutils.comcat.query import GeoServe
 from mapio.shake import getHeaderData
 from mapio.shake import ShakeGrid
 import configobj
 import fiona
 from shapely.geometry import shape, box
-#from mpl_toolkits.basemap import Basemap
+# from mpl_toolkits.basemap import Basemap
 
 # local imports
 from gfail.gfailrun import run_gfail
@@ -206,11 +206,11 @@ def get_version_dir(eventid, eventdir, config):
         if os.path.isdir(eventdir):  # how did this happen??
             version = get_next_version(eventdir)
         else:
-            #os.makedirs(eventdir)
+            # os.makedirs(eventdir)
             version = 1
     else:
         if not os.path.isdir(eventdir):  # this shouldn't happen either...
-            #os.makedirs(eventdir)
+            # os.makedirs(eventdir)
             version = 1
         else:
             version = get_next_version(eventdir)
@@ -239,7 +239,8 @@ def get_event_dir(args, connection):
     for eventid in eventids:
         with connection:
             cursor = connection.cursor()
-            cursor.execute('SELECT id, eventdir FROM shakemap WHERE eventcode=?', (eventid,))
+            cursor.execute(
+                'SELECT id, eventdir FROM shakemap WHERE eventcode=?', (eventid,))
             row = cursor.fetchone()
         if row is None:
             continue
@@ -251,7 +252,8 @@ def get_event_dir(args, connection):
         # Get latest shakemap version
         with connection:
             cursor = connection.cursor()
-            cursor.execute('SELECT shakemap_version FROM shakemap WHERE eventcode=?', (eventid,))
+            cursor.execute(
+                'SELECT shakemap_version FROM shakemap WHERE eventcode=?', (eventid,))
             data1 = cursor.fetchall()
         if len(data1) > 0:
             shakemap_version = np.max([dat[0] for dat in data1])
@@ -345,7 +347,8 @@ def cleanup_database(connection, config):
                 # Delete it from the table
                 cursor.execute("DELETE FROM shakemap WHERE id = ?", (id1,))
                 # Delete the version directory, if it exists
-                verdirs = glob.glob(os.path.join(config['output_filepath'], '%s*' % eventid, 'version.%03i' % ver))
+                verdirs = glob.glob(os.path.join(
+                    config['output_filepath'], '%s*' % eventid, 'version.%03i' % ver))
                 if len(verdirs) > 0:
                     for verd in verdirs:
                         shutil.rmtree(verd)
@@ -461,7 +464,8 @@ def process_shakemap(args, config):
             cursor = conn.cursor()
             cursor.execute("UPDATE shakemap SET shakemap_version = ? WHERE id = ?",
                            (hdrtuple[0]['shakemap_version'], db_id))
-        logging.info('Found gridfile for shakemap version %i' % hdrtuple[0]['shakemap_version'])
+        logging.info('Found gridfile for shakemap version %i' %
+                     hdrtuple[0]['shakemap_version'])
     except Exception as e:
         logging.critical(e)
 
@@ -471,7 +475,8 @@ def process_shakemap(args, config):
             cursor = conn.cursor()
             # Delete current run, because found other complete run
             cursor.execute("DELETE FROM shakemap WHERE id = ?", (db_id,))
-        logging.info('ShakeMap version %i already run. Exiting.' % shakemap_version)
+        logging.info('ShakeMap version %i already run. Exiting.' %
+                     shakemap_version)
         sys.exit(1)
 
     logging.info('Checking if Shakemap extends outside of latitude range of '
@@ -510,8 +515,9 @@ def process_shakemap(args, config):
         gs = GeoServe(args.preferred_latitude, args.preferred_longitude)
         authsrc, authtype = gs.getAuthoritative()
     except Exception as e:
-        logging.info('Unable to connect to GeoServe, assuming "%s" is '
-                     'authoritative.' % args.preferred_eventsource)
+        fmt = ('Unable to connect to GeoServe, assuming "%s" is '
+               'authoritative. Error "%s"')
+        logging.info(fmt % (args.preferred_eventsource, str(e)))
     if authtype != 'anss':
         authsrc = 'us'
     is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
@@ -625,7 +631,7 @@ def process_shakemap(args, config):
 
     lq_hazard_value = liquefaction['hazard_alert']['value']
     lq_pop_value = liquefaction['population_alert']['value']
-    #values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
+    # values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
 
