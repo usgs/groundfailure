@@ -52,7 +52,7 @@ DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            shakethreshtype='pga', probthresh=None, shakethresh=10.,
-           prefLS='Nowicki Jessee (2017)', prefLQ='Zhu and others (2017)',
+           prefLS='Nowicki Jessee and others (2017)', prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
@@ -656,7 +656,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
         if lsmodels is None:
             lsmodels = [{
                 'id': 'nowicki_jessee_2017',
-                'title': 'Nowicki Jessee (2017)',
+                'title': 'Nowicki Jessee and others (2017)',
                 'overlay': 'jessee_2017.png',
                 'extent': jessee_extent,
                 'units': "Proportion of area affected",

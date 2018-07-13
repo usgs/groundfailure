@@ -1613,7 +1613,7 @@ def GFSummary(maplayerlist, configs, web_template, shakemap, outfolder=None,
             logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
             mapid='LS', savefiles=True, outputdir=images,
             sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Nowicki Jessee (2017)')
+            sync='Nowicki Jessee and others (2017)')
 
         filenameLS = filenameLS[0]
     else:
