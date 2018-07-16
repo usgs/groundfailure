@@ -282,7 +282,7 @@ def insert_event(connection, eventid, args, version):
     else:
         time = args.time
     if args.depth is None:
-        depth = ''
+        depth = -999.
     else:
         depth = args.depth
 
@@ -291,6 +291,7 @@ def insert_event(connection, eventid, args, version):
            args.magnitude, tnowstr,
            'Currently running...', depth)
     list1 = []
+
     for fm, tp in zip(vfmt, tpl):
         list1.append(fm % tp)
 
@@ -608,7 +609,7 @@ def process_shakemap(args, config):
     success = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
     if not success:
         msg = "gf_transfer failed."
-        logging.crtical(msg)
+        logging.critical(msg)
         update_event_fail(conn, db_id, msg)
         sys.exit(1)
     logging.info('gf_transfer completed')
