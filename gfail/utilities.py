@@ -30,7 +30,7 @@ def is_grid_point_source(grid):
         grid (ShakeGrid): A ShakeGrid object from MapIO.
 
     Returns:
-        bool: True if point rupture. 
+        bool: True if point rupture.
     """
     data = grid.getData()
     urat = data['urat'].getData()
@@ -40,7 +40,7 @@ def is_grid_point_source(grid):
     else:
         return False
 
-    
+
 def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     """
     Find an event in comcat, searching first by event id and if that
