@@ -36,15 +36,15 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
     Args:
         grid2D: grid2D object of model output.
         probthresh: Optional, Float or list of probability thresholds
-            for use in Hagg2 computation.
+            for use in Parea computation.
         shakefile: Optional, path to shakemap file to use for ground motion
             threshold.
         shakethreshtype: Optional, Type of ground motion to use for
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation
-        statprobthresh: Optional, Float, Exclude any values less than or equal to this value in
-            calculation of regular stats (max, median, std)
+        statprobthresh: Optional, None or float, exclude any cells with probabilities
+            less than or equal to this value
         pop_file (str): File path to population file to use to compute exposure stats
 
     Returns:
@@ -57,14 +57,22 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
             - exp_pop_# where # is the shaking threshold (if pop_file specified)
     """
     stats = collections.OrderedDict()
-    grid = grid2D.getData()
+    grid = grid2D.getData().copy()
     if statprobthresh is not None:
         grid = grid[grid > statprobthresh]
+    else:
+        statprobthresh = 0.0
 
-    stats['Max'] = float(np.nanmax(grid))
-    stats['Median'] = float(np.nanmedian(grid))
-    stats['Std'] = float(np.nanstd(grid))
-    Hagg = computeHagg(grid2D, probthresh=0.0, shakefile=shakefile,
+    if len(grid) == 0:
+        print('no probability values above statprobthresh')
+        stats['Max'] = float('nan')
+        stats['Median'] = float('nan')
+        stats['Std'] = float('nan')
+    else:
+        stats['Max'] = float(np.nanmax(grid))
+        stats['Median'] = float(np.nanmedian(grid))
+        stats['Std'] = float(np.nanstd(grid))
+    Hagg = computeHagg(grid2D, probthresh=statprobthresh, shakefile=shakefile,
                        shakethreshtype=shakethreshtype,
                        shakethresh=shakethresh)
     if type(Hagg) != list and type(Hagg) != list:
@@ -106,7 +114,8 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
     if pop_file is not None:
         exp_dict = get_exposures(grid2D, pop_file, shakefile=shakefile,
                                  shakethreshtype=shakethreshtype,
-                                 shakethresh=shakethresh)
+                                 shakethresh=shakethresh,
+                                 probthresh=statprobthresh)
         for k, v in exp_dict.items():
             stats[k] = v
 
@@ -264,7 +273,7 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
 
 
 def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
-                  shakethresh=None):
+                  shakethresh=None, probthresh=None):
     """
     Get exposure-based statistics.
 
@@ -277,10 +286,23 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi.
+        probthresh: Optional, None or float, exclude any cells with probabilities
+            less than or equal to this value
 
     Returns:
         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
     """
+
+    # If probthresh defined, zero out any areas less than or equal to probthresh
+    # before proceeding
+
+    if probthresh is not None:
+        origdata = grid.getData()
+        moddat = origdata.copy()
+        moddat[moddat <= probthresh] = 0.0
+        moddat[np.isnan(origdata)] = float('nan')
+    else:
+        moddat = grid.getData()
 
     mdict = grid.getGeoDict()
 
@@ -301,7 +323,7 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     pad_dict['padtop'] = int(
         np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
     padgrid, mdict2 = Grid2D.padGrid(
-        grid.getData(), mdict, pad_dict)  # padds with inf
+        moddat, mdict, pad_dict)  # padds with inf
     padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
     padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
 
