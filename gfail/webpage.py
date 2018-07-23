@@ -131,11 +131,12 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             else:
                 # Since logistic models can't equal one, need to eliminate
                 # placeholder zeros before computing stats
-                statprobthresh = 0.0
                 if 'jessee' in maplayer['model']['description']['name'].lower():
                     id1 = 'jessee_2017'
+                    statprobthresh = 0.002
                 else:
                     id1 = 'nowicki_2014_global'
+                    statprobthresh = 0.0
 
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
@@ -217,15 +218,18 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if '2015' in maplayer['model']['description']['name'].lower():
                 id1 = 'zhu_2015'
+                statprobthresh = 0.0
             elif '2017' in maplayer['model']['description']['name'].lower():
                 id1 = 'zhu_2017_general'
+                statprobthresh = 0.005
 
             stats = computeStats(maplayer['model']['grid'],
                                  probthresh=probthresh,
                                  shakefile=shakemap,
                                  shakethresh=shakethresh,
                                  pop_file=pop_file,
-                                 shakethreshtype=shakethreshtype)
+                                 shakethreshtype=shakethreshtype,
+                                 statprobthresh=statprobthresh)
 
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
