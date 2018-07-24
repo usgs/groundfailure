@@ -114,6 +114,8 @@ fi
 # upgrade pip, mostly so pip doesn't complain about not being new...
 pip install --upgrade pip
 
+pip install --no-deps configobj
+
 # if pip upgrade fails, complain but try to keep going
 if [ $? -ne 0 ];then
     echo "Failed to upgrade pip, trying to continue..."
