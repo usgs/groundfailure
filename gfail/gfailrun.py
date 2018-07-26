@@ -99,7 +99,6 @@ def run_gfail(args):
             outfolder = os.path.join(outdir, eventid)
             if not os.path.exists(outfolder):
                 os.makedirs(outfolder)
-            
 
         # Copy shake grid into output directory
         # --- this is base on advice from Mike that when running in production
@@ -231,18 +230,25 @@ def run_gfail(args):
         if ffault is None:
             # Try to get finite fault file, if it exists
             try:
-                testjd, detail, temp = get_event_comcat(shakefile)
-                if 'faultfiles' in testjd['input']['event_information']:
-                    ffilename = testjd['input']['event_information']['faultfiles']
-                    if len(ffilename) > 0:
-                        # Download the file
-                        with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
-                            temp.getContent(ffilename, filename=f.name)
-                            ffault = text_to_json(f.name)
-                            os.remove(f.name)
-                        point = False
-                    else:
-                        point = True
+                returned_ev = get_event_comcat(shakefile)
+                if returned_ev is not None:
+                    testjd, detail, temp = returned_ev
+                    if 'faultfiles' in testjd['input']['event_information']:
+                        ffilename = testjd['input']['event_information']['faultfiles']
+                        if len(ffilename) > 0:
+                            # Download the file
+                            with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
+                                temp.getContent(ffilename, filename=f.name)
+                                ffault = text_to_json(f.name)
+                                os.remove(f.name)
+                            point = False
+                        else:
+                            point = True
+                else:
+                    print('Unable to determine source type, unknown if finite'
+                          ' fault or point source')
+                    ffault = None
+                    point = False
 
             except Exception as e:
                 print(e)
