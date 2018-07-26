@@ -9,6 +9,7 @@ install:
     - conda activate gf
     - pwd
     - cp .gfail_defaults_travis /home/travis/.gfail_defaults
+    - conda list
 before_script:
     # This is to take care of Invalid DISPLAY variable
     - "export DISPLAY=:99.0"
