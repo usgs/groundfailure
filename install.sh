@@ -102,7 +102,7 @@ conda create -y --force -n $VENV -c conda-forge python=3.5 \
       descartes \
       configobj \
       fiona \
-      folium \
+      folium=0.5.0 \
       gdal \
       h5py \
       impactutils \

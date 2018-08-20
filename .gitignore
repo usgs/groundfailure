@@ -74,3 +74,6 @@ target/
 .spyproject
 *~
 
+#generated pelican themes
+mapLQ.js
+mapLS.js
