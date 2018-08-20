@@ -7,7 +7,7 @@ dependencies:
 - branca
 - descartes
 - fiona
-- folium
+- folium<0.5.9
 - gdal
 - h5py
 - lxml

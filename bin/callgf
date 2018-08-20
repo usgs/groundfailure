@@ -513,7 +513,13 @@ def process_shakemap(args, config):
     authtype = 'anss'
     authsrc = args.preferred_eventsource
     try:
-        gs = GeoServe(args.preferred_latitude, args.preferred_longitude)
+        if hasattr(args, 'preferred_latitude'):
+            lat = args.preferred_latitude
+            lon = args.preferred_longitude
+        else:
+            lat = args.latitude
+            lon = args.longitude
+        gs = GeoServe(lat, lon)
         authsrc, authtype = gs.getAuthoritative()
     except Exception as e:
         fmt = ('Unable to connect to GeoServe, assuming "%s" is '
