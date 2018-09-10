@@ -328,7 +328,7 @@ class LogisticModel(object):
                                 self.clips[layername][1]))
                 #if layername == 'rock':  # Test to convert unconsolidated sediments to a more reasonable coefficient
                 #    sub1 = temp.getData()
-                #    sub1[sub1 <= -3.22] = -1.05
+                #    sub1[sub1 <= -3.21] = -0.6  # Change to no data coefficient
                 #    temp.setData(sub1)
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
