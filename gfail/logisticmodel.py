@@ -209,7 +209,7 @@ class LogisticModel(object):
         # Find slope thresholds, if applicable
         self.slopemin = 'none'
         self.slopemax = 'none'
-        if slopefile is not None:
+        if self.slopefile is not None:
             try:
                 self.slopemin = float(config[self.model]['slopemin'])
                 self.slopemax = float(config[self.model]['slopemax'])
@@ -326,6 +326,10 @@ class LogisticModel(object):
                         np.clip(temp.getData(),
                                 self.clips[layername][0],
                                 self.clips[layername][1]))
+                #if layername == 'rock':  # Test to convert unconsolidated sediments to a more reasonable coefficient
+                #    sub1 = temp.getData()
+                #    sub1[sub1 <= -3.21] = -0.6  # Change to no data coefficient
+                #    temp.setData(sub1)
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 td = temp.getGeoDict()
