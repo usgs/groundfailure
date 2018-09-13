@@ -108,6 +108,7 @@ class LogisticModel(object):
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
         self.numstd = numstd
         self.clips = validateClips(cmodel, self.layers, self.gmused)
+        self.notes = ''
 
         if cmodel['baselayer'] not in list(self.layers.keys()):
             raise Exception('You must specify a base layer corresponding to '
@@ -326,10 +327,11 @@ class LogisticModel(object):
                         np.clip(temp.getData(),
                                 self.clips[layername][0],
                                 self.clips[layername][1]))
-                #if layername == 'rock':  # Test to convert unconsolidated sediments to a more reasonable coefficient
-                #    sub1 = temp.getData()
-                #    sub1[sub1 <= -3.21] = -0.6  # Change to no data coefficient
-                #    temp.setData(sub1)
+                if layername == 'rock':  # Test to convert unconsolidated sediments to a more reasonable coefficient
+                    sub1 = temp.getData()
+                    sub1[sub1 <= -3.21] = -0.6  # Change to no data coefficient
+                    temp.setData(sub1)
+                    self.notes += 'unconsolidated sediment coefficient changed to -0.6 (weaker) from -3.22 to better reflect that this unit is weak\n'
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 td = temp.getGeoDict()
@@ -600,7 +602,8 @@ class LogisticModel(object):
             'event_id': self.eventdict['event_id'],
             'parameters': {'slopemin': self.slopemin,
                            'slopemax': self.slopemax,
-                           'modeltype': self.modeltype}}
+                           'modeltype': self.modeltype,
+                           'notes': self.notes}}
         if 'vs30max' in self.config[self.model].keys():
             description['vs30max'] = float(self.config[self.model]['vs30max'])
         if 'minpgv' in self.config[self.model].keys():
