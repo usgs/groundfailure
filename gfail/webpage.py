@@ -342,7 +342,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     return filenames
 
 
-def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
+def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.002, lqmask=0.005):
     """
     Creates transparent PNG file for website.
 
@@ -354,6 +354,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             and will apply default colorbars and bins.
         lqmodels (list): Same as above for liquefaction.
         mercator (bool): Project raster to web mercator
+        lsmask (float): Mask all landslide cells with probabilities below this threshold
+        lqmask (float): Mask all liquefaction cells with probabilities below this threshold
 
     Returns:
         .png map overlays and .json files specifying their mapped extents
@@ -371,6 +373,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             filesnippet = 'jessee_2017'
             ls_grid = ls_mod['model']['grid']
             ls_data = ls_grid.getData()
+            if lsmask:
+                ls_data[ls_data < lsmask] = float('nan')
             ls_geodict = ls_grid.getGeoDict()
             ls_extent = [
                 ls_geodict.xmin - 0.5*ls_geodict.dx,
@@ -422,6 +426,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
 
             ls_grid = ls_mod['model']['grid']
             ls_data = ls_grid.getData()
+            if lsmask:
+                ls_data[ls_data < lsmask] = float('nan')
             ls_geodict = ls_grid.getGeoDict()
             ls_extent = [
                 ls_geodict.xmin - 0.5*ls_geodict.dx,
@@ -466,6 +472,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
             filesnippet = 'zhu_2017_general'
             lq_grid = lq_mod['model']['grid']
             lq_data = lq_grid.getData()
+            if lqmask:
+                lq_data[lq_data < lqmask] = float('nan')
             lq_geodict = lq_grid.getGeoDict()
             lq_extent = [
                 lq_geodict.xmin - 0.5*lq_geodict.dx,
@@ -515,6 +523,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True):
 
             lq_grid = lq_mod['model']['grid']
             lq_data = lq_grid.getData()
+            if lqmask:
+                lq_data[lq_data < lqmask] = float('nan')
             lq_geodict = lq_grid.getGeoDict()
             lq_extent = [
                 lq_geodict.xmin - 0.5*lq_geodict.dx,

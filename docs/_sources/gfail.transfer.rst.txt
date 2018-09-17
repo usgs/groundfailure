@@ -1,5 +1,5 @@
-gfail\.transfer
-======================
+gfail.transfer
+=====================
 
 .. automodule:: gfail.transfer
     :members:

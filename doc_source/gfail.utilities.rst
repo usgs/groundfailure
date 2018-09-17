@@ -1,5 +1,5 @@
-gfail\.utilities
-=======================
+gfail.utilities
+======================
 
 .. automodule:: gfail.utilities
     :members:

@@ -1,5 +1,5 @@
-gfail\.godt
-==================
+gfail.godt
+=================
 
 .. automodule:: gfail.godt
     :members:

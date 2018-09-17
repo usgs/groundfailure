@@ -1,5 +1,5 @@
-gfail\.webpage
-=====================
+gfail.webpage
+====================
 
 .. automodule:: gfail.webpage
     :members:

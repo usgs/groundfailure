@@ -756,6 +756,10 @@ data_path directory.
                            action='store_true', default=False,
                            help="Force ground-failure run; ignore "
                                 "authoritativeness checks.")
+    #argparser.add_argument("--rerun", action='store_true', default=False,
+    #                       help="Rerun an event that is already in the database. "
+    #                            "Creates new gf version even if shakemap version was "
+    #                            "already run.")
 
     pargs, unknown = argparser.parse_known_args()
 

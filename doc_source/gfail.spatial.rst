@@ -1,5 +1,5 @@
-gfail\.spatial
-=====================
+gfail.spatial
+====================
 
 .. automodule:: gfail.spatial
     :members:

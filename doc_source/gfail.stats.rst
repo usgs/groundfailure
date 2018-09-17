@@ -1,5 +1,5 @@
-gfail\.stats
-===================
+gfail.stats
+==================
 
 .. automodule:: gfail.stats
     :members:

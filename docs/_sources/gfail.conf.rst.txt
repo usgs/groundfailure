@@ -1,5 +1,5 @@
-gfail\.conf
-==================
+gfail.conf
+=================
 
 .. automodule:: gfail.conf
     :members:
