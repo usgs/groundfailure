@@ -1,5 +1,5 @@
-gfail\.gfailrun
-======================
+gfail.gfailrun
+=====================
 
 .. automodule:: gfail.gfailrun
     :members:

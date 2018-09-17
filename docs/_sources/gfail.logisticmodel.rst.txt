@@ -1,5 +1,5 @@
-gfail\.logisticmodel
-===========================
+gfail.logisticmodel
+==========================
 
 .. automodule:: gfail.logisticmodel
     :members:

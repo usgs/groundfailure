@@ -1,5 +1,5 @@
-gfail\.pdl
-=================
+gfail.pdl
+================
 
 .. automodule:: gfail.pdl
     :members:

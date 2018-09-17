@@ -4,20 +4,12 @@
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>gfail.stats &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '../../',
-        VERSION:     '0.1',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true,
-        SOURCELINK_SUFFIX: '.txt'
-      };
-    </script>
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
@@ -29,13 +21,14 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
 
-  </head>
-  <body>
+  </head><body>
   
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
+          
+
           <div class="body" role="main">
             
   <h1>Source code for gfail.stats</h1><div class="highlight"><pre>
@@ -77,15 +70,15 @@
 <span class="sd">    Args:</span>
 <span class="sd">        grid2D: grid2D object of model output.</span>
 <span class="sd">        probthresh: Optional, Float or list of probability thresholds</span>
-<span class="sd">            for use in Hagg2 computation.</span>
+<span class="sd">            for use in Parea computation.</span>
 <span class="sd">        shakefile: Optional, path to shakemap file to use for ground motion</span>
 <span class="sd">            threshold.</span>
 <span class="sd">        shakethreshtype: Optional, Type of ground motion to use for</span>
 <span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
 <span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
 <span class="sd">            pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation</span>
-<span class="sd">        statprobthresh: Optional, Float, Exclude any values less than or equal to this value in</span>
-<span class="sd">            calculation of regular stats (max, median, std)</span>
+<span class="sd">        statprobthresh: Optional, None or float, exclude any cells with probabilities</span>
+<span class="sd">            less than or equal to this value</span>
 <span class="sd">        pop_file (str): File path to population file to use to compute exposure stats</span>
 
 <span class="sd">    Returns:</span>
@@ -98,14 +91,22 @@
 <span class="sd">            - exp_pop_# where # is the shaking threshold (if pop_file specified)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">stats</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
-    <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">statprobthresh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">grid</span> <span class="o">=</span> <span class="n">grid</span><span class="p">[</span><span class="n">grid</span> <span class="o">&gt;</span> <span class="n">statprobthresh</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">statprobthresh</span> <span class="o">=</span> <span class="mf">0.0</span>
 
-    <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
-    <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
-    <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
-    <span class="n">Hagg</span> <span class="o">=</span> <span class="n">computeHagg</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no probability values above statprobthresh&#39;</span><span class="p">)</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
+    <span class="n">Hagg</span> <span class="o">=</span> <span class="n">computeHagg</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="n">statprobthresh</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
                        <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span>
                        <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">)</span>
     <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>
@@ -147,7 +148,8 @@
     <span class="k">if</span> <span class="n">pop_file</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">exp_dict</span> <span class="o">=</span> <span class="n">get_exposures</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">pop_file</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
                                  <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span>
-                                 <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">)</span>
+                                 <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">,</span>
+                                 <span class="n">probthresh</span><span class="o">=</span><span class="n">statprobthresh</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">exp_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">stats</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
 
@@ -305,7 +307,7 @@
 
 
 <div class="viewcode-block" id="get_exposures"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.get_exposures">[docs]</a><span class="k">def</span> <span class="nf">get_exposures</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">pop_file</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shakethreshtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                  <span class="n">shakethresh</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                  <span class="n">shakethresh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get exposure-based statistics.</span>
 
@@ -318,10 +320,23 @@
 <span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
 <span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
 <span class="sd">            pga, cm/s for pgv, float for mmi.</span>
+<span class="sd">        probthresh: Optional, None or float, exclude any cells with probabilities</span>
+<span class="sd">            less than or equal to this value</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: Dictionary with keys named exp_pop_# where # is the shakethresh</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># If probthresh defined, zero out any areas less than or equal to probthresh</span>
+    <span class="c1"># before proceeding</span>
+
+    <span class="k">if</span> <span class="n">probthresh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">origdata</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+        <span class="n">moddat</span> <span class="o">=</span> <span class="n">origdata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">moddat</span><span class="p">[</span><span class="n">moddat</span> <span class="o">&lt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="n">moddat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">origdata</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">moddat</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
 
     <span class="n">mdict</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
 
@@ -342,7 +357,7 @@
     <span class="n">pad_dict</span><span class="p">[</span><span class="s1">&#39;padtop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
         <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="n">pdict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">-</span> <span class="n">mdict</span><span class="o">.</span><span class="n">ymax</span><span class="p">)</span><span class="o">/</span><span class="n">mdict</span><span class="o">.</span><span class="n">dy</span><span class="p">)))</span>
     <span class="n">padgrid</span><span class="p">,</span> <span class="n">mdict2</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="o">.</span><span class="n">padGrid</span><span class="p">(</span>
-        <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">(),</span> <span class="n">mdict</span><span class="p">,</span> <span class="n">pad_dict</span><span class="p">)</span>  <span class="c1"># padds with inf</span>
+        <span class="n">moddat</span><span class="p">,</span> <span class="n">mdict</span><span class="p">,</span> <span class="n">pad_dict</span><span class="p">)</span>  <span class="c1"># padds with inf</span>
     <span class="n">padgrid</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">padgrid</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>  <span class="c1"># change to pad with nan</span>
     <span class="n">padgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">padgrid</span><span class="p">,</span> <span class="n">geodict</span><span class="o">=</span><span class="n">mdict2</span><span class="p">)</span>  <span class="c1"># Turn into grid2d object</span>
 
@@ -390,6 +405,7 @@
 </pre></div>
 
           </div>
+          
         </div>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
@@ -412,12 +428,14 @@
 
 <div id="searchbox" style="display: none" role="search">
   <h3>Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <div><input type="text" name="q" /></div>
-      <div><input type="submit" value="Go" /></div>
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
       <input type="hidden" name="check_keywords" value="yes" />
       <input type="hidden" name="area" value="default" />
     </form>
+    </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
         </div>

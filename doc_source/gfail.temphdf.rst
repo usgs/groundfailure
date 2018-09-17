@@ -1,5 +1,5 @@
-gfail\.temphdf
-=====================
+gfail.temphdf
+====================
 
 .. automodule:: gfail.temphdf
     :members:

@@ -1,5 +1,5 @@
-gfail\.sample
-====================
+gfail.sample
+===================
 
 .. automodule:: gfail.sample
     :members:

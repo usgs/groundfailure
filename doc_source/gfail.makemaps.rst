@@ -1,5 +1,5 @@
-gfail\.makemaps
-======================
+gfail.makemaps
+=====================
 
 .. automodule:: gfail.makemaps
     :members:
