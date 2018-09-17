@@ -342,7 +342,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     return filenames
 
 
-def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.002, lqmask=0.005):
+def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.002, lqmask=0.005, legends=False):
     """
     Creates transparent PNG file for website.
 
@@ -356,6 +356,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
         mercator (bool): Project raster to web mercator
         lsmask (float): Mask all landslide cells with probabilities below this threshold
         lqmask (float): Mask all liquefaction cells with probabilities below this threshold
+        legends (bool): if True, will produce png files of legends for each preferred model
 
     Returns:
         .png map overlays and .json files specifying their mapped extents
@@ -555,6 +556,11 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
                        cmap=cmap
                        )
             filenames.append(filen)
+
+    if legends:
+        lsname, lqname = make_legend(lqmin=lqmask, lsmin=lsmask, outfolder=event_dir)
+        filenames.append(lsname)
+        filenames.append(lqname)
 
     return filenames
 
@@ -1014,3 +1020,117 @@ def get_extent(grid, propofmax=0.3):
         boundaries1['ymax'] = ymax
 
     return boundaries1
+
+
+def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
+    """Make png file of legends to go with pngs using DFCOLORS and DFBINS
+
+    Args:
+        lqmin (float): minimum visible value of liquefaction probability
+        lsmin (float): same as above for landslides
+        outfolder (float): folder to place pngs of legends
+
+    Returns:
+        tuple: (lsfilename, lqfilename), locations of files that were created.
+
+    """
+    # Make liquefaction colorbar
+    DFLABELS = ['< %1.3f' % lqmin]
+    DFBINS[0] = lqmin
+    for db in DFBINS:
+        if db < 0.01:
+            DFLABELS.append('%1.3f' % db)
+        elif db < 0.1:
+            DFLABELS.append('%1.2f' % db)
+        else:
+            DFLABELS.append('%1.1f' % db)
+
+    # Flip order to darker on top
+    DFLABELS = DFLABELS[::-1]
+    COLORS1 = DFCOLORS[::-1]
+
+    fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+    fig.suptitle('Liquefaction\nProbability', weight='bold', fontsize=20)
+    for i, ax in enumerate(axes):
+        ax.set_ylim((0., 1.))
+        ax.set_xlim((0., 1.))
+        # draw square
+        if i == len(axes)-1:
+            color1 = COLORS1[i-1]
+            color1[-1] = 0.  # make completely transparent
+            label = DFLABELS[i+1]
+        else:
+            color1 = COLORS1[i]
+            color1[-1] = 0.8  # make less transparent
+            label = '%s-%s' % (DFLABELS[i+1], DFLABELS[i])
+        ax.set_facecolor(color1)
+        # add labels
+        #ax.set_ylabel(label, fontsize=18, weight='bold', rotation='horizontal')
+        ax.text(1.1, 0.5, label, fontsize=20, rotation='horizontal', va='center')
+        ax.yaxis.set_label_position("right")
+        ax.set_yticks([])
+        ax.set_xticks([])
+        plt.setp(ax.get_yticklabels(), visible=False)
+        plt.setp(ax.get_xticklabels(), visible=False)
+
+    if outfolder is None:
+        lqfilename = 'legend_liquefaction.png'
+    else:
+        lqfilename = os.path.join(outfolder, 'legend_liquefaction.png')
+
+    #plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+    plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+
+    fig.savefig(lqfilename, bbox_inches='tight')
+    #----------------------------------------------
+    # Make landslide colorbar
+    DFLABELS = ['< %1.3f' % lsmin]
+    DFBINS[0] = lsmin
+    for db in DFBINS:
+        if db < 0.01:
+            DFLABELS.append('%1.3f' % db)
+        elif db < 0.1:
+            DFLABELS.append('%1.2f' % db)
+        else:
+            DFLABELS.append('%1.1f' % db)
+
+    # Flip order to darker on top
+    DFLABELS = DFLABELS[::-1]
+    COLORS1 = DFCOLORS[::-1]
+
+    #fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.6, 0.8))
+    fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+
+    fig.suptitle('Landslide\nProbability', weight='bold', fontsize=20)
+    for i, ax in enumerate(axes):
+        ax.set_ylim((0., 1.))
+        ax.set_xlim((0., 1.))
+        # draw square
+        if i == len(axes)-1:
+            color1 = COLORS1[i-1]
+            color1[-1] = 0.  # make completely transparent
+            label = DFLABELS[i+1]
+        else:
+            color1 = COLORS1[i]
+            color1[-1] = 0.8  # make less transparent
+            label = '%s-%s' % (DFLABELS[i+1], DFLABELS[i])
+        ax.set_facecolor(color1)
+        # add labels
+        #ax.set_ylabel(label, fontsize=18, weight='bold', rotation='horizontal')
+        ax.text(1.1, 0.5, label, fontsize=20, rotation='horizontal', va='center')
+        ax.yaxis.set_label_position("right")
+        ax.set_yticks([])
+        ax.set_xticks([])
+        plt.setp(ax.get_yticklabels(), visible=False)
+        plt.setp(ax.get_xticklabels(), visible=False)
+
+    if outfolder is None:
+        lsfilename = 'legend_landslide.png'
+    else:
+        lsfilename = os.path.join(outfolder, 'legend_landslide.png')
+
+    #plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+    plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+    fig.savefig(lsfilename, bbox_inches='tight')
+
+    return lsfilename, lqfilename
