@@ -176,7 +176,7 @@ def test_zhu2015_web(tmpdir):
         pdl.prepare_pdl_directory(pdldir)
 
         # Transfer dry run
-        pdl_out = pdl.transfer(pdldir, 'None', dryrun=True)
+        pdl_out = pdl.transfer(pdldir, 1, 'None', dryrun=True)
     except Exception as e:  # So that defaults are put back even if something goes wrong
         print(e)
 
