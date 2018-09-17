@@ -1,12 +1,13 @@
 import gfail.pdl as pdl
 
 
-def gf_transfer(event_dir, pdl_config=None, dry_run=False):
+def gf_transfer(event_dir, version, pdl_config=None, dry_run=False):
     """
     Transfer ground failure results to dev server.
 
     Args:
         event_dir (str): Path to event directory.
+        version (int): Version number of ground-failure run.
         pdl_config (str): Path to PDL config file.
         dry_run (bool): True suppresss transfer but data is assesmbled for
             the transfer.
@@ -32,7 +33,7 @@ def gf_transfer(event_dir, pdl_config=None, dry_run=False):
         else:
             print('Constructing PDL command...')
 
-        log = pdl.transfer(event_dir, pdl_config, dryrun=dry_run)
+        log = pdl.transfer(event_dir, version, pdl_config, dryrun=dry_run)
 
         if log['rc'] is True and dry_run is False:
             print('Successful PDL transfer.')

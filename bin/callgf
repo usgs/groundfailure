@@ -240,7 +240,8 @@ def get_event_dir(args, connection):
         with connection:
             cursor = connection.cursor()
             cursor.execute(
-                'SELECT id, eventdir FROM shakemap WHERE eventcode=?', (eventid,))
+                'SELECT id, eventdir FROM shakemap WHERE eventcode=?',
+                (eventid,))
             row = cursor.fetchone()
         if row is None:
             continue
@@ -253,7 +254,8 @@ def get_event_dir(args, connection):
         with connection:
             cursor = connection.cursor()
             cursor.execute(
-                'SELECT shakemap_version FROM shakemap WHERE eventcode=?', (eventid,))
+                'SELECT shakemap_version FROM shakemap WHERE eventcode=?',
+                (eventid,))
             data1 = cursor.fetchall()
         if len(data1) > 0:
             shakemap_version = np.max([dat[0] for dat in data1])
@@ -297,18 +299,20 @@ def insert_event(connection, eventid, args, version):
 
     with connection:
         cursor = connection.cursor()
-        cursor.execute("""INSERT INTO shakemap (eventcode, version, lat,
-                       lon, time, mag, starttime, note, depth)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                       (list1))
+        cursor.execute(
+            "INSERT INTO shakemap(eventcode, version, lat,"
+            "lon, time, mag, starttime, note, depth)"
+            "VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (list1))
         db_id = cursor.lastrowid
 
     return db_id
 
 
 def update_event_fail(connection, db_id, msg, deletedir=None):
-    """Update event that failed to pass later filters. Print error messages in eventdir field.
-    Closes the database after.
+    """
+    Update event that failed to pass later filters. Print error messages in
+    eventdir field. Closes the database after.
 
     Args:
         connection (sqlite connection): connection object.
@@ -320,8 +324,9 @@ def update_event_fail(connection, db_id, msg, deletedir=None):
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     with connection:
         cursor = connection.cursor()
-        cursor.execute('UPDATE shakemap SET endtime = ?, note = ?, version=? WHERE id = ?',
-                       (tnowstr, msg, None, db_id))
+        cursor.execute(
+            'UPDATE shakemap SET endtime = ?, note = ?, version=? WHERE id = ?',
+            (tnowstr, msg, None, db_id))
     # Close the database
     connection.close()
 
@@ -339,7 +344,8 @@ def cleanup_database(connection, config):
     """
     with connection:
         cursor = connection.cursor()
-        # Check if "currently running" in note, if it is, we do want to rerun because it didn't finish
+        # Check if "currently running" in note, if it is, we do want to rerun
+        # because it didn't finish
         cursor.execute("SELECT id, note, eventcode, version FROM shakemap")
         lines = cursor.fetchall()
         for line in lines:
@@ -349,12 +355,14 @@ def cleanup_database(connection, config):
                 cursor.execute("DELETE FROM shakemap WHERE id = ?", (id1,))
                 # Delete the version directory, if it exists
                 verdirs = glob.glob(os.path.join(
-                    config['output_filepath'], '%s*' % eventid, 'version.%03i' % ver))
+                    config['output_filepath'], '%s*' % eventid,
+                    'version.%03i' % ver))
                 if len(verdirs) > 0:
                     for verd in verdirs:
                         shutil.rmtree(verd)
 
-    # Delete any empty output directories (might have been left from failed runs)
+    # Delete any empty output directories (might have been left from failed
+    # runs)
     for entry in os.scandir(config['output_filepath']):
         if entry.is_dir():
             files = glob.glob(os.path.join(entry.path, '*'))
@@ -418,7 +426,8 @@ def process_shakemap(args, config):
         dbfile = config['dbfile']
         conn = connect_database(dbfile)
 
-        # Clean up any unfinished runs so they will rerun (e.g., if stopped halfway)
+        # Clean up any unfinished runs so they will rerun (e.g., if stopped
+        # halfway)
         cleanup_database(conn, config)
 
         # get the database ID and directory of the event we have
@@ -463,14 +472,16 @@ def process_shakemap(args, config):
     try:
         with conn:
             cursor = conn.cursor()
-            cursor.execute("UPDATE shakemap SET shakemap_version = ? WHERE id = ?",
-                           (hdrtuple[0]['shakemap_version'], db_id))
+            cursor.execute(
+                "UPDATE shakemap SET shakemap_version = ? WHERE id = ?",
+                (hdrtuple[0]['shakemap_version'], db_id))
         logging.info('Found gridfile for shakemap version %i' %
                      hdrtuple[0]['shakemap_version'])
     except Exception as e:
         logging.critical(e)
 
-    # Check if ShakeMap version was already run, if so, delete database entry and exit
+    # Check if ShakeMap version was already run, if so, delete database entry
+    # and exit
     if shakemap_version == hdrtuple[0]['shakemap_version']:
         with conn:
             cursor = conn.cursor()
@@ -612,7 +623,7 @@ def process_shakemap(args, config):
     # dry = ""
     # if args.dry_run:
     #     dry = True
-    success = gf_transfer(vdir, pdl_conf_file, dry_run=args.dry_run)
+    success = gf_transfer(vdir, version, pdl_conf_file, dry_run=args.dry_run)
     if not success:
         msg = "gf_transfer failed."
         logging.critical(msg)
@@ -645,20 +656,21 @@ def process_shakemap(args, config):
     with conn:
         cursor = conn.cursor()
         try:
-            cursor.execute("UPDATE shakemap SET endtime = ?, finitefault = ?, HaggLS = ?,"
-                           "ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?, eventdir = ?,"
-                           "time = ?, depth = ?, location = ?, note = ? WHERE id = ?",
-                           (tnowstr, '%i' % finite_fault,
-                            '%.3f' % ls_hazard_value,
-                            '%.3f' % ls_pop_value,
-                            '%.3f' % lq_hazard_value,
-                            '%.3f' % lq_pop_value,
-                            eventdir,
-                            event['event_timestamp'].strftime(TIMEFMT),
-                            '%.1f' % event['depth'],
-                            event['event_description'],
-                            '',
-                            '%i' % db_id))
+            cursor.execute(
+                "UPDATE shakemap SET endtime = ?, finitefault = ?, HaggLS = ?,"
+                "ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?, eventdir = ?,"
+                "time = ?, depth = ?, location = ?, note = ? WHERE id = ?",
+                (tnowstr, '%i' % finite_fault,
+                 '%.3f' % ls_hazard_value,
+                 '%.3f' % ls_pop_value,
+                 '%.3f' % lq_hazard_value,
+                 '%.3f' % lq_pop_value,
+                 eventdir,
+                 event['event_timestamp'].strftime(TIMEFMT),
+                 '%.1f' % event['depth'],
+                 event['event_description'],
+                 '',
+                 '%i' % db_id))
             logging.info('Final event information entered in database.')
         except Exception as e:
             logging.exception('Final database entry failed: %s' % e)
@@ -715,8 +727,8 @@ trimfile = Path to a shapefile containing GADM shapefile of country landmasses.
 dbfile = Path to a SQLITE file containing event and version run information.
 data_path = Path to model input data
 
-A file called "autogf_models" that lists the models to run must be placed in the
-data_path directory.
+A file called "autogf_models" that lists the models to run must be placed in
+the data_path directory.
 """
     argparser = argparse.ArgumentParser(
         description=desc,

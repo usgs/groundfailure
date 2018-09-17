@@ -12,13 +12,15 @@ from configobj import ConfigObj
 from impactutils.io.cmd import get_command_output
 
 
-def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
+def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
+             dryrun=False):
     """
     This is to transfer the event's 'pdl_directory' to comcat. PDL must be
     installed separately, see https://usgs.github.io/pdl/ for information.
 
     Args:
-        event_dir (str): File path to location of results for event
+        event_dir (str): File path to location of results for event.
+        version (int): Version number of ground-failure run.
         pdl_conf (str): Path to PDL conf file.
         pdl_bin (str): Path to 'ProductClient.jar'. If None it guesses that it
             is installed in the user's home directory:
@@ -148,6 +150,7 @@ def transfer(event_dir, pdl_conf, pdl_bin=None, source="us", dryrun=False):
         '--eventsource=%s ' % eventsource +
         '--code=%s ' % code +
         '--eventsourcecode=%s ' % eventsourcecode +
+        '--version=%s ' % version +
         '--latitude=%s ' % lat +
         '--longitude=%s ' % lon +
         '--magnitude=%s ' % mag +
