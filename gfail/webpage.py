@@ -1045,24 +1045,29 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
         else:
             DFLABELS.append('%1.1f' % db)
 
-    fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.6, 0.8))
+    # Flip order to darker on top
+    DFLABELS = DFLABELS[::-1]
+    COLORS1 = DFCOLORS[::-1]
 
-    fig.suptitle('Liquefaction Probability', weight='bold', fontsize=16)
+    fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+    fig.suptitle('Liquefaction\nProbability', weight='bold', fontsize=20)
     for i, ax in enumerate(axes):
         ax.set_ylim((0., 1.))
         ax.set_xlim((0., 1.))
         # draw square
-        if i == 0:
-            color1 = DFCOLORS[i]
+        if i == len(axes)-1:
+            color1 = COLORS1[i-1]
             color1[-1] = 0.  # make completely transparent
-            label = DFLABELS[i]
+            label = DFLABELS[i+1]
         else:
-            color1 = DFCOLORS[i-1]
+            color1 = COLORS1[i]
             color1[-1] = 0.8  # make less transparent
-            label = '%s-%s' % (DFLABELS[i], DFLABELS[i+1])
+            label = '%s-%s' % (DFLABELS[i+1], DFLABELS[i])
         ax.set_facecolor(color1)
         # add labels
-        ax.set_xlabel(label, fontsize=13, weight='bold')
+        #ax.set_ylabel(label, fontsize=18, weight='bold', rotation='horizontal')
+        ax.text(1.1, 0.5, label, fontsize=20, rotation='horizontal', va='center')
+        ax.yaxis.set_label_position("right")
         ax.set_yticks([])
         ax.set_xticks([])
         plt.setp(ax.get_yticklabels(), visible=False)
@@ -1073,7 +1078,8 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
     else:
         lqfilename = os.path.join(outfolder, 'legend_liquefaction.png')
 
-    plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+    #plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+    plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
 
     fig.savefig(lqfilename, bbox_inches='tight')
     #----------------------------------------------
@@ -1088,24 +1094,31 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
         else:
             DFLABELS.append('%1.1f' % db)
 
-    fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.6, 0.8))
+    # Flip order to darker on top
+    DFLABELS = DFLABELS[::-1]
+    COLORS1 = DFCOLORS[::-1]
 
-    fig.suptitle('Landslide Probability', weight='bold', fontsize=16)
+    #fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.6, 0.8))
+    fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+
+    fig.suptitle('Landslide\nProbability', weight='bold', fontsize=20)
     for i, ax in enumerate(axes):
         ax.set_ylim((0., 1.))
         ax.set_xlim((0., 1.))
         # draw square
-        if i == 0:
-            color1 = DFCOLORS[i]
+        if i == len(axes)-1:
+            color1 = COLORS1[i-1]
             color1[-1] = 0.  # make completely transparent
-            label = DFLABELS[i]
+            label = DFLABELS[i+1]
         else:
-            color1 = DFCOLORS[i-1]
+            color1 = COLORS1[i]
             color1[-1] = 0.8  # make less transparent
-            label = '%s-%s' % (DFLABELS[i], DFLABELS[i+1])
+            label = '%s-%s' % (DFLABELS[i+1], DFLABELS[i])
         ax.set_facecolor(color1)
         # add labels
-        ax.set_xlabel(label, fontsize=13, weight='bold')
+        #ax.set_ylabel(label, fontsize=18, weight='bold', rotation='horizontal')
+        ax.text(1.1, 0.5, label, fontsize=20, rotation='horizontal', va='center')
+        ax.yaxis.set_label_position("right")
         ax.set_yticks([])
         ax.set_xticks([])
         plt.setp(ax.get_yticklabels(), visible=False)
@@ -1116,8 +1129,8 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
     else:
         lsfilename = os.path.join(outfolder, 'legend_landslide.png')
 
-    plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
-
+    #plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+    plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
     fig.savefig(lsfilename, bbox_inches='tight')
 
     return lsfilename, lqfilename
