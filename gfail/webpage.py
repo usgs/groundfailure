@@ -1022,52 +1022,68 @@ def get_extent(grid, propofmax=0.3):
     return boundaries1
 
 
-def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
+def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None, orientation='horizontal'):
     """Make png file of legends to go with pngs using DFCOLORS and DFBINS
 
     Args:
         lqmin (float): minimum visible value of liquefaction probability
         lsmin (float): same as above for landslides
         outfolder (float): folder to place pngs of legends
+        orientation (str): orientation of colorbar, 'horizontal' or 'vertical'
 
     Returns:
         tuple: (lsfilename, lqfilename), locations of files that were created.
 
     """
     # Make liquefaction colorbar
-    DFLABELS = ['< %1.3f' % lqmin]
+    DFLABELS = ['< %1.1f%%' % (lqmin * 100.,)]
     DFBINS[0] = lqmin
     for db in DFBINS:
         if db < 0.01:
-            DFLABELS.append('%1.3f' % db)
-        elif db < 0.1:
-            DFLABELS.append('%1.2f' % db)
+            DFLABELS.append('%1.1f' % (db * 100,))
         else:
-            DFLABELS.append('%1.1f' % db)
+            DFLABELS.append('%1.0f' % (db * 100.,))
 
-    # Flip order to darker on top
-    DFLABELS = DFLABELS[::-1]
-    COLORS1 = DFCOLORS[::-1]
+    if orientation == 'vertical':
+        # Flip order to darker on top
+        DFLABELS = DFLABELS[::-1]
+        COLORS1 = DFCOLORS[::-1]
+        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+        clearind = len(axes)-1
+        maxind = 0
+    else:
+        COLORS1 = DFCOLORS
+        fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.7, 0.8))
+        clearind = 0
+        maxind = len(axes)-1
 
-    fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
-    fig.suptitle('Liquefaction\nProbability', weight='bold', fontsize=20)
     for i, ax in enumerate(axes):
         ax.set_ylim((0., 1.))
         ax.set_xlim((0., 1.))
         # draw square
-        if i == len(axes)-1:
-            color1 = COLORS1[i-1]
+        if i == clearind:
+            color1 = COLORS1[0]
             color1[-1] = 0.  # make completely transparent
-            label = DFLABELS[i+1]
+            if orientation == 'vertical':
+                label = DFLABELS[i+1]
+            else:
+                label = DFLABELS[0]
         else:
-            color1 = COLORS1[i]
+            if orientation == 'vertical':
+                label = '%s-%s%%' % (DFLABELS[i+1], DFLABELS[i])
+                color1 = COLORS1[i]
+            else:
+                label = '%s-%s%%' % (DFLABELS[i], DFLABELS[i+1])
+                color1 = COLORS1[i-1]
             color1[-1] = 0.8  # make less transparent
-            label = '%s-%s' % (DFLABELS[i+1], DFLABELS[i])
+            if i == maxind:
+                label = '> %1.0f%%' % (DFBINS[-2]*100.)
         ax.set_facecolor(color1)
-        # add labels
-        #ax.set_ylabel(label, fontsize=18, weight='bold', rotation='horizontal')
-        ax.text(1.1, 0.5, label, fontsize=20, rotation='horizontal', va='center')
-        ax.yaxis.set_label_position("right")
+        if orientation == 'vertical':
+            ax.text(1.1, 0.5, label, fontsize=17, rotation='horizontal', va='center')
+        else:
+            ax.set_xlabel(label, fontsize=17, rotation='horizontal')
+
         ax.set_yticks([])
         ax.set_xticks([])
         plt.setp(ax.get_yticklabels(), visible=False)
@@ -1078,47 +1094,66 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
     else:
         lqfilename = os.path.join(outfolder, 'legend_liquefaction.png')
 
-    #plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
-    plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+    if orientation == 'vertical':
+        fig.suptitle('Liquefaction\nProbability', weight='bold', fontsize=20)
+        plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+    else:
+        fig.suptitle('Liquefaction Probability', weight='bold', fontsize=20)
+        plt.subplots_adjust(wspace=0.1, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
 
     fig.savefig(lqfilename, bbox_inches='tight')
-    #----------------------------------------------
-    # Make landslide colorbar
-    DFLABELS = ['< %1.3f' % lsmin]
+
+    #--------------------------
+    # Make landslide legend
+
+    DFLABELS = ['< %1.1f%%' % (lsmin * 100.,)]
     DFBINS[0] = lsmin
     for db in DFBINS:
         if db < 0.01:
-            DFLABELS.append('%1.3f' % db)
-        elif db < 0.1:
-            DFLABELS.append('%1.2f' % db)
+            DFLABELS.append('%1.1f' % (db * 100,))
         else:
-            DFLABELS.append('%1.1f' % db)
+            DFLABELS.append('%1.0f' % (db * 100.,))
 
-    # Flip order to darker on top
-    DFLABELS = DFLABELS[::-1]
-    COLORS1 = DFCOLORS[::-1]
+    if orientation == 'vertical':
+        # Flip order to darker on top
+        DFLABELS = DFLABELS[::-1]
+        COLORS1 = DFCOLORS[::-1]
+        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+        clearind = len(axes)-1
+        maxind = 0
+    else:
+        COLORS1 = DFCOLORS
+        fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.7, 0.8))
+        clearind = 0
+        maxind = len(axes)-1
 
-    #fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.6, 0.8))
-    fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
-
-    fig.suptitle('Landslide\nProbability', weight='bold', fontsize=20)
     for i, ax in enumerate(axes):
         ax.set_ylim((0., 1.))
         ax.set_xlim((0., 1.))
         # draw square
-        if i == len(axes)-1:
-            color1 = COLORS1[i-1]
+        if i == clearind:
+            color1 = COLORS1[0]
             color1[-1] = 0.  # make completely transparent
-            label = DFLABELS[i+1]
+            if orientation == 'vertical':
+                label = DFLABELS[i+1]
+            else:
+                label = DFLABELS[0]
         else:
-            color1 = COLORS1[i]
+            if orientation == 'vertical':
+                label = '%s-%s%%' % (DFLABELS[i+1], DFLABELS[i])
+                color1 = COLORS1[i]
+            else:
+                label = '%s-%s%%' % (DFLABELS[i], DFLABELS[i+1])
+                color1 = COLORS1[i-1]
             color1[-1] = 0.8  # make less transparent
-            label = '%s-%s' % (DFLABELS[i+1], DFLABELS[i])
+            if i == maxind:
+                label = '> %1.0f%%' % (DFBINS[-2]*100.)
         ax.set_facecolor(color1)
-        # add labels
-        #ax.set_ylabel(label, fontsize=18, weight='bold', rotation='horizontal')
-        ax.text(1.1, 0.5, label, fontsize=20, rotation='horizontal', va='center')
-        ax.yaxis.set_label_position("right")
+        if orientation == 'vertical':
+            ax.text(1.1, 0.5, label, fontsize=17, rotation='horizontal', va='center')
+        else:
+            ax.set_xlabel(label, fontsize=17, rotation='horizontal')
+
         ax.set_yticks([])
         ax.set_xticks([])
         plt.setp(ax.get_yticklabels(), visible=False)
@@ -1129,8 +1164,13 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None):
     else:
         lsfilename = os.path.join(outfolder, 'legend_landslide.png')
 
-    #plt.subplots_adjust(wspace=0.2, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
-    plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+    if orientation == 'vertical':
+        fig.suptitle('Landslide\nProbability', weight='bold', fontsize=20)
+        plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+    else:
+        fig.suptitle('Landslide Probability', weight='bold', fontsize=20)
+        plt.subplots_adjust(wspace=0.1, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+
     fig.savefig(lsfilename, bbox_inches='tight')
 
     return lsfilename, lqfilename
