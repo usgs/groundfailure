@@ -110,7 +110,7 @@ conda create -y --force -n $VENV -c conda-forge python=3.5 \
       lockfile \
       mapio \
       markdown \
-      matplotlib \
+      matplotlib=2.2.3 \
       numpy \
       obspy \
       pandas \
