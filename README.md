@@ -6,8 +6,8 @@
 ## Introduction
 
 This software is for calculating earthquake-induced ground failures (i.e.,
-landslide and liquefaction). These models are intended for regional or
-global scale applications, and are intended to be distributed in
+landslide and liquefaction). These models are intended for regional
+or global scale applications, and are intended to be distributed in
 near-real-time, triggered by the Shakemaps. 
 
 ## Documentation
