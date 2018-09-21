@@ -17,7 +17,7 @@ from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
 from gfail.makemaps import (modelMap, interactiveMap, GFSummary)
-from gfail.webpage import hazdev, create_png, create_info
+from gfail.webpage import hazdev
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
     parseMapConfig, text_to_json, write_floats,
@@ -406,15 +406,18 @@ def run_gfail(args):
                 results.append(maplayers)
 
         if args.make_webpage:
-            outputs = hazdev(results, configs,
-                             shakefile, outfolder=outfolder,
-                             pop_file=args.popfile)
+            outputs = hazdev(
+                results, configs,
+                shakefile, outfolder=outfolder,
+                pop_file=args.popfile,
+                pager_alert=args.property_alertlevel)
             filenames = filenames + outputs
 
         if args.make_summary:
-            outputs = GFSummary(results, configs, args.web_template,
-                                shakefile, outfolder=outfolder, cleanup=True,
-                                faultfile=ffault, point=point, pop_file=args.popfile)
+            outputs = GFSummary(
+                results, configs, args.web_template,
+                shakefile, outfolder=outfolder, cleanup=True,
+                faultfile=ffault, point=point, pop_file=args.popfile)
             filenames = filenames + outputs
 
 #        # create transparent png file

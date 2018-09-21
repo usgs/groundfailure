@@ -676,6 +676,7 @@ def process_shakemap(args, config):
         'web_template': config['web_template'],
         'popfile': config['popfile'],
         'dry_run': args.dry_run,
+        'property_alertlevel':args.property_alertlevel
     }
 
     try:
@@ -809,6 +810,7 @@ the data_path directory.
     argparser.add_argument("--directory",
                            help="Directory where ShakeMap data can be found",
                            metavar='DIRECTORY')
+    argparser.add_argument("--property-alertlevel")
     argparser.add_argument("--type",
                            help="Product type", metavar='TYPE')
     argparser.add_argument("--preferred-eventsourcecode",
@@ -858,5 +860,6 @@ the data_path directory.
         for req in REQUIRED_CONFIG:
             print('\t%s' % req)
         sys.exit(1)
+#    if pargs.property_alertlevel == 'pending':
 
     main(pargs, pconfig)
