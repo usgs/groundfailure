@@ -158,7 +158,7 @@ def test_zhu2015_web(tmpdir):
         rc, so, se = get_command_output(runcmd)
         np.testing.assert_equal(True, rc, se.decode())
 
-        #event_dir = os.path.join(p, '19891018000415')
+        # event_dir = os.path.join(p, '19891018000415')
 
         # # Make png
         # cmd = 'create_png -e %s' % event_dir

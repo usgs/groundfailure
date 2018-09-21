@@ -57,7 +57,6 @@ if __name__ == '__main__':
                 pdl_config = D[key]
             elif key == 'dbfile':
                 pdl_config = D[key]
-            
 
     parser = argparse.ArgumentParser(
         description='Run ground failure models on input ShakeMap grid.',
@@ -182,6 +181,7 @@ if __name__ == '__main__':
         '-ext', '--extract-contents', action='store_true', default=False,
         help='All files will be placed directly in output folder, will not be nested '
              'in a subfolder named by eventid')
+    parser.add_argument("--property-alertlevel", default='unset')
 
     pargs = parser.parse_args()
     run_gfail(pargs)
