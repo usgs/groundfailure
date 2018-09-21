@@ -17,15 +17,18 @@ import json
 import re
 import shutil
 import numpy as np
+import urllib.request
 
 # third party imports
 # from impactutils.io.cmd import get_command_output
+from libcomcat.search import get_event_by_id
+from libcomcat.classes import VersionOption
 from impactutils.comcat.query import GeoServe
 from mapio.shake import getHeaderData
 from mapio.shake import ShakeGrid
 import configobj
 import fiona
-from shapely.geometry import shape, box
+from shapely.geometry import shape, box, Polygon, Point
 # from mpl_toolkits.basemap import Basemap
 
 # local imports
@@ -43,8 +46,43 @@ WHITELIST = ['us', 'ci', 'nc', 'nn', 'hv', 'uw', 'nn', 'uu', 'ak']
 NO_SHAKEMAPS = ['mb', 'ecx', 'tul', 'ismp',
                 'nm', 'se', 'ogso', 'pr', 'neic', 'ld', 'wy', 'hv']
 
-# minimum magnitude to be processed
-MAG_THRESHOLD = 4.0
+# minimum magnitude to be processed globally
+MAG_THRESHOLD = 6.0
+
+# Set min mags and polygons for USA
+USA = {
+    'COUSA': '''5.0,
+        50.0617, -128.6120,
+        50.2408, -95.2197,
+        49.7931, -83.9398,
+        46.9284, -76.1512,
+        48.6293, -70.9589,
+        48.7189, -66.0351,
+        40.5722, -65.5875,
+        24.0999, -80.4484,
+        25.3532, -97.0102,
+        31.5303, -117.8692,
+        38.7818, -127.1796,
+        50.0617, -128.6120''',
+    'HV': '''5.0,
+        18.3962, -154.4897,
+        19.8494, -153.7427,
+        22.0856, -156.7969,
+        23.3019, -159.8950,
+        22.0042, -161.6968,
+        20.1385, -159.1040,
+        18.3128, -156.3574,
+        18.3962, -154.4897''',
+    'AK': '''5.0,
+        71.5921, -167.0176,
+        62.8188, -169.1661,
+        46.5255, -170.3299,
+        51.3598, -136.8482,
+        71.6816, -138.8177,
+        71.6816, -138.8177,
+        71.5921, -167.0176'''
+}
+
 
 # logging configuration - sets up a rotating log file
 LOG_CFG = {
@@ -408,14 +446,34 @@ def process_shakemap(args, config):
         logging.info('Action check passed.')
 
     logging.info('Checking magnitude...')
-    if args.magnitude < MAG_THRESHOLD:
-        msg = ('Input ShakeMaps must be larger than M%.1f. Exiting.'
-               % MAG_THRESHOLD)
-        logging.info(msg)
-        if not args.force:
-            sys.exit(1)
-    else:
+
+    # Is the magnitude greater than or equal to the global magnitude threshold?
+    if args.magnitude >= MAG_THRESHOLD:
         logging.info('Magnitude check passed')
+    else:
+        # Magnitude is less than global magnitude so it should fail unless
+        # it falls into a region with a smaller magnitude threshold
+        logging.info(
+            'Magnitude does not exceed global threshold. Checking regions...')
+        any_pass = False
+        for k, v in USA.items():
+            coords = [float(x) for x in v.split(',')]
+            mag = coords.pop(0)
+            coords2 = list(zip(coords[1::2], coords[0::2]))
+            coords2.append(coords2[0])
+            poly = Polygon(coords2)
+            pt = Point((args.longitude, args.latitude))
+            if pt.within(poly):
+                # Located within one of the USA polygons
+                if args.magnitude >= mag:
+                    any_pass = True
+
+        if any_pass:
+            logging.info('Magnitude check passed')
+        else:
+            logging.info('Magnitude check failed')
+            if not args.force:
+                sys.exit(1)
 
     # ----------------------------------------------------------------------
     # passed initial filters, enter in database before next set of filters
@@ -448,6 +506,20 @@ def process_shakemap(args, config):
         logging.critical('Database entry failed: %s' % e)
         logging.info('Continuing to run without database.')
         shakemap_version = 0
+
+    # ----------------------------------------------------------------------
+    # Download grid.xml
+    # ----------------------------------------------------------------------
+    detail = get_event_by_id(eventid, includesuperseded=True)
+    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
+    vers = [allv.version for allv in allversions]
+    idx = np.where(np.array(vers) == np.max(vers))[0][0]
+    shakemap = allversions[idx]
+    grid_url = shakemap.getContentURL('grid.xml')
+    urllib.request.urlretrieve(
+        grid_url,
+        os.path.join(args.directory, 'download')
+    )
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
@@ -575,35 +647,36 @@ def process_shakemap(args, config):
     model_file = os.path.join(config['data_path'], 'autogf_models')
 
     logging.info("Starting run_gfail")
-    pargs = {'hdf5': True,
-             'gis': True,
-             'make_webpage': True,
-             'trimfile': landfile,
-             'set_default_paths': False,
-             'list_default_paths': False,
-             'reset_default_paths': False,
-             'shakefile': gridfile,
-             'make_static_pngs': False,
-             'make_static_pdfs': False,
-             'make_interactive_plots': False,
-             'extract_contents': True,
-             'config': model_file,
-             'set_bounds': None,
-             'make_summary': False,
-             'finite_fault': None,
-             'uncertfile': None,
-             'save_inputs': False,
-             'std': 1.0,
-             'appendname': None,
-             'data_path': config['data_path'],
-             'output_filepath': vdir,
-             'config_filepath': config['config_filepath'],
-             'mapconfig': config['mapconfig'],
-             'mapdata_filepath': config['mapdata_filepath'],
-             'web_template': config['web_template'],
-             'popfile': config['popfile'],
-             'dry_run': args.dry_run,
-             }
+    pargs = {
+        'hdf5': True,
+        'gis': True,
+        'make_webpage': True,
+        'trimfile': landfile,
+        'set_default_paths': False,
+        'list_default_paths': False,
+        'reset_default_paths': False,
+        'shakefile': gridfile,
+        'make_static_pngs': False,
+        'make_static_pdfs': False,
+        'make_interactive_plots': False,
+        'extract_contents': True,
+        'config': model_file,
+        'set_bounds': None,
+        'make_summary': False,
+        'finite_fault': None,
+        'uncertfile': None,
+        'save_inputs': False,
+        'std': 1.0,
+        'appendname': None,
+        'data_path': config['data_path'],
+        'output_filepath': vdir,
+        'config_filepath': config['config_filepath'],
+        'mapconfig': config['mapconfig'],
+        'mapdata_filepath': config['mapdata_filepath'],
+        'web_template': config['web_template'],
+        'popfile': config['popfile'],
+        'dry_run': args.dry_run,
+    }
 
     try:
         outfiles = run_gfail(pargs)
@@ -704,7 +777,7 @@ def main(args, config):
     logging.info('---------------------------------------------------------')
     logging.info('Running process_shakemap')
 
-    if args.type == 'shakemap':
+    if args.type == 'losspager':
         process_shakemap(args, config)
     else:
         logging.info('Incorrect type specified, exiting.')
@@ -768,7 +841,7 @@ the data_path directory.
                            action='store_true', default=False,
                            help="Force ground-failure run; ignore "
                                 "authoritativeness checks.")
-    #argparser.add_argument("--rerun", action='store_true', default=False,
+    # argparser.add_argument("--rerun", action='store_true', default=False,
     #                       help="Rerun an event that is already in the database. "
     #                            "Creates new gf version even if shakemap version was "
     #                            "already run.")
