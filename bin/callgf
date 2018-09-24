@@ -18,6 +18,7 @@ import re
 import shutil
 import numpy as np
 import urllib.request
+import tempfile
 
 # third party imports
 # from impactutils.io.cmd import get_command_output
@@ -30,6 +31,10 @@ import configobj
 import fiona
 from shapely.geometry import shape, box, Polygon, Point
 # from mpl_toolkits.basemap import Basemap
+import numpy as np
+from shapely.geometry import shape, box
+from libcomcat.search import get_event_by_id
+
 
 # local imports
 from gfail.gfailrun import run_gfail
@@ -415,6 +420,9 @@ def process_shakemap(args, config):
         args (arparser Namespace): Input arguments.
         config (ConfigObj): Configuration object.
     """
+    # did someone run this from the command line?
+    is_manual = isinstance(args, ArgWrapper)
+
     logging.info('###### Event source: %s' % args.preferred_eventsource)
     logging.info('###### Event source code: %s' %
                  args.preferred_eventsourcecode)
@@ -507,19 +515,20 @@ def process_shakemap(args, config):
         logging.info('Continuing to run without database.')
         shakemap_version = 0
 
-    # ----------------------------------------------------------------------
-    # Download grid.xml
-    # ----------------------------------------------------------------------
-    detail = get_event_by_id(eventid, includesuperseded=True)
-    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
-    vers = [allv.version for allv in allversions]
-    idx = np.where(np.array(vers) == np.max(vers))[0][0]
-    shakemap = allversions[idx]
-    grid_url = shakemap.getContentURL('grid.xml')
-    urllib.request.urlretrieve(
-        grid_url,
-        os.path.join(args.directory, 'download')
-    )
+    if not is_manual:
+        # ----------------------------------------------------------------------
+        # Download grid.xml
+        # ----------------------------------------------------------------------
+        detail = get_event_by_id(eventid, includesuperseded=True)
+        allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
+        vers = [allv.version for allv in allversions]
+        idx = np.where(np.array(vers) == np.max(vers))[0][0]
+        shakemap = allversions[idx]
+        grid_url = shakemap.getContentURL('grid.xml')
+        urllib.request.urlretrieve(
+            grid_url,
+            os.path.join(args.directory, 'download')
+        )
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
@@ -554,7 +563,7 @@ def process_shakemap(args, config):
 
     # Check if ShakeMap version was already run, if so, delete database entry
     # and exit
-    if shakemap_version == hdrtuple[0]['shakemap_version']:
+    if shakemap_version == hdrtuple[0]['shakemap_version'] and not is_manual:
         with conn:
             cursor = conn.cursor()
             # Delete current run, because found other complete run
@@ -754,6 +763,10 @@ def process_shakemap(args, config):
     logging.info('Completed gfail run of %s' % eventid)
 
 
+class ArgWrapper():
+    pass
+
+
 def main(args, config):
     """Main entry point method.
 
@@ -777,6 +790,39 @@ def main(args, config):
     logger = logging.getLogger()
     logging.info('---------------------------------------------------------')
     logging.info('Running process_shakemap')
+    if args.event is not None:
+        # download the shakemap to a temporary directory
+        tdir = tempfile.mkdtemp()
+        datadir = os.path.join(tdir, 'download')
+        os.mkdir(datadir)
+        try:
+            detail = get_event_by_id(args.event)
+            fname = os.path.join(datadir, 'grid.xml')
+            shakemap = detail.getProducts('shakemap')[0]
+            shakemap.getContent('grid.xml', fname)
+            targs = ArgWrapper()
+            targs.time = detail.time
+            targs.preferred_eventsource = detail['net']
+            targs.preferred_eventsourcecode = detail['code']
+            targs.status = 'UPDATE'
+            targs.action = 'PRODUCT_UPDATED'
+            targs.magnitude = detail.magnitude
+            targs.force = args.force
+            targs.directory = tdir
+            targs.latitude = detail.latitude
+            targs.longitude = detail.longitude
+            targs.depth = detail.depth
+            targs.dry_run = args.dry_run
+            if 'alert' in detail.properties:
+                targs.property_alertlevel = detail['alert']
+            else:
+                targs.property_alertlevel = 'unset'
+            targs.eventids = ','.join(detail['ids'][1:].split(','))
+            process_shakemap(targs, config)
+        except Exception as e:
+            print('Processing failed on %s. "%s"' % (args.event, str(e)))
+        finally:
+            shutil.rmtree(tdir)
 
     if args.type == 'losspager':
         process_shakemap(args, config)
@@ -811,6 +857,9 @@ the data_path directory.
                            help="Directory where ShakeMap data can be found",
                            metavar='DIRECTORY')
     argparser.add_argument("--property-alertlevel", default='unset')
+    argparser.add_argument("--event",
+                           help="Event ID of event to run manually",
+                           metavar='EVENTID')
     argparser.add_argument("--type",
                            help="Product type", metavar='TYPE')
     argparser.add_argument("--preferred-eventsourcecode",
