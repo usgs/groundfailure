@@ -420,6 +420,9 @@ def process_shakemap(args, config):
         args (arparser Namespace): Input arguments.
         config (ConfigObj): Configuration object.
     """
+    # did someone run this from the command line?
+    is_manual = isinstance(args, ArgWrapper)
+
     logging.info('###### Event source: %s' % args.preferred_eventsource)
     logging.info('###### Event source code: %s' %
                  args.preferred_eventsourcecode)
@@ -512,19 +515,20 @@ def process_shakemap(args, config):
         logging.info('Continuing to run without database.')
         shakemap_version = 0
 
-    # ----------------------------------------------------------------------
-    # Download grid.xml
-    # ----------------------------------------------------------------------
-    detail = get_event_by_id(eventid, includesuperseded=True)
-    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
-    vers = [allv.version for allv in allversions]
-    idx = np.where(np.array(vers) == np.max(vers))[0][0]
-    shakemap = allversions[idx]
-    grid_url = shakemap.getContentURL('grid.xml')
-    urllib.request.urlretrieve(
-        grid_url,
-        os.path.join(args.directory, 'download')
-    )
+    if not is_manual:
+        # ----------------------------------------------------------------------
+        # Download grid.xml
+        # ----------------------------------------------------------------------
+        detail = get_event_by_id(eventid, includesuperseded=True)
+        allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
+        vers = [allv.version for allv in allversions]
+        idx = np.where(np.array(vers) == np.max(vers))[0][0]
+        shakemap = allversions[idx]
+        grid_url = shakemap.getContentURL('grid.xml')
+        urllib.request.urlretrieve(
+            grid_url,
+            os.path.join(args.directory, 'download')
+        )
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
@@ -559,7 +563,6 @@ def process_shakemap(args, config):
 
     # Check if ShakeMap version was already run, if so, delete database entry
     # and exit
-    is_manual = isinstance(args, ArgWrapper)
     if shakemap_version == hdrtuple[0]['shakemap_version'] and not is_manual:
         with conn:
             cursor = conn.cursor()
@@ -810,6 +813,10 @@ def main(args, config):
             targs.longitude = detail.longitude
             targs.depth = detail.depth
             targs.dry_run = args.dry_run
+            if 'alert' in detail.properties:
+                targs.property_alertlevel = detail['alert']
+            else:
+                targs.property_alertlevel = 'unset'
             targs.eventids = ','.join(detail['ids'][1:].split(','))
             process_shakemap(targs, config)
         except Exception as e:
