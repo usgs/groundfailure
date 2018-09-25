@@ -13,7 +13,7 @@ from impactutils.io.cmd import get_command_output
 
 
 def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
-             dryrun=False):
+             dryrun=False, status='UPDATE'):
     """
     This is to transfer the event's 'pdl_directory' to comcat. PDL must be
     installed separately, see https://usgs.github.io/pdl/ for information.
@@ -31,6 +31,9 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
             which point we'll need to add a configuration option for the key.
         dryrun (bool): If True, the PDL command is constructed and printed but
             not executed.
+        status (str): Status of ground-failure product being sent to comcat.
+            Default is "UPDATE" but can also be "WARNING" so that the product
+            page displays the warning banner.
 
     Returns:
         dict or str: Dictionary of pdl return code, standard out, and standard
@@ -149,6 +152,7 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
         '--source=%s ' % source +
         '--eventsource=%s ' % eventsource +
         '--code=%s ' % code +
+        '--status=%s ' % status +
         '--eventsourcecode=%s ' % eventsourcecode +
         '--version=%s ' % version +
         '--latitude=%s ' % lat +
