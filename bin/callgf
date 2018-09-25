@@ -19,6 +19,7 @@ import shutil
 import numpy as np
 import urllib.request
 import tempfile
+from io import StringIO
 
 # third party imports
 # from impactutils.io.cmd import get_command_output
@@ -703,10 +704,31 @@ def process_shakemap(args, config):
     # Transfer
     logging.info("Starting gfail_transfer")
     pdl_conf_file = config['pdl_config']
-    # dry = ""
-    # if args.dry_run:
-    #     dry = True
-    success = gf_transfer(vdir, version, pdl_conf_file, dry_run=args.dry_run)
+
+    # What to do about status? This is the status of the ground-failure
+    # product. Not to be confused with status of PAGER, which we use
+    # to override the alert to be pending.
+    if args.warning is True:
+        # It is manually set to override warning in the argument list
+        status = "WARNING"
+    else:
+        # Get shakemap info.json for shakemap uncertainty
+        detail = get_event_by_id(args.event)
+        shakemap = detail.getProducts('shakemap')[0]
+        info_bytes, url = shakemap.getContentBytes('info.json')
+        info_io = StringIO(info_bytes.decode('utf-8'))
+        info = json.load(info_io)
+        mur = info['output']['uncertainty']['mean_uncertainty_ratio']
+        if mur < 0.98:
+            status = "WARNING"
+        else:
+            status = "UPDATE"
+
+    success = gf_transfer(
+        vdir, version, pdl_conf_file, dry_run=args.dry_run,
+        status=status
+    )
+
     if not success:
         msg = "gf_transfer failed."
         logging.critical(msg)
@@ -813,10 +835,14 @@ def main(args, config):
             targs.longitude = detail.longitude
             targs.depth = detail.depth
             targs.dry_run = args.dry_run
-            if 'alert' in detail.properties:
-                targs.property_alertlevel = detail['alert']
+            targs.warning = args.warning
+            if args.property_alertlevel == 'pending':
+                targs.property_alertlevel = 'pending'
             else:
-                targs.property_alertlevel = 'unset'
+                if 'alert' in detail.properties:
+                    targs.property_alertlevel = detail['alert']
+                else:
+                    targs.property_alertlevel = 'unset'
             targs.eventids = ','.join(detail['ids'][1:].split(','))
             process_shakemap(targs, config)
         except Exception as e:
@@ -853,45 +879,71 @@ the data_path directory.
     argparser = argparse.ArgumentParser(
         description=desc,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    argparser.add_argument("--directory",
-                           help="Directory where ShakeMap data can be found",
-                           metavar='DIRECTORY')
-    argparser.add_argument("--property-alertlevel", default='unset')
-    argparser.add_argument("--event",
-                           help="Event ID of event to run manually",
-                           metavar='EVENTID')
-    argparser.add_argument("--type",
-                           help="Product type", metavar='TYPE')
-    argparser.add_argument("--preferred-eventsourcecode",
-                           help="Product code", metavar='CODE')
-    argparser.add_argument("--preferred-eventsource",
-                           help="Product source", metavar='SOURCE')
-    argparser.add_argument("--status",
-                           help="Product status", metavar='STATUS')
-    argparser.add_argument('-d', '--debug', action='store_true',
-                           default=False,
-                           help='Print log messages to the screen.')
-    argparser.add_argument("--action",
-                           help="Product action", metavar='ACTION')
-    argparser.add_argument("--preferred-latitude", type=float,
-                           help="Event latitude", dest='latitude')
-    argparser.add_argument("--preferred-longitude", type=float,
-                           help="Event longitude", dest='longitude')
-    argparser.add_argument("--preferred-depth", type=float,
-                           help="Event depth", dest='depth')
-    argparser.add_argument("--preferred-magnitude", type=float,
-                           help="Event magnitude", metavar='MAG',
-                           dest='magnitude')
-    argparser.add_argument("--preferred-eventtime",
-                           help="Event time", metavar='TIME', dest='time')
-    argparser.add_argument("--eventids", help="List of associated event IDs")
-    argparser.add_argument("--dry-run",
-                           action='store_true', default=False,
-                           help="Do not transfer result to PDL.")
-    argparser.add_argument("-f", "--force",
-                           action='store_true', default=False,
-                           help="Force ground-failure run; ignore "
-                                "authoritativeness checks.")
+    argparser.add_argument(
+        "--directory",
+        help="Directory where ShakeMap data can be found",
+        metavar='DIRECTORY')
+    argparser.add_argument(
+        "--event",
+        help="Event ID of event to run manually",
+        metavar='EVENTID')
+    argparser.add_argument(
+        "--type",
+        help="Product type", metavar='TYPE')
+    argparser.add_argument(
+        "--preferred-eventsourcecode",
+        help="Product code", metavar='CODE')
+    argparser.add_argument(
+        "--preferred-eventsource",
+        help="Product source", metavar='SOURCE')
+    argparser.add_argument(
+        "--status",
+        help="PAGER product status.",
+        metavar='STATUS')
+    argparser.add_argument(
+        '-d', '--debug', action='store_true',
+        default=False,
+        help='Print log messages to the screen.')
+    argparser.add_argument(
+        "--action",
+        help="Product action", metavar='ACTION')
+    argparser.add_argument(
+        "--preferred-latitude", type=float,
+        help="Event latitude", dest='latitude')
+    argparser.add_argument(
+        "--preferred-longitude", type=float,
+        help="Event longitude", dest='longitude')
+    argparser.add_argument(
+        "--preferred-depth", type=float,
+        help="Event depth", dest='depth')
+    argparser.add_argument(
+        "--preferred-magnitude", type=float,
+        help="Event magnitude", metavar='MAG',
+        dest='magnitude')
+    argparser.add_argument(
+        "--preferred-eventtime",
+        help="Event time", metavar='TIME', dest='time')
+    argparser.add_argument(
+        "--eventids", help="List of associated event IDs")
+    argparser.add_argument(
+        "--dry-run",
+        action='store_true', default=False,
+        help="Do not transfer result to PDL.")
+    argparser.add_argument(
+        "-f", "--force",
+        action='store_true', default=False,
+        help="Force ground-failure run; ignore "
+             "authoritativeness checks.")
+    argparser.add_argument(
+        "-w", "--warning",
+        action='store_true', default=False,
+        help="Force ground-failure status to be 'WARNING'.")
+    argparser.add_argument(
+        "--property-alertlevel",
+        default='unset',
+        help="PAGER alert level. If pending then override ground-failure "
+             "alert levels to be pending.")
+
     # argparser.add_argument("--rerun", action='store_true', default=False,
     #                       help="Rerun an event that is already in the database. "
     #                            "Creates new gf version even if shakemap version was "
@@ -909,6 +961,5 @@ the data_path directory.
         for req in REQUIRED_CONFIG:
             print('\t%s' % req)
         sys.exit(1)
-#    if pargs.property_alertlevel == 'pending':
 
     main(pargs, pconfig)
