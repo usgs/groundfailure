@@ -719,7 +719,7 @@ def process_shakemap(args, config):
         info_io = StringIO(info_bytes.decode('utf-8'))
         info = json.load(info_io)
         mur = info['output']['uncertainty']['mean_uncertainty_ratio']
-        if mur < 0.98:
+        if mur > 0.98:
             status = "WARNING"
         else:
             status = "UPDATE"
