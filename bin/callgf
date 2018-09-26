@@ -718,7 +718,20 @@ def process_shakemap(args, config):
         info_bytes, url = shakemap.getContentBytes('info.json')
         info_io = StringIO(info_bytes.decode('utf-8'))
         info = json.load(info_io)
-        mur = info['output']['uncertainty']['mean_uncertainty_ratio']
+        try:
+            # This will work when the value is reported
+            mur = float(info['output']['uncertainty']
+                        ['mean_uncertainty_ratio'])
+        except:
+            # It is given as '-' when not computed. If it is not computed,
+            # then the value shouldn't matter because it means that MMI 6
+            # was never exceeded for the event. Probably safest to set it
+            # as 1.0 in this case so that a warning will still be issued.
+            # This will probably result in some events that will never get
+            # updates have the warning, but I think this is better than the
+            # alternative of not issueing the warning for moderage magnitude
+            # events that have poorly constrained shaking levels.
+            mur = 1.0
         if mur > 0.98:
             status = "WARNING"
         else:
@@ -836,6 +849,7 @@ def main(args, config):
             targs.depth = detail.depth
             targs.dry_run = args.dry_run
             targs.warning = args.warning
+            targs.event = args.event
             if args.property_alertlevel == 'pending':
                 targs.property_alertlevel = 'pending'
             else:
