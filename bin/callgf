@@ -35,7 +35,8 @@ from shapely.geometry import shape, box, Polygon, Point
 import numpy as np
 from shapely.geometry import shape, box
 from libcomcat.search import get_event_by_id
-
+from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
+import pytz
 
 # local imports
 from gfail.gfailrun import run_gfail
@@ -745,7 +746,17 @@ def process_shakemap(args, config):
             # events that have poorly constrained shaking levels.
             mur = 1.0
         if mur > 0.98:
-            status = "WARNING"
+            # Also, don't set to warning event is old
+            expire_warning_days = 2.0
+            expire_warning_sec = expire_warning_days * 24.0 * 60.0 * 60.0
+            utc = pytz.utc
+            detail_time = ShakeDateTime.fromtimestamp(
+                detail['time']/1000.0, utc)
+            delta = ShakeDateTime.now(utc) - detail_time
+            if delta.total_seconds() < expire_warning_sec:
+                status = "WARNING"
+            else:
+                status = "UPDATE"
         else:
             status = "UPDATE"
 
