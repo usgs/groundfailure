@@ -712,8 +712,20 @@ def process_shakemap(args, config):
         # It is manually set to override warning in the argument list
         status = "WARNING"
     else:
+        # -----------------------------------------------
         # Get shakemap info.json for shakemap uncertainty
-        detail = get_event_by_id(args.event)
+        # -----------------------------------------------
+        logging.info('Getting shakemap info.json...')
+
+        # Is the 'event' argument set? (i.e., manual run)
+        if args.event != 'unset':
+            evid = args.event
+        else:
+            # Ohtersie, need to get from PDL command line arguments, which are
+            # --preferred-eventsource and --preferred-eventsourcecode
+            evid = args.preferred_eventsource + args.preferred_eventsourcecode
+        logging.info('event id: %s' % evid)
+        detail = get_event_by_id(evid)
         shakemap = detail.getProducts('shakemap')[0]
         info_bytes, url = shakemap.getContentBytes('info.json')
         info_io = StringIO(info_bytes.decode('utf-8'))
@@ -899,6 +911,7 @@ the data_path directory.
         metavar='DIRECTORY')
     argparser.add_argument(
         "--event",
+        default='unset',
         help="Event ID of event to run manually",
         metavar='EVENTID')
     argparser.add_argument(
