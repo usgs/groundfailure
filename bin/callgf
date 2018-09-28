@@ -521,16 +521,20 @@ def process_shakemap(args, config):
         # ----------------------------------------------------------------------
         # Download grid.xml
         # ----------------------------------------------------------------------
-        detail = get_event_by_id(eventid, includesuperseded=True)
-        allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
-        vers = [allv.version for allv in allversions]
-        idx = np.where(np.array(vers) == np.max(vers))[0][0]
-        shakemap = allversions[idx]
-        grid_url = shakemap.getContentURL('grid.xml')
-        urllib.request.urlretrieve(
-            grid_url,
-            os.path.join(args.directory, 'download')
-        )
+        try:
+            detail = get_event_by_id(eventid, includesuperseded=True)
+            allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
+            vers = [allv.version for allv in allversions]
+            idx = np.where(np.array(vers) == np.max(vers))[0][0]
+            shakemap = allversions[idx]
+            grid_url = shakemap.getContentURL('grid.xml')
+            urllib.request.urlretrieve(
+                grid_url,
+                os.path.join(args.directory, 'download')
+            )
+        except Exception as e:
+            logging.info('Failed to download grid.xml')
+            logging.info(e)
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
