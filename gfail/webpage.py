@@ -52,8 +52,10 @@ DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            shakethreshtype='pga', probthresh=None, shakethresh=10.,
-           prefLS='Nowicki Jessee and others (2017)', prefLQ='Zhu and others (2017)',
-           pop_file=None, defaultcolors=True):
+           prefLS='Nowicki Jessee and others (2017)',
+           prefLQ='Zhu and others (2017)',
+           pop_file=None, defaultcolors=True,
+           pager_alert=''):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
 
@@ -78,6 +80,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         defaultcolors (bool): If True, will use DFCOLORS for all layers instead
             of determining new ones. This will crash if any of the layers have
             a different number of bins than the number of DFCOLORS
+        pager_alert (str): PAGER alert level, e.g., 'green'. 'pending', ...
 
     Returns:
         Files that need to be sent to comcat for hazdev to create the product
@@ -85,6 +88,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 - info.json
                 - transparent png overlays of all models
     """
+
     event_id = maplayerlist[0]['model']['description']['event_id']
 
     if pop_file is None:
@@ -138,13 +142,14 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     id1 = 'nowicki_2014_global'
                     statprobthresh = 0.0
 
-            stats = computeStats(maplayer['model']['grid'],
-                                 probthresh=probthresh,
-                                 shakefile=shakemap,
-                                 shakethresh=shakethresh,
-                                 statprobthresh=statprobthresh,
-                                 pop_file=pop_file,
-                                 shakethreshtype=shakethreshtype)
+            stats = computeStats(
+                maplayer['model']['grid'],
+                probthresh=probthresh,
+                shakefile=shakemap,
+                shakethresh=shakethresh,
+                statprobthresh=statprobthresh,
+                pop_file=pop_file,
+                shakethreshtype=shakethreshtype)
 
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
@@ -162,8 +167,10 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     stats['Hagg_0.10g'], 0.,
                     stats['exp_pop_0.10g'], 0.)
                 lsext = get_extent(maplayer['model']['grid'])
-                ls_haz_value = set_num_precision(stats['Hagg_0.10g'], 2, 'float')
-                ls_pop_value = set_num_precision(stats['exp_pop_0.10g'], 2, 'int')
+                ls_haz_value = set_num_precision(
+                    stats['Hagg_0.10g'], 2, 'float')
+                ls_pop_value = set_num_precision(
+                    stats['exp_pop_0.10g'], 2, 'int')
             else:
                 on = False
                 ls_haz_alert = None
@@ -223,13 +230,14 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 id1 = 'zhu_2017_general'
                 statprobthresh = 0.005
 
-            stats = computeStats(maplayer['model']['grid'],
-                                 probthresh=probthresh,
-                                 shakefile=shakemap,
-                                 shakethresh=shakethresh,
-                                 pop_file=pop_file,
-                                 shakethreshtype=shakethreshtype,
-                                 statprobthresh=statprobthresh)
+            stats = computeStats(
+                maplayer['model']['grid'],
+                probthresh=probthresh,
+                shakefile=shakemap,
+                shakethresh=shakethresh,
+                pop_file=pop_file,
+                shakethreshtype=shakethreshtype,
+                statprobthresh=statprobthresh)
 
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
@@ -247,8 +255,10 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     0., stats['Hagg_0.10g'],
                     0., stats['exp_pop_0.10g'])
                 lqext = get_extent(maplayer['model']['grid'])
-                lq_haz_value = set_num_precision(stats['Hagg_0.10g'], 2, 'float')
-                lq_pop_value = set_num_precision(stats['exp_pop_0.10g'], 2, 'int')
+                lq_haz_value = set_num_precision(
+                    stats['Hagg_0.10g'], 2, 'float')
+                lq_pop_value = set_num_precision(
+                    stats['exp_pop_0.10g'], 2, 'int')
 
             else:
                 on = False
@@ -308,9 +318,10 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         defaultcolormap = cm.CMRmap_r
 
         # Get colors and stuff into dictionaries
-        sync, colorlistLS, reflims = setupsync(prefLS, concLS, limLS, colLS,
-                                               defaultcolormap, logscale=logLS,
-                                               alpha=alpha)
+        sync, colorlistLS, reflims = setupsync(
+            prefLS, concLS, limLS, colLS,
+            defaultcolormap, logscale=logLS,
+            alpha=alpha)
 
         if reflims is None:
             raise Exception('Check input config files, they must all have the '
@@ -320,9 +331,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             for ls in lsmodels:
                 ls['bin_colors'] = list(colorlistLS)
 
-        sync, colorlistLQ, reflims = setupsync(prefLQ, concLQ, limLQ, colLQ,
-                                               defaultcolormap, logscale=logLQ,
-                                               alpha=alpha)
+        sync, colorlistLQ, reflims = setupsync(
+            prefLQ, concLQ, limLQ, colLQ,
+            defaultcolormap, logscale=logLQ,
+            alpha=alpha)
+
         if reflims is None:
             raise Exception('Check input config files, they must all have the '
                             'same number of bin edges')
@@ -335,6 +348,17 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     pngfiles = create_png(outfolder, lsmodels, lqmodels)
     filenames.append(pngfiles)
 
+    # If PAGER alert is pending, overwrite our alerts
+    if pager_alert == 'pending':
+        for ls in lsmodels:
+            ls['alert'] = 'pending'
+            ls['hazard_alert']['color'] = 'pending'
+            ls['population_alert']['color'] = 'pending'
+        for lq in lqmodels:
+            lq['alert'] = 'pending'
+            lq['hazard_alert']['color'] = 'pending'
+            lq['population_alert']['color'] = 'pending'
+
     # Create info.json
     infojson = create_info(outfolder, lsmodels, lqmodels)
     filenames.append(infojson)
@@ -342,7 +366,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
     return filenames
 
 
-def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.002, lqmask=0.005, legends=False):
+def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
+               lsmask=0.002, lqmask=0.005, legends=False):
     """
     Creates transparent PNG file for website.
 
@@ -350,13 +375,16 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
         event_dir (srt): Directory containing ground failure results.
         lsmodels (list): List of dictionaries of model summary info compiled
             by the hazdev function. If not specified, code will search for
-            the hdf5 files for the preferred model and will create this dictionary
-            and will apply default colorbars and bins.
+            the hdf5 files for the preferred model and will create this
+            dictionary and will apply default colorbars and bins.
         lqmodels (list): Same as above for liquefaction.
         mercator (bool): Project raster to web mercator
-        lsmask (float): Mask all landslide cells with probabilities below this threshold
-        lqmask (float): Mask all liquefaction cells with probabilities below this threshold
-        legends (bool): if True, will produce png files of legends for each preferred model
+        lsmask (float): Mask all landslide cells with probabilities below this
+            threshold
+        lqmask (float): Mask all liquefaction cells with probabilities below this
+            threshold
+        legends (bool): if True, will produce png files of legends for each
+            preferred model
 
     Returns:
         .png map overlays and .json files specifying their mapped extents
@@ -398,8 +426,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
             #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
             rgba_img = cmap(norm(ls_data2))
             if mercator:
-                rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
-                                              origin='upper')
+                rgba_img = mercator_transform(
+                    rgba_img, (ls_extent[2], ls_extent[3]), origin='upper')
 
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
@@ -409,7 +437,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
                        cmap=cmap
                        )
         else:
-            raise OSError("Preferred landslide model result (%s) not found." % ls_mod_file)
+            raise OSError(
+                "Preferred landslide model result (%s) not found." % ls_mod_file)
     else:
         for lsm in lsmodels:
             #if lsm['preferred']:
@@ -423,7 +452,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
                 ls_file = os.path.join(event_dir, ls_mod_file[0])
                 ls_mod = loadlayers(ls_file)
             else:
-                raise OSError("Specified landslide model result (%s) not found." % fsh)
+                raise OSError(
+                    "Specified landslide model result (%s) not found." % fsh)
 
             ls_grid = ls_mod['model']['grid']
             ls_data = ls_grid.getData()
@@ -451,8 +481,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
             #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
             rgba_img = cmap(norm(ls_data2))
             if mercator:
-                rgba_img = mercator_transform(rgba_img, (ls_extent[2], ls_extent[3]),
-                                              origin='upper')
+                rgba_img = mercator_transform(
+                    rgba_img, (ls_extent[2], ls_extent[3]), origin='upper')
 
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
@@ -495,8 +525,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
             lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
             rgba_img = cmap(norm(lq_data2))
             if mercator:
-                rgba_img = mercator_transform(rgba_img, (lq_extent[2], lq_extent[3]),
-                                              origin='upper')
+                rgba_img = mercator_transform(
+                    rgba_img, (lq_extent[2], lq_extent[3]), origin='upper')
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
                        rgba_img,
@@ -506,7 +536,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
                        )
             filenames.append(filen)
         else:
-            raise OSError("Preferred liquefaction model result (%s) not found." % lq_mod_file)
+            raise OSError(
+                "Preferred liquefaction model result (%s) not found." % lq_mod_file)
     else:
         for lqm in lqmodels:
             if lqm['preferred']:
@@ -520,7 +551,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
                 lq_file = os.path.join(event_dir, lq_mod_file[0])
                 lq_mod = loadlayers(lq_file)
             else:
-                raise OSError("Specified liquefaction model result (%s) not found." % fsh)
+                raise OSError(
+                    "Specified liquefaction model result (%s) not found." % fsh)
 
             lq_grid = lq_mod['model']['grid']
             lq_data = lq_grid.getData()
@@ -546,8 +578,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True, lsmask=0.
             lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
             rgba_img = cmap(norm(lq_data2))
             if mercator:
-                rgba_img = mercator_transform(rgba_img, (lq_extent[2], lq_extent[3]),
-                                              origin='upper')
+                rgba_img = mercator_transform(
+                    rgba_img, (lq_extent[2], lq_extent[3]), origin='upper')
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
                        rgba_img,
@@ -752,8 +784,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
             else:
                 # Remove any alert keys
-                rmkeys = ['bin_edges', 'bin_colors', 'zoomext', 'population_alert',
-                          'alert', 'hazard_alert']
+                rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
+                          'population_alert', 'alert', 'hazard_alert']
             for key in rmkeys:
                 if key in lsm:
                     lsm.pop(key)
@@ -777,8 +809,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
                 rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
             else:
                 # Remove any alert keys
-                rmkeys = ['bin_edges', 'bin_colors', 'zoomext', 'population_alert',
-                          'alert', 'hazard_alert']
+                rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
+                          'population_alert', 'alert', 'hazard_alert']
             for key in rmkeys:
                 if key in lqm:
                     lqm.pop(key)
@@ -793,15 +825,16 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     point = is_grid_point_source(shake_grid)
 
     try:
-        #Hopefully this will eventually be more reliable once we get the
-        #comcat info directly from the shakemap grid, rather than rely on
-        #magnitude/location/time association.
+        # Hopefully this will eventually be more reliable once we get the
+        # comcat info directly from the shakemap grid, rather than rely on
+        # magnitude/location/time association.
         shakemap_info, detail, temp = get_event_comcat(shakefile)
         event_url = detail.url
         code = detail['code']
         net = detail['net']
         utc = pytz.utc
-        detail_time = ShakeDateTime.fromtimestamp(detail['time']/1000.0, utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+        detail_time = ShakeDateTime.fromtimestamp(
+            detail['time']/1000.0, utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     except:
         # Hopefully we can eventually remove this....
@@ -966,8 +999,8 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
 
 def get_extent(grid, propofmax=0.3):
     """
-    Get the extent that contains all values with probabilities exceeding a threshold
-    in order to determine ideal zoom level for interactive map
+    Get the extent that contains all values with probabilities exceeding
+    a threshold in order to determine ideal zoom level for interactive map
     If nothing is above the threshold, uses the full extent
 
     Args:
@@ -977,8 +1010,8 @@ def get_extent(grid, propofmax=0.3):
 
     Returns:
         tuple: (boundaries, zoomed) where,
-            * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and 'ymax' that
-                defines the boundaries in geographic coordinates.
+            * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and
+             'ymax' that defines the boundaries in geographic coordinates.
 
     """
     maximum = np.nanmax(grid.getData())
@@ -1022,7 +1055,8 @@ def get_extent(grid, propofmax=0.3):
     return boundaries1
 
 
-def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None, orientation='horizontal'):
+def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None,
+                orientation='horizontal'):
     """Make png file of legends to go with pngs using DFCOLORS and DFBINS
 
     Args:
@@ -1050,12 +1084,14 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None, orientation='horizonta
         # Flip order to darker on top
         DFLABELS = DFLABELS[::-1]
         COLORS1 = DFCOLORS[::-1]
-        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1,
+                                 figsize=(3., len(DFCOLORS)-1.7))
         clearind = len(axes)-1
         maxind = 0
     else:
         COLORS1 = DFCOLORS
-        fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.7, 0.8))
+        fig, axes = plt.subplots(1, len(DFCOLORS) + 1,
+                                 figsize=(len(DFCOLORS) + 1.7, 0.8))
         #DPI = fig.get_dpi()
         #fig.set_size_inches(440/DPI, 83/DPI)
         clearind = 0
@@ -1086,9 +1122,11 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None, orientation='horizonta
                 label = '> %1.0f%%' % (DFBINS[-2]*100.)
         ax.set_facecolor(color1)
         if orientation == 'vertical':
-            ax.text(1.1, 0.5, label, fontsize=fontsize, rotation='horizontal', va='center')
+            ax.text(1.1, 0.5, label, fontsize=fontsize,
+                    rotation='horizontal', va='center')
         else:
-            ax.set_xlabel(label, fontsize=fontsize, rotation='horizontal')
+            ax.set_xlabel(label, fontsize=fontsize,
+                          rotation='horizontal')
 
         ax.set_yticks([])
         ax.set_xticks([])
@@ -1109,7 +1147,7 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None, orientation='horizonta
     #plt.tight_layout()
     fig.savefig(lqfilename, bbox_inches='tight')
 
-    #--------------------------
+    # --------------------------
     # Make landslide legend
 
     DFLABELS = ['< %1.1f%%' % (lsmin * 100.,)]
@@ -1124,12 +1162,14 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None, orientation='horizonta
         # Flip order to darker on top
         DFLABELS = DFLABELS[::-1]
         COLORS1 = DFCOLORS[::-1]
-        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1, figsize=(3., len(DFCOLORS)-1.7))
+        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1,
+                                 figsize=(3., len(DFCOLORS)-1.7))
         clearind = len(axes)-1
         maxind = 0
     else:
         COLORS1 = DFCOLORS
-        fig, axes = plt.subplots(1, len(DFCOLORS) + 1, figsize=(len(DFCOLORS) + 1.7, 0.8))
+        fig, axes = plt.subplots(1, len(DFCOLORS) + 1,
+                                 figsize=(len(DFCOLORS) + 1.7, 0.8))
         clearind = 0
         maxind = len(axes)-1
 
@@ -1158,7 +1198,8 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None, orientation='horizonta
                 label = '> %1.0f%%' % (DFBINS[-2]*100.)
         ax.set_facecolor(color1)
         if orientation == 'vertical':
-            ax.text(1.1, 0.5, label, fontsize=fontsize, rotation='horizontal', va='center')
+            ax.text(1.1, 0.5, label, fontsize=fontsize,
+                    rotation='horizontal', va='center')
         else:
             ax.set_xlabel(label, fontsize=fontsize, rotation='horizontal')
 
