@@ -39,12 +39,12 @@ plt.switch_backend('agg')
 # ]
 
 DFCOLORS = [
-    [0.94, 0.94, 0.70, 0.3],
-    [0.90, 0.78, 0.18, 0.4],
-    [0.92, 0.45, 0.03, 0.5],
-    [0.75, 0.22, 0.36, 0.6],
-    [0.36, 0.16, 0.70, 0.6],
-    [0.12, 0.12, 0.39, 0.6]
+    [0.94, 0.94, 0.70, 0.7],
+    [0.90, 0.78, 0.18, 0.7],
+    [0.92, 0.45, 0.03, 0.7],
+    [0.75, 0.22, 0.36, 0.7],
+    [0.36, 0.16, 0.70, 0.7],
+    [0.12, 0.12, 0.39, 0.7]
 ]
 
 DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
@@ -441,7 +441,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                 "Preferred landslide model result (%s) not found." % ls_mod_file)
     else:
         for lsm in lsmodels:
-            #if lsm['preferred']:
+            # if lsm['preferred']:
             levels = lsm['bin_edges']
             colors1 = lsm['bin_colors']
             filesnippet = lsm['id']
@@ -590,7 +590,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
             filenames.append(filen)
 
     if legends:
-        lsname, lqname = make_legend(lqmin=lqmask, lsmin=lsmask, outfolder=event_dir)
+        lsname, lqname = make_legend(
+            lqmin=lqmask, lsmin=lsmask, outfolder=event_dir)
         filenames.append(lsname)
         filenames.append(lqname)
 
@@ -1139,12 +1140,15 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None,
         lqfilename = os.path.join(outfolder, 'legend_liquefaction.png')
 
     if orientation == 'vertical':
-        fig.suptitle('Liquefaction\nProbability', weight='bold', fontsize=fontsize+2)
+        fig.suptitle('Liquefaction\nProbability',
+                     weight='bold', fontsize=fontsize+2)
         plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
     else:
-        fig.suptitle('Liquefaction Probability', weight='bold', fontsize=fontsize+2)
-        plt.subplots_adjust(wspace=0.1, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
-    #plt.tight_layout()
+        fig.suptitle('Liquefaction Probability',
+                     weight='bold', fontsize=fontsize+2)
+        # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+        plt.subplots_adjust(wspace=0.1, top=0.6)
+    # plt.tight_layout()
     fig.savefig(lqfilename, bbox_inches='tight')
 
     # --------------------------
@@ -1214,11 +1218,14 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None,
         lsfilename = os.path.join(outfolder, 'legend_landslide.png')
 
     if orientation == 'vertical':
-        fig.suptitle('Landslide\nProbability', weight='bold', fontsize=fontsize+2)
+        fig.suptitle('Landslide\nProbability',
+                     weight='bold', fontsize=fontsize+2)
         plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
     else:
-        fig.suptitle('Landslide Probability', weight='bold', fontsize=fontsize+2)
-        plt.subplots_adjust(wspace=0.1, top=0.6)  # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+        fig.suptitle('Landslide Probability',
+                     weight='bold', fontsize=fontsize+2)
+        # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+        plt.subplots_adjust(wspace=0.1, top=0.6)
 
     fig.savefig(lsfilename, bbox_inches='tight')
 
