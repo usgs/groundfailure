@@ -8,7 +8,7 @@ import argparse
 import os.path
 import sys
 import glob
-from datetime import datetime
+from datetime import datetime, timedelta
 import logging
 import logging.config
 import sqlite3
@@ -41,6 +41,7 @@ import pytz
 # local imports
 from gfail.gfailrun import run_gfail
 from gfail.transfer import gf_transfer
+
 
 # config parameters required for this program to run
 REQUIRED_CONFIG = ['log_filepath', 'output_filepath',
@@ -523,7 +524,8 @@ def process_shakemap(args, config):
         # ----------------------------------------------------------------------
         try:
             detail = get_event_by_id(eventid, includesuperseded=True)
-            allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
+            allversions = detail.getProducts(
+                'shakemap', version=VersionOption.ALL)
             vers = [allv.version for allv in allversions]
             idx = np.where(np.array(vers) == np.max(vers))[0][0]
             shakemap = allversions[idx]
@@ -829,6 +831,55 @@ class ArgWrapper():
     pass
 
 
+def cleanup_warnings(args, config):
+    """Function to cleaning up warnings.
+
+    Args:
+        args (arparser Namespace): Input arguments.
+        config (ConfigObj): Configuration object.
+    """
+    log_path = config['log_filepath']
+    if not os.path.isdir(log_path):
+        os.makedirs(log_path)
+    logfile = os.path.join(log_path, LOGFILE)
+    log_cfg = LOG_CFG.copy()
+    if args.debug:
+        log_cfg['handlers']['default']['class'] = 'logging.StreamHandler'
+        del log_cfg['handlers']['default']['when']
+    else:
+        log_cfg['handlers']['default']['filename'] = logfile
+    logging.config.dictConfig(log_cfg)
+    logger = logging.getLogger()
+    logging.info('---------------------------------------------------------')
+    logging.info('Running cleanup_warnings')
+
+    # Database
+    dbfile = config['dbfile']
+    conn = connect_database(dbfile)
+    with conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT eventcode FROM shakemap")
+        unique_events = cursor.fetchall()
+        for uevent in unique_events:
+            cursor.execute(
+                "SELECT id, eventcode, time, starttime FROM shakemap "
+                "where eventcode='%s'" % uevent[0]
+            )
+            lines = cursor.fetchall()
+            start_time_list = []
+            for line in lines:
+                cid, eventcode, time, starttime = line
+                start_time_list.append(
+                    datetime.strptime(starttime, TIMEFMT))
+            last_start_time = max(start_time_list)
+            origin_time = datetime.strptime(time, TIMEFMT)
+            delta_run = last_start_time - origin_time
+            delta_now = datetime.now() - origin_time
+            if ((delta_now > timedelta(days=2)) and
+                (not delta_run > timedelta(days=2))):
+               process_shakemap(args, config)
+
+
 def main(args, config):
     """Main entry point method.
 
@@ -985,6 +1036,12 @@ the data_path directory.
         default='unset',
         help="PAGER alert level. If pending then override ground-failure "
              "alert levels to be pending.")
+    argparser.add_argument(
+        "-c", "--cleanup-warnings",
+        action='store_true', default=False,
+        help="Check database for events that need to be resent to remove "
+             "the warning banner. If set, nothing else happens and no other "
+             "flags matter.")
 
     # argparser.add_argument("--rerun", action='store_true', default=False,
     #                       help="Rerun an event that is already in the database. "
@@ -1004,4 +1061,7 @@ the data_path directory.
             print('\t%s' % req)
         sys.exit(1)
 
-    main(pargs, pconfig)
+    if pargs.cleanup_warnings:
+        cleanup_warnings(pargs, pconfig)
+    else:
+        main(pargs, pconfig)
