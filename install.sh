@@ -95,7 +95,7 @@ conda remove -y -n $VENV --all
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment"
 # conda env create -f $env_file --force
-conda create -y --force -n $VENV -c conda-forge python=3.5 \
+conda create -y --force -n $VENV -c conda-forge python=3.6 \
       basemap \
       basemap-data-hires \
       branca \
