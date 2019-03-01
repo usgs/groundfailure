@@ -823,7 +823,10 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     base_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/'
 
     # Is this a point source?
-    point = is_grid_point_source(shake_grid)
+    # point = is_grid_point_source(shake_grid)
+    # Temporarily hard code this until we can get a better solution via
+    # new grid.xml attributes.
+    point = True
 
     try:
         # Hopefully this will eventually be more reliable once we get the
