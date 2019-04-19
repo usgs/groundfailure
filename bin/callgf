@@ -732,13 +732,13 @@ def process_shakemap(args, config):
             # --preferred-eventsource and --preferred-eventsourcecode
             evid = args.preferred_eventsource + args.preferred_eventsourcecode
         logging.info('event id: %s' % evid)
-        detail = get_event_by_id(evid)
-        shakemap = detail.getProducts('shakemap')[0]
-        info_bytes, url = shakemap.getContentBytes('info.json')
-        info_io = StringIO(info_bytes.decode('utf-8'))
-        info = json.load(info_io)
         try:
-            # This will work when the value is reported
+            detail = get_event_by_id(evid)
+            shakemap = detail.getProducts('shakemap')[0]
+            info_bytes, url = shakemap.getContentBytes('info.json')
+            info_io = StringIO(info_bytes.decode('utf-8'))
+            info = json.load(info_io)
+
             mur = float(info['output']['uncertainty']
                         ['mean_uncertainty_ratio'])
         except:
