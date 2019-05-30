@@ -405,12 +405,20 @@ def run_gfail(args):
                 # Compile into list of results for later
                 results.append(maplayers)
 
+        eventid = getHeaderData(shakefile)[0]['event_id']
+        if not hasattr(args, 'eventsource'):
+            args.eventsource = 'us'
+        if not hasattr(args, 'eventsourcecode'):
+            args.eventsourcecode = eventid
+        
         if args.make_webpage:
             outputs = hazdev(
                 results, configs,
                 shakefile, outfolder=outfolder,
                 pop_file=args.popfile,
-                pager_alert=args.property_alertlevel)
+                pager_alert=args.property_alertlevel,
+                eventsource=args.eventsource,
+                eventsourcecode=args.eventsourcecode)
             filenames = filenames + outputs
 
         if args.make_summary:
