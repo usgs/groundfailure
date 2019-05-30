@@ -905,7 +905,10 @@ def main(args, config):
     logger = logging.getLogger()
     logging.info('---------------------------------------------------------')
     logging.info('Running process_shakemap')
-    if args.event is not None:
+
+    if args.event is not 'unset':
+        # For manual run, event is set (default is 'unset')
+
         # download the shakemap to a temporary directory
         tdir = tempfile.mkdtemp()
         datadir = os.path.join(tdir, 'download')
@@ -943,11 +946,13 @@ def main(args, config):
             print('Processing failed on %s. "%s"' % (args.event, str(e)))
         finally:
             shutil.rmtree(tdir)
-
-    if args.type == 'losspager':
-        process_shakemap(args, config)
     else:
-        logging.info('Incorrect type specified, exiting.')
+        # Called by pdl
+        if args.type == 'losspager':
+            process_shakemap(args, config)
+        else:
+            logging.info('Incorrect type specified, exiting.')
+
     sys.exit(0)
 
 

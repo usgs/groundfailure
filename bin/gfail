@@ -182,6 +182,8 @@ if __name__ == '__main__':
         help='All files will be placed directly in output folder, will not be nested '
              'in a subfolder named by eventid')
     parser.add_argument("--property-alertlevel", default='unset')
+    parser.add_argument("--eventsource", help='Comcat eventsource.')
+    parser.add_argument("--eventsourcecode", help='Comcat eventsourcecode.')
 
     pargs = parser.parse_args()
     run_gfail(pargs)
