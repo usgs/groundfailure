@@ -410,7 +410,9 @@ def run_gfail(args):
                 results, configs,
                 shakefile, outfolder=outfolder,
                 pop_file=args.popfile,
-                pager_alert=args.property_alertlevel)
+                pager_alert=args.property_alertlevel,
+                eventsource=args.eventsource,
+                eventsourcecode=args.eventsourcecode)
             filenames = filenames + outputs
 
         if args.make_summary:

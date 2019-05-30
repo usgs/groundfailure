@@ -55,7 +55,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            prefLS='Nowicki Jessee and others (2017)',
            prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True,
-           pager_alert=''):
+           pager_alert='', eventsource='', eventsourcecode=''):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
 
@@ -360,14 +360,15 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             lq['population_alert']['color'] = 'pending'
 
     # Create info.json
-    infojson = create_info(outfolder, lsmodels, lqmodels)
+    infojson = create_info(outfolder, lsmodels, lqmodels, eventsource, eventsourcecode)
     filenames.append(infojson)
 
     return filenames
 
 
 def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
-               lsmask=0.002, lqmask=0.005, legends=False):
+               lsmask=0.002, lqmask=0.005, legends=False,
+               eventsource='', eventsourcecode=''):
     """
     Creates transparent PNG file for website.
 
@@ -598,7 +599,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
     return filenames
 
 
-def create_info(event_dir, lsmodels=None, lqmodels=None):
+def create_info(event_dir, lsmodels=None, lqmodels=None,
+                eventsource='', eventsourcecode=''):
     """Create info.json for ground failure product.
 
     Args:
@@ -828,24 +830,11 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
     # new grid.xml attributes.
     point = True
 
-    try:
-        # Hopefully this will eventually be more reliable once we get the
-        # comcat info directly from the shakemap grid, rather than rely on
-        # magnitude/location/time association.
-        shakemap_info, detail, temp = get_event_comcat(shakefile)
-        event_url = detail.url
-        code = detail['code']
-        net = detail['net']
-        utc = pytz.utc
-        detail_time = ShakeDateTime.fromtimestamp(
-            detail['time']/1000.0, utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    net = eventsource
+    code = eventsourcecode
+    time = ShakeDateTime.now().strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    except:
-        # Hopefully we can eventually remove this....
-        event_url = '%s%s#executive' % (base_url, event_dict['event_id'])
-        code = 'unknown'
-        net = 'unknown'
-        detail_time = -999
+    event_url = '%s%s%s#executive' % (base_url, net, code)
 
     # Get extents that work for both unless one is green and the other isn't
     if lq_alert == 'green' and ls_alert != 'green' and ls_alert is not None:
@@ -876,7 +865,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None):
             'net': net,
             'magnitude': event_dict['magnitude'],
             'depth': event_dict['depth'],
-            'time': detail_time,
+            'time': time,
             'lat': event_dict['lat'],
             'lon': event_dict['lon'],
             'event_url': event_url,

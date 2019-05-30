@@ -693,7 +693,9 @@ def process_shakemap(args, config):
         'web_template': config['web_template'],
         'popfile': config['popfile'],
         'dry_run': args.dry_run,
-        'property_alertlevel': args.property_alertlevel
+        'property_alertlevel': args.property_alertlevel,
+        'eventsource': args.preferred_eventsource,
+        'eventsourcecode': args.preferred_eventsourcecode
     }
 
     try:
