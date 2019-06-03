@@ -1,7 +1,7 @@
 import gfail.pdl as pdl
 
 
-def gf_transfer(event_dir, version, pdl_config=None, dry_run=False,
+def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False,
                 status='UPDATE'):
     """
     Transfer ground failure results to dev server.

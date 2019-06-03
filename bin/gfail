@@ -5,6 +5,9 @@
 import argparse
 from configobj import ConfigObj
 import os
+import sys
+
+from mapio.shake import getHeaderData
 
 # local imports
 from gfail.gfailrun import run_gfail
@@ -109,14 +112,17 @@ if __name__ == '__main__':
         '-u', '--uncertfile', metavar='uncertfile', nargs='?',
         help='single ShakeMap uncertainty.xml file', default=None)
     parser.add_argument(
-        '-tr', '--trimfile', metavar='trimocean', nargs='?', default=trimfile,
+        '-tr', '--trimfile', metavar='trimocean', nargs='?',
+        default=trimfile,
         help=('Location of shapefile of land masses to use to trim areas '
               'over water'))
     parser.add_argument(
-        '-pdl', '--pdl-config', metavar='pdlconfig', nargs='?', default=pdl_config,
+        '-pdl', '--pdl-config', metavar='pdlconfig', nargs='?',
+        default=pdl_config,
         help=('Location of config file for pdl (optional)'))
     parser.add_argument(
-        '-log', '--log-filepath', metavar='logfilepath', nargs='?', default=log_filepath,
+        '-log', '--log-filepath', metavar='logfilepath', nargs='?',
+        default=log_filepath,
         help=('Location of log filepath'))
     parser.add_argument(
         '-db', '--dbfile', metavar='dbfile', nargs='?', default=dbfile,
@@ -176,14 +182,40 @@ if __name__ == '__main__':
         help='Clears all existing default paths')
     parser.add_argument(
         '-w', '--make-webpage', action='store_true', default=False,
-        help='Create all files needed for product page creation and compute alerts')
+        help='Create all files needed for product page creation and compute '
+             'alerts')
     parser.add_argument(
         '-ext', '--extract-contents', action='store_true', default=False,
-        help='All files will be placed directly in output folder, will not be nested '
-             'in a subfolder named by eventid')
+        help='All files will be placed directly in output folder, will not be '
+             'nested in a subfolder named by eventid')
     parser.add_argument("--property-alertlevel", default='unset')
-    parser.add_argument("--eventsource", help='Comcat eventsource.')
-    parser.add_argument("--eventsourcecode", help='Comcat eventsourcecode.')
+    parser.add_argument(
+        "--eventsource",
+        help='Comcat eventsource.',
+        default="")
+    parser.add_argument(
+        "--eventsourcecode",
+        help='Comcat eventsourcecode.',
+        default="")
 
     pargs = parser.parse_args()
+
+    codes_set = (pargs.eventsource == "") or (pargs.eventsourcecode == "")
+    if codes_set and pargs.shakefile:
+        shake_tuple = getHeaderData(pargs.shakefile)
+        eid = shake_tuple[1]['event_id']
+
+        if not len(eid):
+            eid = shake_tuple[0]['event_id']
+        network = shake_tuple[1]['event_network']
+
+        if network == '':
+            network = 'us'
+
+        if eid.startswith(network):
+            eid = eid[len(network):]
+
+        pargs.eventsource = network
+        pargs.eventsourcecode = eid
+
     run_gfail(pargs)
