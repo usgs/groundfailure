@@ -114,6 +114,7 @@ conda create -y --force -n $VENV -c conda-forge python=3.6 \
       numpy \
       obspy \
       pandas \
+      pelican \
       pytables \
       pytest \
       pytest-cov \
