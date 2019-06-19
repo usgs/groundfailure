@@ -832,7 +832,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
 
     net = eventsource
     code = eventsourcecode
-    time = ShakeDateTime.now().strftime('%Y-%m-%dT%H:%M:%SZ')
+    time = event_dict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
 
     event_url = '%s%s%s#executive' % (base_url, net, code)
 
