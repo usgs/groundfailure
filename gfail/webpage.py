@@ -707,7 +707,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
         # constructed on the website and so we don't need them here)
         ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert, \
             ls_alert, lq_alert = alert_info
-
+            
         if lsmodels is None:
             lsmodels = [{
                 'id': 'nowicki_jessee_2017',
@@ -881,7 +881,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
 
     info_file = os.path.join(event_dir, 'info.json')
     with open(info_file, 'w') as f:
-        json.dump(info_dict, f)
+        json.dump(info_dict, f, allow_nan=False)
     filenames.append(info_file)
     return filenames
 
