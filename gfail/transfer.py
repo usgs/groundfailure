@@ -8,9 +8,9 @@ def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False,
 
     Args:
         event_dir (str): Path to event directory.
-        version (int): Version number of ground-failure run.
+        version (int): Version number to assign to ground-failure run.
         pdl_config (str): Path to PDL config file.
-        dry_run (bool): True suppresss transfer but data is assesmbled for
+        dry_run (bool): True suppresses transfer but data is assembled for
             the transfer.
         status (str): Status of ground-failure product being sent to comcat.
             Default is "UPDATE" but can also be "WARNING" so that the product
