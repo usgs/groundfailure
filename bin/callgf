@@ -281,6 +281,7 @@ def get_event_dir(args, connection):
     # database to see if we have processed this event before.
     eventdir = None
     shakemap_version = 0
+
     eventids = args.eventids.split(',')
     for eventid in eventids:
         with connection:
@@ -481,6 +482,40 @@ def stop_unstop(args, config):
             sys.exit(0)
 
 
+def isstopped(args, config):
+    """
+    Quickly check if event id is stopped, stop code if it does exist
+
+    Args:
+        args (arparser Namespace): Input arguments to callgf containing event id
+        config (ConfigObj): Configuration object containing database file location
+
+    Returns:
+        tuple containing:
+            -True if stopfile is found in directory for eventid, False if not found
+            -event directory in which file was found (None if not found)
+    """
+    dbfile = config['dbfile']
+    conn = connect_database(dbfile)
+    eventdir, shakemap_version = get_event_dir(args, conn)
+    if eventdir is None:
+        stopstat = False
+    else:
+        stopfile = os.path.join(eventdir, 'stop')
+        if os.path.isfile(stopfile):
+            stopstat = True
+        else:
+            stopstat = False
+    if stopstat:
+        if not args.force:
+            fmt = '"stop" file found in %s.  Stopping processing.'
+            logging.info(fmt % (eventdir))
+            sys.exit(1)
+        else:
+            fmt = '"stop" file found in %s, but continuing because force flag was set.'
+            logging.info(fmt % (eventdir))
+
+
 def process_shakemap(args, config):
     """Process the ShakeMap.
 
@@ -566,18 +601,6 @@ def process_shakemap(args, config):
 
         # get the database ID and directory of the event we have
         eventdir, shakemap_version = get_event_dir(args, conn)
-
-        # check for a stopfile
-        if eventdir is not None:
-            stopfile = os.path.join(eventdir, 'stop')
-            if os.path.isfile(stopfile):
-                if not args.force:
-                    fmt = '"stop" file found in %s.  Stopping processing.'
-                    logging.info(fmt % (eventdir))
-                    sys.exit(1)
-                else:
-                    fmt = '"stop" file found in %s, but continuing because force flag was set.'
-                    logging.info(fmt % (eventdir))
 
         # get the event ID for this event
         eventsource = args.preferred_eventsource
@@ -988,7 +1011,7 @@ def main(args, config):
 
     logging.info('Running process_shakemap')
 
-    if args.event is not 'unset':
+    if args.event != 'unset':
         # For manual run, event is set (default is 'unset')
         # download the shakemap to a temporary directory
         tdir = tempfile.mkdtemp()
@@ -1022,6 +1045,8 @@ def main(args, config):
                 else:
                     targs.property_alertlevel = 'unset'
             targs.eventids = ','.join(detail['ids'][1:].split(','))
+            # Check if stopfile exists before proceeding
+            isstopped(targs, config)
             process_shakemap(targs, config)
         except Exception as e:
             print('Processing failed on %s. "%s"' % (args.event, str(e)))
@@ -1030,6 +1055,8 @@ def main(args, config):
     else:
         # Called by pdl
         if args.type == 'losspager':
+            # Check if stopfile exists before proceeding
+            isstopped(args, config)
             process_shakemap(args, config)
         else:
             logging.info('Incorrect type specified, exiting.')
@@ -1135,7 +1162,7 @@ the data_path directory.
         default=False, metavar='EVENTID',
         help="Add stopfile to directory for this event to stop event EVENTID "
              "from being rerun automatically if ShakeMap is updated. No events "
-             "will be run with this command "
+             "will be run with this command. Overidden by -f flag "
              "Example: callgf --stop us1000abcd")
     argparser.add_argument(
         "--unstop",
