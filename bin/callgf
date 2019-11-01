@@ -501,6 +501,15 @@ def process_shakemap(args, config):
 
         # get the database ID and directory of the event we have
         eventdir, shakemap_version = get_event_dir(args, conn)
+        
+        # check for a stopfile
+        if eventdir is not None:
+            stopfile = os.path.join(eventdir, 'stop')
+            if os.path.isfile(stopfile):
+                fmt = '"stop" file found in %s.  Stopping processing.'
+                logging.info(fmt % (eventdir))
+                if not args.force:
+                    sys.exit(1)
 
         # get the event ID for this event
         eventsource = args.preferred_eventsource
@@ -983,7 +992,7 @@ the data_path directory.
         help="Directory where ShakeMap data can be found",
         metavar='DIRECTORY')
     argparser.add_argument(
-        "--event",
+        "-e", "--event",
         default='unset',
         help="Event ID of event to run manually",
         metavar='EVENTID')

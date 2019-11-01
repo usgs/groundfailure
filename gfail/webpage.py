@@ -881,7 +881,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
 
     info_file = os.path.join(event_dir, 'info.json')
     with open(info_file, 'w') as f:
-        json.dump(info_dict, f, allow_nan=False)
+        json.dump(info_dict, f) # allow_nan=False)
     filenames.append(info_file)
     return filenames
 

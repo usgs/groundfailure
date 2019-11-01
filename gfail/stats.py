@@ -65,9 +65,9 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
 
     if len(grid) == 0:
         print('no probability values above statprobthresh')
-        stats['Max'] = float('nan')
-        stats['Median'] = float('nan')
-        stats['Std'] = float('nan')
+        stats['Max'] = 0. #float('nan')
+        stats['Median'] = 0. #float('nan')
+        stats['Std'] = 0. #float('nan')
     else:
         stats['Max'] = float(np.nanmax(grid))
         stats['Median'] = float(np.nanmedian(grid))
