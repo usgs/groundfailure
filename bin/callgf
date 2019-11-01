@@ -286,12 +286,20 @@ def get_event_dir(args, connection):
         with connection:
             cursor = connection.cursor()
             cursor.execute(
-                'SELECT id, eventdir FROM shakemap WHERE eventcode=?',
+                'SELECT id, eventdir, endtime FROM shakemap WHERE eventcode=?',
                 (eventid,))
-            row = cursor.fetchone()
-        if row is None:
+            rows = cursor.fetchall()
+        if rows is None:
             continue
-        id1, eventdir = row
+        # Get most recent entry
+        try:
+            indx = np.argmax([datetime.strptime(row[2], TIMEFMT) for row in rows])
+            id1, eventdir, date = rows[indx]
+        except: # Take any entries where eventdir is not empty
+            for row in rows:
+                id1, eventdir, date = row
+                if eventdir is not None and eventdir != '':
+                    continue
 
         if eventdir == '':
             eventdir = None
@@ -387,6 +395,7 @@ def cleanup_database(connection, config):
 
     Args:
         connection (sqlite connection): connection object.
+        config 
     """
     with connection:
         cursor = connection.cursor()
@@ -414,6 +423,62 @@ def cleanup_database(connection, config):
             files = glob.glob(os.path.join(entry.path, '*'))
             if len(files) == 0:
                 shutil.rmtree(entry.path)
+
+
+def stop_unstop(args, config):
+    """If args.stop is an eventid, put a "stop" file in the event folder
+        (will prevent future versions from being created until the file is removed.)
+        if args.unstop is an eventid, remove an existing stopfile to allow new
+        versions to be created
+        If this code is called, callgf will exit after
+        
+    Args:
+        args (arparser Namespace): Input arguments to callgf containing event id
+        config (ConfigObj): Configuration object containing database file location
+
+    """
+    # Connect to database, which keeps track of folders
+    if args.stop and args.unstop:
+        logging.exception('Both stop and unstop were set to True in args, impossible to do both')
+        sys.exit(1)
+    if args.stop:
+        args.eventids = args.stop
+    elif args.unstop:
+        args.eventids = args.unstop
+
+    dbfile = config['dbfile']
+    conn = connect_database(dbfile)
+    eventdir, shakemap_version = get_event_dir(args, conn)
+    if eventdir is None:
+        msg = 'No directory found for eventid %s. Stopping or unstopping was not completed.' % args.eventids
+        logging.exception(msg)
+        sys.exit(1)
+    
+    stopfile = os.path.join(eventdir, 'stop')
+
+    if args.stop:
+        if os.path.isfile(stopfile):
+            msg = 'Stop file already exists for %s: %s' % (args.eventids, stopfile)
+            logging.info(msg)
+            sys.exit(1)
+        else:
+            f = open(stopfile, 'wt')
+            f.write('Stopped: %s UTC' %
+                    datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
+            f.close()
+            msg = 'Stopfile added for %s: %s' % (args.eventids, stopfile)
+            logging.info(msg)
+            sys.exit(0)
+    elif args.unstop:
+        if not os.path.isfile(stopfile):
+            msg = 'No stop file exists to remove for %s in %s' % (args.eventids, eventdir)
+            logging.info(msg)
+            sys.exit(1)
+        else:
+            os.remove(stopfile)
+            msg = 'Stopfile removed for %s from %s' % (args.eventids, eventdir)
+            logging.info(msg)
+            sys.exit(0)
 
 
 def process_shakemap(args, config):
@@ -501,15 +566,18 @@ def process_shakemap(args, config):
 
         # get the database ID and directory of the event we have
         eventdir, shakemap_version = get_event_dir(args, conn)
-        
+
         # check for a stopfile
         if eventdir is not None:
             stopfile = os.path.join(eventdir, 'stop')
             if os.path.isfile(stopfile):
-                fmt = '"stop" file found in %s.  Stopping processing.'
-                logging.info(fmt % (eventdir))
                 if not args.force:
+                    fmt = '"stop" file found in %s.  Stopping processing.'
+                    logging.info(fmt % (eventdir))
                     sys.exit(1)
+                else:
+                    fmt = '"stop" file found in %s, but continuing because force flag was set.'
+                    logging.info(fmt % (eventdir))
 
         # get the event ID for this event
         eventsource = args.preferred_eventsource
@@ -913,11 +981,15 @@ def main(args, config):
     logging.config.dictConfig(log_cfg)
     logger = logging.getLogger()
     logging.info('---------------------------------------------------------')
+
+    # Check if this is just a stop or unstop (won't pass beyond these lines if so)
+    if args.stop or args.unstop:
+        stop_unstop(args, config)
+
     logging.info('Running process_shakemap')
 
     if args.event is not 'unset':
         # For manual run, event is set (default is 'unset')
-
         # download the shakemap to a temporary directory
         tdir = tempfile.mkdtemp()
         datadir = os.path.join(tdir, 'download')
@@ -1058,6 +1130,21 @@ the data_path directory.
         help="Check database for events that need to be resent to remove "
              "the warning banner. If set, nothing else happens and no other "
              "flags matter.")
+    argparser.add_argument(
+        "--stop",
+        default=False, metavar='EVENTID',
+        help="Add stopfile to directory for this event to stop event EVENTID "
+             "from being rerun automatically if ShakeMap is updated. No events "
+             "will be run with this command "
+             "Example: callgf --stop us1000abcd")
+    argparser.add_argument(
+        "--unstop",
+        default=False, metavar='EVENTID',
+        help="Remove stopfile from directory for this event to allow event EVENTID "
+             "to be rerun automatically again if ShakeMap is updated. No events "
+             "will be run with this command "
+             "Example: callgf --unstop us1000abcd")
+            
 
     # argparser.add_argument("--rerun", action='store_true', default=False,
     #                       help="Rerun an event that is already in the database. "
