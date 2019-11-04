@@ -24,7 +24,6 @@ from io import StringIO
 # third party imports
 # from impactutils.io.cmd import get_command_output
 from libcomcat.search import get_event_by_id
-from libcomcat.classes import VersionOption
 from impactutils.comcat.query import GeoServe
 from mapio.shake import getHeaderData
 from mapio.shake import ShakeGrid
@@ -631,7 +630,7 @@ def process_shakemap(args, config):
         try:
             detail = get_event_by_id(eventid, includesuperseded=True)
             allversions = detail.getProducts(
-                'shakemap', version=VersionOption.ALL)
+                'shakemap', version='all')
             vers = [allv.version for allv in allversions]
             idx = np.where(np.array(vers) == np.max(vers))[0][0]
             shakemap = allversions[idx]
