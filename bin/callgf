@@ -32,9 +32,6 @@ import configobj
 import fiona
 from shapely.geometry import shape, box, Polygon, Point
 # from mpl_toolkits.basemap import Basemap
-import numpy as np
-from shapely.geometry import shape, box
-from libcomcat.search import get_event_by_id
 from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
 import pytz
 
