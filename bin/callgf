@@ -1010,8 +1010,14 @@ def main(args, config):
         del log_cfg['handlers']['default']['when']
     else:
         log_cfg['handlers']['default']['filename'] = logfile
+
     logging.config.dictConfig(log_cfg)
     logger = logging.getLogger()
+    # Print to screen if manual run
+    if args.event != 'unset' or args.stop or args.unstop:
+        # Change logging to also output to screen
+        ch = logging.StreamHandler(sys.stdout)
+        logger.addHandler(ch)
     logging.info('---------------------------------------------------------')
 
     # Check if this is just a stop or unstop (won't pass beyond these lines if so)
