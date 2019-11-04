@@ -39,7 +39,7 @@ from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
 import pytz
 
 # local imports
-from gfail.gfailrun import run_gfail
+from gfail.gfailrun import run_gfail, isURL, getGridURL
 from gfail.transfer import gf_transfer
 
 
@@ -283,6 +283,7 @@ def get_event_dir(args, connection):
     shakemap_version = 0
 
     eventids = args.eventids.split(',')
+
     for eventid in eventids:
         with connection:
             cursor = connection.cursor()
@@ -291,6 +292,8 @@ def get_event_dir(args, connection):
                 (eventid,))
             rows = cursor.fetchall()
         if rows is None:
+            continue
+        if len(rows) == 0:
             continue
         # Get most recent entry
         try:
@@ -446,6 +449,13 @@ def stop_unstop(args, config):
         args.eventids = args.stop
     elif args.unstop:
         args.eventids = args.unstop
+
+    try: # # Get all event ids for this event
+        detail = get_event_by_id(args.eventids)
+        eventids = ','.join(detail['ids'][1:].split(','))
+        args.eventids = eventids
+    except Exception as e:
+        logging.info('Unable to find additional event ids for this event, continuing with just one provided')
 
     dbfile = config['dbfile']
     conn = connect_database(dbfile)
@@ -609,7 +619,6 @@ def process_shakemap(args, config):
 
         # Get the directory for this new version
         vdir, version, eventdir = get_version_dir(eventid, eventdir, config)
-
         # insert what we know about the event into the database
         db_id = insert_event(conn, eventid, args, version)
         logging.info('Inserted event placeholder into database')
@@ -1018,10 +1027,34 @@ def main(args, config):
         datadir = os.path.join(tdir, 'download')
         os.mkdir(datadir)
         try:
-            detail = get_event_by_id(args.event)
             fname = os.path.join(datadir, 'grid.xml')
-            shakemap = detail.getProducts('shakemap')[0]
-            shakemap.getContent('grid.xml', fname)
+            # If args.event is a url to a shakemap, download from that url
+            if isURL(args.event):
+                try:
+                    shakefile = getGridURL(args.event, fname)
+                except Exception as e:
+                    msg = 'Could not download shakemap file from provided URL: %s'
+                    logging.exception(msg % (e))
+                    sys.exit(1)
+
+                args.event = getHeaderData(shakefile)[0]['event_id']
+                try:
+                    detail = get_event_by_id(args.event)
+                except:  # Maybe originator is missing from event id, try another way
+                    try:
+                        temp = getHeaderData(shakefile)[0]
+                        temp2 = '%s%s' % (temp['shakemap_originator'], temp['shakemap_id'])
+                        detail = get_event_by_id(temp2)
+                        args.event = temp2
+                    except Exception as e:
+                        msg = 'Could not get event detail for shakemap at provided URL: %s'
+                        logging.exception(msg % e)
+                        sys.exit(1)
+            else:
+                detail = get_event_by_id(args.event)
+                shakemap = detail.getProducts('shakemap')[0]
+                shakemap.getContent('grid.xml', fname)
+
             targs = ArgWrapper()
             targs.time = detail.time
             targs.preferred_eventsource = detail['net']
