@@ -1,6 +1,8 @@
 language: python
 sudo: false
 
+services:
+    - xvfb
 install:
     # Install gf and requirements
     - bash install.sh -r
@@ -10,11 +12,6 @@ install:
     - pwd
     - cp .gfail_defaults_travis /home/travis/.gfail_defaults
     - conda list
-before_script:
-    # This is to take care of Invalid DISPLAY variable
-    - "export DISPLAY=:99.0"
-    - "sh -e /etc/init.d/xvfb start"
-    - sleep 3 # give xvfb some time to start
 script:
     - export PYTHONPATH="."
     - py.test --cov=.

@@ -10,7 +10,6 @@ import collections
 # local imports
 from mapio.shake import getHeaderData
 from libcomcat.search import get_event_by_id, search
-from libcomcat.classes import VersionOption
 from mapio.basemapcity import BasemapCities
 from mapio.multihaz import MultiHazardGrid
 
@@ -98,7 +97,7 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
         if not len(events):
             return None
         detail = events[0].getDetailEvent()
-    allversions = detail.getProducts('shakemap', version=VersionOption.ALL)
+    allversions = detail.getProducts('shakemap', version='all')
     # Find the right version
     vers = [allv.version for allv in allversions]
     idx = np.where(np.array(vers) == version)[0][0]

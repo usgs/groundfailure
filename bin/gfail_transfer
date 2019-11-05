@@ -8,7 +8,7 @@ import argparse
 from gfail.transfer import gf_transfer
 
 
-def main(event_dir, pdl_conf, dry_run):
+def main(event_dir, pdl_conf, dry_run, version):
     """
     Transfer results to comcat.
 
@@ -16,9 +16,10 @@ def main(event_dir, pdl_conf, dry_run):
         event_dir (srt): Directory containing ground failure results.
         pdl_conf (str): Path to PDL config file.
         dry_run (bool): Dry run means do not transfer.
+        version (int): version of event being sent
     """
 
-    success = gf_transfer(event_dir, pdl_config=pdl_conf, dry_run=dry_run)
+    success = gf_transfer(event_dir, version=version, pdl_config=pdl_conf, dry_run=dry_run)
 
 
 if __name__ == '__main__':
@@ -37,5 +38,8 @@ if __name__ == '__main__':
                         action='store_true', default=False,
                         help='Do not actually call the PDL command.',
                         required=False)
+    parser.add_argument('-v', '--version',
+                        help='Manually set version number',
+                        required=False, default=1)
     args = parser.parse_args()
-    main(args.event_dir, args.config, args.dryrun)
+    main(args.event_dir, args.config, args.dryrun, args.version)

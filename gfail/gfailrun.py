@@ -443,10 +443,11 @@ def run_gfail(args):
         return filenames
 
 
-def getGridURL(gridurl):
+def getGridURL(gridurl, fname=None):
     """
     Args:
         gridurl (str): url for Shakemap grid.xml file.
+        fname (str): file location name, if None, will create a temporary file
 
     Returns:
         file object corresponding to the url.
@@ -456,8 +457,12 @@ def getGridURL(gridurl):
     fh = None
     with urllib.request.urlopen(gridurl) as fh:
         data = fh.read().decode('utf-8')
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
-            f.write(data)
+        if fname is None:
+            with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
+                f.write(data)
+        else:
+            with open(fname, 'w') as f:
+                f.write(data)
 
     return f.name
 
