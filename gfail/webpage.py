@@ -8,18 +8,18 @@ import numpy as np
 import os
 from configobj import ConfigObj
 from gfail.makemaps import setupsync
-from gfail.utilities import parseConfigLayers
+from gfail.utilities import parseConfigLayers, get_alert
 from gfail.stats import computeStats
 from folium.utilities import mercator_transform
 from mapio.shake import ShakeGrid
 import matplotlib.cm as cm
 
 from impactutils.textformat.text import set_num_precision
-from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
-import pytz
+#from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
+#import pytz
 
-from gfail.utilities import get_event_comcat, loadlayers
-from gfail.utilities import is_grid_point_source
+from gfail.utilities import loadlayers
+#from gfail.utilities import is_grid_point_source
 
 
 # temporary until mapio is updated
@@ -884,111 +884,6 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
         json.dump(info_dict, f) # allow_nan=False)
     filenames.append(info_file)
     return filenames
-
-
-def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
-              hazbinLS=[1., 10., 100.], popbinLS=[100, 1000, 10000],
-              hazbinLQ=[10., 100., 1000.], popbinLQ=[1000, 10000, 100000]):
-    """
-    Get alert levels
-
-    Args:
-        paramalertLS (float): Hazard statistic of preferred landslide model
-        paramalertLQ (float): Hazard statistic of preferred liquefaction model
-        parampopLS (float): Exposure statistic of preferred landslide model
-        parampopLQ (float): Exposure statistic of preferred liquefaction model
-        hazbinLS (list): 3 element list of bin edges for landslide
-            hazard alert between Green and Yellow, Yellow and Orange, and
-            Orange and Red.
-        popbinLS (list): same as above but for population exposure
-        hazbinLQ (list): 3 element list of bin edges for liquefaction hazard
-            alert between Green and Yellow, Yellow and Orange, and Orange
-            and Red.
-        popbinLQ (list): same as above but for population exposure
-
-    Returns:
-        Returns:
-            tuple: (hazLS, popLS, hazLQ, popLQ, LS, LQ) where:
-                * hazLS: the landslide hazard alert level (str)
-                * popLS: the landslide population alert level (str)
-                * hazLQ: the liquefaction hazard alert level (str)
-                * popLQ: the liquefaction population alert level (str)
-                * LS: the overall landslide alert level (str)
-                * LQ: the overall liquefaction alert level (str)
-
-    """
-    if paramalertLS is None:
-        hazLS = None
-    elif paramalertLS < hazbinLS[0]:
-        hazLS = 'green'
-    elif paramalertLS >= hazbinLS[0] and paramalertLS < hazbinLS[1]:
-        hazLS = 'yellow'
-    elif paramalertLS >= hazbinLS[1] and paramalertLS < hazbinLS[2]:
-        hazLS = 'orange'
-    elif paramalertLS > hazbinLS[2]:
-        hazLS = 'red'
-    else:
-        hazLS = None
-
-    if parampopLS is None:
-        popLS = None
-    elif parampopLS < popbinLS[0]:
-        popLS = 'green'
-    elif parampopLS >= popbinLS[0] and parampopLS < popbinLS[1]:
-        popLS = 'yellow'
-    elif parampopLS >= popbinLS[1] and parampopLS < popbinLS[2]:
-        popLS = 'orange'
-    elif parampopLS > popbinLS[2]:
-        popLS = 'red'
-    else:
-        popLS = None
-
-    if paramalertLQ is None:
-        hazLQ = None
-    elif paramalertLQ < hazbinLQ[0]:
-        hazLQ = 'green'
-    elif paramalertLQ >= hazbinLQ[0] and paramalertLQ < hazbinLQ[1]:
-        hazLQ = 'yellow'
-    elif paramalertLQ >= hazbinLQ[1] and paramalertLQ < hazbinLQ[2]:
-        hazLQ = 'orange'
-    elif paramalertLQ > hazbinLQ[2]:
-        hazLQ = 'red'
-    else:
-        hazLQ = None
-
-    if parampopLQ is None:
-        popLQ = None
-    elif parampopLQ < popbinLQ[0]:
-        popLQ = 'green'
-    elif parampopLQ >= popbinLQ[0] and parampopLQ < popbinLQ[1]:
-        popLQ = 'yellow'
-    elif parampopLQ >= popbinLQ[1] and parampopLQ < popbinLQ[2]:
-        popLQ = 'orange'
-    elif parampopLQ > popbinLQ[2]:
-        popLQ = 'red'
-    else:
-        popLQ = None
-
-    num2color = {
-        '1': 'green',
-        '2': 'yellow',
-        '3': 'orange',
-        '4': 'red'
-    }
-    col2num = dict((v, k) for k, v in num2color.items())
-
-    LSnum1 = col2num[hazLS]
-    LSnum2 = col2num[popLS]
-    LSnum = str(np.max([int(LSnum1), int(LSnum2)]))
-    LS = num2color[LSnum]
-
-    LQnum1 = col2num[hazLQ]
-    LQnum2 = col2num[popLQ]
-    LQnum = str(np.max([int(LQnum1), int(LQnum2)]))
-    LQ = num2color[LQnum]
-
-    return hazLS, popLS, hazLQ, popLQ, LS, LQ
-
 
 def get_extent(grid, propofmax=0.3):
     """
