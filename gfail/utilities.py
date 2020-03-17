@@ -605,12 +605,12 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
 
 def view_database(database, starttime=None, endtime=None, 
                   minmag=None, maxmag=None, eventids=None,
-                  realtime=False, currentonly=False, numevents='all', 
+                  realtime=False, currentonly=False, numevents=None, 
                   LShazmin=None, LShazmax=None, LSpopmin=None,
                   LSpopmax=None, LQhazmin=None, LQhazmax=None,
                   LQpopmin=None, LQpopmax=None, verbose=False,
                   printcols=None, csvfile=None, printsummary=True,
-                  printsuccess=True, printfailed=False,
+                  printsuccess=False, printfailed=False,
                   printnotmet=False, maxcolwidth=100,
                   alertreport='value', realtime_maxsec=86400.):
     """
@@ -632,9 +632,8 @@ def view_database(database, starttime=None, endtime=None,
             near real time (defined by delay time less than realtime_maxsec)
         currentonly (bool): if True, will only include the most recent run
             of each event
-        numevents: 'all' to include all events in database that meet criteria,
-            else an integer of the most recent number of events that meet
-            search criteria to include in print out
+        numevents (int): Include the numevents most recent events that meet
+            search criteria
         LShazmin: minimum landslide hazard alert color ('green', 'yellow', 'orange', 'red')
             or minimum hazard alert statistic value
         LShazmax: same as above but for maximum landslide hazard alert value/color
@@ -817,7 +816,7 @@ def view_database(database, starttime=None, endtime=None,
         df = df.loc[df['Current']==1]
     
     # Keep just the most recent number requested
-    if numevents not in ['all']:
+    if numevents is not None and numevents < len(df):
         df = df.iloc[(numevents*-1):]
 
     # Now that have requested dataframe, make outputs
@@ -884,20 +883,20 @@ def view_database(database, starttime=None, endtime=None,
 
     origsuc = success.copy() # Keep copy
 
-    # Convert all values to alert colors  (This is causing warning message about changing copy)
-    for index, row in df.iterrows():
+    # Convert all values to alert colors
+    for index, row in success.iterrows():
         for k, bins in hazbinLS.items():
             if row['HaggLS']>= bins[0] and row['HaggLS']< bins[1]:
-                df.loc[index, 'HaggLS'] = k
+                success.loc[index, 'HaggLS'] = k
         for k, bins in hazbinLQ.items():
             if row['HaggLQ']>= bins[0] and row['HaggLQ']< bins[1]:
-                df.loc[index, 'HaggLQ'] = k
+                success.loc[index, 'HaggLQ'] = k
         for k, bins in popbinLS.items():
             if row['ExpPopLS']>= bins[0] and row['ExpPopLS']< bins[1]:
-                df.loc[index, 'ExpPopLS'] = k
+                success.loc[index, 'ExpPopLS'] = k
         for k, bins in popbinLQ.items():
             if row['ExpPopLQ']>= bins[0] and row['ExpPopLQ']< bins[1]:
-                df.loc[index, 'ExpPopLQ'] = k
+                success.loc[index, 'ExpPopLQ'] = k
 
     # Compile stats
     stats = dict(aLSg=len([a for a in alertLS if a=='green']),
@@ -1052,7 +1051,10 @@ def view_database(database, starttime=None, endtime=None,
         print('Red: %d' % stats['popLQr'])
         print('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX')
 
-    return success, fail, notmet, stats, criteria
+    if alertreport == 'value':
+        return origsuc, fail, notmet, stats, criteria
+    else:
+        return success, fail, notmet, stats, criteria
 
 
 def alert_summary(database, starttime=None, endtime=None, 
@@ -1164,7 +1166,7 @@ def alert_summary(database, starttime=None, endtime=None,
 
 
 def time_delays(database, starttime=None, endtime=None, 
-                minmag=None, maxmag=None, eventids = None,
+                minmag=None, maxmag=None, eventids=None,
                 filebasename=None, changeonly=True):
     """
     Make plot showing evolution of alerts in time
@@ -1184,7 +1186,8 @@ def time_delays(database, starttime=None, endtime=None,
             version of this name depending on which alert is displayed, if no
             path is given it will save in current directory.
         changeonly (bool): if True will only show events that changed alert
-            level at least once in the time evolution plots
+            level at least once in the time evolution plots (unless eventids
+            are defined, then all will show)
     
     Returns:
         Figures showing alert changes over time and delay and alert change
@@ -1199,7 +1202,10 @@ def time_delays(database, starttime=None, endtime=None,
                         minmag=minmag, maxmag=maxmag, realtime=True,
                         currentonly=False, printsummary=False,
                         printsuccess=False, alertreport='value',
-                        eventids=None)
+                        eventids=eventids)
+    
+    if eventids is not None:
+        changeonly = False
     
     success = out[0]
     elist = np.unique(success['eventcode'].values)
@@ -1241,13 +1247,13 @@ def time_delays(database, starttime=None, endtime=None,
     ax1, ax2 = axes
     ax1.set_title('Landslide Summary Statistics', fontsize=fontsize)
     ax1.set_ylabel(r'Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
-    ax2.set_ylabel('Population Expoosure', fontsize=fontsize)
+    ax2.set_ylabel('Population Exposure', fontsize=fontsize)
     
     fig2, axes = plt.subplots(2, 1)#, figsize=(10, 10))
     ax3, ax4 = axes
     ax3.set_title('Liquefaction Summary Statistics', fontsize=fontsize)
     ax3.set_ylabel(r'Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
-    ax4.set_ylabel('Population Expoosure', fontsize=fontsize)
+    ax4.set_ylabel('Population Exposure', fontsize=fontsize)
     
     ax2.set_xlabel('Hours after earthquake', fontsize=fontsize)
     ax4.set_xlabel('Hours after earthquake', fontsize=fontsize)
@@ -1322,81 +1328,82 @@ def time_delays(database, starttime=None, endtime=None,
         fig1.savefig('%s_LSalert_evolution%s' % (name, ext), bbox_inches='tight')
         fig2.savefig('%s_LQalert_evolution%s' % (name, ext), bbox_inches='tight')
     
-    # Histograms of delay times etc.
-    fig, axes = plt.subplots(2, 2, figsize=(10, 10), sharey='col')
-    ax1 = axes[0,0]
-    ax1.hist(np.array(mindel)/3600., bins=np.logspace(np.log10(0.1), np.log10(1000.), 15),
-            color='k', edgecolor='k', alpha=0.5)
-    ax1.set_xscale("log")
-    ax1.set_xlabel('Time delay to first run (hours)')
-    ax1.set_ylabel('Number of events')
-    vals = (np.nanmean(mindel)/3600., np.nanmedian(mindel)/3600., np.nanstd(mindel)/3600.)
-    ax1.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' % vals,
-             transform=ax1.transAxes, ha='center', va='center')
-    delstableLS = np.array(delstableLS)
-    delstableLQ = np.array(delstableLQ)
-    delstable = np.max([delstableLS, delstableLQ], axis=0)
-
-    ax2 = axes[1,0]
-#    ax2.hist(delstableLS/3600., bins=np.logspace(np.log10(1.), np.log10(1000.), 10),
-#             hatch='.', edgecolor='k', alpha=0.5, fill=False)
-#    ax2.hist(delstableLQ/3600., bins=np.logspace(np.log10(1.), np.log10(1000.), 10),
-#             hatch='/', edgecolor='k', alpha=0.5, fill=False)
-    ax2.hist(np.array(delstable)/3600., bins=np.logspace(np.log10(0.1), np.log10(1000.), 15),
-             color='k', edgecolor='k', alpha=0.5)
-    ax2.set_xscale("log")
-    ax2.set_xlabel('Time delay till final alert value reached (hours)')
-    ax2.set_ylabel('Number of events')
-    vals = (np.nanmean(delstable)/3600., np.nanmedian(delstable)/3600., np.nanstd(delstable)/3600.)
-    ax2.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' % vals,
-             transform=ax2.transAxes, ha='center', va='center')
-
-    print('Liquefaction overall alerts that changed stablized after a median of %1.0f hours' % (np.median(delstableLQ[delstableLQ>0.])/3600.))
-    print('Landslide overall alerts that changed stablized after a median of %1.0f hours' % (np.median(delstableLS[delstableLS>0.])/3600.))
+    if eventids is None or len(eventids) > 25:  # Don't make this plot when eventids are specified unless there are a lot of them
+        # Histograms of delay times etc.
+        fig, axes = plt.subplots(2, 2, figsize=(10, 10), sharey='col')
+        ax1 = axes[0,0]
+        ax1.hist(np.array(mindel)/3600., bins=np.logspace(np.log10(0.1), np.log10(1000.), 15),
+                color='k', edgecolor='k', alpha=0.5)
+        ax1.set_xscale("log")
+        ax1.set_xlabel('Time delay to first run (hours)')
+        ax1.set_ylabel('Number of events')
+        vals = (np.nanmean(mindel)/3600., np.nanmedian(mindel)/3600., np.nanstd(mindel)/3600.)
+        ax1.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' % vals,
+                 transform=ax1.transAxes, ha='center', va='center')
+        delstableLS = np.array(delstableLS)
+        delstableLQ = np.array(delstableLQ)
+        delstable = np.max([delstableLS, delstableLQ], axis=0)
     
-    #import pdb; pdb.set_trace()
-    ratHaggLS = np.array(ratHaggLS)
-    ratHaggLQ = np.array(ratHaggLQ)
-    ax3 = axes[0,1]
-    ax3.hist(ratHaggLS[ratHaggLS!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
-             hatch='.', edgecolor='k', alpha=0.5, fill=False, label='Landslides')
-    ax3.hist(ratHaggLQ[ratHaggLQ!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
-             hatch='/', edgecolor='k', alpha=0.5, fill=False, label='Liquefaction')
-    ax3.set_xscale("log")
-    ax3.set_xlabel(r'$H_{agg}$ final/$H_{agg}$ initial')
-    ax3.set_ylabel('Number of events')
-    ax3.axvline(1., lw=2, color='k')
-    ax3.annotate('No change:\nLS=%d\nLQ=%d' % (len(ratHaggLS[ratHaggLS==1.]), len(ratHaggLQ[ratHaggLQ==1.])),
-                 xy=(0.5, 0.6), xycoords='axes fraction', textcoords='axes fraction',
-                 xytext=(0.3, 0.6), arrowprops=dict(facecolor='black', width=1.,
-                       headwidth=7., headlength=7.), ha='center', va='center')
-    ax3.legend(handlelength=2, handleheight=3, loc='upper right')
+        ax2 = axes[1,0]
+    #    ax2.hist(delstableLS/3600., bins=np.logspace(np.log10(1.), np.log10(1000.), 10),
+    #             hatch='.', edgecolor='k', alpha=0.5, fill=False)
+    #    ax2.hist(delstableLQ/3600., bins=np.logspace(np.log10(1.), np.log10(1000.), 10),
+    #             hatch='/', edgecolor='k', alpha=0.5, fill=False)
+        ax2.hist(np.array(delstable)/3600., bins=np.logspace(np.log10(0.1), np.log10(1000.), 15),
+                 color='k', edgecolor='k', alpha=0.5)
+        ax2.set_xscale("log")
+        ax2.set_xlabel('Time delay till final alert value reached (hours)')
+        ax2.set_ylabel('Number of events')
+        vals = (np.nanmean(delstable)/3600., np.nanmedian(delstable)/3600., np.nanstd(delstable)/3600.)
+        ax2.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' % vals,
+                 transform=ax2.transAxes, ha='center', va='center')
     
-    ratPopLS = np.array(ratPopLS)
-    ratPopLQ = np.array(ratPopLQ)
-    ax4 = axes[1,1]
-    ax4.hist(ratPopLS[ratPopLS!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
-             hatch='.', edgecolor='k', alpha=0.5, fill=False)
-    ax4.hist(ratPopLQ[ratPopLQ!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
-             hatch='/', edgecolor='k', alpha=0.5, fill=False)
-    ax4.set_xscale("log")
-    ax4.set_xlabel(r'$Pop_{exp}$ final/$Pop_{exp}$ initial')
-    ax4.set_ylabel('Number of events')
-    ax4.axvline(1., lw=2, color='k')
-    ax4.annotate('No change:\nLS=%d\nLQ=%d' % (len(ratPopLS[ratPopLS==1.]), len(ratPopLQ[ratPopLQ==1.])),
-                 xy=(0.5, 0.75), xycoords='axes fraction', textcoords='axes fraction',
-                 xytext=(0.3, 0.75), arrowprops=dict(facecolor='black', width=1.,
-                       headwidth=7., headlength=7.), ha='center', va='center')
-    # Add letters
-    ax1.text(0.02, 0.98, 'a)', transform=ax1.transAxes, ha='left', va='top', fontsize=14)
-    ax2.text(0.02, 0.98, 'b)', transform=ax2.transAxes, ha='left', va='top', fontsize=14)
-    ax3.text(0.02, 0.98, 'c)', transform=ax3.transAxes, ha='left', va='top', fontsize=14)
-    ax4.text(0.02, 0.98, 'd)', transform=ax4.transAxes, ha='left', va='top', fontsize=14)
-
-    plt.show()
-    if filebasename is not None:
-        name, ext = os.path.splitext(filebasename)
-        fig.savefig('%s_alertdelay_stats%s' % (name, ext), bbox_inches='tight')
+        print('Liquefaction overall alerts that changed stablized after a median of %1.2f hours' % (np.median(delstableLQ[delstableLQ>0.])/3600.))
+        print('Landslide overall alerts that changed stablized after a median of %1.2f hours' % (np.median(delstableLS[delstableLS>0.])/3600.))
+        
+        ratHaggLS = np.array(ratHaggLS)
+        ratHaggLQ = np.array(ratHaggLQ)
+        ax3 = axes[0,1]
+        ax3.hist(ratHaggLS[ratHaggLS!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
+                 hatch='.', edgecolor='k', alpha=0.5, fill=False, label='Landslides')
+        ax3.hist(ratHaggLQ[ratHaggLQ!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
+                 hatch='/', edgecolor='k', alpha=0.5, fill=False, label='Liquefaction')
+        ax3.set_xscale("log")
+        ax3.set_xlabel(r'$H_{agg}$ final/$H_{agg}$ initial')
+        ax3.set_ylabel('Number of events')
+        ax3.axvline(1., lw=2, color='k')
+        ax3.annotate('No change:\nLS=%d\nLQ=%d' % (len(ratHaggLS[ratHaggLS==1.]), len(ratHaggLQ[ratHaggLQ==1.])),
+                     xy=(0.5, 0.6), xycoords='axes fraction', textcoords='axes fraction',
+                     xytext=(0.3, 0.6), arrowprops=dict(facecolor='black', width=1.,
+                           headwidth=7., headlength=7.), ha='center', va='center')
+        ax3.legend(handlelength=2, handleheight=3, loc='upper right')
+    
+        ratPopLS = np.array(ratPopLS)
+        ratPopLQ = np.array(ratPopLQ)
+        ax4 = axes[1,1]
+        ax4.hist(ratPopLS[ratPopLS!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
+                 hatch='.', edgecolor='k', alpha=0.5, fill=False)
+        ax4.hist(ratPopLQ[ratPopLQ!=1.], bins=np.logspace(np.log10(0.01), np.log10(100.), 9),
+                 hatch='/', edgecolor='k', alpha=0.5, fill=False)
+        ax4.set_xscale("log")
+        ax4.set_xlabel(r'$Pop_{exp}$ final/$Pop_{exp}$ initial')
+        ax4.set_ylabel('Number of events')
+        ax4.axvline(1., lw=2, color='k')
+        ax4.annotate('No change:\nLS=%d\nLQ=%d' % (len(ratPopLS[ratPopLS==1.]), len(ratPopLQ[ratPopLQ==1.])),
+                     xy=(0.5, 0.75), xycoords='axes fraction', textcoords='axes fraction',
+                     xytext=(0.3, 0.75), arrowprops=dict(facecolor='black', width=1.,
+                           headwidth=7., headlength=7.), ha='center', va='center')
+    
+        # Add letters
+        ax1.text(0.02, 0.98, 'a)', transform=ax1.transAxes, ha='left', va='top', fontsize=14)
+        ax2.text(0.02, 0.98, 'b)', transform=ax2.transAxes, ha='left', va='top', fontsize=14)
+        ax3.text(0.02, 0.98, 'c)', transform=ax3.transAxes, ha='left', va='top', fontsize=14)
+        ax4.text(0.02, 0.98, 'd)', transform=ax4.transAxes, ha='left', va='top', fontsize=14)
+    
+        plt.show()
+        if filebasename is not None:
+            name, ext = os.path.splitext(filebasename)
+            fig.savefig('%s_alertdelay_stats%s' % (name, ext), bbox_inches='tight')
 
 
 def alert_rectangles(ax, bins):

@@ -19,6 +19,7 @@ setup(name='groundfailure',
           'bin/callgf',
           'bin/create_info',
           'bin/create_png',
-          'bin/gfail_transfer'
+          'bin/gfail_transfer',
+          'bin/viewdb'
       ],
       )
