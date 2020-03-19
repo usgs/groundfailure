@@ -10,7 +10,7 @@ from matplotlib.colors import LightSource, LogNorm
 
 import collections
 from datetime import datetime
-#from configobj import ConfigObj
+# from configobj import ConfigObj
 
 # third party imports
 import matplotlib.cm as cm
@@ -40,7 +40,7 @@ from mapio.shake import ShakeGrid
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = \
     ['Helvetica', 'Arial', 'Bitstream Vera Serif', 'sans-serif']
-#plt.switch_backend('agg')
+plt.switch_backend('agg')
 
 
 def modelMap(grids, shakefile=None,
@@ -51,8 +51,8 @@ def modelMap(grids, shakefile=None,
              isScenario=False, roadfolder=None, topofile=None, cityfile=None,
              oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF',
              countrycolor='#177F10', outputdir=None, outfilename=None,
-             savepdf=True, savepng=True, showplots=False, printparam=False, ds=True,
-             dstype='mean', upsample=False):
+             savepdf=True, savepng=True, showplots=False, printparam=False,
+             ds=True, dstype='mean', upsample=False):
     """
     Create static maps of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers).
@@ -111,8 +111,8 @@ def modelMap(grids, shakefile=None,
             estimate the limits, when an array is specified but the scale
             type is continuous, vmin will be set to min(array) and vmax will
             be set to max(array).
-        logscale (*): boolean to apply log colorbar to all plotted layers or list
-            of booleans corresponding to each layer in grid.
+        logscale (*): boolean to apply log colorbar to all plotted layers or
+            list of booleans corresponding to each layer in grid.
         ALPHA (float): Transparency for mapping, if there is a hillshade that
             will plot below each layer, it is recommended to set this to at
             least 0.7.
@@ -151,16 +151,16 @@ def modelMap(grids, shakefile=None,
 
     Returns:
         tuple: (newgrids, filenames), where:
-            * newgrids: list of downsampled and trimmed version of input grids. If
-                no modification was needed for plotting, this will be identical to grids
-                but without the metadata.
+            * newgrids: list of downsampled and trimmed version of input grids.
+                If no modification was needed for plotting, this will be
+                identical to grids but without the metadata.
             * filenames: a list of filenames that were created
 
     """
     # TODO:
-    #     - Change so that all input layers do not have to have the same bounds,
-    #       test plotting multiple probability layers, and add option so that if
-    #       PDF and PNG aren't output, opens plot on screen using plt.show().
+    #     Change so that all input layers do not have to have the same bounds,
+    #     test plotting multiple probability layers, and add option so that if
+    #     PDF and PNG aren't output, opens plot on screen using plt.show().
 
     if suptitle is None:
         suptitle = ' '
@@ -1088,13 +1088,13 @@ def ceilToNearest(value, ceilValue=1000):
     return value
 
 
-def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, logscale=None,
-              alpha=None):
+def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
+              logscale=None, alpha=None):
     """Get colors that will be used for all colorbars from reference grid
 
     Args:
-        sync(str): If False, will exit program, else corresponds to the shortref
-            of the model which should serve as the template for
+        sync(str): If False, will exit program, else corresponds to the
+            shortref of the model which should serve as the template for
             the colorbars used by all other models. All other models must
             have the exact same number of bins
         plotorder (list): List of keys of shortrefs of the grids that will be
@@ -1145,7 +1145,8 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, log
                 sum1 += 1
                 continue
         if sum1 > 0:
-            print('Cannot sync colorbars, different number of bins or lims not specified')
+            print('Cannot sync colorbars, different number of bins or lims not\
+                  specified')
             sync = False
             return sync, None, None
 
@@ -1153,7 +1154,7 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, log
             palette1 = colormaps[k]
         else:
             palette1 = defaultcolormap
-        #palette1.set_bad(clear_color, alpha=0.0)
+        # palette1.set_bad(clear_color, alpha=0.0)
         if logs:
             cNorm = colors.LogNorm(vmin=lim1[0], vmax=lim1[-1])
             midpts = np.sqrt(lim1[1:] * lim1[:-1])  # geometric mean for midpoints
@@ -1167,11 +1168,13 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, log
         sync = True
 
     else:
-        print('Cannot sync colorbars, different number of bins or lims not specified')
+        print('Cannot sync colorbars, different number of bins or lims not \
+              specified')
         sync = False
         colorlist = None
         lim1 = None
     return sync, colorlist, lim1
+
 
 if __name__ == '__main__':
     pass

@@ -233,7 +233,6 @@ def prepare_pdl_directory(event_dir):
 
     # Also the png files (default models for website interactive map,
     # not static maps)
-    #png_files = ['jessee_2017.png', 'zhu_2017_general.png']
     png_files = [os.path.join(event_dir, a)
                  for a in all_files if a.endswith('.png')]
     for i in range(len(png_files)):
@@ -322,8 +321,9 @@ def prepare_pdl_directory(event_dir):
                      href='zhu_2017_general.png', type=png_mime)
 
     # Godt section
-    godt_tree = etree.SubElement(
-        contents, "file", title='Alternative Landslide Model 1 (not displayed)')
+    godt_tree = etree.SubElement(contents, "file",
+                                 title='Alternative Landslide Model 1 \
+                                 (not displayed)')
     file_caps = etree.SubElement(godt_tree, "caption")
     file_caps.text = 'Godt and others (2008)'
     etree.SubElement(godt_tree, "format",
@@ -333,7 +333,8 @@ def prepare_pdl_directory(event_dir):
 
     # Nowicki section
     now_tree = etree.SubElement(
-        contents, "file", title='Alternative Landslide Model 2 (not displayed)')
+        contents, "file", title='Alternative Landslide Model 2 \
+        (not displayed)')
     file_caps = etree.SubElement(now_tree, "caption")
     file_caps.text = 'Nowicki and others (2014)'
     etree.SubElement(now_tree, "format",
@@ -343,8 +344,8 @@ def prepare_pdl_directory(event_dir):
 
     # zhu 2015 section
     zhu2015_tree = etree.SubElement(
-        contents, "file", title="Alternative Liquefaction Model (not displayed)",
-        id='zhu_2015')
+        contents, "file", title="Alternative Liquefaction Model \
+        (not displayed)", id='zhu_2015')
     file_caps = etree.SubElement(zhu2015_tree, "caption")
     file_caps.text = 'Zhu and others (2015)'
     etree.SubElement(zhu2015_tree, "format",

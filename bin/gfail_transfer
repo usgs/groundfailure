@@ -19,7 +19,8 @@ def main(event_dir, pdl_conf, dry_run, version):
         version (int): version of event being sent
     """
 
-    success = gf_transfer(event_dir, version=version, pdl_config=pdl_conf, dry_run=dry_run)
+    success = gf_transfer(event_dir, version=version, pdl_config=pdl_conf,
+                          dry_run=dry_run)
 
 
 if __name__ == '__main__':

@@ -15,18 +15,18 @@ from mapio.shake import ShakeGrid
 import matplotlib.cm as cm
 
 from impactutils.textformat.text import set_num_precision
-#from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
-#import pytz
+# from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
+# import pytz
 
 from gfail.utilities import loadlayers
-#from gfail.utilities import is_grid_point_source
+# from gfail.utilities import is_grid_point_source
 
 
 # temporary until mapio is updated
 import warnings
 warnings.filterwarnings('ignore')
 
-#plt.switch_backend('agg')
+plt.switch_backend('agg')
 
 # # hex versions:
 # DFCOLORS = [
@@ -360,7 +360,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             lq['population_alert']['color'] = 'pending'
 
     # Create info.json
-    infojson = create_info(outfolder, lsmodels, lqmodels, eventsource, eventsourcecode)
+    infojson = create_info(outfolder, lsmodels, lqmodels, eventsource,
+                           eventsourcecode)
     filenames.append(infojson)
 
     return filenames
@@ -382,8 +383,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
         mercator (bool): Project raster to web mercator
         lsmask (float): Mask all landslide cells with probabilities below this
             threshold
-        lqmask (float): Mask all liquefaction cells with probabilities below this
-            threshold
+        lqmask (float): Mask all liquefaction cells with probabilities below
+            this threshold
         legends (bool): if True, will produce png files of legends for each
             preferred model
 
@@ -423,8 +424,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
             cmap = mpl.colors.ListedColormap(colors1)
             norm = mpl.colors.BoundaryNorm(levels, cmap.N)
             ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
-            #scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-            #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
+            # scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+            # rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
             rgba_img = cmap(norm(ls_data2))
             if mercator:
                 rgba_img = mercator_transform(
@@ -438,8 +439,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                        cmap=cmap
                        )
         else:
-            raise OSError(
-                "Preferred landslide model result (%s) not found." % ls_mod_file)
+            raise OSError("Preferred landslide model result (%s) not found." %
+                          ls_mod_file)
     else:
         for lsm in lsmodels:
             # if lsm['preferred']:
@@ -478,8 +479,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
             cmap = mpl.colors.ListedColormap(colors1)
             norm = mpl.colors.BoundaryNorm(levels, cmap.N)
             ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
-            #scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-            #rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
+            # scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
+            # rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
             rgba_img = cmap(norm(ls_data2))
             if mercator:
                 rgba_img = mercator_transform(
@@ -537,8 +538,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                        )
             filenames.append(filen)
         else:
-            raise OSError(
-                "Preferred liquefaction model result (%s) not found." % lq_mod_file)
+            raise OSError("Preferred liquefaction model result (%s) not found."
+                          % lq_mod_file)
     else:
         for lqm in lqmodels:
             if lqm['preferred']:
@@ -553,7 +554,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                 lq_mod = loadlayers(lq_file)
             else:
                 raise OSError(
-                    "Specified liquefaction model result (%s) not found." % fsh)
+                    "Specified liquefaction model result (%s) not found."
+                    % fsh)
 
             lq_grid = lq_mod['model']['grid']
             lq_data = lq_grid.getData()
@@ -707,7 +709,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
         # constructed on the website and so we don't need them here)
         ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert, \
             ls_alert, lq_alert = alert_info
-            
+
         if lsmodels is None:
             lsmodels = [{
                 'id': 'nowicki_jessee_2017',
@@ -781,7 +783,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
                 else:
                     raise OSError("Landslide extent not found.")
                 lsm['extent'] = ls_extent
-                #lsm['filename'] = flnm
+                # lsm['filename'] = flnm
                 lsext = lsm['zoomext']  # Get zoom extent
                 ls_alert = lsm['alert']
                 rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
@@ -806,7 +808,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
                 else:
                     raise OSError("Liquefaction extent not found.")
                 lqm['extent'] = lq_extent
-                #lqm['filename'] = flnm
+                # lqm['filename'] = flnm
                 lqext = lqm['zoomext']  # Get zoom extent
                 lq_alert = lqm['alert']
                 rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
@@ -881,9 +883,10 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
 
     info_file = os.path.join(event_dir, 'info.json')
     with open(info_file, 'w') as f:
-        json.dump(info_dict, f) # allow_nan=False)
+        json.dump(info_dict, f)  # allow_nan=False)
     filenames.append(info_file)
     return filenames
+
 
 def get_extent(grid, propofmax=0.3):
     """
@@ -980,8 +983,8 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None,
         COLORS1 = DFCOLORS
         fig, axes = plt.subplots(1, len(DFCOLORS) + 1,
                                  figsize=(len(DFCOLORS) + 1.7, 0.8))
-        #DPI = fig.get_dpi()
-        #fig.set_size_inches(440/DPI, 83/DPI)
+        # DPI = fig.get_dpi()
+        # fig.set_size_inches(440/DPI, 83/DPI)
         clearind = 0
         maxind = len(axes)-1
 

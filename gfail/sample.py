@@ -76,7 +76,8 @@ def getYesPoints(pshapes, proj, dx, nmax, touch_center=True):
 
     Returns:
         tuple: (yespoints, nrows, ncols, xvar, yvar, idx) where:
-          - yespoints: numpy 2-D array of X/Y coordinates inside hazard polygons.
+          - yespoints: numpy 2-D array of X/Y coordinates inside hazard
+              polygons.
           - nrows: number of rows of resulting mesh
           - ncols: number of columns of resulting mesh
           - xvar: numpy array of x coordinate centers of columns

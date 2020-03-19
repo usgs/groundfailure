@@ -39,9 +39,9 @@ SM_TERMS = ['MW', 'YEAR', 'MONTH', 'DAY', 'HOUR', 'pga', 'pgv', 'mmi']
 SM_GRID_TERMS = ['pga', 'pgv', 'mmi']
 # these will get np. prepended
 OPERATORS = ['log', 'log10', 'arctan', 'power', 'sqrt', 'minimum', 'pi']
-FLOATPAT = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
+FLOATPAT = r'[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
 INTPAT = '[0-9]+'
-OPERATORPAT = '[\+\-\*\/]*'
+OPERATORPAT = r'[\+\-\*\/]*'
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
           'Nov', 'Dec']
 
@@ -133,10 +133,12 @@ class LogisticModel(object):
         if trimfile is not None:
             if not os.path.exists(trimfile):
                 print(
-                    'trimfile defined does not exist: %s\nOcean will not be trimmed' % trimfile)
+                    'trimfile defined does not exist: %s\nOcean will not be '
+                    'trimmed' % trimfile)
                 self.trimfile = None
             elif os.path.splitext(trimfile)[1] != '.shp':
-                print('trimfile must be a shapefile, ocean will not be trimmed')
+                print('trimfile must be a shapefile, ocean will not be '
+                      'trimmed')
                 self.trimfile = None
             else:
                 self.trimfile = trimfile
@@ -327,11 +329,13 @@ class LogisticModel(object):
                         np.clip(temp.getData(),
                                 self.clips[layername][0],
                                 self.clips[layername][1]))
-                if layername == 'rock':  # Test to convert unconsolidated sediments to a more reasonable coefficient
+                if layername == 'rock':  # Convert unconsolidated sediments to a more reasonable coefficient
                     sub1 = temp.getData()
-                    sub1[sub1 <= -3.21] = -1.36  # Change to mixed sedimentary rock coeff
+                    sub1[sub1 <= -3.21] = -1.36  # Change to mixed sed rock coeff
                     temp.setData(sub1)
-                    self.notes += 'unconsolidated sediment coefficient changed to -1.36 (weaker) from -3.22 to better reflect that this unit is not actually strong\n'
+                    self.notes += 'unconsolidated sediment coefficient changed\
+                     to -1.36 (weaker) from -3.22 to better reflect that this \
+                    unit is not actually strong\n'
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 td = temp.getGeoDict()
@@ -560,24 +564,24 @@ class LogisticModel(object):
                 Pmin = eval(eqnmin)
                 Pmax = eval(eqnmax)
 
-            #Pmin[np.isnan(Pmin)] = 0.0
-            #Pmax[np.isnan(Pmax)] = 0.0
+            # Pmin[np.isnan(Pmin)] = 0.0
+            # Pmax[np.isnan(Pmax)] = 0.0
 
-        #P[np.isnan(P)] = 0.0
+        # P[np.isnan(P)] = 0.0
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
-            #P[P==0.0] = float('nan')
-            #P[np.isnan(P)] = 0.0
+            # P[P==0.0] = float('nan')
+            # P[np.isnan(P)] = 0.0
             if self.uncert is not None:
                 Pmin = Pmin * self.nonzero
                 Pmax = Pmax * self.nonzero
-                #Pmin[Pmin==0.0] = float('nan')
-                #Pmax[Pmax==0.0] = float('nan')
-                #Pmin[np.isnan(Pmin)] = 0.0
-                #Pmax[np.isnan(Pmax)] = 0.0
+                # Pmin[Pmin==0.0] = float('nan')
+                # Pmax[Pmax==0.0] = float('nan')
+                # Pmin[np.isnan(Pmin)] = 0.0
+                # Pmax[np.isnan(Pmax)] = 0.0
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
@@ -755,7 +759,7 @@ def getFileType(filename):
     Returns:
         str: 'shapefile', 'grid', or 'unknown'.
     """
-    #TODO MOVE TO MAPIO.
+    # TODO MOVE TO MAPIO.
     if os.path.isdir(filename):
         return 'dir'
     ftype = GMTGrid.getFileType(filename)
@@ -781,7 +785,7 @@ def getAllGridFiles(indir):
     Returns:
         list: List of file names.
     """
-    #TODO MOVE TO MAPIO
+    # TODO MOVE TO MAPIO
     tflist = os.listdir(indir)
     flist = []
     for tf in tflist:
@@ -843,7 +847,7 @@ def validateClips(cmodel, layers, gmused):
                     x1 = [par for par in gmused if key in par]
                     if len(x1) == 0:
                         raise Exception(
-                            'Clipping key %s does not match any names of layers'
+                            'Clipping key %s does not match any layers'
                             % key)
             clips[key] = (float(value[0]), float(value[1]))
     return clips
@@ -935,7 +939,7 @@ def validateTerms(cmodel, coeffs, layers):
             - 'timeField' indicates the time that is used to know which input
               file to read in, e.g. for monthly average precipitation, 'MONTH'.
     """
-    #TODO:
+    # TODO:
     #    - Return a time field for every term, not just one global one.
 
     terms = {}
@@ -1088,7 +1092,8 @@ def validateRefs(cmodel):
 
 
 def checkTerm(term, layers):
-    """Checks terms of equation and replaces text with machine readable operators
+    """Checks terms of equation and replaces text with machine readable
+    operators
 
     Args:
         term: term from model configuration file
@@ -1096,11 +1101,12 @@ def checkTerm(term, layers):
 
     Returns:
         tuple: (term, tterm, timeField) where:
-            * term: dictionary of verified terms for equation with keys corresponding
-                to each layer name
-            * tterm: any unconverted and unverified text that may cause expression to fail
-            * timeField: if any inputs are time dependent, output is unit of time (e.g., 'YEAR'),
-                otherwise, None.
+            * term: dictionary of verified terms for equation with keys
+                corresponding to each layer name
+            * tterm: any unconverted and unverified text that may cause
+                expression to fail
+            * timeField: if any inputs are time dependent, output is unit of
+                time (e.g., 'YEAR'), otherwise, None.
     """
     # startterm = term
     # Strip out everything that isn't: 0-9.() operators, +-/* or layer names.

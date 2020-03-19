@@ -346,9 +346,9 @@ def run_gfail(args):
 
                 for key in maplayers:
                     # Get simplified name of key for file naming
-                    RIDOF = '[+-]?(?=\d*[.eE])(?=\.?\d)'\
-                            '\d*\.?\d*(?:[eE][+-]?\d+)?'
-                    OPERATORPAT = '[\+\-\*\/]*'
+                    RIDOF = r'[+-]?(?=\d*[.eE])(?=\.?\d)'\
+                            r'\d*\.?\d*(?:[eE][+-]?\d+)?'
+                    OPERATORPAT = r'[\+\-\*\/]*'
                     keyS = re.sub(OPERATORPAT, '', key)
                     # remove floating point numbers
                     keyS = re.sub(RIDOF, '', keyS)
@@ -392,7 +392,7 @@ def run_gfail(args):
             args.eventsource = 'us'
         if not hasattr(args, 'eventsourcecode'):
             args.eventsourcecode = eventid
-        
+
         if args.make_webpage:
             outputs = hazdev(
                 results, configs,
