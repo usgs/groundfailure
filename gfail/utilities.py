@@ -976,6 +976,9 @@ def view_database(database, starttime=None, endtime=None,
 
     # Now output selections in text, csv files, figures
     if csvfile is not None:
+        name, ext = os.path.splitext(csvfile)
+        if ext == '':
+            csvfile = '%s.csv' % name
         if os.path.dirname(csvfile) == '':
             csvfile = os.path.join(os.getcwd(), csvfile)
         # make sure it's a path
@@ -984,28 +987,40 @@ def view_database(database, starttime=None, endtime=None,
         else:
             raise Exception('Cannot save csv file to %s' % csvfile)
 
+    formatters = {"time": "{:%Y-%m-%d}".format,
+                  "shakemap_version": "{:.0f}".format,
+                  "version": "{:.0f}".format}
     # Print to screen
     if stats['nsuccess'] > 0 and printsuccess:
         print('Successful - %d runs' % stats['nsuccess'])
         print('-------------------------------------------------')
+        cols2 = np.array(cols).copy()
+        cols2[cols2 == 'shakemap_version'] = 'shake_v'  # to save room printing
+        cols2[cols2 == 'version'] = 'gf_v'  # to save room printing
+        cols2[cols2 == 'time'] = 'date'  # to save room printing
+
         if alertreport == 'color':
-            print(success.to_string(columns=cols, index=False,
-                  justify='left'))
+            print(success.to_string(columns=cols, index=False, justify='left',
+                  header=list(cols2),
+                  formatters=formatters))
         else:
-            print(origsuc.to_string(columns=cols, index=False,
-                  justify='left'))
+            print(origsuc.to_string(columns=cols, index=False, justify='left',
+                  header=list(cols2),
+                  formatters=formatters))
         print('-------------------------------------------------')
 
     if printfailed:
         if stats['nfail'] > 0:
             failcols = ['eventcode', 'location', 'mag', 'time',
                         'shakemap_version', 'note']
+            failcols2 = ['eventcode', 'location', 'mag', 'time',
+                         'shake_v', 'note']
 #            if 'note' not in cols:
 #                cols.append('note')
             print('Failed - %d runs' % stats['nfail'])
             print('-------------------------------------------------')
             print(fail.to_string(columns=failcols, index=False,
-                  justify='left'))
+                  formatters=formatters, justify='left', header=failcols2))
         else:
             print('No failed runs found')
         print('-------------------------------------------------')
@@ -1017,7 +1032,8 @@ def view_database(database, starttime=None, endtime=None,
             print('Criteria not met - %d runs' % stats['nnotmet'])
             print('-------------------------------------------------')
             print(notmet.to_string(columns=failcols, index=False,
-                  justify='left'))
+                  justify='left', header=failcols2,
+                  formatters=formatters))
         else:
             print('No runs failed to meet criteria')
 
@@ -1195,6 +1211,8 @@ def alert_summary(database, starttime=None, endtime=None,
 
         if filebasename is not None:
             name, ext = os.path.splitext(filebasename)
+            if ext == '':
+                ext = '.png'
             fig.savefig('%s_%s%s' % (name, typ, ext), bbox_inches='tight')
 
 
@@ -1364,6 +1382,8 @@ def time_delays(database, starttime=None, endtime=None,
 
     if filebasename is not None:
         name, ext = os.path.splitext(filebasename)
+        if ext == '':
+            ext = '.png'
         fig1.savefig('%s_LSalert_evolution%s' % (name, ext),
                      bbox_inches='tight')
         fig2.savefig('%s_LQalert_evolution%s' % (name, ext),
