@@ -31,7 +31,8 @@ def test_zhu2015(tmpdir):
         -md %s/loma_prieta/mapping_inputs
     """ % (datadir, upone, upone, datadir)
 
-    trimfile = '%s/loma_prieta/mapping_inputs/ne_10m_ocean/ne_10m_ocean.shp' % datadir
+    trimfile = '%s/loma_prieta/mapping_inputs/ne_10m_ocean/ne_10m_ocean.shp' \
+               % datadir
 
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
@@ -60,13 +61,13 @@ def test_zhu2015(tmpdir):
         rc3, so3, se3 = get_command_output('gfail --list-default-paths')
 
         # Run model with bounds
-        runcmd = "gfail %s/test_conf %s -b 'zoom, pga, 2' --hdf5 -tr  %s -ext" % \
-            (datadir, shakegrid, trimfile)
+        runcmd = "gfail %s/test_conf %s -b 'zoom, pga, 2' --hdf5 -tr  %s -ext"\
+                 % (datadir, shakegrid, trimfile)
         rc4, so4, se4 = get_command_output(runcmd)
 
         # Run model
-        runcmd = "gfail %s/test_conf %s --gis -pn -pi -pd --hdf5 -ext" % (datadir,
-                                                                          shakegrid)
+        runcmd = "gfail %s/test_conf %s --gis -pn -pi -pd --hdf5 -ext" \
+                 % (datadir, shakegrid)
         rc2, so2, se2 = get_command_output(runcmd)
 
         # Read in the testing data
@@ -171,7 +172,7 @@ def test_zhu2015_web(tmpdir):
         # np.testing.assert_equal(True, rc2, se2.decode())
 
         # Make PDL directory
-        #pdldir = os.path.join(p, '19891018000415')
+        # pdldir = os.path.join(p, '19891018000415')
         pdldir = p
         pdl.prepare_pdl_directory(pdldir)
 
