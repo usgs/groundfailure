@@ -6,6 +6,7 @@ import gc
 import math
 import glob
 import matplotlib as mpl
+from matplotlib.colors import LightSource, LogNorm
 
 import collections
 from datetime import datetime
@@ -24,8 +25,7 @@ from mpl_toolkits.basemap import maskoceans
 from matplotlib.patches import Polygon, Rectangle
 from skimage.measure import block_reduce
 from descartes import PolygonPatch
-from mapio.shake import ShakeGrid
-
+import matplotlib.colors as colors
 
 # local imports
 from mapio.gmt import GMTGrid
@@ -33,13 +33,14 @@ from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
 from mapio.basemapcity import BasemapCities
+from mapio.shake import ShakeGrid
 
 
 # Make fonts readable and recognizable by illustrator
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = \
     ['Helvetica', 'Arial', 'Bitstream Vera Serif', 'sans-serif']
-plt.switch_backend('agg')
+#plt.switch_backend('agg')
 
 
 def modelMap(grids, shakefile=None,
@@ -1086,6 +1087,91 @@ def ceilToNearest(value, ceilValue=1000):
         value = int(np.ceil(float(value)/ceilValue)*ceilValue)
     return value
 
+
+def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, logscale=None,
+              alpha=None):
+    """Get colors that will be used for all colorbars from reference grid
+
+    Args:
+        sync(str): If False, will exit program, else corresponds to the shortref
+            of the model which should serve as the template for
+            the colorbars used by all other models. All other models must
+            have the exact same number of bins
+        plotorder (list): List of keys of shortrefs of the grids that will be
+            plotted.
+        lims (*): Nx1 list of tuples or numpy arrays corresponding to
+            plotorder defining the bin edges to use for each model.
+            Example:
+
+            .. code-block:: python
+
+                [(0., 0.1, 0.2, 0.3), np.linspace(0., 1.5, 15)]
+
+        colormaps (list): List of strings of matplotlib colormaps (e.g.
+            cm.autumn_r) corresponding to plotorder
+        defaultcolormap (matplotlib colormap): Colormap to use if
+            colormaps is not defined. default cm.CMRmap_r
+        logscale (*): If not None, then a list of booleans corresponding to
+            plotorder stating whether to use log scaling in determining colors
+
+    Returns:
+        tuple: (sync, colorlist, lim1) where:
+            * sync (bool): whether or not colorbars are/can be synced
+            * colorlist (list): list of rgba colors that will be applied to all
+                models regardless of bin edge values
+            * lim1 (array): bin edges of model to which others are synced
+
+    """
+
+    if not sync:
+        return False, None, None
+
+    elif sync in plotorder:
+        k = [indx for indx, key in enumerate(plotorder) if key in sync][0]
+        # Make sure lims exist and all have the same number of bins'
+
+        if logscale is not None:
+            logs = logscale[k]
+        else:
+            logs = False
+
+        lim1 = np.array(lims[k])
+        sum1 = 0
+        for lim in lims:
+            if lim is None:
+                sum1 += 1
+                continue
+            if len(lim) != len(lim1):
+                sum1 += 1
+                continue
+        if sum1 > 0:
+            print('Cannot sync colorbars, different number of bins or lims not specified')
+            sync = False
+            return sync, None, None
+
+        if colormaps[k] is not None:
+            palette1 = colormaps[k]
+        else:
+            palette1 = defaultcolormap
+        #palette1.set_bad(clear_color, alpha=0.0)
+        if logs:
+            cNorm = colors.LogNorm(vmin=lim1[0], vmax=lim1[-1])
+            midpts = np.sqrt(lim1[1:] * lim1[:-1])  # geometric mean for midpoints
+        else:
+            cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
+            midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
+        scalarMap = cm.ScalarMappable(norm=cNorm, cmap=palette1)
+        colorlist = []
+        for value in midpts:
+            colorlist.append(scalarMap.to_rgba(value, alpha=alpha))
+        sync = True
+
+    else:
+        print('Cannot sync colorbars, different number of bins or lims not specified')
+        sync = False
+        colorlist = None
+        lim1 = None
+    return sync, colorlist, lim1
 
 if __name__ == '__main__':
     pass

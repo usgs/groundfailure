@@ -85,7 +85,7 @@ if [ $? -ne 0 ]; then
     echo ". $_CONDA_ROOT/etc/profile.d/conda.sh" >> $prof
 fi
 
-env_file=environment.yml
+#env_file=environment.yml
 
 # Start in conda base environment
 echo "Activate base virtual environment"
@@ -102,6 +102,7 @@ package_list=(
       "configobj"
       "descartes"
       "fiona"
+      "folium"
       "gdal"
       "impactutils"
       "libcomcat"
@@ -115,8 +116,6 @@ package_list=(
       "rasterio"
       "scikit-image"
       "scipy"
-      "spyder"
-      "ipython"
 )
 
 # Create a conda virtual environment

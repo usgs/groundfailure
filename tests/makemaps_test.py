@@ -13,8 +13,6 @@ from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
 #import shutil
 import gfail.utilities as utilities
-import shutil
-from impactutils.io.cmd import get_command_output
 
 
 homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
@@ -163,24 +161,6 @@ def test_maps():
     # logscale=!False
     makemaps.modelMap(maplayers, logscale=[False, False, True, True],
                       savepdf=False, savepng=False)
-
-    # Make a copy of current defaults
-    default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
-    if os.path.exists(default_file):
-        shutil.copy(default_file, default_file+'_bak')
-    try:
-        # Clear paths to avoid problems with stats.py trying to find pop_file
-        rc, so, se = get_command_output('gfail -reset')
-        # Then run GFSummary
-        makemaps.GFSummary([maplayers, maplayers2], [modelLQ, modelLS],
-                           os.path.join(upone, 'pelican', 'theme'), shakefile,
-                           pop_file=None)
-    except Exception as e:
-        print(e)
-
-    # Put defaults back
-    if os.path.exists(default_file+'_bak'):
-        shutil.copy(default_file+'_bak', default_file)
 
 
 def test_zoom():

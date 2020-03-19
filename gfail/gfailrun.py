@@ -16,7 +16,7 @@ from mapio.shake import ShakeGrid
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
-from gfail.makemaps import (modelMap, interactiveMap, GFSummary)
+from gfail.makemaps import modelMap
 from gfail.webpage import hazdev
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
@@ -73,7 +73,6 @@ def run_gfail(args):
 
         if (hdf5 or args.make_static_pngs or
                 args.make_static_pdfs or
-                args.make_interactive_plots or
                 gis):
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
@@ -189,7 +188,7 @@ def run_gfail(args):
         else:
             bounds = None
 
-        if args.make_webpage or args.make_summary:
+        if args.make_webpage:
             results = []
 
         # pre-read in ocean trimming file polygons so only do this step once
@@ -343,19 +342,6 @@ def run_gfail(args):
                         logscale=logscale, **kwargs)
                     for filen in filenames1:
                         filenames.append(filen)
-            if args.make_interactive_plots:
-                plotorder, logscale, lims, colormaps, maskthreshes = \
-                    parseConfigLayers(maplayers, conf)
-                junk, filenames1 = interactiveMap(
-                    maplayers, plotorder=plotorder, shakefile=shakefile,
-                    inventory_shapefile=None, maskthreshes=maskthreshes,
-                    colormaps=colormaps, isScenario=False,
-                    scaletype='continuous', lims=lims, logscale=logscale,
-                    ALPHA=0.7, outputdir=outfolder, outfilename=filename,
-                    tiletype='Stamen Terrain', separate=True,
-                    faultfile=ffault)
-                for filen in filenames1:
-                    filenames.append(filen)
             if gis:
 
                 for key in maplayers:
@@ -401,10 +387,6 @@ def run_gfail(args):
                 filenames.append(filef)
                 filenames.append(filefh)
 
-            if args.make_summary and not args.make_webpage:
-                # Compile into list of results for later
-                results.append(maplayers)
-
         eventid = getHeaderData(shakefile)[0]['event_id']
         if not hasattr(args, 'eventsource'):
             args.eventsource = 'us'
@@ -419,13 +401,6 @@ def run_gfail(args):
                 pager_alert=args.property_alertlevel,
                 eventsource=args.eventsource,
                 eventsourcecode=args.eventsourcecode)
-            filenames = filenames + outputs
-
-        if args.make_summary:
-            outputs = GFSummary(
-                results, configs, args.web_template,
-                shakefile, outfolder=outfolder, cleanup=True,
-                faultfile=ffault, point=point, pop_file=args.popfile)
             filenames = filenames + outputs
 
 #        # create transparent png file

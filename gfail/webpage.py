@@ -26,7 +26,7 @@ from gfail.utilities import loadlayers
 import warnings
 warnings.filterwarnings('ignore')
 
-plt.switch_backend('agg')
+#plt.switch_backend('agg')
 
 # # hex versions:
 # DFCOLORS = [
