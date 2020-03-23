@@ -140,7 +140,7 @@ def test_parseConfigLayers():
 #    makemaps.parseConfigLayers(tmp, config, keys=None)
 
 
-def test_maps(tempdir):
+def test_maps():
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
     ls = LM.LogisticModel(shakefile, modelLS, saveinputs=False)
@@ -162,8 +162,9 @@ def test_maps(tempdir):
     # logscale=!False
     makemaps.modelMap(maplayers, logscale=[False, False, True, True],
                       savepdf=False, savepng=False)
-    
+
     # Test create_kmz
+    tempdir = tempfile.TemporaryDirectory()
     makemaps.create_kmz(maplayers['model'], outfile=os.path.join(tempdir.name,
                         'test.kmz'))
     makemaps.create_kmz(maplayers2['model'], outfile=os.path.join(tempdir.name,
@@ -194,10 +195,9 @@ def test_zoom():
 
 
 if __name__ == "__main__":
-    td1 = tempfile.TemporaryDirectory()
     test_parseMapConfig()
     test_parseConfigLayers()
-    test_maps(td1)
+    test_maps()
     test_zoom()
     # remove tempdir
     #shutil.rmtree(td1)
