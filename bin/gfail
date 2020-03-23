@@ -152,6 +152,9 @@ if __name__ == '__main__':
         '--gis', action='store_true', default=False,
         help='Save GIS file (ESRI .bil format) of model result')
     parser.add_argument(
+        '--kmz', action='store_true', default=False,
+        help='Save kmz file (Google Earth) of model result')
+    parser.add_argument(
         '--hdf5', action='store_true', default=False,
         help='Save model results as MultiHazard HDF file (MapIO)')
     parser.add_argument(

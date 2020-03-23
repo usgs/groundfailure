@@ -2,15 +2,13 @@
 
 
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import json
 import numpy as np
 import os
 from configobj import ConfigObj
-from gfail.makemaps import setupsync
+from gfail.makemaps import setupsync, get_zoomextent, make_rgba, DFCOLORS, DFBINS
 from gfail.utilities import parseConfigLayers, get_alert
 from gfail.stats import computeStats
-from folium.utilities import mercator_transform
 from mapio.shake import ShakeGrid
 import matplotlib.cm as cm
 
@@ -28,33 +26,12 @@ warnings.filterwarnings('ignore')
 
 plt.switch_backend('agg')
 
-# # hex versions:
-# DFCOLORS = [
-#     '#efefb34D',  # 30% opaque 4D
-#     '#e5c72f66',  # 40% opaque 66
-#     '#ea720780',  # 50% opaque 80
-#     '#c0375c99',  # 60% opaque 99
-#     '#5b28b299',  # 60% opaque 99
-#     '#1e1e6499'   # 60% opaque 99
-# ]
-
-DFCOLORS = [
-    [0.94, 0.94, 0.70, 0.7],
-    [0.90, 0.78, 0.18, 0.7],
-    [0.92, 0.45, 0.03, 0.7],
-    [0.75, 0.22, 0.36, 0.7],
-    [0.36, 0.16, 0.70, 0.7],
-    [0.12, 0.12, 0.39, 0.7]
-]
-
-DFBINS = [0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
-
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            shakethreshtype='pga', probthresh=None, shakethresh=10.,
            prefLS='Nowicki Jessee and others (2017)',
            prefLQ='Zhu and others (2017)',
-           pop_file=None, defaultcolors=True,
+           pop_file=None, defaultcolors=True, point=True,
            pager_alert='', eventsource='', eventsourcecode=''):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
@@ -80,6 +57,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         defaultcolors (bool): If True, will use DFCOLORS for all layers instead
             of determining new ones. This will crash if any of the layers have
             a different number of bins than the number of DFCOLORS
+        point (bool): if True, event is a point source and warning should be
+            displayed
         pager_alert (str): PAGER alert level, e.g., 'green'. 'pending', ...
 
     Returns:
@@ -88,7 +67,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 - info.json
                 - transparent png overlays of all models
     """
-
     event_id = maplayerlist[0]['model']['description']['event_id']
 
     if pop_file is None:
@@ -166,7 +144,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 ls_haz_alert, ls_pop_alert, _, _, ls_alert, _ = get_alert(
                     stats['Hagg_0.10g'], 0.,
                     stats['exp_pop_0.10g'], 0.)
-                lsext = get_extent(maplayer['model']['grid'])
+                lsext = get_zoomextent(maplayer['model']['grid'])
                 ls_haz_value = set_num_precision(
                     stats['Hagg_0.10g'], 2, 'float')
                 ls_pop_value = set_num_precision(
@@ -254,7 +232,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 _, _, lq_haz_alert, lq_pop_alert, _, lq_alert = get_alert(
                     0., stats['Hagg_0.10g'],
                     0., stats['exp_pop_0.10g'])
-                lqext = get_extent(maplayer['model']['grid'])
+                lqext = get_zoomextent(maplayer['model']['grid'])
                 lq_haz_value = set_num_precision(
                     stats['Hagg_0.10g'], 2, 'float')
                 lq_pop_value = set_num_precision(
@@ -361,7 +339,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
     # Create info.json
     infojson = create_info(outfolder, lsmodels, lqmodels, eventsource,
-                           eventsourcecode)
+                           eventsourcecode, point)
     filenames.append(infojson)
 
     return filenames
@@ -399,37 +377,14 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
         if len(ls_mod_file) == 1:
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
-            levels = DFBINS
-            colors1 = DFCOLORS
             filesnippet = 'jessee_2017'
-            ls_grid = ls_mod['model']['grid']
-            ls_data = ls_grid.getData()
-            if lsmask:
-                ls_data[ls_data < lsmask] = float('nan')
-            ls_geodict = ls_grid.getGeoDict()
-            ls_extent = [
-                ls_geodict.xmin - 0.5*ls_geodict.dx,
-                ls_geodict.xmax + 0.5*ls_geodict.dx,
-                ls_geodict.ymin - 0.5*ls_geodict.dy,
-                ls_geodict.ymax + 0.5*ls_geodict.dy,
-            ]
+            out = make_rgba(ls_mod['model']['grid'], mask=lsmask,
+                            mercator=mercator)
+            rgba_img, ls_extent, lmin, lmax, cmap = out
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
             filenames.append(filen)
             with open(filen, 'w') as f:
                 json.dump(ls_extent, f)
-
-            lmin = levels[0]
-            lmax = levels[-1]
-            ls_data2 = np.clip(ls_data, lmin, lmax)
-            cmap = mpl.colors.ListedColormap(colors1)
-            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-            ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
-            # scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-            # rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
-            rgba_img = cmap(norm(ls_data2))
-            if mercator:
-                rgba_img = mercator_transform(
-                    rgba_img, (ls_extent[2], ls_extent[3]), origin='upper')
 
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
@@ -444,8 +399,6 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
     else:
         for lsm in lsmodels:
             # if lsm['preferred']:
-            levels = lsm['bin_edges']
-            colors1 = lsm['bin_colors']
             filesnippet = lsm['id']
 
             fsh = '%s.hdf5' % filesnippet
@@ -457,34 +410,14 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                 raise OSError(
                     "Specified landslide model result (%s) not found." % fsh)
 
-            ls_grid = ls_mod['model']['grid']
-            ls_data = ls_grid.getData()
-            if lsmask:
-                ls_data[ls_data < lsmask] = float('nan')
-            ls_geodict = ls_grid.getGeoDict()
-            ls_extent = [
-                ls_geodict.xmin - 0.5*ls_geodict.dx,
-                ls_geodict.xmax + 0.5*ls_geodict.dx,
-                ls_geodict.ymin - 0.5*ls_geodict.dy,
-                ls_geodict.ymax + 0.5*ls_geodict.dy,
-            ]
+            out = make_rgba(ls_mod['model']['grid'], mask=lsmask,
+                            mercator=mercator)
+            rgba_img, ls_extent, lmin, lmax, cmap = out
+
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
             filenames.append(filen)
             with open(filen, 'w') as f:
                 json.dump(ls_extent, f)
-
-            lmin = levels[0]
-            lmax = levels[-1]
-            ls_data2 = np.clip(ls_data, lmin, lmax)
-            cmap = mpl.colors.ListedColormap(colors1)
-            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-            ls_data2 = np.ma.array(ls_data2, mask=np.isnan(ls_data))
-            # scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-            # rgba_img = scalarMap.to_rgba_array(ls_data2, alpha=alpha)
-            rgba_img = cmap(norm(ls_data2))
-            if mercator:
-                rgba_img = mercator_transform(
-                    rgba_img, (ls_extent[2], ls_extent[3]), origin='upper')
 
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
@@ -500,35 +433,16 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
-            levels = DFBINS
-            colors1 = DFCOLORS
             filesnippet = 'zhu_2017_general'
-            lq_grid = lq_mod['model']['grid']
-            lq_data = lq_grid.getData()
-            if lqmask:
-                lq_data[lq_data < lqmask] = float('nan')
-            lq_geodict = lq_grid.getGeoDict()
-            lq_extent = [
-                lq_geodict.xmin - 0.5*lq_geodict.dx,
-                lq_geodict.xmax + 0.5*lq_geodict.dx,
-                lq_geodict.ymin - 0.5*lq_geodict.dy,
-                lq_geodict.ymax + 0.5*lq_geodict.dy,
-            ]
+            out = make_rgba(lq_mod['model']['grid'], mask=lqmask,
+                            mercator=mercator)
+            rgba_img, lq_extent, lmin, lmax, cmap = out            
+
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
             filenames.append(filen)
             with open(filen, 'w') as f:
                 json.dump(lq_extent, f)
 
-            lmin = levels[0]
-            lmax = levels[-1]
-            lq_data2 = np.clip(lq_data, lmin, lmax)
-            cmap = mpl.colors.ListedColormap(colors1)
-            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-            lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
-            rgba_img = cmap(norm(lq_data2))
-            if mercator:
-                rgba_img = mercator_transform(
-                    rgba_img, (lq_extent[2], lq_extent[3]), origin='upper')
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
                        rgba_img,
@@ -542,10 +456,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                           % lq_mod_file)
     else:
         for lqm in lqmodels:
-            if lqm['preferred']:
-                levels = lqm['bin_edges']
-                colors1 = lqm['bin_colors']
-                filesnippet = lqm['id']
+            #if lqm['preferred']:
+            filesnippet = lqm['id']
 
             fsh = '%s.hdf5' % filesnippet
             lq_mod_file = [f2 for f2 in files if fsh in f2]
@@ -557,32 +469,15 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                     "Specified liquefaction model result (%s) not found."
                     % fsh)
 
-            lq_grid = lq_mod['model']['grid']
-            lq_data = lq_grid.getData()
-            if lqmask:
-                lq_data[lq_data < lqmask] = float('nan')
-            lq_geodict = lq_grid.getGeoDict()
-            lq_extent = [
-                lq_geodict.xmin - 0.5*lq_geodict.dx,
-                lq_geodict.xmax + 0.5*lq_geodict.dx,
-                lq_geodict.ymin - 0.5*lq_geodict.dy,
-                lq_geodict.ymax + 0.5*lq_geodict.dy,
-            ]
+            out = make_rgba(lq_mod['model']['grid'], mask=lqmask,
+                            mercator=mercator)
+            rgba_img, lq_extent, lmin, lmax, cmap = out
+            
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
             filenames.append(filen)
             with open(filen, 'w') as f:
                 json.dump(lq_extent, f)
 
-            lmin = levels[0]
-            lmax = levels[-1]
-            lq_data2 = np.clip(lq_data, lmin, lmax)
-            cmap = mpl.colors.ListedColormap(colors1)
-            norm = mpl.colors.BoundaryNorm(levels, cmap.N)
-            lq_data2 = np.ma.array(lq_data2, mask=np.isnan(lq_data))
-            rgba_img = cmap(norm(lq_data2))
-            if mercator:
-                rgba_img = mercator_transform(
-                    rgba_img, (lq_extent[2], lq_extent[3]), origin='upper')
             filen = os.path.join(event_dir, '%s.png' % filesnippet)
             plt.imsave(filen,
                        rgba_img,
@@ -602,7 +497,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
 
 
 def create_info(event_dir, lsmodels=None, lqmodels=None,
-                eventsource='', eventsourcecode=''):
+                eventsource='', eventsourcecode='', point=True):
     """Create info.json for ground failure product.
 
     Args:
@@ -612,6 +507,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
             the hdf5 files for the preferred model and will create this
             dictionary and will apply default colorbars and bins.
         lqmodels (list): Same as above for liquefaction.
+        point (bool): if True, event is a point source and warning should be
+            displayed
 
     Returns:
         creates info.json for this event
@@ -631,7 +528,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
             # get extents
-            lsext = get_extent(ls_mod['model']['grid'])
+            lsext = get_zoomextent(ls_mod['model']['grid'])
         else:
             raise OSError("Preferred landslide model result not found.")
         lq_mod_file = [f2 for f2 in files if 'zhu_2017_general.hdf5' in f2]
@@ -639,7 +536,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
             # get extents
-            lqext = get_extent(lq_mod['model']['grid'])
+            lqext = get_zoomextent(lq_mod['model']['grid'])
         else:
             raise OSError("Preferred liquefaction model result not found.")
 
@@ -830,7 +727,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
     # point = is_grid_point_source(shake_grid)
     # Temporarily hard code this until we can get a better solution via
     # new grid.xml attributes.
-    point = True
+    #point = True
 
     net = eventsource
     code = eventsourcecode
@@ -886,64 +783,6 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
         json.dump(info_dict, f)  # allow_nan=False)
     filenames.append(info_file)
     return filenames
-
-
-def get_extent(grid, propofmax=0.3):
-    """
-    Get the extent that contains all values with probabilities exceeding
-    a threshold in order to determine ideal zoom level for interactive map
-    If nothing is above the threshold, uses the full extent
-
-    Args:
-        grid: grid2d of model output
-        propofmax (float): Proportion of maximum that should be fully included
-            within the bounds.
-
-    Returns:
-        tuple: (boundaries, zoomed) where,
-            * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and
-             'ymax' that defines the boundaries in geographic coordinates.
-
-    """
-    maximum = np.nanmax(grid.getData())
-
-    xmin, xmax, ymin, ymax = grid.getBounds()
-    lons = np.linspace(xmin, xmax, grid.getGeoDict().nx)
-    lats = np.linspace(ymax, ymin, grid.getGeoDict().ny)
-
-    if maximum <= 0.:
-        boundaries1 = dict(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
-        # If nothing is above the threshold, use full extent
-        return boundaries1
-
-    threshold = propofmax * maximum
-
-    row, col = np.where(grid.getData() > float(threshold))
-    lonmin = lons[col].min()
-    lonmax = lons[col].max()
-    latmin = lats[row].min()
-    latmax = lats[row].max()
-
-    boundaries1 = {}
-
-    if xmin < lonmin:
-        boundaries1['xmin'] = lonmin
-    else:
-        boundaries1['xmin'] = xmin
-    if xmax > lonmax:
-        boundaries1['xmax'] = lonmax
-    else:
-        boundaries1['xmax'] = xmax
-    if ymin < latmin:
-        boundaries1['ymin'] = latmin
-    else:
-        boundaries1['ymin'] = ymin
-    if ymax > latmax:
-        boundaries1['ymax'] = latmax
-    else:
-        boundaries1['ymax'] = ymax
-
-    return boundaries1
 
 
 def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None,

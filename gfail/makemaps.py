@@ -7,9 +7,10 @@ import math
 import glob
 import matplotlib as mpl
 from matplotlib.colors import LightSource, LogNorm
-
+import tempfile
 import collections
 from datetime import datetime
+
 # from configobj import ConfigObj
 
 # third party imports
@@ -26,6 +27,8 @@ from matplotlib.patches import Polygon, Rectangle
 from skimage.measure import block_reduce
 from descartes import PolygonPatch
 import matplotlib.colors as colors
+import simplekml
+from folium.utilities import mercator_transform
 
 # local imports
 from mapio.gmt import GMTGrid
@@ -41,6 +44,26 @@ mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = \
     ['Helvetica', 'Arial', 'Bitstream Vera Serif', 'sans-serif']
 plt.switch_backend('agg')
+
+# # hex versions:
+# DFCOLORS = [
+#     '#efefb34D',  # 30% opaque 4D
+#     '#e5c72f66',  # 40% opaque 66
+#     '#ea720780',  # 50% opaque 80
+#     '#c0375c99',  # 60% opaque 99
+#     '#5b28b299',  # 60% opaque 99
+#     '#1e1e6499'   # 60% opaque 99
+# ]
+DFCOLORS = [
+    [0.94, 0.94, 0.70, 0.7],
+    [0.90, 0.78, 0.18, 0.7],
+    [0.92, 0.45, 0.03, 0.7],
+    [0.75, 0.22, 0.36, 0.7],
+    [0.36, 0.16, 0.70, 0.7],
+    [0.12, 0.12, 0.39, 0.7]
+]
+
+DFBINS = [0.002, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 
 def modelMap(grids, shakefile=None,
@@ -1174,6 +1197,193 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
         colorlist = None
         lim1 = None
     return sync, colorlist, lim1
+
+
+def create_kmz(maplayer, outfile, mask='auto'):
+    """
+    Create kmz files of models
+    
+    Args:
+        maplayer (dict): Dictionary of one model result formatted like:
+
+            .. code-block:: python
+
+                {
+                    'grid': mapio grid2D object,
+                    'label': 'label for colorbar and top line of subtitle',
+                    'type': 'output or input to model',
+                    'description': 'description for subtitle'
+                }    
+        outfile (str): File extension
+        mask (float): make all cells below this value transparent, if 'auto',
+            will automatically choose default mask level for the ground failure
+            type of grids
+    
+    Returns:
+        kmz file
+    """
+    # Make place to put temporary files
+    temploc = tempfile.TemporaryDirectory()
+    # Figure out what kind of model this event is
+    typemod = maplayer['description']['parameters']['modeltype']
+    if mask == 'auto':
+        if 'landslide' in typemod.lower():
+            mask = 0.002
+        elif 'liquefaction' in typemod.lower():
+            mask = 0.005
+        else:
+            mask = None
+
+    # Make colored geotiff
+    out = make_rgba(maplayer['grid'], mask=mask)
+    rgba_img, extent, lmin, lmax, cmap = out
+    # Save as a tiff
+    mapfile = os.path.join(temploc.name, '%s.tiff' % typemod)
+    plt.imsave(mapfile, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
+   
+    # Start creating kmz
+    L = simplekml.Kml()
+
+    # Set zoom window
+    doc = L.document  # have to put lookat in root document directory
+    doc.altitudemode = simplekml.AltitudeMode.relativetoground
+    boundaries1 = get_zoomextent(maplayer['grid'])
+    doc.lookat.latitude = np.mean([boundaries1['ymin'], boundaries1['ymax']])
+    doc.lookat.longitude = np.mean([boundaries1['xmax'], boundaries1['xmin']])
+    doc.lookat.altitude = 0.
+    doc.lookat.range = (boundaries1['ymax']-boundaries1['ymin']) * 111. * 1000.  # dist in m from point
+    doc.description = 'USGS near-real-time earthquake-triggered %s model for \
+                       event id %s' % (typemod, maplayer['description']
+                       ['event_id'])
+        
+    prob = L.newgroundoverlay(name=maplayer['label'])
+    prob.icon.href = 'files/%s.tiff' % typemod
+    prob.latlonbox.north = extent[3]#
+    prob.latlonbox.south = extent[2]
+    prob.latlonbox.east = extent[1]
+    prob.latlonbox.west = extent[0]
+    L.addfile(mapfile)
+    
+    # Add legend and USGS icon as screen overlays
+    size1 = simplekml.Size(x=0.3, xunits=simplekml.Units.fraction)
+    leg = L.newscreenoverlay(name='Legend', size=size1)
+    leg.icon.href = 'files/legend_%s.png' % typemod
+    leg.screenxy = simplekml.ScreenXY(x=0.2,y=0.05,xunits=simplekml.Units.fraction,
+                                      yunits=simplekml.Units.fraction)
+    L.addfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                           os.pardir, 'content',
+                                           'legend_%s.png' % typemod))
+
+    size2 = simplekml.Size(x=0.15, xunits=simplekml.Units.fraction)
+    icon = L.newscreenoverlay(name='USGS', size=size2)
+    icon.icon.href = 'files/USGS_ID_white.png'
+    icon.screenxy = simplekml.ScreenXY(x=0.8,y=0.95,xunits=simplekml.Units.fraction,
+                                       yunits=simplekml.Units.fraction)
+    L.addfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                           os.pardir, 'content',
+                                           'USGS_ID_white.png'))
+    name, ext = os.path.splitext(outfile)
+    if ext != '.kmz':
+        ext = '.kmz'
+    filename = '%s%s' % (name, ext)
+    L.savekmz(filename)
+    return filename
+
+    
+def get_zoomextent(grid, propofmax=0.3):
+    """
+    Get the extent that contains all values with probabilities exceeding
+    a threshold in order to determine ideal zoom level for interactive map
+    If nothing is above the threshold, uses the full extent
+
+    Args:
+        grid: grid2d of model output
+        propofmax (float): Proportion of maximum that should be fully included
+            within the bounds.
+
+    Returns:
+        tuple: (boundaries, zoomed) where,
+            * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and
+             'ymax' that defines the boundaries in geographic coordinates.
+
+    """
+    maximum = np.nanmax(grid.getData())
+
+    xmin, xmax, ymin, ymax = grid.getBounds()
+    lons = np.linspace(xmin, xmax, grid.getGeoDict().nx)
+    lats = np.linspace(ymax, ymin, grid.getGeoDict().ny)
+
+    if maximum <= 0.:
+        boundaries1 = dict(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        # If nothing is above the threshold, use full extent
+        return boundaries1
+
+    threshold = propofmax * maximum
+
+    row, col = np.where(grid.getData() > float(threshold))
+    lonmin = lons[col].min()
+    lonmax = lons[col].max()
+    latmin = lats[row].min()
+    latmax = lats[row].max()
+
+    boundaries1 = {}
+
+    if xmin < lonmin:
+        boundaries1['xmin'] = lonmin
+    else:
+        boundaries1['xmin'] = xmin
+    if xmax > lonmax:
+        boundaries1['xmax'] = lonmax
+    else:
+        boundaries1['xmax'] = xmax
+    if ymin < latmin:
+        boundaries1['ymin'] = latmin
+    else:
+        boundaries1['ymin'] = ymin
+    if ymax > latmax:
+        boundaries1['ymax'] = latmax
+    else:
+        boundaries1['ymax'] = ymax
+
+    return boundaries1   
+
+
+def make_rgba(grid2D, mask=None, levels=DFBINS, colors1=DFCOLORS,
+              mercator=False):
+    """
+    Make an rgba (red, green, blue, alpha) grid out of raw data values and
+    provide extent and limits needed to save as an image file
+    
+    Args:
+        INSERT
+        
+    Returns:
+        rgba_img, extent, lmin, lmax, cmap
+    """
+
+    data1 = grid2D.getData()
+    if mask is not None:
+        data1[data1 < mask] = float('nan')
+    geodict = grid2D.getGeoDict()
+    extent = [
+        geodict.xmin - 0.5*geodict.dx,
+        geodict.xmax + 0.5*geodict.dx,
+        geodict.ymin - 0.5*geodict.dy,
+        geodict.ymax + 0.5*geodict.dy,
+    ]
+
+    lmin = levels[0]
+    lmax = levels[-1]
+    data2 = np.clip(data1, lmin, lmax)
+    cmap = mpl.colors.ListedColormap(colors1)
+    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+    data2 = np.ma.array(data2, mask=np.isnan(data1))
+    rgba_img = cmap(norm(data2))
+    if mercator:
+        rgba_img = mercator_transform(
+            rgba_img, (extent[2], extent[3]), origin='upper')
+
+    return rgba_img, extent, lmin, lmax, cmap
 
 
 if __name__ == '__main__':

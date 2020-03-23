@@ -16,7 +16,7 @@ from mapio.shake import ShakeGrid
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
-from gfail.makemaps import modelMap
+from gfail.makemaps import modelMap, create_kmz
 from gfail.webpage import hazdev
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
@@ -57,9 +57,11 @@ def run_gfail(args):
         # Turn on GIS and HDF5 flags
         gis = True
         hdf5 = True
+        kmz = True
     else:
         gis = args.gis
         hdf5 = args.hdf5
+        kmz = args.kmz
 
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
@@ -73,7 +75,7 @@ def run_gfail(args):
 
         if (hdf5 or args.make_static_pngs or
                 args.make_static_pdfs or
-                gis):
+                gis or kmz):
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
 
@@ -342,7 +344,7 @@ def run_gfail(args):
                         logscale=logscale, **kwargs)
                     for filen in filenames1:
                         filenames.append(filen)
-            if gis:
+            if gis or kmz:
 
                 for key in maplayers:
                     # Get simplified name of key for file naming
@@ -356,21 +358,28 @@ def run_gfail(args):
                     keyS = re.sub('[()]*', '', keyS)
                     # remove any blank spaces
                     keyS = keyS.replace(' ', '')
-                    filen = os.path.join(outfolder, '%s_%s.bil'
-                                         % (filename, keyS))
-                    fileh = os.path.join(outfolder, '%s_%s.hdr'
-                                         % (filename, keyS))
-                    fileg = os.path.join(outfolder, '%s_%s.tif'
-                                         % (filename, keyS))
-
-                    GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
-                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
-                        filen, fileg)
-                    rc, so, se = get_command_output(cmd)
-                    # Delete bil file and its header
-                    os.remove(filen)
-                    os.remove(fileh)
-                    filenames.append(fileg)
+                    if gis:
+                        filen = os.path.join(outfolder, '%s_%s.bil'
+                                             % (filename, keyS))
+                        fileh = os.path.join(outfolder, '%s_%s.hdr'
+                                             % (filename, keyS))
+                        fileg = os.path.join(outfolder, '%s_%s.tif'
+                                             % (filename, keyS))
+    
+                        GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
+                        cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
+                            filen, fileg)
+                        rc, so, se = get_command_output(cmd)
+                        # Delete bil file and its header
+                        os.remove(filen)
+                        os.remove(fileh)
+                        filenames.append(fileg)
+                    if kmz:
+                        filen = os.path.join(outfolder, '%s_%s.kmz'
+                                             % (filename, keyS))
+                        filek = create_kmz(maplayers[key], filen)
+                        filenames.append(filek)
+                        
 
             if args.make_webpage:
                 # Compile into list of results for later
@@ -400,7 +409,8 @@ def run_gfail(args):
                 pop_file=args.popfile,
                 pager_alert=args.property_alertlevel,
                 eventsource=args.eventsource,
-                eventsourcecode=args.eventsourcecode)
+                eventsourcecode=args.eventsourcecode,
+                point=point)
             filenames = filenames + outputs
 
 #        # create transparent png file

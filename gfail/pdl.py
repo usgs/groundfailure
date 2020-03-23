@@ -218,13 +218,27 @@ def prepare_pdl_directory(event_dir):
     # Get the event id prefix that is prepended to strip it off later
     all_files = os.listdir(event_dir)
     an_hdf_file = [f for f in all_files if f.endswith('.hdf5')][0]
-    event_prefix = an_hdf_file.split('_')[0]
+    idx = an_hdf_file.find('_201')
+    author = an_hdf_file[:idx].split('_')[-1]
+    idx2 = an_hdf_file.find(author)
+    event_prefix = an_hdf_file[:idx2-1]
 
     # Put geotif files into pdl directory
     geotif_files = [os.path.join(event_dir, a)
                     for a in all_files if a.endswith('.tif')]
     for i in range(len(geotif_files)):
         src = geotif_files[i]
+        tfile = os.path.basename(src)
+        if tfile.startswith(event_prefix):
+            tfile = tfile[len(event_prefix)+1:]
+        dst = os.path.join(pdl_dir, tfile)
+        shutil.copy(src, dst)
+
+    # Put kmz files into pdl directory
+    kmz_files = [os.path.join(event_dir, a)
+                 for a in all_files if a.endswith('.kmz')]
+    for i in range(len(kmz_files)):
+        src = kmz_files[i]
         tfile = os.path.basename(src)
         if tfile.startswith(event_prefix):
             tfile = tfile[len(event_prefix)+1:]
@@ -301,9 +315,11 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(jessee_tree, "caption")
     file_caps.text = 'Nowicki Jessee and others (2017)'
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017.hdf5', type=hdf_mime)
+                     href='jessee_2017_model.kmz', type=gtif_mime)    
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017_model.tif', type=gtif_mime)
+    etree.SubElement(jessee_tree, "format",
+                     href='jessee_2017.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017.png', type=png_mime)
 
@@ -314,9 +330,11 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(zhu2017_tree, "caption")
     file_caps.text = 'Zhu and others (2017)'
     etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017_general.hdf5', type=hdf_mime)
+                     href='zhu_2017_general_model.kmz', type=gtif_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general_model.tif', type=gtif_mime)
+    etree.SubElement(zhu2017_tree, "format",
+                     href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.png', type=png_mime)
 

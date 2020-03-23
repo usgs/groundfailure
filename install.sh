@@ -116,6 +116,7 @@ package_list=(
       "rasterio"
       "scikit-image"
       "scipy"
+      "simplekml"
 )
 
 # Create a conda virtual environment
