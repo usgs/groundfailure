@@ -11,6 +11,7 @@ import gfail.logisticmodel as LM
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
+import tempfile
 #import shutil
 import gfail.utilities as utilities
 
@@ -139,7 +140,7 @@ def test_parseConfigLayers():
 #    makemaps.parseConfigLayers(tmp, config, keys=None)
 
 
-def test_maps():
+def test_maps(tempdir):
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
     ls = LM.LogisticModel(shakefile, modelLS, saveinputs=False)
@@ -161,6 +162,12 @@ def test_maps():
     # logscale=!False
     makemaps.modelMap(maplayers, logscale=[False, False, True, True],
                       savepdf=False, savepng=False)
+    
+    # Test create_kmz
+    makemaps.create_kmz(maplayers['model'], outfile=os.path.join(tempdir.name,
+                        'test.kmz'))
+    makemaps.create_kmz(maplayers2['model'], outfile=os.path.join(tempdir.name,
+                        'test.kmz'), mask=0.003)
 
 
 def test_zoom():
@@ -187,13 +194,10 @@ def test_zoom():
 
 
 if __name__ == "__main__":
-    #td1 = tempfile.TemporaryDirectory()
-    #td1 = os.path.join(datadir, 'temporary1')
-    #if not os.path.exists(td1):
-    #    os.mkdir(td1)
+    td1 = tempfile.TemporaryDirectory()
     test_parseMapConfig()
     test_parseConfigLayers()
-    test_maps()
+    test_maps(td1)
     test_zoom()
     # remove tempdir
     #shutil.rmtree(td1)
