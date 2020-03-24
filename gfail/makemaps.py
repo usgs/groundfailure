@@ -1238,7 +1238,7 @@ def create_kmz(maplayer, outfile, mask='auto'):
     out = make_rgba(maplayer['grid'], mask=mask)
     rgba_img, extent, lmin, lmax, cmap = out
     # Save as a tiff
-    mapfile = os.path.join(temploc.name, '%s.tiff' % typemod)
+    mapfile = os.path.join(temploc.name, '%s.tiff' % typemod.lower())
     plt.imsave(mapfile, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
    
     # Start creating kmz
@@ -1257,7 +1257,7 @@ def create_kmz(maplayer, outfile, mask='auto'):
                        ['event_id'])
         
     prob = L.newgroundoverlay(name=maplayer['label'])
-    prob.icon.href = 'files/%s.tiff' % typemod
+    prob.icon.href = 'files/%s.tiff' % typemod.lower()
     prob.latlonbox.north = extent[3]#
     prob.latlonbox.south = extent[2]
     prob.latlonbox.east = extent[1]
@@ -1267,12 +1267,12 @@ def create_kmz(maplayer, outfile, mask='auto'):
     # Add legend and USGS icon as screen overlays
     size1 = simplekml.Size(x=0.3, xunits=simplekml.Units.fraction)
     leg = L.newscreenoverlay(name='Legend', size=size1)
-    leg.icon.href = 'files/legend_%s.png' % typemod
+    leg.icon.href = 'files/legend_%s.png' % typemod.lower()
     leg.screenxy = simplekml.ScreenXY(x=0.2,y=0.05,xunits=simplekml.Units.fraction,
                                       yunits=simplekml.Units.fraction)
     L.addfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                            os.pardir, 'content',
-                                           'legend_%s.png' % typemod))
+                                           'legend_%s.png' % typemod.lower()))
 
     size2 = simplekml.Size(x=0.15, xunits=simplekml.Units.fraction)
     icon = L.newscreenoverlay(name='USGS', size=size2)
