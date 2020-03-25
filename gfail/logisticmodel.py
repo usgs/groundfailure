@@ -620,8 +620,8 @@ class LogisticModel(object):
         rdict = collections.OrderedDict()
         rdict['model'] = {
             'grid': Pgrid,
-            'label': ('%s %s') % (self.modeltype.capitalize(),
-                                  units5.title()),
+            'label': ('%s - %s') % (self.modeltype.capitalize(),
+                                    units5.title()),
             'type': 'output',
             'description': description
         }
@@ -635,7 +635,7 @@ class LogisticModel(object):
                     Pmaxgrid, self.trimfile, nodata=float('nan'))
             rdict['modelmin'] = {
                 'grid': Pmingrid,
-                'label': ('%s %s (-%0.1f std ground motion)'
+                'label': ('%s - %s (-%0.1f std ground motion)'
                           % (self.modeltype.capitalize(),
                              units5.title(),
                              self.numstd)),
@@ -644,7 +644,7 @@ class LogisticModel(object):
             }
             rdict['modelmax'] = {
                 'grid': Pmaxgrid,
-                'label': ('%s %s (+%0.1f std ground motion)'
+                'label': ('%s - %s (+%0.1f std ground motion)'
                           % (self.modeltype.capitalize(),
                              units5.title(),
                              self.numstd)),

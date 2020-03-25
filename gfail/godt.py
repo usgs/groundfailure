@@ -401,7 +401,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     maplayers['model'] = {
         'grid': PROBgrid,
-        'label': 'Proportion of Area Affected',
+        'label': 'Landslide - Proportion of Area Affected',
         'type': 'output',
         'description': description
     }
@@ -416,13 +416,13 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
                 PROBmaxgrid, trimfile, nodata=float('nan'))
         maplayers['modelmin'] = {
             'grid': PROBmingrid,
-            'label': 'Probability-%1.2fstd' % numstd,
+            'label': 'Landslide Probability-%1.2fstd' % numstd,
             'type': 'output',
             'description': description
         }
         maplayers['modelmax'] = {
             'grid': PROBmaxgrid,
-            'label': 'Probability+%1.2fstd' % numstd,
+            'label': 'Landslide Probability+%1.2fstd' % numstd,
             'type': 'output',
             'description': description
         }

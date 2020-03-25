@@ -6,7 +6,8 @@ import json
 import numpy as np
 import os
 from configobj import ConfigObj
-from gfail.makemaps import setupsync, get_zoomextent, make_rgba, DFCOLORS, DFBINS
+from gfail.makemaps import setupsync, get_zoomextent, make_rgba, DFCOLORS,\
+    DFBINS, make_legend
 from gfail.utilities import parseConfigLayers, get_alert
 from gfail.stats import computeStats
 from mapio.shake import ShakeGrid
@@ -379,7 +380,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
             ls_mod = loadlayers(ls_file)
             filesnippet = 'jessee_2017'
             out = make_rgba(ls_mod['model']['grid'], mask=lsmask,
-                            mercator=mercator)
+                            mercator=mercator, levels=DFBINS,
+                            colorlist=DFCOLORS)
             rgba_img, ls_extent, lmin, lmax, cmap = out
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
             filenames.append(filen)
@@ -411,7 +413,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                     "Specified landslide model result (%s) not found." % fsh)
 
             out = make_rgba(ls_mod['model']['grid'], mask=lsmask,
-                            mercator=mercator)
+                            mercator=mercator, levels=DFBINS,
+                            colorlist=DFCOLORS)
             rgba_img, ls_extent, lmin, lmax, cmap = out
 
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
@@ -434,8 +437,11 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
             filesnippet = 'zhu_2017_general'
+            tempbins = DFBINS
+            tempbins[0] = 0.005
             out = make_rgba(lq_mod['model']['grid'], mask=lqmask,
-                            mercator=mercator)
+                            mercator=mercator, levels=tempbins,
+                            colorlist=DFCOLORS)
             rgba_img, lq_extent, lmin, lmax, cmap = out            
 
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
@@ -458,7 +464,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
         for lqm in lqmodels:
             #if lqm['preferred']:
             filesnippet = lqm['id']
-
+            tempbins = DFBINS
+            tempbins[0] = 0.005
             fsh = '%s.hdf5' % filesnippet
             lq_mod_file = [f2 for f2 in files if fsh in f2]
             if len(lq_mod_file) == 1:
@@ -470,7 +477,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                     % fsh)
 
             out = make_rgba(lq_mod['model']['grid'], mask=lqmask,
-                            mercator=mercator)
+                            mercator=mercator, levels=tempbins,
+                            colorlist=DFCOLORS)
             rgba_img, lq_extent, lmin, lmax, cmap = out
             
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
@@ -488,7 +496,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
             filenames.append(filen)
 
     if legends:
-        lsname, lqname = make_legend(
+        lsname, lqname = make_legends(
             lqmin=lqmask, lsmin=lsmask, outfolder=event_dir)
         filenames.append(lsname)
         filenames.append(lqname)
@@ -785,8 +793,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
     return filenames
 
 
-def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None,
-                orientation='horizontal'):
+def make_legends(lqmin=0.005, lsmin=0.002, outfolder=None,
+                 orientation='horizontal', transparent=True):
     """Make png file of legends to go with pngs using DFCOLORS and DFBINS
 
     Args:
@@ -794,168 +802,36 @@ def make_legend(lqmin=0.005, lsmin=0.002, outfolder=None,
         lsmin (float): same as above for landslides
         outfolder (float): folder to place pngs of legends
         orientation (str): orientation of colorbar, 'horizontal' or 'vertical'
+        transparent (bool): if True, background will be transparent
+
 
     Returns:
         tuple: (lsfilename, lqfilename), locations of files that were created.
 
     """
-    fontsize = 18
 
     # Make liquefaction colorbar
-    DFLABELS = ['< %1.1f%%' % (lqmin * 100.,)]
-    DFBINS[0] = lqmin
-    for db in DFBINS:
-        if db < 0.01:
-            DFLABELS.append('%1.1f' % (db * 100,))
-        else:
-            DFLABELS.append('%1.0f' % (db * 100.,))
-
-    if orientation == 'vertical':
-        # Flip order to darker on top
-        DFLABELS = DFLABELS[::-1]
-        COLORS1 = DFCOLORS[::-1]
-        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1,
-                                 figsize=(3., len(DFCOLORS)-1.7))
-        clearind = len(axes)-1
-        maxind = 0
-    else:
-        COLORS1 = DFCOLORS
-        fig, axes = plt.subplots(1, len(DFCOLORS) + 1,
-                                 figsize=(len(DFCOLORS) + 1.7, 0.8))
-        # DPI = fig.get_dpi()
-        # fig.set_size_inches(440/DPI, 83/DPI)
-        clearind = 0
-        maxind = len(axes)-1
-
-    fig.patch.set_alpha(0.)
-
-    for i, ax in enumerate(axes):
-        ax.set_ylim((0., 1.))
-        ax.set_xlim((0., 1.))
-        # draw square
-        if i == clearind:
-            color1 = COLORS1[0]
-            color1[-1] = 0.  # make completely transparent
-            if orientation == 'vertical':
-                label = DFLABELS[i+1]
-            else:
-                label = DFLABELS[0]
-        else:
-            if orientation == 'vertical':
-                label = '%s-%s%%' % (DFLABELS[i+1], DFLABELS[i])
-                color1 = COLORS1[i]
-            else:
-                label = '%s-%s%%' % (DFLABELS[i], DFLABELS[i+1])
-                color1 = COLORS1[i-1]
-            color1[-1] = 0.8  # make less transparent
-            if i == maxind:
-                label = '> %1.0f%%' % (DFBINS[-2]*100.)
-        ax.set_facecolor(color1)
-        if orientation == 'vertical':
-            ax.text(1.1, 0.5, label, fontsize=fontsize,
-                    rotation='horizontal', va='center')
-        else:
-            ax.set_xlabel(label, fontsize=fontsize,
-                          rotation='horizontal')
-
-        ax.set_yticks([])
-        ax.set_xticks([])
-        plt.setp(ax.get_yticklabels(), visible=False)
-        plt.setp(ax.get_xticklabels(), visible=False)
-
+    binedges = DFBINS
+    binedges[0] = lqmin
     if outfolder is None:
         lqfilename = 'legend_liquefaction.png'
     else:
         lqfilename = os.path.join(outfolder, 'legend_liquefaction.png')
 
-    if orientation == 'vertical':
-        fig.suptitle('Liquefaction\nProbability',
-                     weight='bold', fontsize=fontsize+2)
-        plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
-    else:
-        fig.suptitle('Liquefaction Probability',
-                     weight='bold', fontsize=fontsize+2)
-        # , left=0.01, right=0.99, top=0.99, bottom=0.01)
-        plt.subplots_adjust(wspace=0.1, top=0.6)
-    # plt.tight_layout()
-    fig.savefig(lqfilename, bbox_inches='tight')
+    make_legend(binedges, DFCOLORS, filename=lqfilename,
+                orientation=orientation, title='Liquefaction probability',
+                mask=lqmin, transparent=transparent)
 
     # --------------------------
     # Make landslide legend
-
-    DFLABELS = ['< %1.1f%%' % (lsmin * 100.,)]
-    DFBINS[0] = lsmin
-    for db in DFBINS:
-        if db < 0.01:
-            DFLABELS.append('%1.1f' % (db * 100,))
-        else:
-            DFLABELS.append('%1.0f' % (db * 100.,))
-
-    if orientation == 'vertical':
-        # Flip order to darker on top
-        DFLABELS = DFLABELS[::-1]
-        COLORS1 = DFCOLORS[::-1]
-        fig, axes = plt.subplots(len(DFCOLORS) + 1, 1,
-                                 figsize=(3., len(DFCOLORS)-1.7))
-        clearind = len(axes)-1
-        maxind = 0
-    else:
-        COLORS1 = DFCOLORS
-        fig, axes = plt.subplots(1, len(DFCOLORS) + 1,
-                                 figsize=(len(DFCOLORS) + 1.7, 0.8))
-        clearind = 0
-        maxind = len(axes)-1
-
-    fig.patch.set_alpha(0.)
-
-    for i, ax in enumerate(axes):
-        ax.set_ylim((0., 1.))
-        ax.set_xlim((0., 1.))
-        # draw square
-        if i == clearind:
-            color1 = COLORS1[0]
-            color1[-1] = 0.  # make completely transparent
-            if orientation == 'vertical':
-                label = DFLABELS[i+1]
-            else:
-                label = DFLABELS[0]
-        else:
-            if orientation == 'vertical':
-                label = '%s-%s%%' % (DFLABELS[i+1], DFLABELS[i])
-                color1 = COLORS1[i]
-            else:
-                label = '%s-%s%%' % (DFLABELS[i], DFLABELS[i+1])
-                color1 = COLORS1[i-1]
-            color1[-1] = 0.8  # make less transparent
-            if i == maxind:
-                label = '> %1.0f%%' % (DFBINS[-2]*100.)
-        ax.set_facecolor(color1)
-        if orientation == 'vertical':
-            ax.text(1.1, 0.5, label, fontsize=fontsize,
-                    rotation='horizontal', va='center')
-        else:
-            ax.set_xlabel(label, fontsize=fontsize, rotation='horizontal')
-
-        ax.set_yticks([])
-        ax.set_xticks([])
-        plt.setp(ax.get_yticklabels(), visible=False)
-        plt.setp(ax.get_xticklabels(), visible=False)
 
     if outfolder is None:
         lsfilename = 'legend_landslide.png'
     else:
         lsfilename = os.path.join(outfolder, 'legend_landslide.png')
 
-    if orientation == 'vertical':
-        fig.suptitle('Landslide\nProbability',
-                     weight='bold', fontsize=fontsize+2)
-        plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
-    else:
-        fig.suptitle('Landslide Probability',
-                     weight='bold', fontsize=fontsize+2)
-        # , left=0.01, right=0.99, top=0.99, bottom=0.01)
-        plt.subplots_adjust(wspace=0.1, top=0.6)
-
-    fig.savefig(lsfilename, bbox_inches='tight')
+    make_legend(DFBINS, DFCOLORS, filename=lqfilename,
+                orientation=orientation, title='Landslide probability',
+                mask=lsmin, transparent=transparent)
 
     return lsfilename, lqfilename

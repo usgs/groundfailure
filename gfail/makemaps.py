@@ -1199,10 +1199,10 @@ def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
     return sync, colorlist, lim1
 
 
-def create_kmz(maplayer, outfile, mask='auto'):
+def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     """
     Create kmz files of models
-    
+
     Args:
         maplayer (dict): Dictionary of one model result formatted like:
 
@@ -1213,34 +1213,44 @@ def create_kmz(maplayer, outfile, mask='auto'):
                     'label': 'label for colorbar and top line of subtitle',
                     'type': 'output or input to model',
                     'description': 'description for subtitle'
-                }    
+                }
         outfile (str): File extension
-        mask (float): make all cells below this value transparent, if 'auto',
-            will automatically choose default mask level for the ground failure
-            type of grids
-    
+        mask (float): make all cells below this value transparent
+        levels (array): list of bin edges for each color, must be same length
+        colorlist (array): list of colors for each bin, should be length one less than levels
+
     Returns:
         kmz file
     """
+    # Figure out lims
+    if levels is None:
+        levels = DFBINS
+    if colorlist is None:
+        colorlist = DFCOLORS
+
+    if len(levels)-1 != len(colorlist):
+        raise Exception('len(levels) must be one longer than len(colorlist)')
+
     # Make place to put temporary files
     temploc = tempfile.TemporaryDirectory()
-    # Figure out what kind of model this event is
-    typemod = maplayer['description']['parameters']['modeltype']
-    if mask == 'auto':
-        if 'landslide' in typemod.lower():
-            mask = 0.002
-        elif 'liquefaction' in typemod.lower():
-            mask = 0.005
-        else:
-            mask = None
+
+    # Figure out file names
+    name, ext = os.path.splitext(outfile)
+    basename = os.path.basename(name)
+    if ext != '.kmz':
+        ext = '.kmz'
+    filename = '%s%s' % (name, ext)
+    mapfile = os.path.join(temploc.name, '%s.tiff' % basename)
+    legshort = '%s_legend.png' % basename
+    legfile = os.path.join(temploc.name, legshort)
 
     # Make colored geotiff
-    out = make_rgba(maplayer['grid'], mask=mask)
+    out = make_rgba(maplayer['grid'], mask=mask,
+                    levels=levels, colorlist=colorlist)
     rgba_img, extent, lmin, lmax, cmap = out
     # Save as a tiff
-    mapfile = os.path.join(temploc.name, '%s.tiff' % typemod.lower())
     plt.imsave(mapfile, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
-   
+
     # Start creating kmz
     L = simplekml.Kml()
 
@@ -1253,43 +1263,40 @@ def create_kmz(maplayer, outfile, mask='auto'):
     doc.lookat.altitude = 0.
     doc.lookat.range = (boundaries1['ymax']-boundaries1['ymin']) * 111. * 1000.  # dist in m from point
     doc.description = 'USGS near-real-time earthquake-triggered %s model for \
-                       event id %s' % (typemod, maplayer['description']
-                       ['event_id'])
-        
+                       event id %s' % (maplayer['description']['parameters']\
+                       ['modeltype'], maplayer['description']['event_id'])
+
     prob = L.newgroundoverlay(name=maplayer['label'])
-    prob.icon.href = 'files/%s.tiff' % typemod.lower()
-    prob.latlonbox.north = extent[3]#
+    prob.icon.href = 'files/%s.tiff' % basename
+    prob.latlonbox.north = extent[3]
     prob.latlonbox.south = extent[2]
     prob.latlonbox.east = extent[1]
     prob.latlonbox.west = extent[0]
     L.addfile(mapfile)
-    
+
     # Add legend and USGS icon as screen overlays
+    # Make legend
+    make_legend(levels, colorlist, filename=legfile, title=maplayer['label'])
+    
     size1 = simplekml.Size(x=0.3, xunits=simplekml.Units.fraction)
     leg = L.newscreenoverlay(name='Legend', size=size1)
-    leg.icon.href = 'files/legend_%s.png' % typemod.lower()
-    leg.screenxy = simplekml.ScreenXY(x=0.2,y=0.05,xunits=simplekml.Units.fraction,
+    leg.icon.href = 'files/%s' % legshort
+    leg.screenxy = simplekml.ScreenXY(x=0.2, y=0.05, xunits=simplekml.Units.fraction,
                                       yunits=simplekml.Units.fraction)
-    L.addfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                           os.pardir, 'content',
-                                           'legend_%s.png' % typemod.lower()))
+    L.addfile(legfile)
 
     size2 = simplekml.Size(x=0.15, xunits=simplekml.Units.fraction)
     icon = L.newscreenoverlay(name='USGS', size=size2)
     icon.icon.href = 'files/USGS_ID_white.png'
-    icon.screenxy = simplekml.ScreenXY(x=0.8,y=0.95,xunits=simplekml.Units.fraction,
+    icon.screenxy = simplekml.ScreenXY(x=0.8, y=0.95, xunits=simplekml.Units.fraction,
                                        yunits=simplekml.Units.fraction)
     L.addfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                                           os.pardir, 'content',
-                                           'USGS_ID_white.png'))
-    name, ext = os.path.splitext(outfile)
-    if ext != '.kmz':
-        ext = '.kmz'
-    filename = '%s%s' % (name, ext)
+                           os.pardir, 'content', 'USGS_ID_white.png'))
+
     L.savekmz(filename)
     return filename
 
-    
+
 def get_zoomextent(grid, propofmax=0.3):
     """
     Get the extent that contains all values with probabilities exceeding
@@ -1348,15 +1355,21 @@ def get_zoomextent(grid, propofmax=0.3):
     return boundaries1   
 
 
-def make_rgba(grid2D, mask=None, levels=DFBINS, colors1=DFCOLORS,
+def make_rgba(grid2D, levels, colorlist, mask=None,
               mercator=False):
     """
     Make an rgba (red, green, blue, alpha) grid out of raw data values and
     provide extent and limits needed to save as an image file
     
     Args:
-        INSERT
-        
+        grid2D: Mapio Grid2D object of result to mape 
+        levels (array): list of bin edges for each color, must be same length
+        colorlist (array): list of colors for each bin, should be length one
+            less than levels
+        mask (float): mask all values below this value
+        mercator (bool): project to web mercator (needed for leaflet, not
+                 for kmz)
+
     Returns:
         rgba_img, extent, lmin, lmax, cmap
     """
@@ -1375,7 +1388,7 @@ def make_rgba(grid2D, mask=None, levels=DFBINS, colors1=DFCOLORS,
     lmin = levels[0]
     lmax = levels[-1]
     data2 = np.clip(data1, lmin, lmax)
-    cmap = mpl.colors.ListedColormap(colors1)
+    cmap = mpl.colors.ListedColormap(colorlist)
     norm = mpl.colors.BoundaryNorm(levels, cmap.N)
     data2 = np.ma.array(data2, mask=np.isnan(data1))
     rgba_img = cmap(norm(data2))
@@ -1384,6 +1397,97 @@ def make_rgba(grid2D, mask=None, levels=DFBINS, colors1=DFCOLORS,
             rgba_img, (extent[2], extent[3]), origin='upper')
 
     return rgba_img, extent, lmin, lmax, cmap
+
+
+def make_legend(levels, colorlist, filename=None, orientation='horizontal',
+                title=None, transparent=False):
+    """Make legend file
+
+    Args:
+
+        levels (array): list of bin edges for each color, must be same length
+        colorlist (array): list of colors for each bin, should be length one
+            less than levels
+        filename (str): File extension of legend file
+        orientation (str): orientation of colorbar, 'horizontal' or 'vertical'
+        title (str): title of legend (usually units)
+        transparent (bool): if True, background will be transparent
+
+    Returns:
+        figure of legend
+
+    """
+    fontsize = 16
+    labels = ['< %1.1f%%' % (levels[0] * 100.,)]
+    for db in levels:
+        if db < 0.01:
+            labels.append('%1.1f' % (db * 100,))
+        else:
+            labels.append('%1.0f' % (db * 100.,))
+
+    if orientation == 'vertical':
+        # Flip order to darker on top
+        labels = labels[::-1]
+        colors1 = colorlist[::-1]
+        fig, axes = plt.subplots(len(colors1) + 1, 1,
+                                 figsize=(3., len(colors1)-1.7))
+        clearind = len(axes)-1
+        maxind = 0
+    else:
+        colors1 = colorlist
+        fig, axes = plt.subplots(1, len(colorlist) + 1,
+                                 figsize=(len(colorlist) + 1.7, 0.8))
+        # DPI = fig.get_dpi()
+        # fig.set_size_inches(440/DPI, 83/DPI)
+        clearind = 0
+        maxind = len(axes)-1
+
+    for i, ax in enumerate(axes):
+        ax.set_ylim((0., 1.))
+        ax.set_xlim((0., 1.))
+        # draw square
+        if i == clearind:
+            color1 = colors1[0]
+            color1[-1] = 0.  # make completely transparent
+            if orientation == 'vertical':
+                label = labels[i+1]
+            else:
+                label = labels[0]
+        else:
+            if orientation == 'vertical':
+                label = '%s-%s%%' % (labels[i+1], labels[i])
+                color1 = colors1[i]
+            else:
+                label = '%s-%s%%' % (labels[i], labels[i+1])
+                color1 = colors1[i-1]
+            color1[-1] = 0.8  # make less transparent
+            if i == maxind:
+                label = '> %1.0f%%' % (levels[-2]*100.)
+        ax.set_facecolor(color1)
+        if orientation == 'vertical':
+            ax.text(1.1, 0.5, label, fontsize=fontsize,
+                    rotation='horizontal', va='center')
+        else:
+            ax.set_xlabel(label, fontsize=fontsize,
+                          rotation='horizontal')
+
+        ax.set_yticks([])
+        ax.set_xticks([])
+        plt.setp(ax.get_yticklabels(), visible=False)
+        plt.setp(ax.get_xticklabels(), visible=False)
+
+    if orientation == 'vertical':
+        fig.suptitle(title.title(), weight='bold', fontsize=fontsize+2)
+        plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+    else:
+        fig.suptitle(title.title(), weight='bold', fontsize=fontsize+2)
+        # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+        plt.subplots_adjust(wspace=0.1, top=0.6)
+    # plt.tight_layout()
+    if filename is not None:
+        fig.savefig(filename, bbox_inches='tight', transparent=transparent)
+    else:
+        plt.show()
 
 
 if __name__ == '__main__':

@@ -365,7 +365,7 @@ def run_gfail(args):
                                              % (filename, keyS))
                         fileg = os.path.join(outfolder, '%s_%s.tif'
                                              % (filename, keyS))
-    
+
                         GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
                         cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
                             filen, fileg)
@@ -375,11 +375,21 @@ def run_gfail(args):
                         os.remove(fileh)
                         filenames.append(fileg)
                     if kmz:
-                        filen = os.path.join(outfolder, '%s_%s.kmz'
-                                             % (filename, keyS))
-                        filek = create_kmz(maplayers[key], filen)
-                        filenames.append(filek)
-                        
+                        plotorder, logscale, lims, colormaps, maskthresh = \
+                            parseConfigLayers(maplayers, conf, keys=['model'])
+                        maxprob = np.nanmax(maplayers[key]['grid'].getData())
+                        if maskthresh is None:
+                            maskthresh = [0.]
+                        if maxprob >= maskthresh[0]:
+                            filen = os.path.join(outfolder, '%s_%s.kmz'
+                                                 % (filename, keyS))
+                            filek = create_kmz(maplayers[key], filen,
+                                               mask=maskthresh[0],
+                                               levels=lims[0])
+                            filenames.append(filek)
+                        else:
+                            print('No unmasked pixels present, skipping kmz '
+                                  'file creation')
 
             if args.make_webpage:
                 # Compile into list of results for later
