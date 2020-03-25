@@ -18,6 +18,8 @@ source $prof
 
 # Name of new environment (must also change this in .yml files)
 VENV=gf
+# Python version
+py_ver=3.6
 
 # create a matplotlibrc file with the non-interactive backend "Agg" in it.
 if [ ! -d "$matplotlibdir" ]; then
@@ -83,7 +85,7 @@ if [ $? -ne 0 ]; then
     echo ". $_CONDA_ROOT/etc/profile.d/conda.sh" >> $prof
 fi
 
-env_file=environment.yml
+#env_file=environment.yml
 
 # Start in conda base environment
 echo "Activate base virtual environment"
@@ -92,40 +94,36 @@ conda activate base
 # Remove existing shakemap environment if it exists
 conda remove -y -n $VENV --all
 
+# Package list:
+package_list=(
+      "python=$py_ver"
+      "basemap"
+      "basemap-data-hires"
+      "configobj"
+      "descartes"
+      "fiona"
+      "folium"
+      "gdal"
+      "impactutils"
+      "libcomcat"
+      "mapio"
+      "matplotlib-base"
+      "numpy"
+      "pytables"
+      "pytest"
+      "pytest-cov"
+      "pytest-faulthandler"
+      "rasterio"
+      "scikit-image"
+      "scipy"
+      "simplekml"
+)
+
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment"
 # conda env create -f $env_file --force
-conda create -y --force -n $VENV -c conda-forge python=3.6 \
-      basemap \
-      basemap-data-hires \
-      branca \
-      descartes \
-      configobj \
-      fiona \
-      folium=0.5.0 \
-      gdal \
-      h5py \
-      impactutils \
-      libcomcat \
-      lockfile \
-      mapio \
-      markdown \
-      matplotlib=2.2.3 \
-      numpy \
-      obspy \
-      pandas \
-      pelican \
-      pytables \
-      pytest \
-      pytest-cov \
-      pytest-faulthandler \
-      rasterio \
-      scipy \
-      scikit-image \
-      scikit-learn
-
-
-
+conda create -y -n $VENV -c defaults -c conda-forge \
+      --strict-channel-priority ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
 # Clean up zip files we've downloaded

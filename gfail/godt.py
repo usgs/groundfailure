@@ -6,7 +6,7 @@ mechanistic landslide models.
 
 # stdlib imports
 import os.path
-#import warnings
+# import warnings
 import collections
 import tempfile
 import shutil
@@ -49,15 +49,15 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             * ``'RS_PGA_PGV'`` -- PGA and PGV-based model, equation 6
               from Saygili and Rathje (2008).
 
-        bounds (dict): Optional dictionary with keys 'xmin', 'xmax', 'ymin', 'ymax'
-            that defines a subset of the shakemap area to compute.
+        bounds (dict): Optional dictionary with keys 'xmin', 'xmax', 'ymin',
+            'ymax' that defines a subset of the shakemap area to compute.
         slopediv (float): Divide slope by this number to get slope in degrees
             (Verdin datasets need to be divided by 100).
         codiv (float): Divide cohesion input layer by this number
             (For Godt method, need to divide by 10 because that is how it was
             calibrated).
-        numstd (float): Number of (+/-) standard deviations to use if uncertainty
-            is computed (uncertfile must be supplied).
+        numstd (float): Number of (+/-) standard deviations to use if
+            uncertainty is computed (uncertfile must be supplied).
         trimfile (str): shapefile of earth's land masses to trim offshore areas
             of model
 
@@ -76,7 +76,8 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
                                 'units': 'units of output',
                                 'shakemap': 'information about shakemap used',
                                 'event_id': 'shakemap event id',
-                                'parameters': 'dictionary of model parameters used'
+                                'parameters': 'dictionary of model parameters
+                                               used'
 
                 }
             }
@@ -87,7 +88,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
              shakefile (Shakemap filepath) -- these cause program to end.
 
     """
-    #TODO:
+    # TODO:
     #    - Add 'all' -- averages Dn from all four equations, add term to
     #      convert PGA and PGV to Ia and use other equations, add Ambraseys and
     #      Menu (1988) option.
@@ -114,7 +115,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     # Parse config
     try:    # May want to add error handling so if refs aren't given, just
-            # includes unknown
+        # includes unknown
         slopefilepath = config['godt_2008']['layers']['slope']['filepath']
         slopeunits = config['godt_2008']['layers']['slope']['units']
         cohesionfile = config['godt_2008']['layers']['cohesion']['file']
@@ -400,7 +401,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
 
     maplayers['model'] = {
         'grid': PROBgrid,
-        'label': 'Proportion of Area Affected',
+        'label': 'Landslide - Proportion of Area Affected',
         'type': 'output',
         'description': description
     }
@@ -415,13 +416,13 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
                 PROBmaxgrid, trimfile, nodata=float('nan'))
         maplayers['modelmin'] = {
             'grid': PROBmingrid,
-            'label': 'Probability-%1.2fstd' % numstd,
+            'label': 'Landslide Probability-%1.2fstd' % numstd,
             'type': 'output',
             'description': description
         }
         maplayers['modelmax'] = {
             'grid': PROBmaxgrid,
-            'label': 'Probability+%1.2fstd' % numstd,
+            'label': 'Landslide Probability+%1.2fstd' % numstd,
             'type': 'output',
             'description': description
         }
@@ -453,7 +454,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         }
         maplayers['max slope'] = {
             'grid': GDALGrid(slopestack[:, :, -1], sampledict),
-            'label': 'Maximum slope ($^\circ$)',
+            'label': r'Maximum slope ($^\circ$)',
             'type': 'input',
             'description': {
                 'units': 'degrees',
@@ -471,7 +472,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         }
         maplayers['friction angle'] = {
             'grid': GDALGrid(friction[:, :, 0], sampledict),
-            'label': 'Friction angle ($^\circ$)',
+            'label': r'Friction angle ($^\circ$)',
             'type': 'input',
             'description': {
                 'units': 'degrees',

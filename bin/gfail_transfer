@@ -3,6 +3,8 @@
 
 # stdlib imports
 import argparse
+import os
+from configobj import ConfigObj
 
 # local imports
 from gfail.transfer import gf_transfer
@@ -19,21 +21,32 @@ def main(event_dir, pdl_conf, dry_run, version):
         version (int): version of event being sent
     """
 
-    success = gf_transfer(event_dir, version=version, pdl_config=pdl_conf, dry_run=dry_run)
+    success = gf_transfer(event_dir, version=version, pdl_config=pdl_conf,
+                          dry_run=dry_run)
 
 
 if __name__ == '__main__':
     desc = '''
     Transfer product to comcat.
     '''
+    # See if there is a default path file, load in if there is 
+    defaults = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    cfile = None
+
+    if os.path.exists(defaults):
+        D = ConfigObj(defaults)
+        for key in D:
+            if key == 'pdl_config':
+                cfile = D[key]
+
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('-e', '--event_dir',
                         help='Directory containing ground failure results for '
                              'this event.',
                         required=True)
-    parser.add_argument('-c', '--config',
+    parser.add_argument('-c', '--config', default=cfile,
                         help='Path to PDL config file.',
-                        required=True)
+                        required=False)
     parser.add_argument('-d', '--dryrun',
                         action='store_true', default=False,
                         help='Do not actually call the PDL command.',

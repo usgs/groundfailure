@@ -218,7 +218,10 @@ def prepare_pdl_directory(event_dir):
     # Get the event id prefix that is prepended to strip it off later
     all_files = os.listdir(event_dir)
     an_hdf_file = [f for f in all_files if f.endswith('.hdf5')][0]
-    event_prefix = an_hdf_file.split('_')[0]
+    idx = an_hdf_file.find('_201')
+    author = an_hdf_file[:idx].split('_')[-1]
+    idx2 = an_hdf_file.find(author)
+    event_prefix = an_hdf_file[:idx2-1]
 
     # Put geotif files into pdl directory
     geotif_files = [os.path.join(event_dir, a)
@@ -231,9 +234,19 @@ def prepare_pdl_directory(event_dir):
         dst = os.path.join(pdl_dir, tfile)
         shutil.copy(src, dst)
 
+    # Put kmz files into pdl directory
+    kmz_files = [os.path.join(event_dir, a)
+                 for a in all_files if a.endswith('.kmz')]
+    for i in range(len(kmz_files)):
+        src = kmz_files[i]
+        tfile = os.path.basename(src)
+        if tfile.startswith(event_prefix):
+            tfile = tfile[len(event_prefix)+1:]
+        dst = os.path.join(pdl_dir, tfile)
+        shutil.copy(src, dst)
+
     # Also the png files (default models for website interactive map,
     # not static maps)
-    #png_files = ['jessee_2017.png', 'zhu_2017_general.png']
     png_files = [os.path.join(event_dir, a)
                  for a in all_files if a.endswith('.png')]
     for i in range(len(png_files)):
@@ -302,9 +315,11 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(jessee_tree, "caption")
     file_caps.text = 'Nowicki Jessee and others (2017)'
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017.hdf5', type=hdf_mime)
+                     href='jessee_2017_model.kmz', type=gtif_mime)    
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017_model.tif', type=gtif_mime)
+    etree.SubElement(jessee_tree, "format",
+                     href='jessee_2017.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017.png', type=png_mime)
 
@@ -315,15 +330,18 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(zhu2017_tree, "caption")
     file_caps.text = 'Zhu and others (2017)'
     etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017_general.hdf5', type=hdf_mime)
+                     href='zhu_2017_general_model.kmz', type=gtif_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general_model.tif', type=gtif_mime)
+    etree.SubElement(zhu2017_tree, "format",
+                     href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.png', type=png_mime)
 
     # Godt section
-    godt_tree = etree.SubElement(
-        contents, "file", title='Alternative Landslide Model 1 (not displayed)')
+    godt_tree = etree.SubElement(contents, "file",
+                                 title='Alternative Landslide Model 1 \
+                                 (not displayed)')
     file_caps = etree.SubElement(godt_tree, "caption")
     file_caps.text = 'Godt and others (2008)'
     etree.SubElement(godt_tree, "format",
@@ -333,7 +351,8 @@ def prepare_pdl_directory(event_dir):
 
     # Nowicki section
     now_tree = etree.SubElement(
-        contents, "file", title='Alternative Landslide Model 2 (not displayed)')
+        contents, "file", title='Alternative Landslide Model 2 \
+        (not displayed)')
     file_caps = etree.SubElement(now_tree, "caption")
     file_caps.text = 'Nowicki and others (2014)'
     etree.SubElement(now_tree, "format",
@@ -343,8 +362,8 @@ def prepare_pdl_directory(event_dir):
 
     # zhu 2015 section
     zhu2015_tree = etree.SubElement(
-        contents, "file", title="Alternative Liquefaction Model (not displayed)",
-        id='zhu_2015')
+        contents, "file", title="Alternative Liquefaction Model \
+        (not displayed)", id='zhu_2015')
     file_caps = etree.SubElement(zhu2015_tree, "caption")
     file_caps.text = 'Zhu and others (2015)'
     etree.SubElement(zhu2015_tree, "format",

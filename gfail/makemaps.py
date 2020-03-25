@@ -5,20 +5,16 @@ import os
 import gc
 import math
 import glob
-import copy
 import matplotlib as mpl
-from matplotlib.colors import LightSource, LogNorm, Normalize
-import re
-from matplotlib.colorbar import ColorbarBase
-import matplotlib.colors as colors
-import shutil
+from matplotlib.colors import LightSource, LogNorm
+import tempfile
 import collections
 from datetime import datetime
-#from configobj import ConfigObj
+
+# from configobj import ConfigObj
 
 # third party imports
 import matplotlib.cm as cm
-import branca.colormap as cmb
 import numpy as np
 import matplotlib.pyplot as plt
 import fiona
@@ -30,14 +26,9 @@ from mpl_toolkits.basemap import maskoceans
 from matplotlib.patches import Polygon, Rectangle
 from skimage.measure import block_reduce
 from descartes import PolygonPatch
-import shapefile
-import folium
-from folium import plugins, GeoJson
-from folium.features import GeoJson as GeoJson1
-from folium.features import RectangleMarker
-from mapio.shake import ShakeGrid
-from impactutils.io.cmd import get_command_output
-from bs4 import BeautifulSoup
+import matplotlib.colors as colors
+import simplekml
+from folium.utilities import mercator_transform
 
 # local imports
 from mapio.gmt import GMTGrid
@@ -45,8 +36,7 @@ from mapio.gdal import GDALGrid
 from mapio.geodict import GeoDict
 from mapio.grid2d import Grid2D
 from mapio.basemapcity import BasemapCities
-from gfail.stats import computeStats
-from gfail.utilities import get_event_comcat, parseConfigLayers
+from mapio.shake import ShakeGrid
 
 
 # Make fonts readable and recognizable by illustrator
@@ -54,6 +44,26 @@ mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = \
     ['Helvetica', 'Arial', 'Bitstream Vera Serif', 'sans-serif']
 plt.switch_backend('agg')
+
+# # hex versions:
+# DFCOLORS = [
+#     '#efefb34D',  # 30% opaque 4D
+#     '#e5c72f66',  # 40% opaque 66
+#     '#ea720780',  # 50% opaque 80
+#     '#c0375c99',  # 60% opaque 99
+#     '#5b28b299',  # 60% opaque 99
+#     '#1e1e6499'   # 60% opaque 99
+# ]
+DFCOLORS = [
+    [0.94, 0.94, 0.70, 0.7],
+    [0.90, 0.78, 0.18, 0.7],
+    [0.92, 0.45, 0.03, 0.7],
+    [0.75, 0.22, 0.36, 0.7],
+    [0.36, 0.16, 0.70, 0.7],
+    [0.12, 0.12, 0.39, 0.7]
+]
+
+DFBINS = [0.002, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 
 def modelMap(grids, shakefile=None,
@@ -64,8 +74,8 @@ def modelMap(grids, shakefile=None,
              isScenario=False, roadfolder=None, topofile=None, cityfile=None,
              oceanfile=None, roadcolor='#6E6E6E', watercolor='#B8EEFF',
              countrycolor='#177F10', outputdir=None, outfilename=None,
-             savepdf=True, savepng=True, showplots=False, printparam=False, ds=True,
-             dstype='mean', upsample=False):
+             savepdf=True, savepng=True, showplots=False, printparam=False,
+             ds=True, dstype='mean', upsample=False):
     """
     Create static maps of mapio grid layers (e.g. liquefaction or
     landslide models with their input layers).
@@ -124,8 +134,8 @@ def modelMap(grids, shakefile=None,
             estimate the limits, when an array is specified but the scale
             type is continuous, vmin will be set to min(array) and vmax will
             be set to max(array).
-        logscale (*): boolean to apply log colorbar to all plotted layers or list
-            of booleans corresponding to each layer in grid.
+        logscale (*): boolean to apply log colorbar to all plotted layers or
+            list of booleans corresponding to each layer in grid.
         ALPHA (float): Transparency for mapping, if there is a hillshade that
             will plot below each layer, it is recommended to set this to at
             least 0.7.
@@ -164,16 +174,16 @@ def modelMap(grids, shakefile=None,
 
     Returns:
         tuple: (newgrids, filenames), where:
-            * newgrids: list of downsampled and trimmed version of input grids. If
-                no modification was needed for plotting, this will be identical to grids
-                but without the metadata.
+            * newgrids: list of downsampled and trimmed version of input grids.
+                If no modification was needed for plotting, this will be
+                identical to grids but without the metadata.
             * filenames: a list of filenames that were created
 
     """
     # TODO:
-    #     - Change so that all input layers do not have to have the same bounds,
-    #       test plotting multiple probability layers, and add option so that if
-    #       PDF and PNG aren't output, opens plot on screen using plt.show().
+    #     Change so that all input layers do not have to have the same bounds,
+    #     test plotting multiple probability layers, and add option so that if
+    #     PDF and PNG aren't output, opens plot on screen using plt.show().
 
     if suptitle is None:
         suptitle = ' '
@@ -969,1248 +979,6 @@ def modelMap(grids, shakefile=None,
     return newgrids, filenames
 
 
-def interactiveMap(grids, shakefile=None, plotorder=None,
-                   inventory_shapefile=None, maskthreshes=None, colormaps=None,
-                   scaletype='continuous', lims=None, logscale=False,
-                   ALPHA=0.8, isScenario=False, outputdir=None,
-                   outfilename=None, tiletype='Stamen Terrain',
-                   smcontourfile=None, faultfile=None, separate=True,
-                   onkey=None, sepcolorbar=False, floatcb=True,
-                   savefiles=True, mapid=None, clear_zero=False, sync=False):
-    """
-    This function creates interactive html plots of mapio grid layers
-    (e.g. liquefaction or landslide models with their input layers).
-
-    Args:
-        grids (dict): Dictionary of N layers and metadata formatted like:
-
-            .. code-block:: python
-
-                maplayers['layer name']=
-                {
-                    'grid': mapio grid2D object,
-                    'label': 'label for colorbar and top line of subtitle',
-                    'type': 'output or input to model',
-                    'description': 'detailed description for subtitle'
-                }
-
-            Layer names must be unique.
-        shakefile (str): Optional ShakeMap file (url or full file path) to
-            extract information for labels and folder names.
-        plotorder (list): List of keys describing the order to plot the grids,
-            if None and grids is an ordered dictionary, it will use the order
-            of the dictionary, otherwise it will choose order which may be
-            somewhat random but it will always put a probability grid first.
-        inventory_shapefile (str): Optional path to inventory file.
-        maskthreshes (array): N x 1 array or list of lower thresholds for
-            masking corresponding to order in plotorder or order of OrderedDict
-            if plotorder is None. If grids is not an ordered dict and plotorder
-            is not specified, this will not work right. If None (default),
-            nothing will be masked.
-        colormaps (list): List of strings of matplotlib colormaps
-            (e.g. cm.autumn_r) corresponding to plotorder or order of
-            dictionary if plotorder is None. The list can contain both strings
-            and None e.g. colormaps = ['cm.autumn', None, None, 'cm.jet'] and
-            None's will default to default colormap.
-        scaletype (str): Type of scale for plotting, 'continuous' or 'binned'.
-            Will be reflected in colorbar.
-        lims (list): None or Nx1 list of tuples or numpy arrays corresponding
-            to plotorder defining the limits for saturating the colorbar
-            (vmin, vmax) if scaletype is continuous or the bins to use (clev)
-            if scaletype if binned. The list can contain tuples, arrays, and
-            Nones, e.g. lims = [(0., 10.), None, (0.1, 1.5),
-            np.linspace(0., 1.5, 15)]. When None is specified, the program will
-            estimate the limits, when an array is specified but the scale
-            type is continuous, vmin will be set to min(array) and vmax will
-            be set to max(array).
-        logscale (list): None, single boolean value, or Nx1 list of booleans
-            defining whether to use a log scale or not for each layer.
-        alpha (float): Transparency for mapping, if there is a hillshade that
-            will plot below each layer, it is recommended to set this to at
-            least 0.7.
-        isScenario (bool): Is this a scenario?
-        outputdir (str): File path for outputting figures, if edict is defined,
-            a subfolder based on the event id will be created in this folder.
-            If None, will use current directory.
-        outfilename (str): File name for output (without any file extensions).
-        tiletype (str): Folium tile type:
-            - "OpenStreetMap"
-            - "Mapbox Bright" (Limited levels of zoom for free tiles)
-            - "Mapbox Control Room" (Limited levels of zoom for free tiles)
-            - "Stamen" (Terrain, Toner, and Watercolor)
-            - "Cloudmade" (Must pass API key)
-            - "Mapbox" (Must pass API key)
-            - "CartoDB" (positron and dark_matter)
-        separate (bool): If True, will make a separate html file for each map
-            (default), if False, all layers will be on same map.
-        onkey (str): If separate=False, key of model layer that should be the
-            active layer initially. If None (default), the first model will be
-            on by default.
-        sepcolorbar (bool): If True, will make separate colorbar figure,
-            if False (default), will embed simple colorbar
-        floatcb (bool): If True (default) and sepcolobar is True, will float
-            the colorbar on the map.
-        savefiles(bool): If True (default), will save map as html file,
-            otherwise will just return map object
-        mapid (str): map id, used only for syncing two of these interactive maps
-            to each other
-        clear_zero (bool): If True, will make all zero values clear.
-            default is False.
-        sync: If False, each map will use it's own colorbar.
-            If a grid layer shortref is specified (e.g. 'Nowicki and others (2014)'),
-            all maps will have colorbars synced to the colors of the one
-            specified, but they must all have the same number of bins
-
-    Returns:
-        * Interactive plot (html file) of all grids listed in plotorder
-    """
-    if separate and sepcolorbar:
-        sepcolorbar = False
-
-    plt.ioff()
-    clear_color = [0, 0, 0, 0.0]
-    if plotorder is None:
-        if type(grids) == list:
-            plotorder = [m.keys() for m in grids]
-        else:
-            plotorder = grids.keys()
-
-    if type(logscale) != list:
-        logscale = np.repeat(logscale, len(plotorder))
-
-    if lims is None:
-        lims = np.repeat(None, len(plotorder))
-    elif len(lims) != len(plotorder):
-        print('length of lims not equal to length of plotorder,\
-              setting lims as None for all layers')
-        lims = np.repeat(None, len(plotorder))
-
-    if maskthreshes is None:
-        maskthreshes = np.repeat(None, len(plotorder))
-    elif len(maskthreshes) != len(plotorder):
-        print('length of maskthreshes not equal to length of plotorder,\
-              setting maskthreshes as None for all layers')
-        maskthreshes = np.repeat(None, len(plotorder))
-
-    defaultcolormap = cm.CMRmap_r
-
-    if colormaps is None:
-        colormaps = np.repeat(defaultcolormap, len(plotorder))
-    elif len(colormaps) != len(plotorder):
-        print('length of colormaps not equal to length of plotorder,\
-              setting colormaps to default or %s for all layers' % defaultcolormap)
-        colormaps = np.repeat(defaultcolormap, len(plotorder))
-
-    if shakefile is not None:
-        edict = ShakeGrid.load(shakefile, adjust='res').getEventDict()
-        temp = ShakeGrid.load(shakefile, adjust='res').getShakeDict()
-        edict['eventid'] = temp['shakemap_id']
-        edict['version'] = temp['shakemap_version']
-        if 'scenario' in temp['shakemap_event_type'].lower():
-            isScenario = True
-    else:
-        edict = None
-
-    # Get output file location
-    if outputdir is None:
-        print('No output location given, using current directory '
-              'for outputs\n')
-        outputdir = os.getcwd()
-        if edict is not None:
-            outfolder = os.path.join(outputdir, edict['event_id'])
-        else:
-            outfolder = outputdir
-    else:
-        outfolder = outputdir
-
-    if not os.path.isdir(outfolder):
-        os.makedirs(outfolder)
-
-    #TODO ADD IN DOWNSAMPLING CODE FROM MODELMAP HERE - OR CREATE TILES?
-    filenames = []
-    maps = []
-    images = []
-    cbars = []
-    removelater = []
-
-    # Get reference colorbar, if specified
-    if sync:
-        sync, colorlist, reflims = setupsync(sync, plotorder, lims, colormaps,
-                                             defaultcolormap, logscale=logscale)
-        if sync:
-            if not sepcolorbar:
-                sepcolorbar = True
-                print('Changing to separate colorbar, embedded colorbar not implemented for sync')
-            scaletype = 'binned'  # scaletype has to be binned for sync
-    else:
-        sync = False
-        colorlist = None
-        reflims = None
-
-    for k, key in enumerate(plotorder):
-
-        # Get simplified name of key for file naming
-        RIDOF = '[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?'
-        OPERATORPAT = '[\+\-\*\/]*'
-        keyS = re.sub(OPERATORPAT, '', key)
-        # remove floating point numbers
-        keyS = re.sub(RIDOF, '', keyS)
-        # remove parentheses
-        keyS = re.sub('[()]*', '', keyS)
-        # remove any blank spaces
-        keyS = keyS.replace(' ', '')
-
-        grid = grids[key]['grid']
-
-        # get labels and metadata info
-        if 'label' in list(grids[key].keys()):
-            label1 = grids[key]['label']
-        else:
-            label1 = key
-        try:
-            sref = grids[key]['description']['name']
-        except:
-            sref = ''
-
-        sref_fix = sref
-        if sref != '':
-            sref_fix = sref_fix.replace(' (', '_')
-            sref_fix = sref_fix.replace(')', '')
-            sref_fix = sref_fix.replace(' ', '_')
-
-        if outfilename is None and edict is not None:
-            outfilename = '%s_%s' % (edict['event_id'], sref_fix)
-        elif outfilename is None:
-            outfilename = sref_fix
-
-        if colormaps[k] is not None:
-            palette = colormaps[k]
-        else:
-            palette = defaultcolormap
-
-        palette.set_bad(clear_color, alpha=0.0)
-
-        dat = grid.getData().copy()
-
-        if clear_zero:
-            dat[dat == 0.] = float('nan')  # Makes areas clear where dat==0
-
-        if maskthreshes[k] is not None:
-            dat[dat <= maskthreshes[k]] = float('nan')
-
-        # Make changes needed to get desired colorbar
-        outputs = correct4colorbar(dat, lims[k], logscale[k], scaletype,
-                                   palette, colorlist=colorlist)
-        clev, vmin, vmax, rgba_img, cmap, norm, colorlist = outputs
-
-        gd = grid.getGeoDict()
-        minlat = gd.ymin - gd.dy/2.
-        minlon = gd.xmin - gd.dx/2.
-        maxlat = gd.ymax + gd.dy/2.
-        maxlon = gd.xmax + gd.dx/2.
-
-        # Make colorbar figure
-        if sepcolorbar:
-            if clev[1] < 0.01:
-                cbfmt = '%1.3f'
-            elif clev[1] < 0.1:
-                cbfmt = '%1.2f'
-            elif clev[1] < 1. and vmax < 5:
-                cbfmt = '%1.1f'
-            elif vmax >= 5.:  # (vmax - vmin) > len(clev):
-                cbfmt = '%1.0f'
-            else:
-                cbfmt = None
-
-            if logscale[k]:  # override previous choice if logscale
-                cbfmt = None  # '%1.0e'
-
-            if separate or len(plotorder) == 1:
-                fig = plt.figure(figsize=(4., 1.0))
-                ax = plt.gca()
-            else:
-                if k == 0:
-                    fig, axes = plt.subplots(len(plotorder), 1, figsize=(6., 0.9*len(plotorder)))
-                ax = axes[k]
-
-            if scaletype.lower() == 'binned':
-                if sync:
-                    cbars.append(ColorbarBase(ax, cmap=cmap, norm=norm,
-                                 orientation='horizontal', format=cbfmt, extend='neither',
-                                 extendfrac=0.15, ticks=clev[1:-1], boundaries=clev,
-                                 spacing='uniform'))
-                else:
-                    newclev = np.hstack((np.array(clev[:-1]), clev[-1]+0.01*clev[-1]))  # Modify so colorbar uses full expanse of colorbar
-                    cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                                 orientation='horizontal', format=cbfmt, extend='neither',
-                                 extendfrac=0.15, ticks=newclev, boundaries=newclev,
-                                 spacing='proportional'))
-            else:
-                cbars.append(ColorbarBase(ax, cmap=palette, norm=norm,
-                             orientation='horizontal', extend='neither',
-                             format=cbfmt, ticks=clev))
-            if logscale[k]:
-                cbars[k].ax.tick_params(labelsize=8)
-            else:
-                cbars[k].ax.tick_params(labelsize=10)
-            cbars[k].set_label('%s - %s' % (label1, sref), fontsize=10)
-            cbars[k].ax.set_aspect(0.05)
-
-            plt.subplots_adjust(hspace=0.3, left=0.01, right=0.99, top=0.99, bottom=0.01)
-            if separate:
-                ctemp = '%s_%s_colorbar.png' % (outfilename, keyS)
-                # This file has to move with the html files
-                fig.savefig(os.path.join(outfolder, ctemp), transparent=True)
-            elif k == len(plotorder)-1:
-                plt.subplots_adjust(left=0.02, right=0.98)
-                ctemp = '%s_colorbar.png' % outfilename
-                fig.savefig(os.path.join(outfolder, ctemp),
-                            transparent=True, bbox_inches='tight')
-
-        if inventory_shapefile is not None:
-            reader = shapefile.Reader(inventory_shapefile)
-            fields = reader.fields[1:]
-            field_names = [field[0] for field in fields]
-            buffer1 = []
-            for sr in reader.shapeRecords():
-                atr = dict(zip(field_names, sr.record))
-                geom = sr.shape.__geo_interface__
-                style_function = \
-                    lambda x: {'fillColor': 'none',
-                               'color': 'black',
-                               'weight': 0.7}
-                buffer1.append(dict(type="Feature",
-                                    geometry=geom,
-                                    properties=atr))
-
-            # create geojson object
-            invt = GeoJson1({"type": "FeatureCollection",
-                            "features": buffer1},
-                            style_function=style_function)
-
-        zoom_start = getZoom(minlon, maxlon) + 2.
-
-        if separate:
-            overlay = True
-        else:
-            overlay = False
-        if onkey is None and k == 0:
-            onkey = key
-        if separate or key == onkey:
-            map1 = folium.Map(
-                location=[(maxlat+minlat)/2., (maxlon+minlon)/2.],
-                tiles=None,
-                min_lat=minlat,
-                max_lat=maxlat,
-                min_lon=minlon,
-                max_lon=maxlon,
-                zoom_start=zoom_start,
-                max_zoom=14,
-                prefer_canvas=True,
-                control_scale=True)
-            folium.TileLayer(
-                tiles=tiletype,
-                control=False,
-                overlay=not overlay).add_to(map1)
-
-        images.append(plugins.ImageOverlay(rgba_img,
-                                           opacity=ALPHA,
-                                           bounds=[[minlat, minlon], [maxlat, maxlon]],
-                                           mercator_project=True,
-                                           name=sref,
-                                           overlay=overlay,
-                                           zIndex=k))
-
-        images[k].add_to(map1)
-        # Save list of layers that should not be visible initially but should be in legend
-        if key != onkey and separate is False and savefiles:
-            removelater.append(images[k].get_name())
-
-        if sepcolorbar and floatcb and k == len(plotorder)-1:
-            plugins.FloatImage(ctemp, bottom=0, left=1).add_to(map1)
-        elif not sepcolorbar:
-            if scaletype.lower() == 'binned':
-                color1 = palette(clev/clev.max())
-                cbars.append(cmb.StepColormap(
-                    color1,
-                    vmin=vmin,
-                    vmax=vmax,
-                    index=clev,
-                    caption='%s - %s' % (label1, sref)))
-            else:
-                color1 = [tuple(p) for p in palette._lut]
-                cbars.append(cmb.LinearColormap(
-                    color1,
-                    vmin=vmin,
-                    vmax=vmax,
-                    caption='%s - %s' % (label1, sref)))
-            map1.add_child(cbars[k])
-
-        if separate or k == len(plotorder)-1:
-
-            folium.LayerControl(
-                collapsed=False,
-                position='bottomright').add_to(map1)
-            map1.add_child(RectangleMarker(
-                bounds=[[minlat, minlon], [maxlat, maxlon]],
-                fill_opacity=0.5,
-                weight=1,
-                fill_color='none'))
-            map1.add_child(folium.LatLngPopup())
-
-            if inventory_shapefile is not None:
-                map1.add_child(invt)
-                invt.layer_name = 'Inventory'
-
-            if smcontourfile is not None:
-                style_function = lambda x: {'fillColor': 'none', 'color': 'white', 'weight': 0.7}
-                GeoJson(smcontourfile, style_function=style_function,
-                        name='ShakeMap Contours').add_to(map1)
-
-            if faultfile is not None:
-                style_function = lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 0.7}
-                GeoJson(faultfile, style_function=style_function,
-                        name='Finite fault', control=False).add_to(map1)
-
-            # Make scenario float image
-            if isScenario:
-                fig = plt.figure(figsize=(1.2, 0.4))
-                ax = fig.add_subplot(111)
-                ax.add_artist(plt.Rectangle((0.0, 0.0), 0.99, 0.99, facecolor='r',
-                                            edgecolor='black', lw=1, alpha=0.5))
-                ax.text(0.5, 0.5, 'Scenario', fontsize=20, ha='center', va='center', alpha=0.8)
-                ax.axis('off')
-                plt.subplots_adjust(left=0.02, right=0.98, top=0.98, bottom=0.02)
-                scenfile = os.path.join(outfolder, 'scenario.png')
-                fig.savefig(scenfile, transparent=True)
-                plt.close()
-                plugins.FloatImage('scenario.png', bottom=94, left=3).add_to(map1)
-
-            #draw epicenter
-            if edict is not None:
-                #f = folium.map.FeatureGroup(overlay=False)
-                for j in [7, 5, 3, 1]:
-                    if j in [5, 1]:
-                        color3 = 'black'
-                    else:
-                        color3 = 'white'
-                    map1.add_child(folium.features.CircleMarker(
-                                   [edict['lat'], edict['lon']],
-                                   radius=j,
-                                   color=color3,
-                                   fill=False,
-                                   fill_opacity=0.5
-                                   ))
-
-            if savefiles:
-                if separate:
-                    filen = os.path.join(outfolder, '%s_%s.html' % (outfilename, keyS))
-                else:
-                    filen = os.path.join(outfolder, '%s.html' % outfilename)
-                    if mapid is not None:
-                        map1._id = mapid
-                map1.save(filen)
-                filenames.append(filen)
-                plt.close('all')
-                if len(removelater) > 0:  # Make only one layer show up initially
-                    removeVis(filen, removelater, map1.get_name())
-
-        if separate and len(plotorder) > 1:
-            maps.append(map1)
-
-    if not separate or len(plotorder) == 1:
-        maps = map1
-
-    return maps, filenames
-
-
-def GFSummary(maplayerlist, configs, web_template, shakemap, outfolder=None,
-              includeunc=False, cleanup=True, faultfile=None,
-              shakethreshtype='pga', point=False, pop_file=None,
-              statlist=['Max', 'Std', 'Hagg_0.10g', 'exp_pop_0.10g'],
-              probthresh=None, shakethresh=[5., 10.], statement=None):
-    """
-    Create an interactive html that summarizes all ground failure results for
-    a given earthquake in side-by-side plots and with summary tables
-
-    Args:
-        maplayerlist (list): list of model output structures to include.
-        configs (list): list of paths to config files corresponding to each
-            of the models in maplayerlist in the same order.
-        web_template (str): Path to location of pelican template
-            (final folder should be "theme").
-        shakemap (str): path to shakemap .xml file for the current event.
-        outfolder (str, optional): path to folder where output should be
-            placed.
-        includeunc (bool, optional): include uncertainty, NOT IMPLEMENTED.
-        cleanup (bool, optional): clean up all unneeded intermediate files that
-            pelican creates, default True.
-        faultfile (str, optional): GeoJson file of finite fault to display on
-            interactive maps
-        shakethreshtype (str, optional): Type of ground motion to use for stat
-            thresholds, 'pga', 'pgv', or 'mmi'
-        point (bool): True if it is known that the ShakeMap used a point
-            source, False does not assume anything about source type.
-        pop_file (str): Path to population file used for statistics
-        statlist (list): list of strings indicating which stats to show on
-            webpage.
-        probthresh (float, optional): List of probability thresholds for which
-            to compute Parea.
-        shakethresh (list, optional): List of ground motion thresholds for
-            which to compute Hagg, units corresponding to shakethreshtype.
-        statement (str): Text to include in the summary section of the web
-            page. Alert statements will be appended prior to this statement,
-            Point source warnings for >M7 will be appended after this
-            statement. If None, will use a generic explanatory statement.
-
-    Returns:
-        Folder where webpage files are located
-    """
-    print('Creating Ground Failure Summary interactive figure')
-    # get event id
-    event_id = maplayerlist[0]['model']['description']['event_id']
-
-    if outfolder is None:
-        outfolder = os.path.join(os.getcwd(), event_id)
-    fullout = os.path.join(outfolder, 'temp')
-    finalout = os.path.join(outfolder, 'webpage')
-    content = os.path.join(fullout, 'content')
-    articles = os.path.join(content, 'articles')
-    pages = os.path.join(content, 'pages')
-    images = os.path.join(content, 'images')
-    theme = web_template
-    static = os.path.join(theme, 'static')
-    if not os.path.exists(outfolder):
-        os.mkdir(outfolder)
-    if not os.path.exists(fullout):
-        os.mkdir(fullout)
-    if not os.path.exists(content):
-        os.mkdir(content)
-    if not os.path.exists(images):
-        os.mkdir(images)
-    if not os.path.exists(pages):
-        os.mkdir(pages)
-    if not os.path.exists(articles):
-        os.mkdir(articles)
-    if os.path.exists(finalout):
-        shutil.rmtree(finalout)
-
-    peliconf = os.path.join(fullout, 'pelicanconf.py')
-    shutil.copy(os.path.join(os.path.dirname(web_template),
-                'pelicanconf.py'), peliconf)
-    outjsfileLS = os.path.join(static, 'js', 'mapLS.js')
-    with open(outjsfileLS, 'w') as f:
-        f.write('\n')
-    outjsfileLQ = os.path.join(static, 'js', 'mapLQ.js')
-    with open(outjsfileLQ, 'w') as f:
-        f.write('\n')
-
-    if statement is None:
-        statement = (
-            "This product provides an early understanding of the "
-            "landslides and liquefaction that may have been triggered "
-            "by this earthquake until first responders and experts "
-            "are able to survey the actual damage that has occurred. "
-            "Results provide regional estimates and "
-            "do not predict specific occurrences.")
-
-    # Separate the LS and LQ models
-
-    concLS = collections.OrderedDict()
-    concLQ = collections.OrderedDict()
-
-    lsmodels = {}
-    lqmodels = {}
-    logLS = []
-    limLS = []
-    colLS = []
-    logLQ = []
-    limLQ = []
-    colLQ = []
-
-    il = 0
-    iq = 0
-
-    filenames = []
-
-    for conf, maplayer in zip(configs, maplayerlist):
-        mdict = maplayer['model']['description']
-        #config = ConfigObj(conf)
-
-        if 'landslide' in mdict['parameters']['modeltype'].lower():
-            title = maplayer['model']['description']['name']
-            plotorder, logscale, lims, colormaps, maskthreshes = \
-                parseConfigLayers(maplayer, conf, keys=['model'])
-            logLS.append(logscale[0])
-            limLS.append(lims[0])
-            colLS.append(colormaps[0])
-            concLS[title] = maplayer['model']
-
-            if 'godt' in maplayer['model']['description']['name'].lower():
-                statprobthresh = None
-            else:
-                # Since logistic models can't equal one, need to eliminate
-                # placeholder zeros before computing stats
-                statprobthresh = 0.0
-
-            stats = computeStats(maplayer['model']['grid'],
-                                 probthresh=probthresh,
-                                 shakefile=shakemap,
-                                 shakethresh=shakethresh,
-                                 statprobthresh=statprobthresh,
-                                 pop_file=pop_file)
-
-            if il == 0:
-                on = True
-            else:
-                on = False
-
-            lsmodels[maplayer['model']['description']['name']] = {
-                'bin_edges': list(lims[0]),
-                'stats': dict(stats),
-                'layer_on': on
-            }
-            il += 1
-
-        elif 'liquefaction' in mdict['parameters']['modeltype'].lower():
-            title = maplayer['model']['description']['name']
-            plotorder, logscale, lims, colormaps, maskthreshes = \
-                parseConfigLayers(maplayer, conf, keys=['model'])
-            logLQ.append(logscale[0])
-            limLQ.append(lims[0])
-            colLQ.append(colormaps[0])
-            concLQ[title] = maplayer['model']
-
-            stats = computeStats(maplayer['model']['grid'],
-                                 probthresh=probthresh,
-                                 shakefile=shakemap,
-                                 shakethresh=shakethresh,
-                                 statprobthresh=statprobthresh,
-                                 pop_file=pop_file)
-
-            if iq == 0:
-                on = True
-            else:
-                on = False
-
-            lqmodels[maplayer['model']['description']['name']] = {
-                'bin_edges': list(lims[0]),
-                'stats': dict(stats),
-                'layer_on': on
-            }
-            iq += 1
-
-        else:
-            raise Exception("model type is undefined, check "
-                            "maplayer['model']['parameters']"
-                            "['modeltype'] to ensure it is defined")
-
-    # Make interactive maps for each
-    if il > 0:
-        mapLS, filenameLS = interactiveMap(
-            concLS, shakefile=shakemap, scaletype='binned',
-            colormaps=colLS, lims=limLS, clear_zero=False,
-            logscale=logLS, separate=False, outfilename='LS_%s' % event_id,
-            mapid='LS', savefiles=True, outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Nowicki Jessee and others (2017)')
-
-        filenameLS = filenameLS[0]
-    else:
-        filenameLS = None
-
-    if iq > 0:
-        mapLQ, filenameLQ = interactiveMap(
-            concLQ, shakefile=shakemap, scaletype='binned',
-            colormaps=colLQ, lims=limLQ, clear_zero=False,
-            logscale=logLQ, separate=False, outfilename='LQ_%s' % event_id,
-            savefiles=True, mapid='LQ', outputdir=images,
-            sepcolorbar=True, floatcb=False, faultfile=faultfile,
-            sync='Zhu and others (2017)')
-
-        filenameLQ = filenameLQ[0]
-    else:
-        filenameLQ = None
-
-    if faultfile is not None:
-        finitefault = True
-    else:
-        finitefault = False
-
-    # Try to get urls
-    try:
-        info1, detail, temp = get_event_comcat(shakemap)
-        eventurl = detail.url
-        shakemapurl = detail.url + '#shakemap'
-    except:
-        shakemapurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#shakemap' % event_id
-        eventurl = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % event_id
-
-    write_summary(shakemap, pages, images, point=point, event_url=eventurl,
-                  statement=statement, finitefault=finitefault, shake_url=shakemapurl)
-
-    # Create webpages for each type of ground motion
-    write_individual(lsmodels, articles, 'Landslides',
-                     interactivehtml=filenameLS, outjsfile=outjsfileLS,
-                     topimage=None, statlist=statlist,
-                     statement=None)
-    write_individual(lqmodels, articles, 'Liquefaction',
-                     interactivehtml=filenameLQ, outjsfile=outjsfileLQ,
-                     topimage=None, statlist=statlist,
-                     statement=None)
-
-    # run website
-    retcode, stdout, stderr = get_command_output(
-        ('pelican -s %s -o %s -t %s')
-        % (peliconf, os.path.join(fullout, 'output'), theme))
-    print(stderr)
-
-    if cleanup:  # delete everything except what is needed to make html pages
-        files = glob.glob(os.path.join(fullout, '*'))
-        for filen in files:
-            if os.path.basename(filen) not in 'output':
-                if os.path.isdir(filen):
-                    shutil.rmtree(filen)
-                else:
-                    os.remove(filen)
-            else:
-                ofiles = glob.glob(os.path.join(fullout, 'output', '*'))
-                for ofilen in ofiles:
-                    if os.path.basename(ofilen) not in "index.htmlimagestheme":
-                        if os.path.isdir(ofilen):
-                            shutil.rmtree(ofilen)
-                        else:
-                            os.remove(ofilen)
-        shutil.copytree(os.path.join(fullout, 'output'), finalout)
-        shutil.rmtree(fullout)
-        # Get rid of mapLS.js and mapLQ.js files from theme directory
-        try:
-            os.remove(os.path.join(theme, 'static', 'js', 'mapLQ.js'))
-        except Exception as e:
-            print(e)
-        try:
-            os.remove(os.path.join(theme, 'static', 'js', 'mapLS.js'))
-        except Exception as e:
-            print(e)
-    filenames.append(finalout)
-    return filenames
-
-
-def write_individual(concatmods, outputdir, modeltype, topimage=None,
-                     staticmap=None, interactivehtml=None,
-                     outjsfile=None, statlist=None, statement=None):
-    """
-    Write markdown file for landslides or liquefaction.
-
-    Args:
-        concatmods (float or list): Ordered dictionary of models with
-            fields required for write_individual populated (stats in
-            particular)
-        outputdir (str): Path to output directory.
-        modeltype (str): 'Landslides' for landslide model, otherwise it is
-            a liquefaction model.
-        topimage (str, optional): Path to image for top of page.
-        staticmap (str, optional): Path to static map.
-        interactivehtml (str, optional): Path to interactive map file.
-        outjsfile (str, optional): Path for output javascript file.
-        stats (list): List of stats keys to include in the table, if None,
-            it will include all of them
-
-    Returns:
-        writes markdown files named Landslides.md and/or Liquefaction.md
-        that will be used by GFSummary
-    """
-
-    if modeltype == 'Landslides':
-        id1 = 'LS'
-    else:
-        id1 = 'LQ'
-
-    if len(concatmods) > 0:
-        # If single model and not in list form, turn into lists
-        modelnames = [key for key, value in concatmods.items()]
-        stattable = collections.OrderedDict()
-        stattable['Model'] = modelnames
-        if statlist is None:
-            statlist = list(concatmods[modelnames[0]]['stats'].keys())
-
-        # initialize empty lists for each
-        for st in statlist:
-            stattable[st] = []
-
-        # put stats in
-        for i, mod in enumerate(modelnames):
-            for st in statlist:
-                try:
-                    stattable[st].append(concatmods[mod]['stats'][st])
-                except:
-                    stattable[st].append(float('nan'))
-
-    if outjsfile is None:
-        outjsfile = 'map.js'
-
-    with open(os.path.join(outputdir, modeltype + '.md'), 'w') as file1:
-        file1.write('title: %s\n' % modeltype.title())
-        file1.write('date: %s\n'
-                    % datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('<h2>%s</h2>' % modeltype.title())
-
-        if len(concatmods) > 0:
-
-            if statement is not None:
-                file1.write('<p>%s</p>\n' % statement)
-
-            if topimage is not None:
-                file1.write('<img src="images%s" width="250" '
-                            'href="images%s"/>\n'
-                            % (topimage.split('images')[-1],
-                               topimage.split('images')[-1]))
-            if interactivehtml is not None:
-                # Extract js and move to map.js
-                with open(interactivehtml) as f:
-                    soup = BeautifulSoup(f, 'html.parser')
-                    soup.prettify(encoding='utf-8')
-                    scs = soup.find_all('script')
-                    if scs is not None:
-                        for sc in scs:
-                            if 'var' in str(sc):
-                                temp = str(sc)
-                                temp = temp.strip(
-                                    '<script>').strip('</script>')
-                                with open(outjsfile, 'a') as f2:
-                                    f2.write(temp)
-                # Embed and link to fullscreen
-                fileloc = interactivehtml.split('images')[-1]
-                file1.write('<br><a href="images%s">Full '
-                            'interactive map</a>\n'
-                            % fileloc)
-
-                file1.write('<center><div class="folium-map" id="map_%s">'
-                            '</div></center>\n' % id1)
-
-                cbname = fileloc.split('.html')[0] + '_colorbar' + '.png'
-                file1.write('<center><img src="images%s" width="410" '
-                            'href="images%s"/></center>\n'
-                            % (cbname, cbname))
-                if staticmap is not None:
-                    file1.write('<center><img src="images%s" width="450" '
-                                'href="images%s"/></center>\n'
-                                % (staticmap.split('images')[-1],
-                                   staticmap.split('images')[-1]))
-
-                file1.write('<hr>\n')
-                file1.write('<h3>%s Model Summary Statistics</h3>' %
-                            modeltype.title())
-                file1.write('<table style="width:100%">')
-                file1.write('<tr><th>Model</th>')
-                file1.write('<th>Output Type</th>')
-
-                for st in statlist:
-                    # if 'Hagg_' in st:
-                    #    thresh = float(st.split('_')[-1].replace('g',''))
-                    #    titl = 'Aggregate Hazard (km^2)' % (100.*thresh,)
-                    if 'Hagg' in st:
-                        titl = 'Aggregate Hazard (km^2)'
-                    # elif 'exp_pop_' in st:
-                    #    thresh = float(st.split('_')[-1].replace('g',''))
-                    #    titl = 'People at risk (>%2.0f g)' % (100.*thresh,)
-                    elif 'exp_pop' in st:
-                        titl = 'Population Exposure'
-                    elif 'Max' in st:
-                        titl = 'Maximum probability'
-                    elif 'Std' in st:
-                        titl = 'Standard deviation'
-
-                    file1.write('<th>%s</th>' % titl)
-                file1.write('\n')
-
-                # Write each row
-                for i, mod in enumerate(modelnames):
-                    file1.write('<tr>')
-                    file1.write('<td>%s</td>' % mod.title())
-                    # Get output type
-                    if '2014' in mod:
-                        type1 = 'Probability of any occurrence in cell'
-                    else:
-                        type1 = 'Proportion of area affected'
-                    file1.write('<td>%s</td>' % type1)
-                    for st in statlist:
-                        if 'hagg' in st.lower() or 'exp' in st.lower() or 'parea' in st.lower():
-                            file1.write('<td>%1.0f</td>' % stattable[st][i])
-                        else:
-                            file1.write('<td>%1.2f</td>' % stattable[st][i])
-
-                    file1.write('</tr>\n')
-
-                file1.write('</table>')
-        else:
-            file1.write('<h3>No results</h3>')
-
-
-def write_summary(shakemap, outputdir, imgoutputdir, statement=None,
-                  finitefault=False, point=False, event_url=None,
-                  shake_url=None):
-    """
-    Write markdown file summarizing event
-
-    Args:
-        shakemap (str): path to shakemap .xml file for the current event
-        outputdir (str): path to folder where output should be placed
-        imgoutputdir (str): path to folder where images should be placed
-            and linked
-        statement (str): Statement to put at top of GFSummary plot, if None
-            will append some generic statements.
-        finitefault (bool): True if it is known that the shakemap used a
-            finite fault.
-        point(bool): True if it is known that the event was a point
-            source. False if unknown.
-        event_url (str): url to event page, if None, code will try to
-            guess what the url should be using the event_id in the shakemap file
-        shake_url (str): url to shakemap page for this event, if None,
-            code will try to guess what the url should be using the
-            event_id in the shakemap file
-
-    Returns:
-        Markdown file that summarizes the event and model used by GFSummary
-    """
-    edict = ShakeGrid.load(shakemap, adjust='res').getEventDict()
-    smdict = ShakeGrid.load(shakemap, adjust='res').getShakeDict()
-
-    if event_url is None:
-        event_url = 'https://earthquake.usgs.gov/earthquakes/eventpage/%s#executive' % edict['event_id']
-    if shake_url is None:
-        shake_url = event_url + '#shakemap'
-
-    if finitefault and not point:
-        faulttype = '(finite fault model)'
-    elif point and not finitefault:
-        faulttype = '(point source model)'
-        if edict['magnitude'] > 6.5:
-            statement = ('%s<br>ShakeMap is currently approximating '
-                         'this earthquake as a point source. '
-                         'This may underestimate the extent of strong '
-                         'shaking for larger earthquakes. '
-                         'Please interpret Ground Failure results with '
-                         'caution until ShakeMap has been updated '
-                         'with a fault model.') % statement
-    else:
-        faulttype = ''
-
-    with open(os.path.join(outputdir, 'Summary.md'), 'w') as file1:
-        file1.write('title: summary\n')
-        file1.write('date: 2017-06-09\n')
-        file1.write('modified: 2017-06-09\n')
-        file1.write('<h1 align="left">Ground Failure</h1>\n')
-        if 'scenario' in smdict['shakemap_event_type'].lower():
-            file1.write('<h2 align="left"><a href=%s>Magnitude %1.1f Scenario Earthquake - %s</a></h2>\n'
-                        % (event_url, edict['magnitude'],
-                           edict['event_description']))
-        else:
-            file1.write('<h2 align="left"><a href=%s>Magnitude %1.1f - %s</a></h2>\n'
-                        % (event_url, edict['magnitude'],
-                           edict['event_description']))
-
-        writeline = '<h3 align="left"> %s (UTC) | %1.4f&#176,  %1.4f&#176 | %1.1f km depth</h3>\n' \
-                    % (edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
-                        edict['lat'], edict['lon'], edict['depth'])
-        file1.write(writeline)
-
-        file1.write('<p align="left">Last updated at: %s (UTC)<br>'
-                    % datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'))
-        file1.write('Based on ground motion estimates from '
-                    '<a href=%s>ShakeMap</a> version %1.1f %s<br></p>'
-                    % (shake_url, smdict['shakemap_version'], faulttype))
-        statement = ('%s<br>Refer to the <a https://earthquake.usgs.gov/data/'
-                     'ground-failure/background.php>Ground Failure Background</a>'
-                     ' page for more details.' % statement)
-
-        if statement is not None:
-            file1.write('<h2 align="left">Summary</h2>\n')
-            file1.write('<p align="left">%s</p>' % statement)
-
-        file1.write('<hr>')
-
-    shakesummary = {'magnitude': edict['magnitude'],
-                    'shakemap_version': smdict['shakemap_version'],
-                    'date': edict['event_timestamp'].strftime('%Y-%m-%dT%H:%M:%S'),
-                    'lat': edict['lat'],
-                    'lon': edict['lon'],
-                    'depth': edict['depth'],
-                    'name': 'Magnitude %1.1f - %s' % (edict['magnitude'],
-                                                      edict['event_description']),
-                    'statement': statement,
-                    'event_id': edict['event_id'],
-                    'shakemap_id': smdict['shakemap_id'],
-                    'event_url': event_url
-                    }
-
-    return shakesummary
-
-
-def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, logscale=None,
-              alpha=None):
-    """Get colors that will be used for all colorbars from reference grid
-
-    Args:
-        sync(str): If False, will exit program, else corresponds to the shortref
-            of the model which should serve as the template for
-            the colorbars used by all other models. All other models must
-            have the exact same number of bins
-        plotorder (list): List of keys of shortrefs of the grids that will be
-            plotted.
-        lims (*): Nx1 list of tuples or numpy arrays corresponding to
-            plotorder defining the bin edges to use for each model.
-            Example:
-
-            .. code-block:: python
-
-                [(0., 0.1, 0.2, 0.3), np.linspace(0., 1.5, 15)]
-
-        colormaps (list): List of strings of matplotlib colormaps (e.g.
-            cm.autumn_r) corresponding to plotorder
-        defaultcolormap (matplotlib colormap): Colormap to use if
-            colormaps is not defined. default cm.CMRmap_r
-        logscale (*): If not None, then a list of booleans corresponding to
-            plotorder stating whether to use log scaling in determining colors
-
-    Returns:
-        tuple: (sync, colorlist, lim1) where:
-            * sync (bool): whether or not colorbars are/can be synced
-            * colorlist (list): list of rgba colors that will be applied to all
-                models regardless of bin edge values
-            * lim1 (array): bin edges of model to which others are synced
-
-    """
-
-    if not sync:
-        return False, None, None
-
-    elif sync in plotorder:
-        k = [indx for indx, key in enumerate(plotorder) if key in sync][0]
-        # Make sure lims exist and all have the same number of bins'
-
-        if logscale is not None:
-            logs = logscale[k]
-        else:
-            logs = False
-
-        lim1 = np.array(lims[k])
-        sum1 = 0
-        for lim in lims:
-            if lim is None:
-                sum1 += 1
-                continue
-            if len(lim) != len(lim1):
-                sum1 += 1
-                continue
-        if sum1 > 0:
-            print('Cannot sync colorbars, different number of bins or lims not specified')
-            sync = False
-            return sync, None, None
-
-        if colormaps[k] is not None:
-            palette1 = colormaps[k]
-        else:
-            palette1 = defaultcolormap
-        #palette1.set_bad(clear_color, alpha=0.0)
-        if logs:
-            cNorm = colors.LogNorm(vmin=lim1[0], vmax=lim1[-1])
-            midpts = np.sqrt(lim1[1:] * lim1[:-1])  # geometric mean for midpoints
-        else:
-            cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
-            midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
-        scalarMap = cm.ScalarMappable(norm=cNorm, cmap=palette1)
-        colorlist = []
-        for value in midpts:
-            colorlist.append(scalarMap.to_rgba(value, alpha=alpha))
-        sync = True
-
-    else:
-        print('Cannot sync colorbars, different number of bins or lims not specified')
-        sync = False
-        colorlist = None
-        lim1 = None
-    return sync, colorlist, lim1
-
-
-def correct4colorbar(dat, gridlims, logscale, scaletype, palette, colorlist=None,
-                     alpha=None):
-    """Create rgba layer for plotting along with all the info needed to create
-    a separate colorbar
-
-    Args:
-        dat (array): 2D numpy array of the data to turn into rgba layer
-        gridlims (array): Nx1 array or list of bin edges, or None if not specified
-        logscale (bool): if True, will use log scaling for bins
-        scaletype (str): Type of scaling to use with colormap,
-            'binned' or 'continuous.' 'binned' must be used for synced
-            colorbars.
-        palette: colormap palette to use
-        colorlist (list): Optional, N-1 list of colors to use for each bin,
-            where N is the number of bin edges specified in gridlims. Only
-            works if scaletype = 'binned'
-        alpha (float): Transparency value from 0 to 1
-
-    Returns:
-        tuple: (clev, vmin, vmax, rgba_img, cmap, norm, colorlist) where:
-            * clev: bin edges used
-            * vmin: lowest bin edge (saturated below)
-            * vmax: highest bin edge (saturated above)
-            * rgba_img: rgba image (2D array of rgba tuples)
-            * cmap: colormap used
-            * norm: normalization used for colorbar
-            * colorlist: list of colors used for each colorbar bin,
-                None if scaletype was 'continuous'
-    """
-    dat = dat.copy()
-    if np.nanmax(dat) > 0.:
-        minnonzero = np.nanmin(dat[dat > 0.])
-    else:
-        minnonzero = 0.0001
-
-    if scaletype.lower() == 'binned':
-        order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
-        datcop = dat.copy()
-        if colorlist is not None:
-            clev = gridlims
-            datcop[dat < gridlims[0]] = gridlims[0]
-            datcop[dat > gridlims[-1]] = gridlims[-1]
-            cmap = colors.ListedColormap(colorlist)
-            norm = mpl.colors.BoundaryNorm(clev, cmap.N)
-            datcop = np.ma.array(datcop, mask=np.isnan(dat))
-            vmin = clev[0]
-            vmax = clev[-1]
-            scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-            rgba_img = scalarMap.to_rgba(datcop, alpha=alpha)
-
-        else:
-            cmap = palette
-            if logscale:
-                clev = np.logspace(np.floor(np.log10(minnonzero)),
-                                   np.ceil(np.log10(np.nanmax(dat))), 2*order+1)
-                vmin = np.log10(clev[0])
-                vmax = np.log10(clev[-1])
-                dat[dat < clev[0]] = clev[0]
-                for j, level in enumerate(clev[:-1]):
-                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
-                        np.sqrt(clev[j] * clev[j+1])  # geometric mean
-                # So colorbar saturates at top
-                dat[dat > clev[-1]] = clev[-1]
-                dat = np.ma.array(dat, mask=np.isnan(dat))
-                norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
-                dat = np.log10(dat.copy())
-                midpts = np.sqrt(clev[1:] * clev[:-1])  # geometric mean for midpoints
-
-            else:
-                if gridlims is None:
-                    if order < 1.:
-                        scal = 10**-order
-                    else:
-                        scal = 1.
-                    if np.nanmax(dat) < 0.5:
-                        clev = (np.linspace(np.floor(scal*minnonzero),
-                                            0.5*np.ceil(scal*np.nanmax(dat)),
-                                            6))/scal
-                    else:
-                        clev = (np.linspace(np.floor(scal*minnonzero),
-                                            np.ceil(scal*np.nanmax(dat)),
-                                            6))/scal
-                else:
-                    clev = gridlims
-                    # Adjust uppermost clev to make the best use of the colorbar
-                    clev[-1] = np.nanmax(dat) + 0.1 * np.nanmax(dat)
-                vmin = clev[0]
-                vmax = clev[-1]
-                dat[dat < clev[0]] = clev[0]
-                for j, level in enumerate(clev[:-1]):
-                    dat[(dat >= clev[j]) & (dat < clev[j+1])] = \
-                        (clev[j] + clev[j+1])/2.
-                # So colorbar saturates at top
-                dat[dat > clev[-1]] = clev[-1]
-                dat = np.ma.array(dat, mask=np.isnan(dat))
-                norm = Normalize(vmin=vmin, vmax=vmax)
-                midpts = (clev[1:] - clev[:-1])/2 + clev[:-1]
-            dat1 = (dat - vmin)/(vmax-vmin)  # Normalize by vmin and vmax so colorbar matches
-            scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-            rgba_img = scalarMap.to_rgba(dat1, alpha=alpha)
-            # make colorlist
-            colorlist = []
-            for value in midpts:
-                colorlist.append(scalarMap.to_rgba(value, alpha=alpha))
-
-    else:
-        colorlist = None
-        if gridlims is None:
-            if logscale:
-                order = np.ceil(np.log10(np.nanmax(dat))) - np.floor(np.log10(minnonzero))
-                clev = np.logspace(np.floor(np.log10(minnonzero)),
-                                   np.ceil(np.log10(np.nanmax(dat))), order+1)
-                vmin = np.log10(clev[0])
-                vmax = np.log10(clev[-1])
-                norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
-                dat = np.log10(dat.copy())
-            else:
-                vmin = np.nanmin(dat)
-                vmax = np.nanmax(dat)
-                clev = np.linspace(vmin, vmax, 6)
-                norm = Normalize(vmin=vmin, vmax=vmax)
-
-        else:
-            if logscale:
-                order = np.ceil(np.log10(gridlims[-1])) - np.floor(np.log10(minnonzero))
-                clev = np.logspace(np.floor(np.log10(minnonzero)),
-                                   np.ceil(np.log10(gridlims[-1])), order+1)
-                vmin = np.log10(clev[0])
-                vmax = np.log10(clev[-1])
-                norm = LogNorm(vmin=10.**vmin, vmax=10.**vmax)
-                dat = np.log10(dat)
-
-            else:
-                vmin = gridlims[0]
-                vmax = gridlims[-1]
-                clev = np.linspace(vmin, vmax, 6)
-                norm = Normalize(vmin=vmin, vmax=vmax)
-        dat[dat < vmin] = vmin  # saturate at ends
-        dat[dat > vmax] = vmax
-        cmap = palette
-        dat1 = (dat - vmin)/(vmax-vmin)  # Normalize by vmin and vmax so colorbar matches
-        scalarMap = cm.ScalarMappable(norm=norm, cmap=cmap)
-        rgba_img = scalarMap.to_rgba(dat1, alpha=alpha)
-
-    return clev, vmin, vmax, rgba_img, cmap, norm, colorlist
-
-
-def make_hillshade(topogrid, azimuth=315., angle_altitude=50.):
-    """
-    Computes a hillshade from a digital elevation model.
-    Adapted from
-    <http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html>
-    last accessed 9/2/2015
-
-    Args:
-        topogrid (Grid2D): Digital elevation model.
-        azimuth (float): Azimuth of illumination in degrees.
-        angle_altitude (float): Altitude angle of illumination.
-
-    Returns: Hillshade map layer (Grid2D object).
-    """
-    topotmp = topogrid.getData().copy()
-    # make a masked array
-    topotmp = np.ma.array(topotmp)
-    topodat = np.ma.masked_where(np.isnan(topotmp), topotmp)
-    x, y = np.gradient(topodat)
-    slope = np.pi/2. - np.arctan(np.sqrt(x*x + y*y))
-    aspect = np.arctan2(-x, y)
-    azimuthrad = azimuth*np.pi / 180.
-    altituderad = angle_altitude*np.pi / 180.
-    shaded = np.sin(altituderad) * np.sin(slope) + \
-        np.cos(altituderad) * np.cos(slope) * np.cos(azimuthrad - aspect)
-    hillshade = copy.deepcopy(topogrid)
-    hillshade.setData(255*(shaded + 1)/2)
-
-    return hillshade
-
-
 def getMapLines(dmin, dmax, nlines):
     """Get equally spaced lat or lon lines for mapping
 
@@ -2343,59 +1111,384 @@ def ceilToNearest(value, ceilValue=1000):
     return value
 
 
-def removeVis(filename, removelater, mapname):
-    """
-    Removes some baselayers from initial visibility in Leaflet map.
-    This fixes a minor bug in folium where all baselayers are active
-    initially because you have to add a layer to the map for it to
-    show up at all in folium, but for it to start as invisible in
-    Leaflet, you have to add it only to layer control, not to the map.
-    In folium, layer control inherits directly from the layers added to map.
+def setupsync(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
+              logscale=None, alpha=None):
+    """Get colors that will be used for all colorbars from reference grid
 
     Args:
-        filename (text): Name of html file to remove layer visibility
-        removelater (list): List of element names to remove visibility
-            from initial plot
+        sync(str): If False, will exit program, else corresponds to the
+            shortref of the model which should serve as the template for
+            the colorbars used by all other models. All other models must
+            have the exact same number of bins
+        plotorder (list): List of keys of shortrefs of the grids that will be
+            plotted.
+        lims (*): Nx1 list of tuples or numpy arrays corresponding to
+            plotorder defining the bin edges to use for each model.
+            Example:
+
+            .. code-block:: python
+
+                [(0., 0.1, 0.2, 0.3), np.linspace(0., 1.5, 15)]
+
+        colormaps (list): List of strings of matplotlib colormaps (e.g.
+            cm.autumn_r) corresponding to plotorder
+        defaultcolormap (matplotlib colormap): Colormap to use if
+            colormaps is not defined. default cm.CMRmap_r
+        logscale (*): If not None, then a list of booleans corresponding to
+            plotorder stating whether to use log scaling in determining colors
 
     Returns:
-        filename modified so that removelater layers will be invisible
-            initially
+        tuple: (sync, colorlist, lim1) where:
+            * sync (bool): whether or not colorbars are/can be synced
+            * colorlist (list): list of rgba colors that will be applied to all
+                models regardless of bin edge values
+            * lim1 (array): bin edges of model to which others are synced
+
     """
-    with open(filename, 'r') as f:
-        replacetext = '.addTo(%s)' % mapname
-        lines = f.readlines()
-        newlines = []
-        for remove in removelater:
-            r1 = False
-            for line in lines:
-                newline = line
-                if 'var %s' % remove in line:
-                    r1 = True
-                if r1 and replacetext in line:
-                    newline = line.replace(replacetext, '')
-                    r1 = False
-                newlines.append(newline)
-            lines = newlines.copy()
-            newlines = []
-    with open(filename, 'w') as f:
-        f.writelines(lines)
+
+    if not sync:
+        return False, None, None
+
+    elif sync in plotorder:
+        k = [indx for indx, key in enumerate(plotorder) if key in sync][0]
+        # Make sure lims exist and all have the same number of bins'
+
+        if logscale is not None:
+            logs = logscale[k]
+        else:
+            logs = False
+
+        lim1 = np.array(lims[k])
+        sum1 = 0
+        for lim in lims:
+            if lim is None:
+                sum1 += 1
+                continue
+            if len(lim) != len(lim1):
+                sum1 += 1
+                continue
+        if sum1 > 0:
+            print('Cannot sync colorbars, different number of bins or lims not\
+                  specified')
+            sync = False
+            return sync, None, None
+
+        if colormaps[k] is not None:
+            palette1 = colormaps[k]
+        else:
+            palette1 = defaultcolormap
+        # palette1.set_bad(clear_color, alpha=0.0)
+        if logs:
+            cNorm = colors.LogNorm(vmin=lim1[0], vmax=lim1[-1])
+            midpts = np.sqrt(lim1[1:] * lim1[:-1])  # geometric mean for midpoints
+        else:
+            cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
+            midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
+        scalarMap = cm.ScalarMappable(norm=cNorm, cmap=palette1)
+        colorlist = []
+        for value in midpts:
+            colorlist.append(scalarMap.to_rgba(value, alpha=alpha))
+        sync = True
+
+    else:
+        print('Cannot sync colorbars, different number of bins or lims not \
+              specified')
+        sync = False
+        colorlist = None
+        lim1 = None
+    return sync, colorlist, lim1
 
 
-def getZoom(minlon, maxlon):
-    """Get the best starting zoom level based on span of coordinates
+def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
+    """
+    Create kmz files of models
 
     Args:
-        minlon (float): minimum longitude in area of interest
-        maxlon (float): maximum longitude in area of interest
+        maplayer (dict): Dictionary of one model result formatted like:
+
+            .. code-block:: python
+
+                {
+                    'grid': mapio grid2D object,
+                    'label': 'label for colorbar and top line of subtitle',
+                    'type': 'output or input to model',
+                    'description': 'description for subtitle'
+                }
+        outfile (str): File extension
+        mask (float): make all cells below this value transparent
+        levels (array): list of bin edges for each color, must be same length
+        colorlist (array): list of colors for each bin, should be length one less than levels
 
     Returns:
-        zoom level (for leaflet)
+        kmz file
     """
-    angle = maxlon - minlon
-    if angle < 0:
-        angle += 360
-    zoom = np.ceil(np.log(500 * 360/angle/256/0.693))
-    return zoom
+    # Figure out lims
+    if levels is None:
+        levels = DFBINS
+    if colorlist is None:
+        colorlist = DFCOLORS
+
+    if len(levels)-1 != len(colorlist):
+        raise Exception('len(levels) must be one longer than len(colorlist)')
+
+    # Make place to put temporary files
+    temploc = tempfile.TemporaryDirectory()
+
+    # Figure out file names
+    name, ext = os.path.splitext(outfile)
+    basename = os.path.basename(name)
+    if ext != '.kmz':
+        ext = '.kmz'
+    filename = '%s%s' % (name, ext)
+    mapfile = os.path.join(temploc.name, '%s.tiff' % basename)
+    legshort = '%s_legend.png' % basename
+    legfile = os.path.join(temploc.name, legshort)
+
+    # Make colored geotiff
+    out = make_rgba(maplayer['grid'], mask=mask,
+                    levels=levels, colorlist=colorlist)
+    rgba_img, extent, lmin, lmax, cmap = out
+    # Save as a tiff
+    plt.imsave(mapfile, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
+
+    # Start creating kmz
+    L = simplekml.Kml()
+
+    # Set zoom window
+    doc = L.document  # have to put lookat in root document directory
+    doc.altitudemode = simplekml.AltitudeMode.relativetoground
+    boundaries1 = get_zoomextent(maplayer['grid'])
+    doc.lookat.latitude = np.mean([boundaries1['ymin'], boundaries1['ymax']])
+    doc.lookat.longitude = np.mean([boundaries1['xmax'], boundaries1['xmin']])
+    doc.lookat.altitude = 0.
+    doc.lookat.range = (boundaries1['ymax']-boundaries1['ymin']) * 111. * 1000.  # dist in m from point
+    doc.description = 'USGS near-real-time earthquake-triggered %s model for \
+                       event id %s' % (maplayer['description']['parameters']\
+                       ['modeltype'], maplayer['description']['event_id'])
+
+    prob = L.newgroundoverlay(name=maplayer['label'])
+    prob.icon.href = 'files/%s.tiff' % basename
+    prob.latlonbox.north = extent[3]
+    prob.latlonbox.south = extent[2]
+    prob.latlonbox.east = extent[1]
+    prob.latlonbox.west = extent[0]
+    L.addfile(mapfile)
+
+    # Add legend and USGS icon as screen overlays
+    # Make legend
+    make_legend(levels, colorlist, filename=legfile, title=maplayer['label'])
+    
+    size1 = simplekml.Size(x=0.3, xunits=simplekml.Units.fraction)
+    leg = L.newscreenoverlay(name='Legend', size=size1)
+    leg.icon.href = 'files/%s' % legshort
+    leg.screenxy = simplekml.ScreenXY(x=0.2, y=0.05, xunits=simplekml.Units.fraction,
+                                      yunits=simplekml.Units.fraction)
+    L.addfile(legfile)
+
+    size2 = simplekml.Size(x=0.15, xunits=simplekml.Units.fraction)
+    icon = L.newscreenoverlay(name='USGS', size=size2)
+    icon.icon.href = 'files/USGS_ID_white.png'
+    icon.screenxy = simplekml.ScreenXY(x=0.8, y=0.95, xunits=simplekml.Units.fraction,
+                                       yunits=simplekml.Units.fraction)
+    L.addfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           os.pardir, 'content', 'USGS_ID_white.png'))
+
+    L.savekmz(filename)
+    return filename
+
+
+def get_zoomextent(grid, propofmax=0.3):
+    """
+    Get the extent that contains all values with probabilities exceeding
+    a threshold in order to determine ideal zoom level for interactive map
+    If nothing is above the threshold, uses the full extent
+
+    Args:
+        grid: grid2d of model output
+        propofmax (float): Proportion of maximum that should be fully included
+            within the bounds.
+
+    Returns:
+        tuple: (boundaries, zoomed) where,
+            * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and
+             'ymax' that defines the boundaries in geographic coordinates.
+
+    """
+    maximum = np.nanmax(grid.getData())
+
+    xmin, xmax, ymin, ymax = grid.getBounds()
+    lons = np.linspace(xmin, xmax, grid.getGeoDict().nx)
+    lats = np.linspace(ymax, ymin, grid.getGeoDict().ny)
+
+    if maximum <= 0.:
+        boundaries1 = dict(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+        # If nothing is above the threshold, use full extent
+        return boundaries1
+
+    threshold = propofmax * maximum
+
+    row, col = np.where(grid.getData() > float(threshold))
+    lonmin = lons[col].min()
+    lonmax = lons[col].max()
+    latmin = lats[row].min()
+    latmax = lats[row].max()
+
+    boundaries1 = {}
+
+    if xmin < lonmin:
+        boundaries1['xmin'] = lonmin
+    else:
+        boundaries1['xmin'] = xmin
+    if xmax > lonmax:
+        boundaries1['xmax'] = lonmax
+    else:
+        boundaries1['xmax'] = xmax
+    if ymin < latmin:
+        boundaries1['ymin'] = latmin
+    else:
+        boundaries1['ymin'] = ymin
+    if ymax > latmax:
+        boundaries1['ymax'] = latmax
+    else:
+        boundaries1['ymax'] = ymax
+
+    return boundaries1   
+
+
+def make_rgba(grid2D, levels, colorlist, mask=None,
+              mercator=False):
+    """
+    Make an rgba (red, green, blue, alpha) grid out of raw data values and
+    provide extent and limits needed to save as an image file
+    
+    Args:
+        grid2D: Mapio Grid2D object of result to mape 
+        levels (array): list of bin edges for each color, must be same length
+        colorlist (array): list of colors for each bin, should be length one
+            less than levels
+        mask (float): mask all values below this value
+        mercator (bool): project to web mercator (needed for leaflet, not
+                 for kmz)
+
+    Returns:
+        rgba_img, extent, lmin, lmax, cmap
+    """
+
+    data1 = grid2D.getData()
+    if mask is not None:
+        data1[data1 < mask] = float('nan')
+    geodict = grid2D.getGeoDict()
+    extent = [
+        geodict.xmin - 0.5*geodict.dx,
+        geodict.xmax + 0.5*geodict.dx,
+        geodict.ymin - 0.5*geodict.dy,
+        geodict.ymax + 0.5*geodict.dy,
+    ]
+
+    lmin = levels[0]
+    lmax = levels[-1]
+    data2 = np.clip(data1, lmin, lmax)
+    cmap = mpl.colors.ListedColormap(colorlist)
+    norm = mpl.colors.BoundaryNorm(levels, cmap.N)
+    data2 = np.ma.array(data2, mask=np.isnan(data1))
+    rgba_img = cmap(norm(data2))
+    if mercator:
+        rgba_img = mercator_transform(
+            rgba_img, (extent[2], extent[3]), origin='upper')
+
+    return rgba_img, extent, lmin, lmax, cmap
+
+
+def make_legend(levels, colorlist, filename=None, orientation='horizontal',
+                title=None, transparent=False):
+    """Make legend file
+
+    Args:
+
+        levels (array): list of bin edges for each color, must be same length
+        colorlist (array): list of colors for each bin, should be length one
+            less than levels
+        filename (str): File extension of legend file
+        orientation (str): orientation of colorbar, 'horizontal' or 'vertical'
+        title (str): title of legend (usually units)
+        transparent (bool): if True, background will be transparent
+
+    Returns:
+        figure of legend
+
+    """
+    fontsize = 16
+    labels = ['< %1.1f%%' % (levels[0] * 100.,)]
+    for db in levels:
+        if db < 0.01:
+            labels.append('%1.1f' % (db * 100,))
+        else:
+            labels.append('%1.0f' % (db * 100.,))
+
+    if orientation == 'vertical':
+        # Flip order to darker on top
+        labels = labels[::-1]
+        colors1 = colorlist[::-1]
+        fig, axes = plt.subplots(len(colors1) + 1, 1,
+                                 figsize=(3., len(colors1)-1.7))
+        clearind = len(axes)-1
+        maxind = 0
+    else:
+        colors1 = colorlist
+        fig, axes = plt.subplots(1, len(colorlist) + 1,
+                                 figsize=(len(colorlist) + 1.7, 0.8))
+        # DPI = fig.get_dpi()
+        # fig.set_size_inches(440/DPI, 83/DPI)
+        clearind = 0
+        maxind = len(axes)-1
+
+    for i, ax in enumerate(axes):
+        ax.set_ylim((0., 1.))
+        ax.set_xlim((0., 1.))
+        # draw square
+        if i == clearind:
+            color1 = colors1[0]
+            color1[-1] = 0.  # make completely transparent
+            if orientation == 'vertical':
+                label = labels[i+1]
+            else:
+                label = labels[0]
+        else:
+            if orientation == 'vertical':
+                label = '%s-%s%%' % (labels[i+1], labels[i])
+                color1 = colors1[i]
+            else:
+                label = '%s-%s%%' % (labels[i], labels[i+1])
+                color1 = colors1[i-1]
+            color1[-1] = 0.8  # make less transparent
+            if i == maxind:
+                label = '> %1.0f%%' % (levels[-2]*100.)
+        ax.set_facecolor(color1)
+        if orientation == 'vertical':
+            ax.text(1.1, 0.5, label, fontsize=fontsize,
+                    rotation='horizontal', va='center')
+        else:
+            ax.set_xlabel(label, fontsize=fontsize,
+                          rotation='horizontal')
+
+        ax.set_yticks([])
+        ax.set_xticks([])
+        plt.setp(ax.get_yticklabels(), visible=False)
+        plt.setp(ax.get_xticklabels(), visible=False)
+
+    if orientation == 'vertical':
+        fig.suptitle(title.title(), weight='bold', fontsize=fontsize+2)
+        plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
+    else:
+        fig.suptitle(title.title(), weight='bold', fontsize=fontsize+2)
+        # , left=0.01, right=0.99, top=0.99, bottom=0.01)
+        plt.subplots_adjust(wspace=0.1, top=0.6)
+    # plt.tight_layout()
+    if filename is not None:
+        fig.savefig(filename, bbox_inches='tight', transparent=transparent)
+    else:
+        plt.show()
+
 
 if __name__ == '__main__':
     pass

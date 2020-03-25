@@ -11,10 +11,9 @@ import gfail.logisticmodel as LM
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
 import gfail.makemaps as makemaps
+import tempfile
 #import shutil
 import gfail.utilities as utilities
-import shutil
-from impactutils.io.cmd import get_command_output
 
 
 homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
@@ -164,23 +163,12 @@ def test_maps():
     makemaps.modelMap(maplayers, logscale=[False, False, True, True],
                       savepdf=False, savepng=False)
 
-    # Make a copy of current defaults
-    default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
-    if os.path.exists(default_file):
-        shutil.copy(default_file, default_file+'_bak')
-    try:
-        # Clear paths to avoid problems with stats.py trying to find pop_file
-        rc, so, se = get_command_output('gfail -reset')
-        # Then run GFSummary
-        makemaps.GFSummary([maplayers, maplayers2], [modelLQ, modelLS],
-                           os.path.join(upone, 'pelican', 'theme'), shakefile,
-                           pop_file=None)
-    except Exception as e:
-        print(e)
-
-    # Put defaults back
-    if os.path.exists(default_file+'_bak'):
-        shutil.copy(default_file+'_bak', default_file)
+    # Test create_kmz
+    tempdir = tempfile.TemporaryDirectory()
+    makemaps.create_kmz(maplayers['model'], outfile=os.path.join(tempdir.name,
+                        'test.kmz'))
+    makemaps.create_kmz(maplayers2['model'], outfile=os.path.join(tempdir.name,
+                        'test.kmz'), mask=0.003)
 
 
 def test_zoom():
@@ -207,10 +195,6 @@ def test_zoom():
 
 
 if __name__ == "__main__":
-    #td1 = tempfile.TemporaryDirectory()
-    #td1 = os.path.join(datadir, 'temporary1')
-    #if not os.path.exists(td1):
-    #    os.mkdir(td1)
     test_parseMapConfig()
     test_parseConfigLayers()
     test_maps()

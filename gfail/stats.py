@@ -42,10 +42,12 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
         shakethreshtype: Optional, Type of ground motion to use for
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
-            pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation
-        statprobthresh: Optional, None or float, exclude any cells with probabilities
-            less than or equal to this value
-        pop_file (str): File path to population file to use to compute exposure stats
+            pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure
+            computation
+        statprobthresh: Optional, None or float, exclude any cells with
+            probabilities less than or equal to this value
+        pop_file (str): File path to population file to use to compute exposure
+            stats
 
     Returns:
         dict: Dictionary with the following keys:
@@ -65,9 +67,9 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
 
     if len(grid) == 0:
         print('no probability values above statprobthresh')
-        stats['Max'] = 0. #float('nan')
-        stats['Median'] = 0. #float('nan')
-        stats['Std'] = 0. #float('nan')
+        stats['Max'] = 0.  # float('nan')
+        stats['Median'] = 0.  # float('nan')
+        stats['Std'] = 0.  # float('nan')
     else:
         stats['Max'] = float(np.nanmax(grid))
         stats['Median'] = float(np.nanmedian(grid))
@@ -142,8 +144,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi.
 
-    Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh was defined,
-        otherwise, a list of floats of aggregate hazard for all shakethresh values.
+    Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh
+        was defined, otherwise, a list of floats of aggregate hazard for all
+        shakethresh values.
     """
     Hagg = []
     bounds = grid2D.getBounds()
@@ -286,15 +289,15 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi.
-        probthresh: Optional, None or float, exclude any cells with probabilities
-            less than or equal to this value
+        probthresh: Optional, None or float, exclude any cells with
+            probabilities less than or equal to this value
 
     Returns:
         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
     """
 
-    # If probthresh defined, zero out any areas less than or equal to probthresh
-    # before proceeding
+    # If probthresh defined, zero out any areas less than or equal to
+    # probthresh before proceeding
 
     if probthresh is not None:
         origdata = grid.getData()

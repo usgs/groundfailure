@@ -16,7 +16,7 @@ from mapio.shake import ShakeGrid
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
-from gfail.makemaps import (modelMap, interactiveMap, GFSummary)
+from gfail.makemaps import modelMap, create_kmz
 from gfail.webpage import hazdev
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
@@ -57,9 +57,11 @@ def run_gfail(args):
         # Turn on GIS and HDF5 flags
         gis = True
         hdf5 = True
+        kmz = True
     else:
         gis = args.gis
         hdf5 = args.hdf5
+        kmz = args.kmz
 
     # Figure out what models will be run
     if args.shakefile is not None:  # user intends to actually run some models
@@ -73,8 +75,7 @@ def run_gfail(args):
 
         if (hdf5 or args.make_static_pngs or
                 args.make_static_pdfs or
-                args.make_interactive_plots or
-                gis):
+                gis or kmz):
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
 
@@ -189,7 +190,7 @@ def run_gfail(args):
         else:
             bounds = None
 
-        if args.make_webpage or args.make_summary:
+        if args.make_webpage:
             results = []
 
         # pre-read in ocean trimming file polygons so only do this step once
@@ -343,26 +344,13 @@ def run_gfail(args):
                         logscale=logscale, **kwargs)
                     for filen in filenames1:
                         filenames.append(filen)
-            if args.make_interactive_plots:
-                plotorder, logscale, lims, colormaps, maskthreshes = \
-                    parseConfigLayers(maplayers, conf)
-                junk, filenames1 = interactiveMap(
-                    maplayers, plotorder=plotorder, shakefile=shakefile,
-                    inventory_shapefile=None, maskthreshes=maskthreshes,
-                    colormaps=colormaps, isScenario=False,
-                    scaletype='continuous', lims=lims, logscale=logscale,
-                    ALPHA=0.7, outputdir=outfolder, outfilename=filename,
-                    tiletype='Stamen Terrain', separate=True,
-                    faultfile=ffault)
-                for filen in filenames1:
-                    filenames.append(filen)
-            if gis:
+            if gis or kmz:
 
                 for key in maplayers:
                     # Get simplified name of key for file naming
-                    RIDOF = '[+-]?(?=\d*[.eE])(?=\.?\d)'\
-                            '\d*\.?\d*(?:[eE][+-]?\d+)?'
-                    OPERATORPAT = '[\+\-\*\/]*'
+                    RIDOF = r'[+-]?(?=\d*[.eE])(?=\.?\d)'\
+                            r'\d*\.?\d*(?:[eE][+-]?\d+)?'
+                    OPERATORPAT = r'[\+\-\*\/]*'
                     keyS = re.sub(OPERATORPAT, '', key)
                     # remove floating point numbers
                     keyS = re.sub(RIDOF, '', keyS)
@@ -370,21 +358,38 @@ def run_gfail(args):
                     keyS = re.sub('[()]*', '', keyS)
                     # remove any blank spaces
                     keyS = keyS.replace(' ', '')
-                    filen = os.path.join(outfolder, '%s_%s.bil'
-                                         % (filename, keyS))
-                    fileh = os.path.join(outfolder, '%s_%s.hdr'
-                                         % (filename, keyS))
-                    fileg = os.path.join(outfolder, '%s_%s.tif'
-                                         % (filename, keyS))
+                    if gis:
+                        filen = os.path.join(outfolder, '%s_%s.bil'
+                                             % (filename, keyS))
+                        fileh = os.path.join(outfolder, '%s_%s.hdr'
+                                             % (filename, keyS))
+                        fileg = os.path.join(outfolder, '%s_%s.tif'
+                                             % (filename, keyS))
 
-                    GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
-                    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
-                        filen, fileg)
-                    rc, so, se = get_command_output(cmd)
-                    # Delete bil file and its header
-                    os.remove(filen)
-                    os.remove(fileh)
-                    filenames.append(fileg)
+                        GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
+                        cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
+                            filen, fileg)
+                        rc, so, se = get_command_output(cmd)
+                        # Delete bil file and its header
+                        os.remove(filen)
+                        os.remove(fileh)
+                        filenames.append(fileg)
+                    if kmz:
+                        plotorder, logscale, lims, colormaps, maskthresh = \
+                            parseConfigLayers(maplayers, conf, keys=['model'])
+                        maxprob = np.nanmax(maplayers[key]['grid'].getData())
+                        if maskthresh is None:
+                            maskthresh = [0.]
+                        if maxprob >= maskthresh[0]:
+                            filen = os.path.join(outfolder, '%s_%s.kmz'
+                                                 % (filename, keyS))
+                            filek = create_kmz(maplayers[key], filen,
+                                               mask=maskthresh[0],
+                                               levels=lims[0])
+                            filenames.append(filek)
+                        else:
+                            print('No unmasked pixels present, skipping kmz '
+                                  'file creation')
 
             if args.make_webpage:
                 # Compile into list of results for later
@@ -401,16 +406,12 @@ def run_gfail(args):
                 filenames.append(filef)
                 filenames.append(filefh)
 
-            if args.make_summary and not args.make_webpage:
-                # Compile into list of results for later
-                results.append(maplayers)
-
         eventid = getHeaderData(shakefile)[0]['event_id']
         if not hasattr(args, 'eventsource'):
             args.eventsource = 'us'
         if not hasattr(args, 'eventsourcecode'):
             args.eventsourcecode = eventid
-        
+
         if args.make_webpage:
             outputs = hazdev(
                 results, configs,
@@ -418,14 +419,8 @@ def run_gfail(args):
                 pop_file=args.popfile,
                 pager_alert=args.property_alertlevel,
                 eventsource=args.eventsource,
-                eventsourcecode=args.eventsourcecode)
-            filenames = filenames + outputs
-
-        if args.make_summary:
-            outputs = GFSummary(
-                results, configs, args.web_template,
-                shakefile, outfolder=outfolder, cleanup=True,
-                faultfile=ffault, point=point, pop_file=args.popfile)
+                eventsourcecode=args.eventsourcecode,
+                point=point)
             filenames = filenames + outputs
 
 #        # create transparent png file
