@@ -709,6 +709,9 @@ def view_database(database, starttime=None, endtime=None,
             * criteria: dictionary containing info on what criteria were used
                 for the search
     """
+    import warnings
+    warnings.filterwarnings("ignore")
+
     criteria = dict(locals())
     # Define alert bins for later use
     hazbinLS = dict(green=[0., 1], yellow=[1., 10.], orange=[10., 100.],
@@ -989,7 +992,9 @@ def view_database(database, starttime=None, endtime=None,
 
     formatters = {"time": "{:%Y-%m-%d}".format,
                   "shakemap_version": "{:.0f}".format,
-                  "version": "{:.0f}".format}
+                  "version": "{:.0f}".format,
+                  "starttime": "{:%Y-%m-%d %H:%M}".format,
+                  "endtime": "{:%Y-%m-%d %H:%M}".format}
     # Print to screen
     if stats['nsuccess'] > 0 and printsuccess:
         print('Successful - %d runs' % stats['nsuccess'])
@@ -1012,9 +1017,9 @@ def view_database(database, starttime=None, endtime=None,
     if printfailed:
         if stats['nfail'] > 0:
             failcols = ['eventcode', 'location', 'mag', 'time',
-                        'shakemap_version', 'note']
+                        'shakemap_version', 'note', 'starttime', 'endtime']
             failcols2 = ['eventcode', 'location', 'mag', 'time',
-                         'shake_v', 'note']
+                         'shake_v', 'note', 'startrun', 'endrun']
 #            if 'note' not in cols:
 #                cols.append('note')
             print('Failed - %d runs' % stats['nfail'])
@@ -1028,7 +1033,9 @@ def view_database(database, starttime=None, endtime=None,
     if printnotmet:
         if stats['nnotmet'] > 0:
             failcols = ['eventcode', 'location', 'mag', 'time',
-                        'shakemap_version', 'note']
+                        'shakemap_version', 'note', 'starttime', 'endtime']
+            failcols2 = ['eventcode', 'location', 'mag', 'time',
+                         'shake_v', 'note', 'startrun', 'endrun']
             print('Criteria not met - %d runs' % stats['nnotmet'])
             print('-------------------------------------------------')
             print(notmet.to_string(columns=failcols, index=False,
