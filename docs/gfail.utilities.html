@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.utilities &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.webpage" href="gfail.webpage.html" />
@@ -37,206 +36,433 @@
 <span id="gfail-utilities"></span><h1>gfail.utilities<a class="headerlink" href="#module-gfail.utilities" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.utilities.is_grid_point_source">
-<code class="descclassname">gfail.utilities.</code><code class="descname">is_grid_point_source</code><span class="sig-paren">(</span><em>grid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#is_grid_point_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.is_grid_point_source" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">is_grid_point_source</code><span class="sig-paren">(</span><em class="sig-param">grid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#is_grid_point_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.is_grid_point_source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Was the shakemap grid constructed with a point source?</p>
-<p>This makes use of the ‘urat’ layer, which is the ratio of the predicted ground motion
-standard deviation to the GMPE standard deviation. The only reason this could ever be
-greater than 1.0 is if the uncertainty of the prediction is inflated due to the point
-source approxmiation; further, if a point source was used, there will always be some
+<p>This makes use of the ‘urat’ layer, which is the ratio of the predicted
+ground motion standard deviation to the GMPE standard deviation. The only
+reason this could ever be greater than 1.0 is if the uncertainty of the
+prediction is inflated due to the point source approxmiation; further,
+if a point source was used, there will always be some
 locations with ‘urat’ &gt; 1.0.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>grid</strong> (<em>ShakeGrid</em>) – A ShakeGrid object from MapIO.</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">True if point rupture.</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">bool</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>grid</strong> (<em>ShakeGrid</em>) – A ShakeGrid object from MapIO.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>True if point rupture.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.utilities.get_event_comcat">
-<code class="descclassname">gfail.utilities.</code><code class="descname">get_event_comcat</code><span class="sig-paren">(</span><em>shakefile</em>, <em>timewindow=60</em>, <em>degwindow=0.3</em>, <em>magwindow=0.2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_event_comcat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_event_comcat" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_event_comcat</code><span class="sig-paren">(</span><em class="sig-param">shakefile</em>, <em class="sig-param">timewindow=60</em>, <em class="sig-param">degwindow=0.3</em>, <em class="sig-param">magwindow=0.2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_event_comcat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_event_comcat" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find an event in comcat, searching first by event id and if that
 fails searching by magnitude, time, and location.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>shakefile</strong> (<em>str</em>) – path to shakemap .xml file of event to find</li>
-<li><strong>timewindow</strong> (<em>float</em>) – width of time window to search around time defined
-in shakefile (in seconds)</li>
-<li><strong>degwindow</strong> (<em>float</em>) – width of area to search around location specified in
-shakefile (in degrees).</li>
-<li><strong>magwindow</strong> (<em>float</em>) – width of magnitude window to search around the
-magnitude specified in shakefile.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shakefile</strong> (<em>str</em>) – path to shakemap .xml file of event to find</p></li>
+<li><p><strong>timewindow</strong> (<em>float</em>) – width of time window to search around time defined
+in shakefile (in seconds)</p></li>
+<li><p><strong>degwindow</strong> (<em>float</em>) – width of area to search around location specified in
+shakefile (in degrees).</p></li>
+<li><p><strong>magwindow</strong> (<em>float</em>) – width of magnitude window to search around the
+magnitude specified in shakefile.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
-<dt>None if event not found, else tuple (info, detail, shakemap) where,</dt>
-<dd><ul class="first last simple">
-<li>info: json formatted dictionary of info.json for the event</li>
-<li>detail: event detail from comcat</li>
-<li>shakemap: shakemap of event found (from comcat)</li>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>None if event not found, else tuple (info, detail, shakemap) where,</dt><dd><ul class="simple">
+<li><p>info: json formatted dictionary of info.json for the event</p></li>
+<li><p>detail: event detail from comcat</p></li>
+<li><p>shakemap: shakemap of event found (from comcat)</p></li>
 </ul>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.utilities.parseMapConfig">
-<code class="descclassname">gfail.utilities.</code><code class="descname">parseMapConfig</code><span class="sig-paren">(</span><em>config</em>, <em>fileext=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseMapConfig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseMapConfig" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">parseMapConfig</code><span class="sig-paren">(</span><em class="sig-param">config</em>, <em class="sig-param">fileext=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseMapConfig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseMapConfig" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parse config for mapping options.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj object.</li>
-<li><strong>fileext</strong> (<em>str</em>) – File extension to add to relative filepaths, will be
-prepended to any file paths in config.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj object.</p></li>
+<li><p><strong>fileext</strong> (<em>str</em>) – File extension to add to relative filepaths, will be
+prepended to any file paths in config.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary of map options pulled from config file.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Dictionary of map options pulled from config file.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.utilities.parseConfigLayers">
-<code class="descclassname">gfail.utilities.</code><code class="descname">parseConfigLayers</code><span class="sig-paren">(</span><em>maplayers</em>, <em>config</em>, <em>keys=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">parseConfigLayers</code><span class="sig-paren">(</span><em class="sig-param">maplayers</em>, <em class="sig-param">config</em>, <em class="sig-param">keys=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parse things that need to coodinate with each layer (like lims, logscale,
 colormaps etc.) from config file, in right order, where the order is from
 maplayers.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>maplayers</strong> (<em>dict</em>) – Dictionary containing model output.</li>
-<li><strong>config</strong> (<em>ConfigObj</em>) – Config object describing options for specific
-model.</li>
-<li><strong>keys</strong> (<em>list</em>) – List of keys of maplayers to process, e.g. <code class="docutils literal notranslate"><span class="pre">['model']</span></code>.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>maplayers</strong> (<em>dict</em>) – Dictionary containing model output.</p></li>
+<li><p><strong>config</strong> (<em>ConfigObj</em>) – Config object describing options for specific
+model.</p></li>
+<li><p><strong>keys</strong> (<em>list</em>) – List of keys of maplayers to process, e.g. <code class="docutils literal notranslate"><span class="pre">['model']</span></code>.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(plotorder, logscale, lims, colormaps, maskthreshes) where:</dt>
-<dd><ul class="first last simple">
-<li>plotorder: maplayers keys in order of plotting.</li>
-<li>logscale: list of logscale options from config corresponding to
-keys in plotorder (same order).</li>
-<li>lims: list of colorbar limits from config corresponding to keys
-in plotorder (same order).</li>
-<li>colormaps: list of colormaps from config corresponding to keys
-in plotorder (same order),</li>
-<li>maskthreshes: list of mask thresholds from config corresponding
-to keys in plotorder (same order).</li>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(plotorder, logscale, lims, colormaps, maskthreshes) where:</dt><dd><ul class="simple">
+<li><p>plotorder: maplayers keys in order of plotting.</p></li>
+<li><p>logscale: list of logscale options from config corresponding to
+keys in plotorder (same order).</p></li>
+<li><p>lims: list of colorbar limits from config corresponding to keys
+in plotorder (same order).</p></li>
+<li><p>colormaps: list of colormaps from config corresponding to keys
+in plotorder (same order),</p></li>
+<li><p>maskthreshes: list of mask thresholds from config corresponding
+to keys in plotorder (same order).</p></li>
 </ul>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.utilities.text_to_json">
-<code class="descclassname">gfail.utilities.</code><code class="descname">text_to_json</code><span class="sig-paren">(</span><em>input1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#text_to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.text_to_json" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">text_to_json</code><span class="sig-paren">(</span><em class="sig-param">input1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#text_to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.text_to_json" title="Permalink to this definition">¶</a></dt>
 <dd><p>Simplification of text_to_json from shakelib.rupture.factory</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>input1</strong> (<em>str</em>) – url or filepath to text file</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">json formatted stream of input1</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>input1</strong> (<em>str</em>) – url or filepath to text file</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>json formatted stream of input1</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.utilities.write_floats">
-<code class="descclassname">gfail.utilities.</code><code class="descname">write_floats</code><span class="sig-paren">(</span><em>filename</em>, <em>grid2d</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#write_floats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.write_floats" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">write_floats</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">grid2d</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#write_floats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.write_floats" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a binary (with acc. header file) version of a Grid2D object.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filename</strong> (<em>str</em>) – String filename to write (i.e., ‘probability.flt’)</li>
-<li><strong>grid2d</strong> (<em>Grid2D</em>) – MapIO Grid2D object.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>filename</strong> (<em>str</em>) – String filename to write (i.e., ‘probability.flt’)</p></li>
+<li><p><strong>grid2d</strong> (<em>Grid2D</em>) – MapIO Grid2D object.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Given a filename input of “probability.flt”, this function will
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Given a filename input of “probability.flt”, this function will
 create that file, plus a text file called “probability.hdr”.</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.utilities.savelayers">
-<code class="descclassname">gfail.utilities.</code><code class="descname">savelayers</code><span class="sig-paren">(</span><em>grids</em>, <em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#savelayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.savelayers" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">savelayers</code><span class="sig-paren">(</span><em class="sig-param">grids</em>, <em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#savelayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.savelayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save ground failure layers object as a MultiHazard HDF file, preserving
 metadata structures. All layers must have same geodictionary.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>grids</strong> – Ground failure layers object.</li>
-<li><strong>filename</strong> (<em>str</em>) – Path to where you want to save this file.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grids</strong> – Ground failure layers object.</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – Path to where you want to save this file.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">.hdf5 file containing ground failure layers</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>.hdf5 file containing ground failure layers</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.utilities.loadlayers">
-<code class="descclassname">gfail.utilities.</code><code class="descname">loadlayers</code><span class="sig-paren">(</span><em>filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#loadlayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.loadlayers" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">loadlayers</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#loadlayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.loadlayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a MultiHazard HDF file back in as a ground failure layers object in
 active memory (must have been saved for this purpose).
 :param filename: Path to layers file (hdf5 extension).
 :type filename: str</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">Ground failure layers object</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>Ground failure layers object</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.get_alert">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_alert</code><span class="sig-paren">(</span><em class="sig-param">paramalertLS, paramalertLQ, parampopLS, parampopLQ, hazbinLS=[1.0, 10.0, 100.0], popbinLS=[100, 1000, 10000], hazbinLQ=[10.0, 100.0, 1000.0], popbinLQ=[1000, 10000, 100000]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_alert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_alert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get alert levels</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>paramalertLS</strong> (<em>float</em>) – Hazard statistic of preferred landslide model</p></li>
+<li><p><strong>paramalertLQ</strong> (<em>float</em>) – Hazard statistic of preferred liquefaction model</p></li>
+<li><p><strong>parampopLS</strong> (<em>float</em>) – Exposure statistic of preferred landslide model</p></li>
+<li><p><strong>parampopLQ</strong> (<em>float</em>) – Exposure statistic of preferred liquefaction model</p></li>
+<li><p><strong>hazbinLS</strong> (<em>list</em>) – 3 element list of bin edges for landslide
+hazard alert between Green and Yellow, Yellow and Orange, and
+Orange and Red.</p></li>
+<li><p><strong>popbinLS</strong> (<em>list</em>) – same as above but for population exposure</p></li>
+<li><p><strong>hazbinLQ</strong> (<em>list</em>) – 3 element list of bin edges for liquefaction hazard
+alert between Green and Yellow, Yellow and Orange, and Orange
+and Red.</p></li>
+<li><p><strong>popbinLQ</strong> (<em>list</em>) – same as above but for population exposure</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>tuple: (hazLS, popLS, hazLQ, popLQ, LS, LQ) where:</dt><dd><ul class="simple">
+<li><p>hazLS: the landslide hazard alert level (str)</p></li>
+<li><p>popLS: the landslide population alert level (str)</p></li>
+<li><p>hazLQ: the liquefaction hazard alert level (str)</p></li>
+<li><p>popLQ: the liquefaction population alert level (str)</p></li>
+<li><p>LS: the overall landslide alert level (str)</p></li>
+<li><p>LQ: the overall liquefaction alert level (str)</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Returns</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.view_database">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">view_database</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">realtime=False</em>, <em class="sig-param">currentonly=False</em>, <em class="sig-param">numevents=None</em>, <em class="sig-param">LShazmin=None</em>, <em class="sig-param">LShazmax=None</em>, <em class="sig-param">LSpopmin=None</em>, <em class="sig-param">LSpopmax=None</em>, <em class="sig-param">LQhazmin=None</em>, <em class="sig-param">LQhazmax=None</em>, <em class="sig-param">LQpopmin=None</em>, <em class="sig-param">LQpopmax=None</em>, <em class="sig-param">verbose=False</em>, <em class="sig-param">printcols=None</em>, <em class="sig-param">csvfile=None</em>, <em class="sig-param">printsummary=True</em>, <em class="sig-param">printsuccess=False</em>, <em class="sig-param">printfailed=False</em>, <em class="sig-param">printnotmet=False</em>, <em class="sig-param">maxcolwidth=100</em>, <em class="sig-param">alertreport='value'</em>, <em class="sig-param">realtime_maxsec=86400.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#view_database"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.view_database" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prints out information from the ground failure database based on
+search criteria and other options. If nothing is defined except the
+database, it will print out a summary and details on the successful
+event runs only.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>database</strong> (<em>str</em>) – file path to event database (.db file)</p></li>
+<li><p><strong>starttime</strong> (<em>str</em>) – earliest earthquake time to include in the search,
+can be any string date recognizable by np.datetime</p></li>
+<li><p><strong>endtime</strong> (<em>str</em>) – latest earthquake time to include in the search,
+can be any string date recognizable by datetime</p></li>
+<li><p><strong>minmag</strong> (<em>float</em>) – minimum magnitude to include in search</p></li>
+<li><p><strong>maxmag</strong> (<em>float</em>) – maximum magnitude to include in search</p></li>
+<li><p><strong>eventids</strong> (<em>list</em>) – list of specific event ids to include (optional)</p></li>
+<li><p><strong>realtime</strong> (<em>bool</em>) – if True, will only include events that were run in
+near real time (defined by delay time less than realtime_maxsec)</p></li>
+<li><p><strong>currentonly</strong> (<em>bool</em>) – if True, will only include the most recent run
+of each event</p></li>
+<li><p><strong>numevents</strong> (<em>int</em>) – Include the numevents most recent events that meet
+search criteria</p></li>
+<li><p><strong>LShazmin</strong> – minimum landslide hazard alert color (‘green’, ‘yellow’,
+‘orange’, ‘red’) or minimum hazard alert statistic value</p></li>
+<li><p><strong>LShazmax</strong> – same as above but for maximum landslide hazard alert
+value/color</p></li>
+<li><p><strong>LSpopmin</strong> – same as above but for minimum landslide population alert
+value/color</p></li>
+<li><p><strong>LSpopmax</strong> – same as above but for maximum landslide population alert
+value/color</p></li>
+<li><p><strong>LQhazmin</strong> – same as above but for minimum liquefaction hazard alert
+value/color</p></li>
+<li><p><strong>LQhazmax</strong> – same as above but for maximum liquefaction hazard alert
+value/color</p></li>
+<li><p><strong>LQpopmin</strong> – same as above but for minimum liquefaction population alert
+value/color</p></li>
+<li><p><strong>LQpopmax</strong> – same as above but for maximum liquefaction population alert
+value/color</p></li>
+<li><p><strong>verbose</strong> (<em>bool</em>) – if True, will print all columns (overridden if
+printcols is assigned)</p></li>
+<li><p><strong>printcols</strong> (<em>list</em>) – List of columns to print out (choose from id,
+eventcode, shakemap_version, note, version, lat, lon, depth,
+time, mag, location, starttime, endtime, eventdir,
+finitefault, HaggLS, ExpPopLS, HaggLQ, ExpPopLQ</p></li>
+<li><p><strong>csvfile</strong> – If defined, saves csvfile of table of all events found
+(includes all fields and failed/non-runs)</p></li>
+<li><p><strong>printsummary</strong> (<em>bool</em>) – if True (default), will print summary of events
+found to screen</p></li>
+<li><p><strong>printsuccess</strong> (<em>bool</em>) – if True (default), will print out database entries
+for successful event runs found</p></li>
+<li><p><strong>printfailed</strong> (<em>bool</em>) – if True (default False), will print out information
+about failed event runs</p></li>
+<li><p><strong>printnotmet</strong> (<em>bool</em>) – if True (default False), will print out information
+about event runs that didn’t meet criteria to run ground failure</p></li>
+<li><p><strong>maxcolwidth</strong> (<em>int</em>) – maximum column width for printouts of database
+entries.</p></li>
+<li><p><strong>alertreport</strong> (<em>str</em>) – ‘value’ if values of alert statistics should be
+printed, or ‘color’ if alert level colors should be printed</p></li>
+<li><p><strong>realtime_maxsec</strong> (<em>float</em>) – if realtime is True, this is the maximum delay
+between event time and processing end time in seconds
+to consider an event to be run in realtime</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p>Prints summaries and database info to screen as requested, saves a
+csv file if requested. Also returns a tuple where (success, fail,
+notmet, stats, criteria) where</p>
+<blockquote>
+<div><ul>
+<li><dl class="simple">
+<dt>success: pandas dataframe of selected events that ran</dt><dd><p>successfully</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>fail: pandas dataframe of selected events that failed to run</dt><dd><p>due to an error</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>notmet: pandas dataframe of selected events that failed to run</dt><dd><p>because they did not meet the criteria to run ground failure</p>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt>stats: dictionary containing statistics summarizing selected</dt><dd><p>events where
+* aLSg/y/o/r is the number of overall alerts of green/yellow</p>
+<blockquote>
+<div><p>orange or red for landslides. If LS is replaced with LQ,
+it is the same but for liquefaction.</p>
+</div></blockquote>
+<ul class="simple">
+<li><p>hazLSg/y/o/r same as above but for hazard alert level totals</p></li>
+<li><dl class="simple">
+<dt>popLSg/y/o/r same as above but for population alert level</dt><dd><p>totals</p>
+</dd>
+</dl>
+</li>
+<li><p>nsuccess is the number of events that ran successfully</p></li>
+<li><p>nfail is the number of events that failed to run</p></li>
+<li><dl class="simple">
+<dt>nnotmet is the number of events that didn’t run because they</dt><dd><p>did not meet criteria to run ground failure</p>
+</dd>
+</dl>
+</li>
+<li><p>nunique is the number of unique earthquake events run</p></li>
+<li><dl class="simple">
+<dt>nunique_success is the number of unique earthquake events</dt><dd><p>that ran successfully</p>
+</dd>
+</dl>
+</li>
+<li><p>nrealtime is the number of events that ran in near-real-time</p></li>
+<li><dl class="simple">
+<dt>delay_median_s is the median delay time for near-real-time</dt><dd><p>events (earthquake time until first GF run), also the same
+for mean, min, max, and standard deviation</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>criteria: dictionary containing info on what criteria were used</dt><dd><p>for the search</p>
+</dd>
+</dl>
+</li>
+</ul>
+</div></blockquote>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.alert_summary">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">alert_summary</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">realtime=True</em>, <em class="sig-param">currentonly=True</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">summarytypes='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#alert_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.alert_summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print summary plot of alerts that have been issued for set of events met
+by defined criteria</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>database</strong> (<em>str</em>) – file path to event database (.db file)</p></li>
+<li><p><strong>starttime</strong> (<em>str</em>) – earliest earthquake time to include in the search,
+can be any string date recognizable by np.datetime</p></li>
+<li><p><strong>endtime</strong> (<em>str</em>) – latest earthquake time to include in the search,
+can be any string date recognizable by datetime</p></li>
+<li><p><strong>minmag</strong> (<em>float</em>) – minimum magnitude to include in search</p></li>
+<li><p><strong>maxmag</strong> (<em>float</em>) – maximum magnitude to include in search</p></li>
+<li><p><strong>realtime</strong> (<em>bool</em>) – if True, will only include events that were run in
+near real time (defined by delay time less than realtime_maxsec)</p></li>
+<li><p><strong>currentonly</strong> (<em>bool</em>) – if True, will only include the most recent run
+of each event</p></li>
+<li><p><strong>filebasename</strong> (<em>str</em>) – If defined, will save a file with a modified
+version of this name depending on which alert is displayed, if no
+path is given it will save in current directory.</p></li>
+<li><p><strong>summarytypes</strong> (<em>str</em>) – if ‘all’, will create three figures, one for
+overall alerts, one for hazard alerts, and one for population
+alerts. If ‘overall’, ‘hazard’, or ‘population’ it will create
+just the one selected.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Figures showing alert level summaries</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.time_delays">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">time_delays</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">changeonly=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#time_delays"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.time_delays" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make plot showing evolution of alerts in time
+Make a plot and print stats showing delay times and changes in alert</p>
+<blockquote>
+<div><p>statistics over time</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>database</strong> (<em>str</em>) – file path to event database (.db file)</p></li>
+<li><p><strong>starttime</strong> (<em>str</em>) – earliest earthquake time to include in the search,
+can be any string date recognizable by np.datetime</p></li>
+<li><p><strong>endtime</strong> (<em>str</em>) – latest earthquake time to include in the search,
+can be any string date recognizable by datetime</p></li>
+<li><p><strong>minmag</strong> (<em>float</em>) – minimum magnitude to include in search</p></li>
+<li><p><strong>maxmag</strong> (<em>float</em>) – maximum magnitude to include in search</p></li>
+<li><p><strong>eventids</strong> (<em>list</em>) – list of specific event ids to include (optional)</p></li>
+<li><p><strong>filebasename</strong> (<em>str</em>) – If defined, will save a file with a modified
+version of this name depending on which alert is displayed, if no
+path is given it will save in current directory.</p></li>
+<li><p><strong>changeonly</strong> (<em>bool</em>) – if True will only show events that changed alert
+level at least once in the time evolution plots (unless eventids
+are defined, then all will show)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Figures showing alert changes over time and delay and alert change</dt><dd><p>statistics</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.alert_rectangles">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">alert_rectangles</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">bins</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#alert_rectangles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.alert_rectangles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Function used to color bin levels in background of axis</p>
 </dd></dl>
 
 </div>
@@ -267,7 +493,6 @@ active memory (must have been saved for this purpose).
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
@@ -280,17 +505,15 @@ active memory (must have been saved for this purpose).
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

@@ -81,6 +81,7 @@ def modelMap(grids, shakefile=None,
     landslide models with their input layers).
 
     Args:
+
         grids (dict): Dictionary of N layers and metadata formatted like:
 
             .. code-block:: python
@@ -173,6 +174,7 @@ def modelMap(grids, shakefile=None,
             better looking hillshades.
 
     Returns:
+
         tuple: (newgrids, filenames), where:
             * newgrids: list of downsampled and trimmed version of input grids.
                 If no modification was needed for plotting, this will be
@@ -1309,9 +1311,8 @@ def get_zoomextent(grid, propofmax=0.3):
             within the bounds.
 
     Returns:
-        tuple: (boundaries, zoomed) where,
-            * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and
-             'ymax' that defines the boundaries in geographic coordinates.
+        * boundaries: a dictionary with keys 'xmin', 'xmax', 'ymin', and
+         'ymax' that defines the zoomed boundaries in geographic coordinates.
 
     """
     maximum = np.nanmax(grid.getData())
@@ -1371,7 +1372,13 @@ def make_rgba(grid2D, levels, colorlist, mask=None,
                  for kmz)
 
     Returns:
-        rgba_img, extent, lmin, lmax, cmap
+        tuple: (rgba_img, extent, lmin, lmax, cmap), where:
+            * rgba_img: rgba (red green blue alpha) image
+            * extent: list of outside corners of image,
+                [minlat, maxlat, minlon, maxlon]
+            * lmin: lowest bin edge
+            * lmax: highest bin edge
+            * cmap: colormap corresponding to image
     """
 
     data1 = grid2D.getData()

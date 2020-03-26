@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.stats &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -44,14 +43,14 @@
 
 
 <span class="c1"># local imports</span>
-<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
-<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="k">import</span> <span class="n">GDALGrid</span>
-<span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="k">import</span> <span class="n">GeoDict</span>
-<span class="kn">from</span> <span class="nn">gfail.spatial</span> <span class="k">import</span> <span class="n">quickcut</span>
-<span class="kn">from</span> <span class="nn">mapio.grid2d</span> <span class="k">import</span> <span class="n">Grid2D</span>
-<span class="kn">from</span> <span class="nn">skimage.measure</span> <span class="k">import</span> <span class="n">block_reduce</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">ShakeGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="kn">import</span> <span class="n">GDALGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="kn">import</span> <span class="n">GeoDict</span>
+<span class="kn">from</span> <span class="nn">gfail.spatial</span> <span class="kn">import</span> <span class="n">quickcut</span>
+<span class="kn">from</span> <span class="nn">mapio.grid2d</span> <span class="kn">import</span> <span class="n">Grid2D</span>
+<span class="kn">from</span> <span class="nn">skimage.measure</span> <span class="kn">import</span> <span class="n">block_reduce</span>
 
-<span class="kn">from</span> <span class="nn">configobj</span> <span class="k">import</span> <span class="n">ConfigObj</span>
+<span class="kn">from</span> <span class="nn">configobj</span> <span class="kn">import</span> <span class="n">ConfigObj</span>
 
 <span class="c1"># Make fonts readable and recognizable by illustrator</span>
 <span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
@@ -76,10 +75,12 @@
 <span class="sd">        shakethreshtype: Optional, Type of ground motion to use for</span>
 <span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
 <span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
-<span class="sd">            pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation</span>
-<span class="sd">        statprobthresh: Optional, None or float, exclude any cells with probabilities</span>
-<span class="sd">            less than or equal to this value</span>
-<span class="sd">        pop_file (str): File path to population file to use to compute exposure stats</span>
+<span class="sd">            pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure</span>
+<span class="sd">            computation</span>
+<span class="sd">        statprobthresh: Optional, None or float, exclude any cells with</span>
+<span class="sd">            probabilities less than or equal to this value</span>
+<span class="sd">        pop_file (str): File path to population file to use to compute exposure</span>
+<span class="sd">            stats</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: Dictionary with the following keys:</span>
@@ -99,9 +100,9 @@
 
     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no probability values above statprobthresh&#39;</span><span class="p">)</span>
-        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
-        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
-        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>  <span class="c1"># float(&#39;nan&#39;)</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>  <span class="c1"># float(&#39;nan&#39;)</span>
+        <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>  <span class="c1"># float(&#39;nan&#39;)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
         <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
@@ -176,8 +177,9 @@
 <span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
 <span class="sd">            pga, cm/s for pgv, float for mmi.</span>
 
-<span class="sd">    Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh was defined,</span>
-<span class="sd">        otherwise, a list of floats of aggregate hazard for all shakethresh values.</span>
+<span class="sd">    Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh</span>
+<span class="sd">        was defined, otherwise, a list of floats of aggregate hazard for all</span>
+<span class="sd">        shakethresh values.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">Hagg</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">bounds</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
@@ -320,15 +322,15 @@
 <span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
 <span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
 <span class="sd">            pga, cm/s for pgv, float for mmi.</span>
-<span class="sd">        probthresh: Optional, None or float, exclude any cells with probabilities</span>
-<span class="sd">            less than or equal to this value</span>
+<span class="sd">        probthresh: Optional, None or float, exclude any cells with</span>
+<span class="sd">            probabilities less than or equal to this value</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: Dictionary with keys named exp_pop_# where # is the shakethresh</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="c1"># If probthresh defined, zero out any areas less than or equal to probthresh</span>
-    <span class="c1"># before proceeding</span>
+    <span class="c1"># If probthresh defined, zero out any areas less than or equal to</span>
+    <span class="c1"># probthresh before proceeding</span>
 
     <span class="k">if</span> <span class="n">probthresh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">origdata</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
@@ -427,17 +429,15 @@
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

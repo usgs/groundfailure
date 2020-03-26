@@ -1,21 +1,20 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.pdl &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="gfail.sample" href="gfail.sample.html" />
+    <link rel="next" title="gfail.spatial" href="gfail.spatial.html" />
     <link rel="prev" title="gfail.makemaps" href="gfail.makemaps.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -35,63 +34,61 @@
             
   <div class="section" id="module-gfail.pdl">
 <span id="gfail-pdl"></span><h1>gfail.pdl<a class="headerlink" href="#module-gfail.pdl" title="Permalink to this headline">¶</a></h1>
-<div class="admonition-todo admonition" id="index-0">
-<p class="first admonition-title">Todo</p>
-<ul class="last simple">
-<li>Add max probability to product properties</li>
-<li>Potentially add more files (e.g., png, pdf)</li>
+<div class="admonition-todo admonition" id="id1">
+<p class="admonition-title">Todo</p>
+<ul class="simple">
+<li><p>Add max probability to product properties</p></li>
+<li><p>Potentially add more files (e.g., png, pdf)</p></li>
 </ul>
 </div>
 <dl class="function">
 <dt id="gfail.pdl.transfer">
-<code class="descclassname">gfail.pdl.</code><code class="descname">transfer</code><span class="sig-paren">(</span><em>event_dir</em>, <em>pdl_conf</em>, <em>pdl_bin=None</em>, <em>source='us'</em>, <em>dryrun=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#transfer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.transfer" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.pdl.</code><code class="sig-name descname">transfer</code><span class="sig-paren">(</span><em class="sig-param">event_dir</em>, <em class="sig-param">version</em>, <em class="sig-param">pdl_conf</em>, <em class="sig-param">pdl_bin=None</em>, <em class="sig-param">source='us'</em>, <em class="sig-param">dryrun=False</em>, <em class="sig-param">status='UPDATE'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#transfer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.transfer" title="Permalink to this definition">¶</a></dt>
 <dd><p>This is to transfer the event’s ‘pdl_directory’ to comcat. PDL must be
 installed separately, see <a class="reference external" href="https://usgs.github.io/pdl/">https://usgs.github.io/pdl/</a> for information.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>event_dir</strong> (<em>str</em>) – File path to location of results for event</li>
-<li><strong>pdl_conf</strong> (<em>str</em>) – Path to PDL conf file.</li>
-<li><strong>pdl_bin</strong> (<em>str</em>) – Path to ‘ProductClient.jar’. If None it guesses that it
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>event_dir</strong> (<em>str</em>) – File path to location of results for event.</p></li>
+<li><p><strong>version</strong> (<em>int</em>) – Version number of ground-failure run.</p></li>
+<li><p><strong>pdl_conf</strong> (<em>str</em>) – Path to PDL conf file.</p></li>
+<li><p><strong>pdl_bin</strong> (<em>str</em>) – Path to ‘ProductClient.jar’. If None it guesses that it
 is installed in the user’s home directory:
-<code class="docutils literal notranslate"><span class="pre">~/ProductClient/ProductClient.jar</span></code>.</li>
-<li><strong>source</strong> (<em>str</em>) – PDL ‘source’. This is ‘us’ for products coming from NEIC,
+<code class="docutils literal notranslate"><span class="pre">~/ProductClient/ProductClient.jar</span></code>.</p></li>
+<li><p><strong>source</strong> (<em>str</em>) – PDL ‘source’. This is ‘us’ for products coming from NEIC,
 and is tied to the authentication key but this only matters once
 we start sending to production servers rather than dev servers, at
-which point we’ll need to add a configuration option for the key.</li>
-<li><strong>dryrun</strong> (<em>bool</em>) – If True, the PDL command is constructed and printed but
-not executed.</li>
+which point we’ll need to add a configuration option for the key.</p></li>
+<li><p><strong>dryrun</strong> (<em>bool</em>) – If True, the PDL command is constructed and printed but
+not executed.</p></li>
+<li><p><strong>status</strong> (<em>str</em>) – Status of ground-failure product being sent to comcat.
+Default is “UPDATE” but can also be “WARNING” so that the product
+page displays the warning banner.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary of pdl return code, standard out, and standard
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Dictionary of pdl return code, standard out, and standard
 error for dryrun=False; PDL command for dryrun=True.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict or str</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict or str</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.pdl.prepare_pdl_directory">
-<code class="descclassname">gfail.pdl.</code><code class="descname">prepare_pdl_directory</code><span class="sig-paren">(</span><em>event_dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#prepare_pdl_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.prepare_pdl_directory" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.pdl.</code><code class="sig-name descname">prepare_pdl_directory</code><span class="sig-paren">(</span><em class="sig-param">event_dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#prepare_pdl_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.prepare_pdl_directory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make directory for transferring to comcat.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>event_dir</strong> (<em>str</em>) – Path to event directory</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">event_dir containing copies of all of the files that need to
-be sent to comcat</td>
-</tr>
-</tbody>
-</table>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>event_dir</strong> (<em>str</em>) – Path to event directory</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>event_dir containing copies of all of the files that need to
+be sent to comcat</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -122,7 +119,6 @@ be sent to comcat</td>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.pdl</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
@@ -135,17 +131,15 @@ be sent to comcat</td>
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

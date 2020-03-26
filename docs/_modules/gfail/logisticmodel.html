@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.logisticmodel &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -47,18 +46,18 @@
 <span class="c1"># from scipy import sparse</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
-<span class="kn">from</span> <span class="nn">timeit</span> <span class="k">import</span> <span class="n">default_timer</span> <span class="k">as</span> <span class="n">timer</span>
+<span class="kn">from</span> <span class="nn">timeit</span> <span class="kn">import</span> <span class="n">default_timer</span> <span class="k">as</span> <span class="n">timer</span>
 
 <span class="c1"># third party imports</span>
-<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
-<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">getHeaderData</span>
-<span class="kn">from</span> <span class="nn">mapio.gmt</span> <span class="k">import</span> <span class="n">GMTGrid</span>
-<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="k">import</span> <span class="n">GDALGrid</span>
-<span class="kn">from</span> <span class="nn">mapio.grid2d</span> <span class="k">import</span> <span class="n">Grid2D</span>
-<span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="k">import</span> <span class="n">GeoDict</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">ShakeGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">getHeaderData</span>
+<span class="kn">from</span> <span class="nn">mapio.gmt</span> <span class="kn">import</span> <span class="n">GMTGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="kn">import</span> <span class="n">GDALGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.grid2d</span> <span class="kn">import</span> <span class="n">Grid2D</span>
+<span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="kn">import</span> <span class="n">GeoDict</span>
 
-<span class="kn">from</span> <span class="nn">gfail.temphdf</span> <span class="k">import</span> <span class="n">TempHdf</span>
-<span class="kn">from</span> <span class="nn">gfail.spatial</span> <span class="k">import</span> <span class="n">quickcut</span><span class="p">,</span> <span class="n">trim_ocean</span>
+<span class="kn">from</span> <span class="nn">gfail.temphdf</span> <span class="kn">import</span> <span class="n">TempHdf</span>
+<span class="kn">from</span> <span class="nn">gfail.spatial</span> <span class="kn">import</span> <span class="n">quickcut</span><span class="p">,</span> <span class="n">trim_ocean</span>
 
 <span class="c1"># temporary until mapio is updated</span>
 <span class="kn">import</span> <span class="nn">warnings</span>
@@ -73,15 +72,15 @@
 <span class="n">SM_GRID_TERMS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="s1">&#39;pgv&#39;</span><span class="p">,</span> <span class="s1">&#39;mmi&#39;</span><span class="p">]</span>
 <span class="c1"># these will get np. prepended</span>
 <span class="n">OPERATORS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;log&#39;</span><span class="p">,</span> <span class="s1">&#39;log10&#39;</span><span class="p">,</span> <span class="s1">&#39;arctan&#39;</span><span class="p">,</span> <span class="s1">&#39;power&#39;</span><span class="p">,</span> <span class="s1">&#39;sqrt&#39;</span><span class="p">,</span> <span class="s1">&#39;minimum&#39;</span><span class="p">,</span> <span class="s1">&#39;pi&#39;</span><span class="p">]</span>
-<span class="n">FLOATPAT</span> <span class="o">=</span> <span class="s1">&#39;[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?&#39;</span>
+<span class="n">FLOATPAT</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;[+-]?(?=\d*[.eE])(?=\.?\d)\d*\.?\d*(?:[eE][+-]?\d+)?&#39;</span>
 <span class="n">INTPAT</span> <span class="o">=</span> <span class="s1">&#39;[0-9]+&#39;</span>
-<span class="n">OPERATORPAT</span> <span class="o">=</span> <span class="s1">&#39;[\+\-\*\/]*&#39;</span>
+<span class="n">OPERATORPAT</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;[\+\-\*\/]*&#39;</span>
 <span class="n">MONTHS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Jan&#39;</span><span class="p">,</span> <span class="s1">&#39;Feb&#39;</span><span class="p">,</span> <span class="s1">&#39;Mar&#39;</span><span class="p">,</span> <span class="s1">&#39;Apr&#39;</span><span class="p">,</span> <span class="s1">&#39;May&#39;</span><span class="p">,</span> <span class="s1">&#39;Jun&#39;</span><span class="p">,</span> <span class="s1">&#39;Jul&#39;</span><span class="p">,</span> <span class="s1">&#39;Aug&#39;</span><span class="p">,</span> <span class="s1">&#39;Sep&#39;</span><span class="p">,</span> <span class="s1">&#39;Oct&#39;</span><span class="p">,</span>
           <span class="s1">&#39;Nov&#39;</span><span class="p">,</span> <span class="s1">&#39;Dec&#39;</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="LogisticModel"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.LogisticModel">[docs]</a><span class="k">class</span> <span class="nc">LogisticModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
-    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">uncertfile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">saveinputs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">uncertfile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">saveinputs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
                  <span class="n">slopefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">numstd</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">slopemod</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">trimfile</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -167,10 +166,12 @@
         <span class="k">if</span> <span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">trimfile</span><span class="p">):</span>
                 <span class="nb">print</span><span class="p">(</span>
-                    <span class="s1">&#39;trimfile defined does not exist: </span><span class="si">%s</span><span class="se">\n</span><span class="s1">Ocean will not be trimmed&#39;</span> <span class="o">%</span> <span class="n">trimfile</span><span class="p">)</span>
+                    <span class="s1">&#39;trimfile defined does not exist: </span><span class="si">%s</span><span class="se">\n</span><span class="s1">Ocean will not be &#39;</span>
+                    <span class="s1">&#39;trimmed&#39;</span> <span class="o">%</span> <span class="n">trimfile</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">trimfile</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;.shp&#39;</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trimfile must be a shapefile, ocean will not be trimmed&#39;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trimfile must be a shapefile, ocean will not be &#39;</span>
+                      <span class="s1">&#39;trimmed&#39;</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">=</span> <span class="n">trimfile</span>
@@ -361,11 +362,13 @@
                         <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">getData</span><span class="p">(),</span>
                                 <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">layername</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span>
                                 <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">layername</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
-                <span class="k">if</span> <span class="n">layername</span> <span class="o">==</span> <span class="s1">&#39;rock&#39;</span><span class="p">:</span>  <span class="c1"># Test to convert unconsolidated sediments to a more reasonable coefficient</span>
+                <span class="k">if</span> <span class="n">layername</span> <span class="o">==</span> <span class="s1">&#39;rock&#39;</span><span class="p">:</span>  <span class="c1"># Convert unconsolidated sediments to a more reasonable coefficient</span>
                     <span class="n">sub1</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
-                    <span class="n">sub1</span><span class="p">[</span><span class="n">sub1</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="mf">3.21</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.36</span>  <span class="c1"># Change to mixed sedimentary rock coeff</span>
+                    <span class="n">sub1</span><span class="p">[</span><span class="n">sub1</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="mf">3.21</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.36</span>  <span class="c1"># Change to mixed sed rock coeff</span>
                     <span class="n">temp</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span><span class="n">sub1</span><span class="p">)</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">notes</span> <span class="o">+=</span> <span class="s1">&#39;unconsolidated sediment coefficient changed to -1.36 (weaker) from -3.22 to better reflect that this unit is not actually strong</span><span class="se">\n</span><span class="s1">&#39;</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">notes</span> <span class="o">+=</span> <span class="s1">&#39;unconsolidated sediment coefficient changed</span><span class="se">\</span>
+<span class="s1">                     to -1.36 (weaker) from -3.22 to better reflect that this </span><span class="se">\</span>
+<span class="s1">                    unit is not actually strong</span><span class="se">\n</span><span class="s1">&#39;</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="p">[</span><span class="n">layername</span><span class="p">]</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span>
                     <span class="n">temp</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">layername</span><span class="p">))</span>
                 <span class="n">td</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
@@ -594,24 +597,24 @@
                 <span class="n">Pmin</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">eqnmin</span><span class="p">)</span>
                 <span class="n">Pmax</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">eqnmax</span><span class="p">)</span>
 
-            <span class="c1">#Pmin[np.isnan(Pmin)] = 0.0</span>
-            <span class="c1">#Pmax[np.isnan(Pmax)] = 0.0</span>
+            <span class="c1"># Pmin[np.isnan(Pmin)] = 0.0</span>
+            <span class="c1"># Pmax[np.isnan(Pmax)] = 0.0</span>
 
-        <span class="c1">#P[np.isnan(P)] = 0.0</span>
+        <span class="c1"># P[np.isnan(P)] = 0.0</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Apply slope min/max limits</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;applying slope thresholds&#39;</span><span class="p">)</span>
             <span class="n">P</span> <span class="o">=</span> <span class="n">P</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
-            <span class="c1">#P[P==0.0] = float(&#39;nan&#39;)</span>
-            <span class="c1">#P[np.isnan(P)] = 0.0</span>
+            <span class="c1"># P[P==0.0] = float(&#39;nan&#39;)</span>
+            <span class="c1"># P[np.isnan(P)] = 0.0</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">Pmin</span> <span class="o">=</span> <span class="n">Pmin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
                 <span class="n">Pmax</span> <span class="o">=</span> <span class="n">Pmax</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
-                <span class="c1">#Pmin[Pmin==0.0] = float(&#39;nan&#39;)</span>
-                <span class="c1">#Pmax[Pmax==0.0] = float(&#39;nan&#39;)</span>
-                <span class="c1">#Pmin[np.isnan(Pmin)] = 0.0</span>
-                <span class="c1">#Pmax[np.isnan(Pmax)] = 0.0</span>
+                <span class="c1"># Pmin[Pmin==0.0] = float(&#39;nan&#39;)</span>
+                <span class="c1"># Pmax[Pmax==0.0] = float(&#39;nan&#39;)</span>
+                <span class="c1"># Pmin[np.isnan(Pmin)] = 0.0</span>
+                <span class="c1"># Pmax[np.isnan(Pmax)] = 0.0</span>
 
         <span class="c1"># Stuff into Grid2D object</span>
         <span class="k">if</span> <span class="s1">&#39;Jessee&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
@@ -650,8 +653,8 @@
         <span class="n">rdict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
         <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pgrid</span><span class="p">,</span>
-            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
-                                  <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">()),</span>
+            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
+                                    <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">()),</span>
             <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output&#39;</span><span class="p">,</span>
             <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
         <span class="p">}</span>
@@ -665,7 +668,7 @@
                     <span class="n">Pmaxgrid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">))</span>
             <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;modelmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pmingrid</span><span class="p">,</span>
-                <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> (-</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
+                <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1"> (-</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
                           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
                              <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span>
                              <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span><span class="p">)),</span>
@@ -674,7 +677,7 @@
             <span class="p">}</span>
             <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;modelmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
                 <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pmaxgrid</span><span class="p">,</span>
-                <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> (+</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
+                <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1"> (+</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
                           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
                              <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span>
                              <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span><span class="p">)),</span>
@@ -789,7 +792,7 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        str: &#39;shapefile&#39;, &#39;grid&#39;, or &#39;unknown&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1">#TODO MOVE TO MAPIO.</span>
+    <span class="c1"># TODO MOVE TO MAPIO.</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
         <span class="k">return</span> <span class="s1">&#39;dir&#39;</span>
     <span class="n">ftype</span> <span class="o">=</span> <span class="n">GMTGrid</span><span class="o">.</span><span class="n">getFileType</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
@@ -815,7 +818,7 @@
 <span class="sd">    Returns:</span>
 <span class="sd">        list: List of file names.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1">#TODO MOVE TO MAPIO</span>
+    <span class="c1"># TODO MOVE TO MAPIO</span>
     <span class="n">tflist</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">indir</span><span class="p">)</span>
     <span class="n">flist</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="k">for</span> <span class="n">tf</span> <span class="ow">in</span> <span class="n">tflist</span><span class="p">:</span>
@@ -877,7 +880,7 @@
                     <span class="n">x1</span> <span class="o">=</span> <span class="p">[</span><span class="n">par</span> <span class="k">for</span> <span class="n">par</span> <span class="ow">in</span> <span class="n">gmused</span> <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">par</span><span class="p">]</span>
                     <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">x1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
                         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
-                            <span class="s1">&#39;Clipping key </span><span class="si">%s</span><span class="s1"> does not match any names of layers&#39;</span>
+                            <span class="s1">&#39;Clipping key </span><span class="si">%s</span><span class="s1"> does not match any layers&#39;</span>
                             <span class="o">%</span> <span class="n">key</span><span class="p">)</span>
             <span class="n">clips</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
     <span class="k">return</span> <span class="n">clips</span></div>
@@ -969,7 +972,7 @@
 <span class="sd">            - &#39;timeField&#39; indicates the time that is used to know which input</span>
 <span class="sd">              file to read in, e.g. for monthly average precipitation, &#39;MONTH&#39;.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="c1">#TODO:</span>
+    <span class="c1"># TODO:</span>
     <span class="c1">#    - Return a time field for every term, not just one global one.</span>
 
     <span class="n">terms</span> <span class="o">=</span> <span class="p">{}</span>
@@ -1122,7 +1125,8 @@
 
 
 <div class="viewcode-block" id="checkTerm"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.checkTerm">[docs]</a><span class="k">def</span> <span class="nf">checkTerm</span><span class="p">(</span><span class="n">term</span><span class="p">,</span> <span class="n">layers</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Checks terms of equation and replaces text with machine readable operators</span>
+    <span class="sd">&quot;&quot;&quot;Checks terms of equation and replaces text with machine readable</span>
+<span class="sd">    operators</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        term: term from model configuration file</span>
@@ -1130,11 +1134,12 @@
 
 <span class="sd">    Returns:</span>
 <span class="sd">        tuple: (term, tterm, timeField) where:</span>
-<span class="sd">            * term: dictionary of verified terms for equation with keys corresponding</span>
-<span class="sd">                to each layer name</span>
-<span class="sd">            * tterm: any unconverted and unverified text that may cause expression to fail</span>
-<span class="sd">            * timeField: if any inputs are time dependent, output is unit of time (e.g., &#39;YEAR&#39;),</span>
-<span class="sd">                otherwise, None.</span>
+<span class="sd">            * term: dictionary of verified terms for equation with keys</span>
+<span class="sd">                corresponding to each layer name</span>
+<span class="sd">            * tterm: any unconverted and unverified text that may cause</span>
+<span class="sd">                expression to fail</span>
+<span class="sd">            * timeField: if any inputs are time dependent, output is unit of</span>
+<span class="sd">                time (e.g., &#39;YEAR&#39;), otherwise, None.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># startterm = term</span>
     <span class="c1"># Strip out everything that isn&#39;t: 0-9.() operators, +-/* or layer names.</span>
@@ -1220,17 +1225,15 @@
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

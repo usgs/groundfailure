@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.stats &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.temphdf" href="gfail.temphdf.html" />
@@ -37,145 +36,131 @@
 <span id="gfail-stats"></span><h1>gfail.stats<a class="headerlink" href="#module-gfail.stats" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.stats.computeStats">
-<code class="descclassname">gfail.stats.</code><code class="descname">computeStats</code><span class="sig-paren">(</span><em>grid2D</em>, <em>probthresh=None</em>, <em>shakefile=None</em>, <em>shakethreshtype='pga'</em>, <em>shakethresh=0.0</em>, <em>statprobthresh=None</em>, <em>pop_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeStats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeStats" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">computeStats</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">probthresh=None</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">shakethreshtype='pga'</em>, <em class="sig-param">shakethresh=0.0</em>, <em class="sig-param">statprobthresh=None</em>, <em class="sig-param">pop_file=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeStats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeStats" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute summary stats of a ground failure model output.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>grid2D</strong> – grid2D object of model output.</li>
-<li><strong>probthresh</strong> – Optional, Float or list of probability thresholds
-for use in Parea computation.</li>
-<li><strong>shakefile</strong> – Optional, path to shakemap file to use for ground motion
-threshold.</li>
-<li><strong>shakethreshtype</strong> – Optional, Type of ground motion to use for
-shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</li>
-<li><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
-pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure computation</li>
-<li><strong>statprobthresh</strong> – Optional, None or float, exclude any cells with probabilities
-less than or equal to this value</li>
-<li><strong>pop_file</strong> (<em>str</em>) – File path to population file to use to compute exposure stats</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid2D</strong> – grid2D object of model output.</p></li>
+<li><p><strong>probthresh</strong> – Optional, Float or list of probability thresholds
+for use in Parea computation.</p></li>
+<li><p><strong>shakefile</strong> – Optional, path to shakemap file to use for ground motion
+threshold.</p></li>
+<li><p><strong>shakethreshtype</strong> – Optional, Type of ground motion to use for
+shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</p></li>
+<li><p><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
+pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure
+computation</p></li>
+<li><p><strong>statprobthresh</strong> – Optional, None or float, exclude any cells with
+probabilities less than or equal to this value</p></li>
+<li><p><strong>pop_file</strong> (<em>str</em>) – File path to population file to use to compute exposure
+stats</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>Dictionary with the following keys:</dt>
-<dd><ul class="first last simple">
-<li>Max</li>
-<li>Median</li>
-<li>Std</li>
-<li>Hagg_# where # is the shaking threshold</li>
-<li>Parea_# where # is the probability threshold</li>
-<li>exp_pop_# where # is the shaking threshold (if pop_file specified)</li>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Dictionary with the following keys:</dt><dd><ul class="simple">
+<li><p>Max</p></li>
+<li><p>Median</p></li>
+<li><p>Std</p></li>
+<li><p>Hagg_# where # is the shaking threshold</p></li>
+<li><p>Parea_# where # is the probability threshold</p></li>
+<li><p>exp_pop_# where # is the shaking threshold (if pop_file specified)</p></li>
 </ul>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.stats.computeHagg">
-<code class="descclassname">gfail.stats.</code><code class="descname">computeHagg</code><span class="sig-paren">(</span><em>grid2D</em>, <em>proj='moll'</em>, <em>probthresh=0.0</em>, <em>shakefile=None</em>, <em>shakethreshtype='pga'</em>, <em>shakethresh=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeHagg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeHagg" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">computeHagg</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">proj='moll'</em>, <em class="sig-param">probthresh=0.0</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">shakethreshtype='pga'</em>, <em class="sig-param">shakethresh=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeHagg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeHagg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the Aggregate Hazard (Hagg) which is equal to the
 probability * area of grid cell For models that compute areal coverage,
 this is equivalant to the total predicted area affected in km2.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>grid2D</strong> – grid2D object of model output.</li>
-<li><strong>proj</strong> – projection to use to obtain equal area, ‘moll’  mollweide, or
-‘laea’ lambert equal area.</li>
-<li><strong>probthresh</strong> – Probability threshold, any values less than this will not
-be included in aggregate hazard estimation.</li>
-<li><strong>shakefile</strong> – Optional, path to shakemap file to use for ground motion
-threshold.</li>
-<li><strong>shakethreshtype</strong> – Optional, Type of ground motion to use for
-shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</li>
-<li><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
-pga, cm/s for pgv, float for mmi.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid2D</strong> – grid2D object of model output.</p></li>
+<li><p><strong>proj</strong> – projection to use to obtain equal area, ‘moll’  mollweide, or
+‘laea’ lambert equal area.</p></li>
+<li><p><strong>probthresh</strong> – Probability threshold, any values less than this will not
+be included in aggregate hazard estimation.</p></li>
+<li><p><strong>shakefile</strong> – Optional, path to shakemap file to use for ground motion
+threshold.</p></li>
+<li><p><strong>shakethreshtype</strong> – Optional, Type of ground motion to use for
+shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</p></li>
+<li><p><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
+pga, cm/s for pgv, float for mmi.</p></li>
 </ul>
-</td>
-</tr>
-</tbody>
-</table>
-<dl class="docutils">
-<dt>Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh was defined,</dt>
-<dd>otherwise, a list of floats of aggregate hazard for all shakethresh values.</dd>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh</dt><dd><p>was defined, otherwise, a list of floats of aggregate hazard for all
+shakethresh values.</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.stats.computeParea">
-<code class="descclassname">gfail.stats.</code><code class="descname">computeParea</code><span class="sig-paren">(</span><em>grid2D</em>, <em>proj='moll'</em>, <em>probthresh=0.0</em>, <em>shakefile=None</em>, <em>shakethreshtype='pga'</em>, <em>shakethresh=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeParea"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeParea" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">computeParea</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">proj='moll'</em>, <em class="sig-param">probthresh=0.0</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">shakethreshtype='pga'</em>, <em class="sig-param">shakethresh=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeParea"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeParea" title="Permalink to this definition">¶</a></dt>
 <dd><p>Alternative to Aggregate Hazard (Hagg), which is equal to the
 the sum of the area of grid cells that exceeds a given probability.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>grid2D</strong> – grid2D object of model output.</li>
-<li><strong>proj</strong> – projection to use to obtain equal area, ‘moll’  mollweide, or
-‘laea’ lambert equal area.</li>
-<li><strong>probthresh</strong> – Optional, Float or list of probability thresholds.</li>
-<li><strong>shakefile</strong> – Optional, path to shakemap file to use for ground motion
-threshold.</li>
-<li><strong>shakethreshtype</strong> – Optional, Type of ground motion to use for
-shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</li>
-<li><strong>shakethresh</strong> – Optional, Float of shaking thresholds in %g for
-pga, cm/s for pgv, float for mmi.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid2D</strong> – grid2D object of model output.</p></li>
+<li><p><strong>proj</strong> – projection to use to obtain equal area, ‘moll’  mollweide, or
+‘laea’ lambert equal area.</p></li>
+<li><p><strong>probthresh</strong> – Optional, Float or list of probability thresholds.</p></li>
+<li><p><strong>shakefile</strong> – Optional, path to shakemap file to use for ground motion
+threshold.</p></li>
+<li><p><strong>shakethreshtype</strong> – Optional, Type of ground motion to use for
+shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</p></li>
+<li><p><strong>shakethresh</strong> – Optional, Float of shaking thresholds in %g for
+pga, cm/s for pgv, float for mmi.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Parea (float) if no or only one probthresh defined,
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Parea (float) if no or only one probthresh defined,
 otherwise, a list of floats of Parea corresponding to all
 specified probthresh values.</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.stats.get_exposures">
-<code class="descclassname">gfail.stats.</code><code class="descname">get_exposures</code><span class="sig-paren">(</span><em>grid</em>, <em>pop_file</em>, <em>shakefile=None</em>, <em>shakethreshtype=None</em>, <em>shakethresh=None</em>, <em>probthresh=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#get_exposures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.get_exposures" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">get_exposures</code><span class="sig-paren">(</span><em class="sig-param">grid</em>, <em class="sig-param">pop_file</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">shakethreshtype=None</em>, <em class="sig-param">shakethresh=None</em>, <em class="sig-param">probthresh=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#get_exposures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.get_exposures" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get exposure-based statistics.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>grid</strong> – Model grid.</li>
-<li><strong>pop_file</strong> (<em>str</em>) – Path to the landscan population grid.</li>
-<li><strong>shakefile</strong> (<em>str</em>) – Optional, path to shakemap file to use for ground
-motion threshold.</li>
-<li><strong>shakethreshtype</strong> (<em>str</em>) – Optional, Type of ground motion to use for
-shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</li>
-<li><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
-pga, cm/s for pgv, float for mmi.</li>
-<li><strong>probthresh</strong> – Optional, None or float, exclude any cells with probabilities
-less than or equal to this value</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid</strong> – Model grid.</p></li>
+<li><p><strong>pop_file</strong> (<em>str</em>) – Path to the landscan population grid.</p></li>
+<li><p><strong>shakefile</strong> (<em>str</em>) – Optional, path to shakemap file to use for ground
+motion threshold.</p></li>
+<li><p><strong>shakethreshtype</strong> (<em>str</em>) – Optional, Type of ground motion to use for
+shakethresh, ‘pga’, ‘pgv’, or ‘mmi’.</p></li>
+<li><p><strong>shakethresh</strong> – Optional, Float or list of shaking thresholds in %g for
+pga, cm/s for pgv, float for mmi.</p></li>
+<li><p><strong>probthresh</strong> – Optional, None or float, exclude any cells with
+probabilities less than or equal to this value</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Dictionary with keys named exp_pop_# where # is the shakethresh</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">dict</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Dictionary with keys named exp_pop_# where # is the shakethresh</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -206,7 +191,6 @@ less than or equal to this value</li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
@@ -219,17 +203,15 @@ less than or equal to this value</li>
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

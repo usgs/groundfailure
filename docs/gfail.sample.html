@@ -1,22 +1,19 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.sample &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="gfail.spatial" href="gfail.spatial.html" />
-    <link rel="prev" title="gfail.pdl" href="gfail.pdl.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -33,187 +30,8 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="module-gfail.sample">
-<span id="gfail-sample"></span><h1>gfail.sample<a class="headerlink" href="#module-gfail.sample" title="Permalink to this headline">¶</a></h1>
-<p>This module contains a set of functions for sampling from inventory
-shapefiles for model development or testing. The codes are borrowed
-heavily from &lt;<a class="reference external" href="http://github.com/mhearne-usgs/lsprocess">http://github.com/mhearne-usgs/lsprocess</a>&gt;</p>
-<dl class="function">
-<dt id="gfail.sample.getProjectedShapes">
-<code class="descclassname">gfail.sample.</code><code class="descname">getProjectedShapes</code><span class="sig-paren">(</span><em>shapes</em>, <em>xmin</em>, <em>xmax</em>, <em>ymin</em>, <em>ymax</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/sample.html#getProjectedShapes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.sample.getProjectedShapes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Take a sequence of geographic shapes and project them to a bounds-centered
-orthographic projection.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>shapes</strong> – Sequence of shapes, as read in by fiona.collection().</li>
-<li><strong>xmin</strong> – Eastern boundary of all shapes.</li>
-<li><strong>xmax</strong> – Western boundary of all shapes.</li>
-<li><strong>ymin</strong> – Southern boundary of all shapes.</li>
-<li><strong>ymax</strong> – Northern boundary of all shapes.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(pshapes, proj) where:</dt>
-<dd><ul class="first last simple">
-<li>pshapes: input sequence of shapes, projected to orthographic</li>
-<li>proj: PyProj projection object used to transform input shapes</li>
-</ul>
-</dd>
-</dl>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.sample.getYesPoints">
-<code class="descclassname">gfail.sample.</code><code class="descname">getYesPoints</code><span class="sig-paren">(</span><em>pshapes</em>, <em>proj</em>, <em>dx</em>, <em>nmax</em>, <em>touch_center=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/sample.html#getYesPoints"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.sample.getYesPoints" title="Permalink to this definition">¶</a></dt>
-<dd><p>Collect x/y coordinates of all points within hazard coverage polygons at
-desired resolution.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>pshapes</strong> – Sequence of orthographically projected shapes.</li>
-<li><strong>proj</strong> – PyProj projection object used to transform input shapes.</li>
-<li><strong>dx</strong> – Float resolution of grid at which to sample points, must be round
-number.</li>
-<li><strong>nmax</strong> – Threshold maximum number of points in total data mesh.</li>
-<li><strong>touch_center</strong> – Boolean indicating whether presence of polygon in each
-grid cell is enough to turn that into a yes pixel (False) or
-if the center of the grid cell must intersect a polygon (True).</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(yespoints, nrows, ncols, xvar, yvar, idx) where:</dt>
-<dd><ul class="first last simple">
-<li>yespoints: numpy 2-D array of X/Y coordinates inside hazard polygons.</li>
-<li>nrows: number of rows of resulting mesh</li>
-<li>ncols: number of columns of resulting mesh</li>
-<li>xvar: numpy array of x coordinate centers of columns</li>
-<li>yvar: numpy array of y coordinate centers of rows</li>
-<li>idx: 1D array of indices where yes pixels are located
-(use np.unravel_index to unpack to 2D array)</li>
-</ul>
-</dd>
-</dl>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.sample.pointsFromShapes">
-<code class="descclassname">gfail.sample.</code><code class="descname">pointsFromShapes</code><span class="sig-paren">(</span><em>shapes</em>, <em>bounds</em>, <em>dx=10.0</em>, <em>nmax=None</em>, <em>Nsamp=None</em>, <em>touch_center=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/sample.html#pointsFromShapes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.sample.pointsFromShapes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get yes/no points from shapefile input - same as sampleFromShapes but
-without class balance or separation of test and train, only samples in
-box enclosing the polygons</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>shapes</strong> – Sequence of projected shapes.</li>
-<li><strong>bounds</strong> – Tuple of xmin, ymin, xmax, ymax, in lat/lon coordinates, only
-will accept points from within these bounds.</li>
-<li><strong>dx</strong> – Resolution of sampling in X and Y (meters), must be a round number
-of meters.</li>
-<li><strong>nmax</strong> – If not None, maximum allowed number of mesh points in X and Y
-together (nrows*ncols).  Overrides dx.</li>
-<li><strong>Nsamp</strong> – If not None, maximum number of total samples, keeps proportion
-of yes’s and no’s the same.</li>
-<li><strong>touch_center</strong> – Boolean indicating whether presence of polygon in each
-grid cell is enough to turn that into a yes pixel.
-** This explanation needs to be improved because it seems to
-describe the opposite of the usual meaning of this variable!**</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(yespoints, nopoints, xvar, yvar, pshapes, proj) where:</dt>
-<dd><ul class="first last simple">
-<li>yespoints: sequence of coordinates in lat/lon for yespoints</li>
-<li>nopoints: same as above for no points</li>
-<li>xvar: numpy array of mesh column centers</li>
-<li>yvar: numpy array of mesh row centers</li>
-<li>pshapes: projected shapes</li>
-<li>proj: PyProj object defining orthographic projection of xy points</li>
-</ul>
-</dd>
-</dl>
-</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.sample.projectBack">
-<code class="descclassname">gfail.sample.</code><code class="descname">projectBack</code><span class="sig-paren">(</span><em>points</em>, <em>proj</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/sample.html#projectBack"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.sample.projectBack" title="Permalink to this definition">¶</a></dt>
-<dd><p>Project a 2D array of XY points from orthographic projection to decimal
-degrees.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>points</strong> – 2D numpy array of XY points in orthographic projection.</li>
-<li><strong>proj</strong> – PyProj object defining projection.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">2D numpy array of Lon/Lat coordinates.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.sample.rasterizeShapes">
-<code class="descclassname">gfail.sample.</code><code class="descname">rasterizeShapes</code><span class="sig-paren">(</span><em>pshapes</em>, <em>geodict</em>, <em>all_touched=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/sample.html#rasterizeShapes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.sample.rasterizeShapes" title="Permalink to this definition">¶</a></dt>
-<dd><p>Rasterizing a shape</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>pshapes</strong> – Sequence of orthographically projected shapes.</li>
-<li><strong>geodict</strong> – Mapio geodictionary.</li>
-<li><strong>all_touched</strong> – Turn pixel “on” if shape touches pixel, otherwise turn it
-on if the center of the pixel is contained within the shape. Note
-that the footprint of the shape is inflated and the amount of
-inflation depends on the pixel size if all_touched=True.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Rasterio grid.</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
+  <div class="section" id="gfail-sample">
+<h1>gfail.sample<a class="headerlink" href="#gfail-sample" title="Permalink to this headline">¶</a></h1>
 </div>
 
 
@@ -234,38 +52,21 @@ inflation depends on the pixel size if all_touched=True.</li>
 
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="gfail.conf.html">gfail.conf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.sample</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.transfer.html">gfail.transfer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
-</ul>
-</li>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="gfail.html">gfail</a></li>
 </ul>
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

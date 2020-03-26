@@ -22,7 +22,7 @@ VENV=gf
 py_ver=3.6
 
 # Set to 1 if you are a developer and want ipython etc. installed
-developer=0
+developer=1
 
 # create a matplotlibrc file with the non-interactive backend "Agg" in it.
 if [ ! -d "$matplotlibdir" ]; then
@@ -101,6 +101,7 @@ dev_list=(
     "ipython"
     "spyder"
     "sphinx"
+    "sphinx-argparse"
 )
 
 # Package list:

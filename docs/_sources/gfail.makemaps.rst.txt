@@ -2,6 +2,6 @@ gfail.makemaps
 =====================
 
 .. automodule:: gfail.makemaps
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

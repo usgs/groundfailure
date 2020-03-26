@@ -2,6 +2,6 @@ gfail.godt
 =================
 
 .. automodule:: gfail.godt
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:
