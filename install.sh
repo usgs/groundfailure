@@ -21,6 +21,9 @@ VENV=gf
 # Python version
 py_ver=3.6
 
+# Set to 1 if you are a developer and want ipython etc. installed
+developer=0
+
 # create a matplotlibrc file with the non-interactive backend "Agg" in it.
 if [ ! -d "$matplotlibdir" ]; then
     mkdir -p $matplotlibdir
@@ -94,6 +97,13 @@ conda activate base
 # Remove existing shakemap environment if it exists
 conda remove -y -n $VENV --all
 
+dev_list=(
+    "ipython"
+    "spyder"
+    "sphinx"
+    "sphinx-argparse"
+)
+
 # Package list:
 package_list=(
       "python=$py_ver"
@@ -118,6 +128,11 @@ package_list=(
       "scipy"
       "simplekml"
 )
+
+if [ $developer == 1 ]; then
+    package_list=( "${package_list[@]}" "${dev_list[@]}" )
+    echo ${package_list[*]}
+fi
 
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment"

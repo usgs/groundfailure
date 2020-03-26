@@ -11,7 +11,6 @@ Submodules
    gfail.logisticmodel
    gfail.makemaps
    gfail.pdl
-   gfail.sample
    gfail.spatial
    gfail.stats
    gfail.temphdf
@@ -22,6 +21,6 @@ Submodules
 Module contents
 
 .. automodule:: gfail
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.gfailrun &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../../_static/jquery.js"></script>
-    <script type="text/javascript" src="../../_static/underscore.js"></script>
-    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -33,26 +32,26 @@
             
   <h1>Source code for gfail.gfailrun</h1><div class="highlight"><pre>
 <span></span><span class="c1"># stdlib imports</span>
-<span class="kn">from</span> <span class="nn">configobj</span> <span class="k">import</span> <span class="n">ConfigObj</span>
+<span class="kn">from</span> <span class="nn">configobj</span> <span class="kn">import</span> <span class="n">ConfigObj</span>
 <span class="kn">import</span> <span class="nn">os</span>
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
 <span class="kn">import</span> <span class="nn">urllib</span>
 <span class="kn">import</span> <span class="nn">re</span>
-<span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">Namespace</span>
+<span class="kn">from</span> <span class="nn">argparse</span> <span class="kn">import</span> <span class="n">Namespace</span>
 
 <span class="c1"># local imports</span>
-<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">getHeaderData</span>
-<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="k">import</span> <span class="n">GDALGrid</span>
-<span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="k">import</span> <span class="n">get_command_output</span>
-<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="k">import</span> <span class="n">ShakeGrid</span>
-<span class="kn">from</span> <span class="nn">gfail.conf</span> <span class="k">import</span> <span class="n">correct_config_filepaths</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">getHeaderData</span>
+<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="kn">import</span> <span class="n">GDALGrid</span>
+<span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="kn">import</span> <span class="n">get_command_output</span>
+<span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">ShakeGrid</span>
+<span class="kn">from</span> <span class="nn">gfail.conf</span> <span class="kn">import</span> <span class="n">correct_config_filepaths</span>
 <span class="kn">import</span> <span class="nn">gfail.logisticmodel</span> <span class="k">as</span> <span class="nn">LM</span>
-<span class="kn">from</span> <span class="nn">gfail.godt</span> <span class="k">import</span> <span class="n">godt2008</span>
-<span class="kn">from</span> <span class="nn">gfail.makemaps</span> <span class="k">import</span> <span class="p">(</span><span class="n">modelMap</span><span class="p">,</span> <span class="n">interactiveMap</span><span class="p">,</span> <span class="n">GFSummary</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="k">import</span> <span class="n">hazdev</span><span class="p">,</span> <span class="n">create_png</span><span class="p">,</span> <span class="n">create_info</span>
-<span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="k">import</span> <span class="p">(</span>
+<span class="kn">from</span> <span class="nn">gfail.godt</span> <span class="kn">import</span> <span class="n">godt2008</span>
+<span class="kn">from</span> <span class="nn">gfail.makemaps</span> <span class="kn">import</span> <span class="n">modelMap</span><span class="p">,</span> <span class="n">create_kmz</span>
+<span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="kn">import</span> <span class="n">hazdev</span>
+<span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">get_event_comcat</span><span class="p">,</span> <span class="n">parseConfigLayers</span><span class="p">,</span>
     <span class="n">parseMapConfig</span><span class="p">,</span> <span class="n">text_to_json</span><span class="p">,</span> <span class="n">write_floats</span><span class="p">,</span>
     <span class="n">savelayers</span><span class="p">)</span>
@@ -91,9 +90,11 @@
         <span class="c1"># Turn on GIS and HDF5 flags</span>
         <span class="n">gis</span> <span class="o">=</span> <span class="kc">True</span>
         <span class="n">hdf5</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">kmz</span> <span class="o">=</span> <span class="kc">True</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">gis</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">gis</span>
         <span class="n">hdf5</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">hdf5</span>
+        <span class="n">kmz</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">kmz</span>
 
     <span class="c1"># Figure out what models will be run</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># user intends to actually run some models</span>
@@ -107,8 +108,7 @@
 
         <span class="k">if</span> <span class="p">(</span><span class="n">hdf5</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span> <span class="ow">or</span>
                 <span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span> <span class="ow">or</span>
-                <span class="n">args</span><span class="o">.</span><span class="n">make_interactive_plots</span> <span class="ow">or</span>
-                <span class="n">gis</span><span class="p">):</span>
+                <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
 
@@ -223,7 +223,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">bounds</span> <span class="o">=</span> <span class="kc">None</span>
 
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_summary</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
             <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
 
         <span class="c1"># pre-read in ocean trimming file polygons so only do this step once</span>
@@ -377,26 +377,13 @@
                         <span class="n">logscale</span><span class="o">=</span><span class="n">logscale</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
                     <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames1</span><span class="p">:</span>
                         <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_interactive_plots</span><span class="p">:</span>
-                <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
-                    <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
-                <span class="n">junk</span><span class="p">,</span> <span class="n">filenames1</span> <span class="o">=</span> <span class="n">interactiveMap</span><span class="p">(</span>
-                    <span class="n">maplayers</span><span class="p">,</span> <span class="n">plotorder</span><span class="o">=</span><span class="n">plotorder</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
-                    <span class="n">inventory_shapefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">maskthreshes</span><span class="o">=</span><span class="n">maskthreshes</span><span class="p">,</span>
-                    <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span> <span class="n">isScenario</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">scaletype</span><span class="o">=</span><span class="s1">&#39;continuous&#39;</span><span class="p">,</span> <span class="n">lims</span><span class="o">=</span><span class="n">lims</span><span class="p">,</span> <span class="n">logscale</span><span class="o">=</span><span class="n">logscale</span><span class="p">,</span>
-                    <span class="n">ALPHA</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">outfilename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
-                    <span class="n">tiletype</span><span class="o">=</span><span class="s1">&#39;Stamen Terrain&#39;</span><span class="p">,</span> <span class="n">separate</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="n">faultfile</span><span class="o">=</span><span class="n">ffault</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames1</span><span class="p">:</span>
-                    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">gis</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">:</span>
 
                 <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">maplayers</span><span class="p">:</span>
                     <span class="c1"># Get simplified name of key for file naming</span>
-                    <span class="n">RIDOF</span> <span class="o">=</span> <span class="s1">&#39;[+-]?(?=\d*[.eE])(?=\.?\d)&#39;</span>\
-                            <span class="s1">&#39;\d*\.?\d*(?:[eE][+-]?\d+)?&#39;</span>
-                    <span class="n">OPERATORPAT</span> <span class="o">=</span> <span class="s1">&#39;[\+\-\*\/]*&#39;</span>
+                    <span class="n">RIDOF</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;[+-]?(?=\d*[.eE])(?=\.?\d)&#39;</span>\
+                            <span class="sa">r</span><span class="s1">&#39;\d*\.?\d*(?:[eE][+-]?\d+)?&#39;</span>
+                    <span class="n">OPERATORPAT</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;[\+\-\*\/]*&#39;</span>
                     <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">OPERATORPAT</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
                     <span class="c1"># remove floating point numbers</span>
                     <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">RIDOF</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">keyS</span><span class="p">)</span>
@@ -404,21 +391,38 @@
                     <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;[()]*&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">keyS</span><span class="p">)</span>
                     <span class="c1"># remove any blank spaces</span>
                     <span class="n">keyS</span> <span class="o">=</span> <span class="n">keyS</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
-                    <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.bil&#39;</span>
-                                         <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
-                    <span class="n">fileh</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.hdr&#39;</span>
-                                         <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
-                    <span class="n">fileg</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.tif&#39;</span>
-                                         <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">gis</span><span class="p">:</span>
+                        <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.bil&#39;</span>
+                                             <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+                        <span class="n">fileh</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.hdr&#39;</span>
+                                             <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+                        <span class="n">fileg</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.tif&#39;</span>
+                                             <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
 
-                    <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-                    <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
-                        <span class="n">filen</span><span class="p">,</span> <span class="n">fileg</span><span class="p">)</span>
-                    <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
-                    <span class="c1"># Delete bil file and its header</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fileh</span><span class="p">)</span>
-                    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fileg</span><span class="p">)</span>
+                        <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+                        <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                            <span class="n">filen</span><span class="p">,</span> <span class="n">fileg</span><span class="p">)</span>
+                        <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
+                        <span class="c1"># Delete bil file and its header</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+                        <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fileh</span><span class="p">)</span>
+                        <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fileg</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">kmz</span><span class="p">:</span>
+                        <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthresh</span> <span class="o">=</span> \
+                            <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">])</span>
+                        <span class="n">maxprob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getData</span><span class="p">())</span>
+                        <span class="k">if</span> <span class="n">maskthresh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                            <span class="n">maskthresh</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="n">maxprob</span> <span class="o">&gt;=</span> <span class="n">maskthresh</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.kmz&#39;</span>
+                                                 <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+                            <span class="n">filek</span> <span class="o">=</span> <span class="n">create_kmz</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">filen</span><span class="p">,</span>
+                                               <span class="n">mask</span><span class="o">=</span><span class="n">maskthresh</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                               <span class="n">levels</span><span class="o">=</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                            <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filek</span><span class="p">)</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No unmasked pixels present, skipping kmz &#39;</span>
+                                  <span class="s1">&#39;file creation&#39;</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
                 <span class="c1"># Compile into list of results for later</span>
@@ -435,20 +439,21 @@
                 <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filef</span><span class="p">)</span>
                 <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filefh</span><span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_summary</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
-                <span class="c1"># Compile into list of results for later</span>
-                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">maplayers</span><span class="p">)</span>
+        <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s1">&#39;eventsource&#39;</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">eventsource</span> <span class="o">=</span> <span class="s1">&#39;us&#39;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s1">&#39;eventsourcecode&#39;</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">eventid</span>
 
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
-            <span class="n">outputs</span> <span class="o">=</span> <span class="n">hazdev</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span>
-                             <span class="n">shakefile</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
-                             <span class="n">pop_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
-            <span class="n">filenames</span> <span class="o">=</span> <span class="n">filenames</span> <span class="o">+</span> <span class="n">outputs</span>
-
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_summary</span><span class="p">:</span>
-            <span class="n">outputs</span> <span class="o">=</span> <span class="n">GFSummary</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">,</span>
-                                <span class="n">shakefile</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">cleanup</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                                <span class="n">faultfile</span><span class="o">=</span><span class="n">ffault</span><span class="p">,</span> <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">,</span> <span class="n">pop_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
+            <span class="n">outputs</span> <span class="o">=</span> <span class="n">hazdev</span><span class="p">(</span>
+                <span class="n">results</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span>
+                <span class="n">shakefile</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
+                <span class="n">pop_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">,</span>
+                <span class="n">pager_alert</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">property_alertlevel</span><span class="p">,</span>
+                <span class="n">eventsource</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">eventsource</span><span class="p">,</span>
+                <span class="n">eventsourcecode</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">eventsourcecode</span><span class="p">,</span>
+                <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">)</span>
             <span class="n">filenames</span> <span class="o">=</span> <span class="n">filenames</span> <span class="o">+</span> <span class="n">outputs</span>
 
 <span class="c1">#        # create transparent png file</span>
@@ -466,10 +471,11 @@
         <span class="k">return</span> <span class="n">filenames</span></div>
 
 
-<div class="viewcode-block" id="getGridURL"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.getGridURL">[docs]</a><span class="k">def</span> <span class="nf">getGridURL</span><span class="p">(</span><span class="n">gridurl</span><span class="p">):</span>
+<div class="viewcode-block" id="getGridURL"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.getGridURL">[docs]</a><span class="k">def</span> <span class="nf">getGridURL</span><span class="p">(</span><span class="n">gridurl</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Args:</span>
 <span class="sd">        gridurl (str): url for Shakemap grid.xml file.</span>
+<span class="sd">        fname (str): file location name, if None, will create a temporary file</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        file object corresponding to the url.</span>
@@ -479,8 +485,12 @@
     <span class="n">fh</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">gridurl</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
         <span class="n">data</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
-        <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
-            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span></div>
 
@@ -756,17 +766,15 @@
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

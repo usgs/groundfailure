@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.godt &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.logisticmodel" href="gfail.logisticmodel.html" />
@@ -39,50 +38,48 @@
 mechanistic landslide models.</p>
 <dl class="function">
 <dt id="gfail.godt.godt2008">
-<code class="descclassname">gfail.godt.</code><code class="descname">godt2008</code><span class="sig-paren">(</span><em>shakefile</em>, <em>config</em>, <em>uncertfile=None</em>, <em>saveinputs=False</em>, <em>displmodel=None</em>, <em>bounds=None</em>, <em>slopediv=100.0</em>, <em>codiv=10.0</em>, <em>numstd=None</em>, <em>trimfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#godt2008"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.godt2008" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.godt.</code><code class="sig-name descname">godt2008</code><span class="sig-paren">(</span><em class="sig-param">shakefile</em>, <em class="sig-param">config</em>, <em class="sig-param">uncertfile=None</em>, <em class="sig-param">saveinputs=False</em>, <em class="sig-param">displmodel=None</em>, <em class="sig-param">bounds=None</em>, <em class="sig-param">slopediv=100.0</em>, <em class="sig-param">codiv=10.0</em>, <em class="sig-param">numstd=None</em>, <em class="sig-param">trimfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#godt2008"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.godt2008" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function runs the Godt and others (2008) global method for a given
 ShakeMap. The Factor of Safety is calculated using infinite slope analysis
 assumuing dry conditions. The method uses threshold newmark displacement
 and estimates areal coverage by doing the calculations for each slope
 quantile.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>shakefile</strong> (<em>str</em>) – Path to shakemap xml file.</li>
-<li><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj of config file containing inputs required
-for running the model</li>
-<li><strong>uncertfile</strong> (<em>str</em>) – Path to shakemap uncertainty xml file (optional).</li>
-<li><strong>saveinputs</strong> (<em>bool</em>) – Whether or not to return the model input layers,
-False (default) returns only the model output (one layer).</li>
-<li><strong>displmodel</strong> (<em>str</em>) – <p>Newmark displacement regression model to use</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shakefile</strong> (<em>str</em>) – Path to shakemap xml file.</p></li>
+<li><p><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj of config file containing inputs required
+for running the model</p></li>
+<li><p><strong>uncertfile</strong> (<em>str</em>) – Path to shakemap uncertainty xml file (optional).</p></li>
+<li><p><strong>saveinputs</strong> (<em>bool</em>) – Whether or not to return the model input layers,
+False (default) returns only the model output (one layer).</p></li>
+<li><p><strong>displmodel</strong> (<em>str</em>) – <p>Newmark displacement regression model to use</p>
 <ul>
-<li><code class="docutils literal notranslate"><span class="pre">'J_PGA'</span></code> (default) – PGA-based model, equation 6 from
-Jibson (2007).</li>
-<li><code class="docutils literal notranslate"><span class="pre">'J_PGA_M'</span></code> – PGA and M-based model, equation 7 from
-Jibson (2007).</li>
-<li><code class="docutils literal notranslate"><span class="pre">'RS_PGA_M'</span></code> – PGA and M-based model from from Rathje and
-Saygili (2009).</li>
-<li><code class="docutils literal notranslate"><span class="pre">'RS_PGA_PGV'</span></code> – PGA and PGV-based model, equation 6
-from Saygili and Rathje (2008).</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'J_PGA'</span></code> (default) – PGA-based model, equation 6 from
+Jibson (2007).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'J_PGA_M'</span></code> – PGA and M-based model, equation 7 from
+Jibson (2007).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'RS_PGA_M'</span></code> – PGA and M-based model from from Rathje and
+Saygili (2009).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'RS_PGA_PGV'</span></code> – PGA and PGV-based model, equation 6
+from Saygili and Rathje (2008).</p></li>
 </ul>
-</li>
-<li><strong>bounds</strong> (<em>dict</em>) – Optional dictionary with keys ‘xmin’, ‘xmax’, ‘ymin’, ‘ymax’
-that defines a subset of the shakemap area to compute.</li>
-<li><strong>slopediv</strong> (<em>float</em>) – Divide slope by this number to get slope in degrees
-(Verdin datasets need to be divided by 100).</li>
-<li><strong>codiv</strong> (<em>float</em>) – Divide cohesion input layer by this number
+</p></li>
+<li><p><strong>bounds</strong> (<em>dict</em>) – Optional dictionary with keys ‘xmin’, ‘xmax’, ‘ymin’,
+‘ymax’ that defines a subset of the shakemap area to compute.</p></li>
+<li><p><strong>slopediv</strong> (<em>float</em>) – Divide slope by this number to get slope in degrees
+(Verdin datasets need to be divided by 100).</p></li>
+<li><p><strong>codiv</strong> (<em>float</em>) – Divide cohesion input layer by this number
 (For Godt method, need to divide by 10 because that is how it was
-calibrated).</li>
-<li><strong>numstd</strong> (<em>float</em>) – Number of (+/-) standard deviations to use if uncertainty
-is computed (uncertfile must be supplied).</li>
-<li><strong>trimfile</strong> (<em>str</em>) – shapefile of earth’s land masses to trim offshore areas
-of model</li>
+calibrated).</p></li>
+<li><p><strong>numstd</strong> (<em>float</em>) – Number of (+/-) standard deviations to use if
+uncertainty is computed (uncertfile must be supplied).</p></li>
+<li><p><strong>trimfile</strong> (<em>str</em>) – shapefile of earth’s land masses to trim offshore areas
+of model</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><p>Dictionary containing output and input layers (if
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p>Dictionary containing output and input layers (if
 saveinputs=True):</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">mapio</span> <span class="n">grid2D</span> <span class="nb">object</span><span class="p">,</span>
@@ -93,76 +90,70 @@ saveinputs=True):</p>
                     <span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;units of output&#39;</span><span class="p">,</span>
                     <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="s1">&#39;information about shakemap used&#39;</span><span class="p">,</span>
                     <span class="s1">&#39;event_id&#39;</span><span class="p">:</span> <span class="s1">&#39;shakemap event id&#39;</span><span class="p">,</span>
-                    <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;dictionary of model parameters used&#39;</span>
+                    <span class="s1">&#39;parameters&#39;</span><span class="p">:</span> <span class="s1">&#39;dictionary of model parameters</span>
+                                   <span class="n">used</span><span class="s1">&#39;</span>
 
     <span class="p">}</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">dict</p>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NameError</span></code> – when unable to parse the config correctly (probably a
-formatting issue in the configfile) or when unable to find the
-shakefile (Shakemap filepath) – these cause program to end.</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><strong>NameError</strong> – when unable to parse the config correctly (probably a
+    formatting issue in the configfile) or when unable to find the
+    shakefile (Shakemap filepath) – these cause program to end.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.godt.NMdisp">
-<code class="descclassname">gfail.godt.</code><code class="descname">NMdisp</code><span class="sig-paren">(</span><em>Ac</em>, <em>PGA</em>, <em>model='J_PGA'</em>, <em>M=None</em>, <em>PGV=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#NMdisp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.NMdisp" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.godt.</code><code class="sig-name descname">NMdisp</code><span class="sig-paren">(</span><em class="sig-param">Ac</em>, <em class="sig-param">PGA</em>, <em class="sig-param">model='J_PGA'</em>, <em class="sig-param">M=None</em>, <em class="sig-param">PGV=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#NMdisp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.NMdisp" title="Permalink to this definition">¶</a></dt>
 <dd><p>PGA-based Newmark Displacement model</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>Ac</strong> (<em>array</em>) – NxM array of critical accelerations in units of g.</li>
-<li><strong>PGA</strong> (<em>array</em>) – NxM Array of PGA values in units of g.</li>
-<li><strong>model</strong> (<em>str</em>) – <ul>
-<li><code class="docutils literal notranslate"><span class="pre">'J_PGA'</span></code> – PGA only model from Jibson (2007), equation 6.
-Applicable for Magnitude range of dataset (5.3-7.6).</li>
-<li><code class="docutils literal notranslate"><span class="pre">'J_PGA_M'</span></code> – PGA-and M- based Newmark Displacement model
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>Ac</strong> (<em>array</em>) – NxM array of critical accelerations in units of g.</p></li>
+<li><p><strong>PGA</strong> (<em>array</em>) – NxM Array of PGA values in units of g.</p></li>
+<li><p><strong>model</strong> (<em>str</em>) – <ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">'J_PGA'</span></code> – PGA only model from Jibson (2007), equation 6.
+Applicable for Magnitude range of dataset (5.3-7.6).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'J_PGA_M'</span></code> – PGA-and M- based Newmark Displacement model
 from Jibson(2007), equation 7. Applicable for Magnitude range
-of dataset (5.3-7.6).</li>
-<li><code class="docutils literal notranslate"><span class="pre">'RS_PGA_M'</span></code> – PGA and M-based Newmark displacement model
-from Rathje and Saygili (2009).</li>
-<li><code class="docutils literal notranslate"><span class="pre">'RS_PGA_PGV'</span></code> – PGA and PGV-based model from Saygili and
-Rathje (2008) – eq 6.</li>
-<li><code class="docutils literal notranslate"><span class="pre">'BT_PGA_M'</span></code> – PGA and M-based model from Bray and
+of dataset (5.3-7.6).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'RS_PGA_M'</span></code> – PGA and M-based Newmark displacement model
+from Rathje and Saygili (2009).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'RS_PGA_PGV'</span></code> – PGA and PGV-based model from Saygili and
+Rathje (2008) – eq 6.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'BT_PGA_M'</span></code> – PGA and M-based model from Bray and
 Travasarou (2007) assuming natural fundamental period of
-sliding mass Ts = 0 (eq 6).</li>
+sliding mass Ts = 0 (eq 6).</p></li>
 </ul>
-</li>
-<li><strong>M</strong> (<em>float</em>) – Magnitude – only needed for models with M in the name.</li>
-<li><strong>PGV</strong> (<em>float</em>) – NxM Array of PGV values in units of cm/sec – only needed
-for models with PGV in the name.</li>
+</p></li>
+<li><p><strong>M</strong> (<em>float</em>) – Magnitude – only needed for models with M in the name.</p></li>
+<li><p><strong>PGV</strong> (<em>float</em>) – NxM Array of PGV values in units of cm/sec – only needed
+for models with PGV in the name.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(Dn, logDnstd, logtype) where:</dt>
-<dd><ul class="first last simple">
-<li>Dn: Newmark displacement in cm</li>
-<li>logDnstd: Log of standard deviation of Dn</li>
-<li>logtype: Type of log used in logDnstd (log10 or ln)</li>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(Dn, logDnstd, logtype) where:</dt><dd><ul class="simple">
+<li><p>Dn: Newmark displacement in cm</p></li>
+<li><p>logDnstd: Log of standard deviation of Dn</p></li>
+<li><p>logtype: Type of log used in logDnstd (log10 or ln)</p></li>
 </ul>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -193,7 +184,6 @@ for models with PGV in the name.</li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
@@ -206,17 +196,15 @@ for models with PGV in the name.</li>
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

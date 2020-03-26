@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.makemaps &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.pdl" href="gfail.pdl.html" />
@@ -37,15 +36,13 @@
 <span id="gfail-makemaps"></span><h1>gfail.makemaps<a class="headerlink" href="#module-gfail.makemaps" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.makemaps.modelMap">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">modelMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>suptitle=None</em>, <em>inventory_shapefile=None</em>, <em>plotorder=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>boundaries=None</em>, <em>zthresh=0</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.7</em>, <em>maproads=True</em>, <em>mapcities=True</em>, <em>isScenario=False</em>, <em>roadfolder=None</em>, <em>topofile=None</em>, <em>cityfile=None</em>, <em>oceanfile=None</em>, <em>roadcolor='#6E6E6E'</em>, <em>watercolor='#B8EEFF'</em>, <em>countrycolor='#177F10'</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>savepdf=True</em>, <em>savepng=True</em>, <em>showplots=False</em>, <em>printparam=False</em>, <em>ds=True</em>, <em>dstype='mean'</em>, <em>upsample=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#modelMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.modelMap" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">modelMap</code><span class="sig-paren">(</span><em class="sig-param">grids</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">suptitle=None</em>, <em class="sig-param">inventory_shapefile=None</em>, <em class="sig-param">plotorder=None</em>, <em class="sig-param">maskthreshes=None</em>, <em class="sig-param">colormaps=None</em>, <em class="sig-param">boundaries=None</em>, <em class="sig-param">zthresh=0</em>, <em class="sig-param">scaletype='continuous'</em>, <em class="sig-param">lims=None</em>, <em class="sig-param">logscale=False</em>, <em class="sig-param">ALPHA=0.7</em>, <em class="sig-param">maproads=True</em>, <em class="sig-param">mapcities=True</em>, <em class="sig-param">isScenario=False</em>, <em class="sig-param">roadfolder=None</em>, <em class="sig-param">topofile=None</em>, <em class="sig-param">cityfile=None</em>, <em class="sig-param">oceanfile=None</em>, <em class="sig-param">roadcolor='#6E6E6E'</em>, <em class="sig-param">watercolor='#B8EEFF'</em>, <em class="sig-param">countrycolor='#177F10'</em>, <em class="sig-param">outputdir=None</em>, <em class="sig-param">outfilename=None</em>, <em class="sig-param">savepdf=True</em>, <em class="sig-param">savepng=True</em>, <em class="sig-param">showplots=False</em>, <em class="sig-param">printparam=False</em>, <em class="sig-param">ds=True</em>, <em class="sig-param">dstype='mean'</em>, <em class="sig-param">upsample=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#modelMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.modelMap" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create static maps of mapio grid layers (e.g. liquefaction or
 landslide models with their input layers).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>grids</strong> (<em>dict</em>) – <p>Dictionary of N layers and metadata formatted like:</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grids</strong> (<em>dict</em>) – <p>Dictionary of N layers and metadata formatted like:</p>
 <blockquote>
 <div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
     <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">mapio</span> <span class="n">grid2D</span> <span class="nb">object</span><span class="p">,</span>
@@ -57,628 +54,380 @@ landslide models with their input layers).</p>
 </div>
 </div></blockquote>
 <p>Layer names must be unique. All grids must use the same bounds.</p>
-</li>
-<li><strong>shakefile</strong> (<em>str</em>) – Optional ShakeMap file (url or full file path) to
-extract information for labels and folder names.</li>
-<li><strong>suptitle</strong> (<em>str</em>) – This will be displayed at the top of the plots and in
-the figure names.</li>
-<li><strong>inventory_shapefile</strong> (<em>str</em>) – Path to inventory file.</li>
-<li><strong>plotorder</strong> (<em>list</em>) – List of keys describing the order to plot the grids,
+</p></li>
+<li><p><strong>shakefile</strong> (<em>str</em>) – Optional ShakeMap file (url or full file path) to
+extract information for labels and folder names.</p></li>
+<li><p><strong>suptitle</strong> (<em>str</em>) – This will be displayed at the top of the plots and in
+the figure names.</p></li>
+<li><p><strong>inventory_shapefile</strong> (<em>str</em>) – Path to inventory file.</p></li>
+<li><p><strong>plotorder</strong> (<em>list</em>) – List of keys describing the order to plot the grids,
 if None and grids is an ordered dictionary, it will use the order
 of the dictionary, otherwise it will choose order which may be
-somewhat random but it will always put a probability grid first.</li>
-<li><strong>maskthreshes</strong> (<em>array</em>) – N x 1 array or list of lower thresholds for
+somewhat random but it will always put a probability grid first.</p></li>
+<li><p><strong>maskthreshes</strong> (<em>array</em>) – N x 1 array or list of lower thresholds for
 masking corresponding to order in plotorder or order of OrderedDict
 if plotorder is None. If grids is not an ordered dict and plotorder
 is not specified, this will not work right. If None (default),
-nothing will be masked.</li>
-<li><strong>colormaps</strong> (<em>list</em>) – List of strings of matplotlib colormaps (e.g.
+nothing will be masked.</p></li>
+<li><p><strong>colormaps</strong> (<em>list</em>) – List of strings of matplotlib colormaps (e.g.
 cm.autumn_r) corresponding to plotorder or order of dictionary if
 plotorder is None. The list can contain both strings and None e.g.
 colormaps = [‘cm.autumn’, None, None, ‘cm.jet’] and None’s will
-default to default colormap.</li>
-<li><strong>boundaries</strong> – None to show entire study area, ‘zoom’ to zoom in on
+default to default colormap.</p></li>
+<li><p><strong>boundaries</strong> – None to show entire study area, ‘zoom’ to zoom in on
 the area of action (only works if there is a probability layer)
 using <code class="docutils literal notranslate"><span class="pre">zthresh</span></code> as a threshold, or a dictionary with keys ‘xmin’,
-‘xmax’, ‘ymin’, and ‘ymax’.</li>
-<li><strong>zthresh</strong> (<em>float</em>) – Threshold for computing zooming bounds, only used if
-boundaries = ‘zoom’.</li>
-<li><strong>scaletype</strong> (<em>str</em>) – Type of scale for plotting, ‘continuous’ or ‘binned’.
-Will be reflected in colorbar.</li>
-<li><strong>lims</strong> – <p>None or Nx1 list of tuples or numpy arrays corresponding to
+‘xmax’, ‘ymin’, and ‘ymax’.</p></li>
+<li><p><strong>zthresh</strong> (<em>float</em>) – Threshold for computing zooming bounds, only used if
+boundaries = ‘zoom’.</p></li>
+<li><p><strong>scaletype</strong> (<em>str</em>) – Type of scale for plotting, ‘continuous’ or ‘binned’.
+Will be reflected in colorbar.</p></li>
+<li><p><strong>lims</strong> – <p>None or Nx1 list of tuples or numpy arrays corresponding to
 plotorder defining the limits for saturating the colorbar
 (vmin, vmax) if scaletype is continuous or the bins to use (clev)
 if scaletype if binned. The list can contain tuples, arrays, and
 Nones, e.g.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">),</span> <span class="bp">None</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">15</span><span class="p">)]</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">10.</span><span class="p">),</span> <span class="kc">None</span><span class="p">,</span> <span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">15</span><span class="p">)]</span>
 </pre></div>
 </div>
 <p>When None is specified, the program will
 estimate the limits, when an array is specified but the scale
 type is continuous, vmin will be set to min(array) and vmax will
 be set to max(array).</p>
-</li>
-<li><strong>logscale</strong> – boolean to apply log colorbar to all plotted layers or list
-of booleans corresponding to each layer in grid.</li>
-<li><strong>ALPHA</strong> (<em>float</em>) – Transparency for mapping, if there is a hillshade that
+</p></li>
+<li><p><strong>logscale</strong> – boolean to apply log colorbar to all plotted layers or
+list of booleans corresponding to each layer in grid.</p></li>
+<li><p><strong>ALPHA</strong> (<em>float</em>) – Transparency for mapping, if there is a hillshade that
 will plot below each layer, it is recommended to set this to at
-least 0.7.</li>
-<li><strong>maproads</strong> (<em>bool</em>) – Whether to show roads or not, default True, but
-requires that roadfile is specified and valid to work.</li>
-<li><strong>mapcities</strong> (<em>bool</em>) – Whether to show cities or not, default True, but
-requires that cityfile is specified and valid to work.</li>
-<li><strong>isScenario</strong> (<em>bool</em>) – Whether this is a scenario (True) or a real event
-(False) (default False).</li>
-<li><strong>roadfolder</strong> (<em>str</em>) – Full file path to folder containing road shapefiles.</li>
-<li><strong>topofile</strong> (<em>str</em>) – Path to topography grid (GDAL compatible). This is
+least 0.7.</p></li>
+<li><p><strong>maproads</strong> (<em>bool</em>) – Whether to show roads or not, default True, but
+requires that roadfile is specified and valid to work.</p></li>
+<li><p><strong>mapcities</strong> (<em>bool</em>) – Whether to show cities or not, default True, but
+requires that cityfile is specified and valid to work.</p></li>
+<li><p><strong>isScenario</strong> (<em>bool</em>) – Whether this is a scenario (True) or a real event
+(False) (default False).</p></li>
+<li><p><strong>roadfolder</strong> (<em>str</em>) – Full file path to folder containing road shapefiles.</p></li>
+<li><p><strong>topofile</strong> (<em>str</em>) – Path to topography grid (GDAL compatible). This is
 only needed to make a hillshade if a premade hillshade is not
-specified.</li>
-<li><strong>cityfile</strong> (<em>str</em>) – Path to Pager file containing city &amp; population
-information.</li>
-<li><strong>oceanfile</strong> (<em>str</em>) – Path to file ocean information.</li>
-<li><strong>roadcolor</strong> (<em>str</em>) – Color to use for roads, if plotted, default is
-‘#6E6E6E’.</li>
-<li><strong>watercolor</strong> (<em>str</em>) – Color to use for oceans, lakes, and rivers, default
-is ‘#B8EEFF’.</li>
-<li><strong>countrycolor</strong> (<em>str</em>) – Color for country borders, default is ‘#177F10’.</li>
-<li><strong>outputdir</strong> (<em>str</em>) – Path for output figures, if edict is defined, a
+specified.</p></li>
+<li><p><strong>cityfile</strong> (<em>str</em>) – Path to Pager file containing city &amp; population
+information.</p></li>
+<li><p><strong>oceanfile</strong> (<em>str</em>) – Path to file ocean information.</p></li>
+<li><p><strong>roadcolor</strong> (<em>str</em>) – Color to use for roads, if plotted, default is
+‘#6E6E6E’.</p></li>
+<li><p><strong>watercolor</strong> (<em>str</em>) – Color to use for oceans, lakes, and rivers, default
+is ‘#B8EEFF’.</p></li>
+<li><p><strong>countrycolor</strong> (<em>str</em>) – Color for country borders, default is ‘#177F10’.</p></li>
+<li><p><strong>outputdir</strong> (<em>str</em>) – Path for output figures, if edict is defined, a
 subfolder based on the event id will be created in this folder.
-If None, will use current directory.</li>
-<li><strong>outfilename</strong> (<em>str</em>) – Output file name.</li>
-<li><strong>savepdf</strong> (<em>bool</em>) – True to save pdf figure.</li>
-<li><strong>savepng</strong> (<em>bool</em>) – True to save png figure.</li>
-<li><strong>showplots</strong> (<em>bool</em>) – True to display plots</li>
-<li><strong>printparam</strong> (<em>bool</em>) – Show parameter values used to run model on plots.</li>
-<li><strong>ds</strong> (<em>bool</em>) – True to allow downsampling for display (necessary when
-arrays are quite large, False to not allow).</li>
-<li><strong>dstype</strong> (<em>str</em>) – What function to use in downsampling? Options are ‘min’,
-‘max’, ‘median’, or ‘mean’.</li>
-<li><strong>upsample</strong> (<em>bool</em>) – True to upsample the layer to the DEM resolution for
-better looking hillshades.</li>
+If None, will use current directory.</p></li>
+<li><p><strong>outfilename</strong> (<em>str</em>) – Output file name.</p></li>
+<li><p><strong>savepdf</strong> (<em>bool</em>) – True to save pdf figure.</p></li>
+<li><p><strong>savepng</strong> (<em>bool</em>) – True to save png figure.</p></li>
+<li><p><strong>showplots</strong> (<em>bool</em>) – True to display plots</p></li>
+<li><p><strong>printparam</strong> (<em>bool</em>) – Show parameter values used to run model on plots.</p></li>
+<li><p><strong>ds</strong> (<em>bool</em>) – True to allow downsampling for display (necessary when
+arrays are quite large, False to not allow).</p></li>
+<li><p><strong>dstype</strong> (<em>str</em>) – What function to use in downsampling? Options are ‘min’,
+‘max’, ‘median’, or ‘mean’.</p></li>
+<li><p><strong>upsample</strong> (<em>bool</em>) – True to upsample the layer to the DEM resolution for
+better looking hillshades.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(newgrids, filenames), where:</dt>
-<dd><ul class="first last simple">
-<li><dl class="first docutils">
-<dt>newgrids: list of downsampled and trimmed version of input grids. If</dt>
-<dd>no modification was needed for plotting, this will be identical to grids
-but without the metadata.</dd>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(newgrids, filenames), where:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>newgrids: list of downsampled and trimmed version of input grids.</dt><dd><p>If no modification was needed for plotting, this will be
+identical to grids but without the metadata.</p>
+</dd>
 </dl>
 </li>
-<li>filenames: a list of filenames that were created</li>
+<li><p>filenames: a list of filenames that were created</p></li>
 </ul>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.interactiveMap">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">interactiveMap</code><span class="sig-paren">(</span><em>grids</em>, <em>shakefile=None</em>, <em>plotorder=None</em>, <em>inventory_shapefile=None</em>, <em>maskthreshes=None</em>, <em>colormaps=None</em>, <em>scaletype='continuous'</em>, <em>lims=None</em>, <em>logscale=False</em>, <em>ALPHA=0.8</em>, <em>isScenario=False</em>, <em>outputdir=None</em>, <em>outfilename=None</em>, <em>tiletype='Stamen Terrain'</em>, <em>smcontourfile=None</em>, <em>faultfile=None</em>, <em>separate=True</em>, <em>onkey=None</em>, <em>sepcolorbar=False</em>, <em>floatcb=True</em>, <em>savefiles=True</em>, <em>mapid=None</em>, <em>clear_zero=False</em>, <em>sync=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#interactiveMap"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.interactiveMap" title="Permalink to this definition">¶</a></dt>
-<dd><p>This function creates interactive html plots of mapio grid layers
-(e.g. liquefaction or landslide models with their input layers).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>grids</strong> (<em>dict</em>) – <p>Dictionary of N layers and metadata formatted like:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">maplayers</span><span class="p">[</span><span class="s1">&#39;layer name&#39;</span><span class="p">]</span><span class="o">=</span>
-<span class="p">{</span>
-    <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">mapio</span> <span class="n">grid2D</span> <span class="nb">object</span><span class="p">,</span>
-    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="s1">&#39;label for colorbar and top line of subtitle&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output or input to model&#39;</span><span class="p">,</span>
-    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;detailed description for subtitle&#39;</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>Layer names must be unique.</p>
-</li>
-<li><strong>shakefile</strong> (<em>str</em>) – Optional ShakeMap file (url or full file path) to
-extract information for labels and folder names.</li>
-<li><strong>plotorder</strong> (<em>list</em>) – List of keys describing the order to plot the grids,
-if None and grids is an ordered dictionary, it will use the order
-of the dictionary, otherwise it will choose order which may be
-somewhat random but it will always put a probability grid first.</li>
-<li><strong>inventory_shapefile</strong> (<em>str</em>) – Optional path to inventory file.</li>
-<li><strong>maskthreshes</strong> (<em>array</em>) – N x 1 array or list of lower thresholds for
-masking corresponding to order in plotorder or order of OrderedDict
-if plotorder is None. If grids is not an ordered dict and plotorder
-is not specified, this will not work right. If None (default),
-nothing will be masked.</li>
-<li><strong>colormaps</strong> (<em>list</em>) – List of strings of matplotlib colormaps
-(e.g. cm.autumn_r) corresponding to plotorder or order of
-dictionary if plotorder is None. The list can contain both strings
-and None e.g. colormaps = [‘cm.autumn’, None, None, ‘cm.jet’] and
-None’s will default to default colormap.</li>
-<li><strong>scaletype</strong> (<em>str</em>) – Type of scale for plotting, ‘continuous’ or ‘binned’.
-Will be reflected in colorbar.</li>
-<li><strong>lims</strong> (<em>list</em>) – None or Nx1 list of tuples or numpy arrays corresponding
-to plotorder defining the limits for saturating the colorbar
-(vmin, vmax) if scaletype is continuous or the bins to use (clev)
-if scaletype if binned. The list can contain tuples, arrays, and
-Nones, e.g. lims = [(0., 10.), None, (0.1, 1.5),
-np.linspace(0., 1.5, 15)]. When None is specified, the program will
-estimate the limits, when an array is specified but the scale
-type is continuous, vmin will be set to min(array) and vmax will
-be set to max(array).</li>
-<li><strong>logscale</strong> (<em>list</em>) – None, single boolean value, or Nx1 list of booleans
-defining whether to use a log scale or not for each layer.</li>
-<li><strong>alpha</strong> (<em>float</em>) – Transparency for mapping, if there is a hillshade that
-will plot below each layer, it is recommended to set this to at
-least 0.7.</li>
-<li><strong>isScenario</strong> (<em>bool</em>) – Is this a scenario?</li>
-<li><strong>outputdir</strong> (<em>str</em>) – File path for outputting figures, if edict is defined,
-a subfolder based on the event id will be created in this folder.
-If None, will use current directory.</li>
-<li><strong>outfilename</strong> (<em>str</em>) – File name for output (without any file extensions).</li>
-<li><strong>tiletype</strong> (<em>str</em>) – Folium tile type:
-- “OpenStreetMap”
-- “Mapbox Bright” (Limited levels of zoom for free tiles)
-- “Mapbox Control Room” (Limited levels of zoom for free tiles)
-- “Stamen” (Terrain, Toner, and Watercolor)
-- “Cloudmade” (Must pass API key)
-- “Mapbox” (Must pass API key)
-- “CartoDB” (positron and dark_matter)</li>
-<li><strong>separate</strong> (<em>bool</em>) – If True, will make a separate html file for each map
-(default), if False, all layers will be on same map.</li>
-<li><strong>onkey</strong> (<em>str</em>) – If separate=False, key of model layer that should be the
-active layer initially. If None (default), the first model will be
-on by default.</li>
-<li><strong>sepcolorbar</strong> (<em>bool</em>) – If True, will make separate colorbar figure,
-if False (default), will embed simple colorbar</li>
-<li><strong>floatcb</strong> (<em>bool</em>) – If True (default) and sepcolobar is True, will float
-the colorbar on the map.</li>
-<li><strong>savefiles</strong> (<em>bool</em>) – If True (default), will save map as html file,
-otherwise will just return map object</li>
-<li><strong>mapid</strong> (<em>str</em>) – map id, used only for syncing two of these interactive maps
-to each other</li>
-<li><strong>clear_zero</strong> (<em>bool</em>) – If True, will make all zero values clear.
-default is False.</li>
-<li><strong>sync</strong> – If False, each map will use it’s own colorbar.
-If a grid layer shortref is specified (e.g. ‘Nowicki and others (2014)’),
-all maps will have colorbars synced to the colors of the one
-specified, but they must all have the same number of bins</li>
+<dt id="gfail.makemaps.getMapLines">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">getMapLines</code><span class="sig-paren">(</span><em class="sig-param">dmin</em>, <em class="sig-param">dmax</em>, <em class="sig-param">nlines</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getMapLines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getMapLines" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get equally spaced lat or lon lines for mapping</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dmin</strong> (<em>float</em>) – minimum lat or lon</p></li>
+<li><p><strong>dmax</strong> (<em>float</em>) – maximum lat or lon</p></li>
+<li><p><strong>nlines</strong> (<em>int</em>) – number of lines</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><ul class="simple">
-<li>Interactive plot (html file) of all grids listed in plotorder</li>
-</ul>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>location of lines</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>array</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.GFSummary">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">GFSummary</code><span class="sig-paren">(</span><em>maplayerlist, configs, web_template, shakemap, outfolder=None, includeunc=False, cleanup=True, faultfile=None, shakethreshtype='pga', point=False, pop_file=None, statlist=['Max', 'Std', 'Hagg_0.10g', 'exp_pop_0.10g'], probthresh=None, shakethresh=[5.0, 10.0], statement=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#GFSummary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.GFSummary" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create an interactive html that summarizes all ground failure results for
-a given earthquake in side-by-side plots and with summary tables</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>maplayerlist</strong> (<em>list</em>) – list of model output structures to include.</li>
-<li><strong>configs</strong> (<em>list</em>) – list of paths to config files corresponding to each
-of the models in maplayerlist in the same order.</li>
-<li><strong>web_template</strong> (<em>str</em>) – Path to location of pelican template
-(final folder should be “theme”).</li>
-<li><strong>shakemap</strong> (<em>str</em>) – path to shakemap .xml file for the current event.</li>
-<li><strong>outfolder</strong> (<em>str</em><em>, </em><em>optional</em>) – path to folder where output should be
-placed.</li>
-<li><strong>includeunc</strong> (<em>bool</em><em>, </em><em>optional</em>) – include uncertainty, NOT IMPLEMENTED.</li>
-<li><strong>cleanup</strong> (<em>bool</em><em>, </em><em>optional</em>) – clean up all unneeded intermediate files that
-pelican creates, default True.</li>
-<li><strong>faultfile</strong> (<em>str</em><em>, </em><em>optional</em>) – GeoJson file of finite fault to display on
-interactive maps</li>
-<li><strong>shakethreshtype</strong> (<em>str</em><em>, </em><em>optional</em>) – Type of ground motion to use for stat
-thresholds, ‘pga’, ‘pgv’, or ‘mmi’</li>
-<li><strong>point</strong> (<em>bool</em>) – True if it is known that the ShakeMap used a point
-source, False does not assume anything about source type.</li>
-<li><strong>pop_file</strong> (<em>str</em>) – Path to population file used for statistics</li>
-<li><strong>statlist</strong> (<em>list</em>) – list of strings indicating which stats to show on
-webpage.</li>
-<li><strong>probthresh</strong> (<em>float</em><em>, </em><em>optional</em>) – List of probability thresholds for which
-to compute Parea.</li>
-<li><strong>shakethresh</strong> (<em>list</em><em>, </em><em>optional</em>) – List of ground motion thresholds for
-which to compute Hagg, units corresponding to shakethreshtype.</li>
-<li><strong>statement</strong> (<em>str</em>) – Text to include in the summary section of the web
-page. Alert statements will be appended prior to this statement,
-Point source warnings for &gt;M7 will be appended after this
-statement. If None, will use a generic explanatory statement.</li>
+<dt id="gfail.makemaps.getProjectedPatch">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">getProjectedPatch</code><span class="sig-paren">(</span><em class="sig-param">polygon</em>, <em class="sig-param">m</em>, <em class="sig-param">edgecolor</em>, <em class="sig-param">facecolor</em>, <em class="sig-param">lw=1.0</em>, <em class="sig-param">zorder=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getProjectedPatch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getProjectedPatch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Project a polygon to coordinate system used in Basemap m</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>polygon</strong> – list of shapely polygons to project</p></li>
+<li><p><strong>m</strong> – Basemap map to project polygon to</p></li>
+<li><p><strong>edgecolor</strong> – color to use for polygon edge</p></li>
+<li><p><strong>facecolor</strong> – color to use to fill polygon</p></li>
+<li><p><strong>lw</strong> – line width for edge of polygon</p></li>
+<li><p><strong>zorder</strong> – plotting order of polygons</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Folder where webpage files are located</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>patch of projected polygons that can be added to map figure</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>patch</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.write_individual">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">write_individual</code><span class="sig-paren">(</span><em>concatmods</em>, <em>outputdir</em>, <em>modeltype</em>, <em>topimage=None</em>, <em>staticmap=None</em>, <em>interactivehtml=None</em>, <em>outjsfile=None</em>, <em>statlist=None</em>, <em>statement=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#write_individual"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.write_individual" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write markdown file for landslides or liquefaction.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>concatmods</strong> (<em>float</em><em> or </em><em>list</em>) – Ordered dictionary of models with
-fields required for write_individual populated (stats in
-particular)</li>
-<li><strong>outputdir</strong> (<em>str</em>) – Path to output directory.</li>
-<li><strong>modeltype</strong> (<em>str</em>) – ‘Landslides’ for landslide model, otherwise it is
-a liquefaction model.</li>
-<li><strong>topimage</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to image for top of page.</li>
-<li><strong>staticmap</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to static map.</li>
-<li><strong>interactivehtml</strong> (<em>str</em><em>, </em><em>optional</em>) – Path to interactive map file.</li>
-<li><strong>outjsfile</strong> (<em>str</em><em>, </em><em>optional</em>) – Path for output javascript file.</li>
-<li><strong>stats</strong> (<em>list</em>) – List of stats keys to include in the table, if None,
-it will include all of them</li>
+<dt id="gfail.makemaps.roundToNearest">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">roundToNearest</code><span class="sig-paren">(</span><em class="sig-param">value</em>, <em class="sig-param">roundValue=1000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#roundToNearest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.roundToNearest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value, rounded to nearest roundValue (defaults to 1000).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>float</em>) – Value to be rounded.</p></li>
+<li><p><strong>roundValue</strong> (<em>float</em>) – Number to which the value should be rounded.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">writes markdown files named Landslides.md and/or Liquefaction.md
-that will be used by GFSummary</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Rounded value.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.write_summary">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">write_summary</code><span class="sig-paren">(</span><em>shakemap</em>, <em>outputdir</em>, <em>imgoutputdir</em>, <em>statement=None</em>, <em>finitefault=False</em>, <em>point=False</em>, <em>event_url=None</em>, <em>shake_url=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#write_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.write_summary" title="Permalink to this definition">¶</a></dt>
-<dd><p>Write markdown file summarizing event</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>shakemap</strong> (<em>str</em>) – path to shakemap .xml file for the current event</li>
-<li><strong>outputdir</strong> (<em>str</em>) – path to folder where output should be placed</li>
-<li><strong>imgoutputdir</strong> (<em>str</em>) – path to folder where images should be placed
-and linked</li>
-<li><strong>statement</strong> (<em>str</em>) – Statement to put at top of GFSummary plot, if None
-will append some generic statements.</li>
-<li><strong>finitefault</strong> (<em>bool</em>) – True if it is known that the shakemap used a
-finite fault.</li>
-<li><strong>point</strong> (<em>bool</em>) – True if it is known that the event was a point
-source. False if unknown.</li>
-<li><strong>event_url</strong> (<em>str</em>) – url to event page, if None, code will try to
-guess what the url should be using the event_id in the shakemap file</li>
-<li><strong>shake_url</strong> (<em>str</em>) – url to shakemap page for this event, if None,
-code will try to guess what the url should be using the
-event_id in the shakemap file</li>
+<dt id="gfail.makemaps.floorToNearest">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">floorToNearest</code><span class="sig-paren">(</span><em class="sig-param">value</em>, <em class="sig-param">floorValue=1000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#floorToNearest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.floorToNearest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value, floored to nearest floorValue (defaults to 1000).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>float</em>) – Value to be floored.</p></li>
+<li><p><strong>floorValue</strong> (<em>float</em>) – Number to which the value should be floored.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">Markdown file that summarizes the event and model used by GFSummary</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Floored value.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.makemaps.ceilToNearest">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">ceilToNearest</code><span class="sig-paren">(</span><em class="sig-param">value</em>, <em class="sig-param">ceilValue=1000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#ceilToNearest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.ceilToNearest" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the value, ceiled to nearest ceilValue (defaults to 1000).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>value</strong> (<em>float</em>) – Value to be ceiled.</p></li>
+<li><p><strong>ceilValue</strong> (<em>float</em>) – Number to which the value should be ceiled.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Ceiling-ed value.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>float</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.makemaps.setupsync">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">setupsync</code><span class="sig-paren">(</span><em>sync</em>, <em>plotorder</em>, <em>lims</em>, <em>colormaps</em>, <em>defaultcolormap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;</em>, <em>logscale=None</em>, <em>alpha=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#setupsync"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.setupsync" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">setupsync</code><span class="sig-paren">(</span><em class="sig-param">sync</em>, <em class="sig-param">plotorder</em>, <em class="sig-param">lims</em>, <em class="sig-param">colormaps</em>, <em class="sig-param">defaultcolormap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;</em>, <em class="sig-param">logscale=None</em>, <em class="sig-param">alpha=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#setupsync"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.setupsync" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get colors that will be used for all colorbars from reference grid</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>sync</strong> (<em>str</em>) – If False, will exit program, else corresponds to the shortref
-of the model which should serve as the template for
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sync</strong> (<em>str</em>) – If False, will exit program, else corresponds to the
+shortref of the model which should serve as the template for
 the colorbars used by all other models. All other models must
-have the exact same number of bins</li>
-<li><strong>plotorder</strong> (<em>list</em>) – List of keys of shortrefs of the grids that will be
-plotted.</li>
-<li><strong>lims</strong> – <p>Nx1 list of tuples or numpy arrays corresponding to
+have the exact same number of bins</p></li>
+<li><p><strong>plotorder</strong> (<em>list</em>) – List of keys of shortrefs of the grids that will be
+plotted.</p></li>
+<li><p><strong>lims</strong> – <p>Nx1 list of tuples or numpy arrays corresponding to
 plotorder defining the bin edges to use for each model.
 Example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">15</span><span class="p">)]</span>
 </pre></div>
 </div>
-</li>
-<li><strong>colormaps</strong> (<em>list</em>) – List of strings of matplotlib colormaps (e.g.
-cm.autumn_r) corresponding to plotorder</li>
-<li><strong>defaultcolormap</strong> (<em>matplotlib colormap</em>) – Colormap to use if
-colormaps is not defined. default cm.CMRmap_r</li>
-<li><strong>logscale</strong> – If not None, then a list of booleans corresponding to
-plotorder stating whether to use log scaling in determining colors</li>
+</p></li>
+<li><p><strong>colormaps</strong> (<em>list</em>) – List of strings of matplotlib colormaps (e.g.
+cm.autumn_r) corresponding to plotorder</p></li>
+<li><p><strong>defaultcolormap</strong> (<em>matplotlib colormap</em>) – Colormap to use if
+colormaps is not defined. default cm.CMRmap_r</p></li>
+<li><p><strong>logscale</strong> – If not None, then a list of booleans corresponding to
+plotorder stating whether to use log scaling in determining colors</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(sync, colorlist, lim1) where:</dt>
-<dd><ul class="first last simple">
-<li>sync (bool): whether or not colorbars are/can be synced</li>
-<li><dl class="first docutils">
-<dt>colorlist (list): list of rgba colors that will be applied to all</dt>
-<dd>models regardless of bin edge values</dd>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(sync, colorlist, lim1) where:</dt><dd><ul class="simple">
+<li><p>sync (bool): whether or not colorbars are/can be synced</p></li>
+<li><dl class="simple">
+<dt>colorlist (list): list of rgba colors that will be applied to all</dt><dd><p>models regardless of bin edge values</p>
+</dd>
 </dl>
 </li>
-<li>lim1 (array): bin edges of model to which others are synced</li>
+<li><p>lim1 (array): bin edges of model to which others are synced</p></li>
 </ul>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.correct4colorbar">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">correct4colorbar</code><span class="sig-paren">(</span><em>dat</em>, <em>gridlims</em>, <em>logscale</em>, <em>scaletype</em>, <em>palette</em>, <em>colorlist=None</em>, <em>alpha=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#correct4colorbar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.correct4colorbar" title="Permalink to this definition">¶</a></dt>
-<dd><p>Create rgba layer for plotting along with all the info needed to create
-a separate colorbar</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dat</strong> (<em>array</em>) – 2D numpy array of the data to turn into rgba layer</li>
-<li><strong>gridlims</strong> (<em>array</em>) – Nx1 array or list of bin edges, or None if not specified</li>
-<li><strong>logscale</strong> (<em>bool</em>) – if True, will use log scaling for bins</li>
-<li><strong>scaletype</strong> (<em>str</em>) – Type of scaling to use with colormap,
-‘binned’ or ‘continuous.’ ‘binned’ must be used for synced
-colorbars.</li>
-<li><strong>palette</strong> – colormap palette to use</li>
-<li><strong>colorlist</strong> (<em>list</em>) – Optional, N-1 list of colors to use for each bin,
-where N is the number of bin edges specified in gridlims. Only
-works if scaletype = ‘binned’</li>
-<li><strong>alpha</strong> (<em>float</em>) – Transparency value from 0 to 1</li>
+<dt id="gfail.makemaps.create_kmz">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">create_kmz</code><span class="sig-paren">(</span><em class="sig-param">maplayer</em>, <em class="sig-param">outfile</em>, <em class="sig-param">mask=None</em>, <em class="sig-param">levels=None</em>, <em class="sig-param">colorlist=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#create_kmz"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.create_kmz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create kmz files of models</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>maplayer</strong> (<em>dict</em>) – <p>Dictionary of one model result formatted like:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">mapio</span> <span class="n">grid2D</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="s1">&#39;label for colorbar and top line of subtitle&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output or input to model&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;description for subtitle&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p></li>
+<li><p><strong>outfile</strong> (<em>str</em>) – File extension</p></li>
+<li><p><strong>mask</strong> (<em>float</em>) – make all cells below this value transparent</p></li>
+<li><p><strong>levels</strong> (<em>array</em>) – list of bin edges for each color, must be same length</p></li>
+<li><p><strong>colorlist</strong> (<em>array</em>) – list of colors for each bin, should be length one less than levels</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first"><dl class="docutils">
-<dt>(clev, vmin, vmax, rgba_img, cmap, norm, colorlist) where:</dt>
-<dd><ul class="first last simple">
-<li>clev: bin edges used</li>
-<li>vmin: lowest bin edge (saturated below)</li>
-<li>vmax: highest bin edge (saturated above)</li>
-<li>rgba_img: rgba image (2D array of rgba tuples)</li>
-<li>cmap: colormap used</li>
-<li>norm: normalization used for colorbar</li>
-<li><dl class="first docutils">
-<dt>colorlist: list of colors used for each colorbar bin,</dt>
-<dd>None if scaletype was ‘continuous’</dd>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>kmz file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.makemaps.get_zoomextent">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">get_zoomextent</code><span class="sig-paren">(</span><em class="sig-param">grid</em>, <em class="sig-param">propofmax=0.3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#get_zoomextent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.get_zoomextent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the extent that contains all values with probabilities exceeding
+a threshold in order to determine ideal zoom level for interactive map
+If nothing is above the threshold, uses the full extent</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid</strong> – grid2d of model output</p></li>
+<li><p><strong>propofmax</strong> (<em>float</em>) – Proportion of maximum that should be fully included
+within the bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>a dictionary with keys ‘xmin’, ‘xmax’, ‘ymin’, and</dt><dd><p>’ymax’ that defines the zoomed boundaries in geographic coordinates.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>boundaries</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.makemaps.make_rgba">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">make_rgba</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">levels</em>, <em class="sig-param">colorlist</em>, <em class="sig-param">mask=None</em>, <em class="sig-param">mercator=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#make_rgba"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.make_rgba" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make an rgba (red, green, blue, alpha) grid out of raw data values and
+provide extent and limits needed to save as an image file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid2D</strong> – Mapio Grid2D object of result to mape</p></li>
+<li><p><strong>levels</strong> (<em>array</em>) – list of bin edges for each color, must be same length</p></li>
+<li><p><strong>colorlist</strong> (<em>array</em>) – list of colors for each bin, should be length one
+less than levels</p></li>
+<li><p><strong>mask</strong> (<em>float</em>) – mask all values below this value</p></li>
+<li><p><strong>mercator</strong> (<em>bool</em>) – project to web mercator (needed for leaflet, not
+for kmz)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(rgba_img, extent, lmin, lmax, cmap), where:</dt><dd><ul class="simple">
+<li><p>rgba_img: rgba (red green blue alpha) image</p></li>
+<li><dl class="simple">
+<dt>extent: list of outside corners of image,</dt><dd><p>[minlat, maxlat, minlon, maxlon]</p>
+</dd>
 </dl>
 </li>
+<li><p>lmin: lowest bin edge</p></li>
+<li><p>lmax: highest bin edge</p></li>
+<li><p>cmap: colormap corresponding to image</p></li>
 </ul>
 </dd>
 </dl>
 </p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">tuple</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.makemaps.make_hillshade">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">make_hillshade</code><span class="sig-paren">(</span><em>topogrid</em>, <em>azimuth=315.0</em>, <em>angle_altitude=50.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#make_hillshade"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.make_hillshade" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes a hillshade from a digital elevation model.
-Adapted from
-&lt;<a class="reference external" href="http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html">http://geoexamples.blogspot.com/2014/03/shaded-relief-images-using-gdal-python.html</a>&gt;
-last accessed 9/2/2015</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
-<li><strong>topogrid</strong> (<em>Grid2D</em>) – Digital elevation model.</li>
-<li><strong>azimuth</strong> (<em>float</em>) – Azimuth of illumination in degrees.</li>
-<li><strong>angle_altitude</strong> (<em>float</em>) – Altitude angle of illumination.</li>
-</ul>
-</td>
-</tr>
-</tbody>
-</table>
-<p>Returns: Hillshade map layer (Grid2D object).</p>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.makemaps.getMapLines">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">getMapLines</code><span class="sig-paren">(</span><em>dmin</em>, <em>dmax</em>, <em>nlines</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getMapLines"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getMapLines" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get equally spaced lat or lon lines for mapping</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>dmin</strong> (<em>float</em>) – minimum lat or lon</li>
-<li><strong>dmax</strong> (<em>float</em>) – maximum lat or lon</li>
-<li><strong>nlines</strong> (<em>int</em>) – number of lines</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">location of lines</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">array</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.makemaps.getProjectedPatch">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">getProjectedPatch</code><span class="sig-paren">(</span><em>polygon</em>, <em>m</em>, <em>edgecolor</em>, <em>facecolor</em>, <em>lw=1.0</em>, <em>zorder=10</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getProjectedPatch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getProjectedPatch" title="Permalink to this definition">¶</a></dt>
-<dd><p>Project a polygon to coordinate system used in Basemap m</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>polygon</strong> – list of shapely polygons to project</li>
-<li><strong>m</strong> – Basemap map to project polygon to</li>
-<li><strong>edgecolor</strong> – color to use for polygon edge</li>
-<li><strong>facecolor</strong> – color to use to fill polygon</li>
-<li><strong>lw</strong> – line width for edge of polygon</li>
-<li><strong>zorder</strong> – plotting order of polygons</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">patch of projected polygons that can be added to map figure</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">patch</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.makemaps.roundToNearest">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">roundToNearest</code><span class="sig-paren">(</span><em>value</em>, <em>roundValue=1000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#roundToNearest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.roundToNearest" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the value, rounded to nearest roundValue (defaults to 1000).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>value</strong> (<em>float</em>) – Value to be rounded.</li>
-<li><strong>roundValue</strong> (<em>float</em>) – Number to which the value should be rounded.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Rounded value.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.makemaps.floorToNearest">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">floorToNearest</code><span class="sig-paren">(</span><em>value</em>, <em>floorValue=1000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#floorToNearest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.floorToNearest" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the value, floored to nearest floorValue (defaults to 1000).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>value</strong> (<em>float</em>) – Value to be floored.</li>
-<li><strong>floorValue</strong> (<em>float</em>) – Number to which the value should be floored.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Floored value.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.makemaps.ceilToNearest">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">ceilToNearest</code><span class="sig-paren">(</span><em>value</em>, <em>ceilValue=1000</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#ceilToNearest"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.ceilToNearest" title="Permalink to this definition">¶</a></dt>
-<dd><p>Return the value, ceiled to nearest ceilValue (defaults to 1000).</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>value</strong> (<em>float</em>) – Value to be ceiled.</li>
-<li><strong>ceilValue</strong> (<em>float</em>) – Number to which the value should be ceiled.</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">Ceiling-ed value.</p>
-</td>
-</tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">float</p>
-</td>
-</tr>
-</tbody>
-</table>
-</dd></dl>
-
-<dl class="function">
-<dt id="gfail.makemaps.removeVis">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">removeVis</code><span class="sig-paren">(</span><em>filename</em>, <em>removelater</em>, <em>mapname</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#removeVis"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.removeVis" title="Permalink to this definition">¶</a></dt>
-<dd><p>Removes some baselayers from initial visibility in Leaflet map.
-This fixes a minor bug in folium where all baselayers are active
-initially because you have to add a layer to the map for it to
-show up at all in folium, but for it to start as invisible in
-Leaflet, you have to add it only to layer control, not to the map.
-In folium, layer control inherits directly from the layers added to map.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>filename</strong> (<em>text</em>) – Name of html file to remove layer visibility</li>
-<li><strong>removelater</strong> (<em>list</em>) – List of element names to remove visibility
-from initial plot</li>
-</ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last"><dl class="docutils">
-<dt>filename modified so that removelater layers will be invisible</dt>
-<dd><p class="first last">initially</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
 </dd>
 </dl>
-</p>
-</td>
-</tr>
-</tbody>
-</table>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.makemaps.getZoom">
-<code class="descclassname">gfail.makemaps.</code><code class="descname">getZoom</code><span class="sig-paren">(</span><em>minlon</em>, <em>maxlon</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#getZoom"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.getZoom" title="Permalink to this definition">¶</a></dt>
-<dd><p>Get the best starting zoom level based on span of coordinates</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>minlon</strong> (<em>float</em>) – minimum longitude in area of interest</li>
-<li><strong>maxlon</strong> (<em>float</em>) – maximum longitude in area of interest</li>
+<dt id="gfail.makemaps.make_legend">
+<code class="sig-prename descclassname">gfail.makemaps.</code><code class="sig-name descname">make_legend</code><span class="sig-paren">(</span><em class="sig-param">levels</em>, <em class="sig-param">colorlist</em>, <em class="sig-param">filename=None</em>, <em class="sig-param">orientation='horizontal'</em>, <em class="sig-param">title=None</em>, <em class="sig-param">transparent=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/makemaps.html#make_legend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.makemaps.make_legend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make legend file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>levels</strong> (<em>array</em>) – list of bin edges for each color, must be same length</p></li>
+<li><p><strong>colorlist</strong> (<em>array</em>) – list of colors for each bin, should be length one
+less than levels</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – File extension of legend file</p></li>
+<li><p><strong>orientation</strong> (<em>str</em>) – orientation of colorbar, ‘horizontal’ or ‘vertical’</p></li>
+<li><p><strong>title</strong> (<em>str</em>) – title of legend (usually units)</p></li>
+<li><p><strong>transparent</strong> (<em>bool</em>) – if True, background will be transparent</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">zoom level (for leaflet)</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>figure of legend</p>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -709,7 +458,6 @@ from initial plot</li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
@@ -722,17 +470,15 @@ from initial plot</li>
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>

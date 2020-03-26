@@ -2,6 +2,6 @@ gfail.temphdf
 ====================
 
 .. automodule:: gfail.temphdf
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -2,6 +2,6 @@ gfail.spatial
 ====================
 
 .. automodule:: gfail.spatial
-    :members:
-    :undoc-members:
-    :show-inheritance:
+   :members:
+   :undoc-members:
+   :show-inheritance:

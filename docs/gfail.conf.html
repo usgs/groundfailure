@@ -1,18 +1,17 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>gfail.conf &#8212; groundfailure 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.gfailrun" href="gfail.gfailrun.html" />
@@ -37,49 +36,41 @@
 <span id="gfail-conf"></span><h1>gfail.conf<a class="headerlink" href="#module-gfail.conf" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.conf.correct_config_filepaths">
-<code class="descclassname">gfail.conf.</code><code class="descname">correct_config_filepaths</code><span class="sig-paren">(</span><em>input_path</em>, <em>config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/conf.html#correct_config_filepaths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.conf.correct_config_filepaths" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.conf.</code><code class="sig-name descname">correct_config_filepaths</code><span class="sig-paren">(</span><em class="sig-param">input_path</em>, <em class="sig-param">config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/conf.html#correct_config_filepaths"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.conf.correct_config_filepaths" title="Permalink to this definition">¶</a></dt>
 <dd><p>Takes an input filepath name and pre-pends it to all file locations within
 the config file. Individual locations are put into the config.  Don’t have
 to put entire filepath location for each layer. Works by looping over
 config dictionary and subdictionary to fine locations named ‘file’.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>input_path</strong> (<em>str</em>) – Path that needs to be appended to the front of all
-the file names/paths in config.</li>
-<li><strong>config</strong> (<em>ConfigObj</em>) – Object defining the model and its inputs.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_path</strong> (<em>str</em>) – Path that needs to be appended to the front of all
+the file names/paths in config.</p></li>
+<li><p><strong>config</strong> (<em>ConfigObj</em>) – Object defining the model and its inputs.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">config dictionary with complete file paths.</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>config dictionary with complete file paths.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="gfail.conf.validate">
-<code class="descclassname">gfail.conf.</code><code class="descname">validate</code><span class="sig-paren">(</span><em>configfile</em>, <em>inputfilepath=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/conf.html#validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.conf.validate" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.conf.</code><code class="sig-name descname">validate</code><span class="sig-paren">(</span><em class="sig-param">configfile</em>, <em class="sig-param">inputfilepath=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/conf.html#validate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.conf.validate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return a validated config object.</p>
-<table class="docutils field-list" frame="void" rules="none">
-<col class="field-name" />
-<col class="field-body" />
-<tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
-<li><strong>configfile</strong> (<em>str</em>) – Config file to validate.</li>
-<li><strong>inputfilepath</strong> (<em>str</em>) – Path to input file.</li>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>configfile</strong> (<em>str</em>) – Config file to validate.</p></li>
+<li><p><strong>inputfilepath</strong> (<em>str</em>) – Path to input file.</p></li>
 </ul>
-</td>
-</tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">A validated ConfigObj object or a dictionary of which
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A validated ConfigObj object or a dictionary of which
 section/parameters failed validation.</p>
-</td>
-</tr>
-</tbody>
-</table>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -110,7 +101,6 @@ section/parameters failed validation.</p>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.sample.html">gfail.sample</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.temphdf.html">gfail.temphdf</a></li>
@@ -123,17 +113,15 @@ section/parameters failed validation.</p>
 
 
 <div id="searchbox" style="display: none" role="search">
-  <h3>Quick search</h3>
+  <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>$('#searchbox').show(0);</script>
         </div>
       </div>
       <div class="clearer"></div>
