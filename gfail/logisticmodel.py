@@ -528,46 +528,28 @@ class LogisticModel(object):
             P = eval(eqn)
 
         if self.uncert is not None:
-            # Make empty matrix to fill
-            Xmin = np.empty([self.geodict.ny, self.geodict.nx])
-            Xmax = Xmin.copy()
-            # Loop through slices, appending output each time
-            for rowstart, rowend, colstart, colend in \
-                    zip(rowstarts, rowends, colstarts, colends):
-                Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
-                Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
+            if 'Zhu and others (2017)' in self.modelrefs['shortref']:
+                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
+                if 'coverage' in self.config[self.model].keys():
+                    a = 0.4915
+                    b = 42.4
+                    c = 9.165
+                    varL = ((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP
+                    std1 = np.sqrt(varL)
+                else:
+                    std1 = np.sqrt(varP)
 
-            Pmin = 1/(1 + np.exp(-Xmin))
-            Pmax = 1/(1 + np.exp(-Xmax))
+            elif 'Jessee' in self.modelrefs['shortref']:
+                pass
+            else:
+                print('cannot do uncertainty for %s model, skipping' %
+                      self.modelrefs['shortref'])
+                self.uncert = None
 
-            if 'vs30max' in self.config[self.model].keys():
-                vs30 = self.layerdict['vs30'].getSlice(
-                    None, None, None, None, name='vs30')
-                Pmin[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
-                Pmax[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
-
-            if 'minpgv' in self.config[self.model].keys():
-                pgv = self.shakemap['pgv'].getSlice(
-                    None, None, None, None, name='pgv')
-                Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
-                Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
-
-            if 'minpga' in self.config[self.model].keys():
-                pga = self.shakemap['pgv'].getSlice(
-                    None, None, None, None, name='pga')
-                Pmin[pga < float(self.config[self.model]['minpga'])] = 0.0
-                Pmax[pga < float(self.config[self.model]['minpga'])] = 0.0
-
-            if 'coverage' in self.config[self.model].keys():
-                eqnmin = eqn.replace('P', 'Pmin')
-                eqnmax = eqn.replace('P', 'Pmax')
-                Pmin = eval(eqnmin)
-                Pmax = eval(eqnmax)
-
-            # Pmin[np.isnan(Pmin)] = 0.0
-            # Pmax[np.isnan(Pmax)] = 0.0
-
-        # P[np.isnan(P)] = 0.0
+            Pmin = P - self.numstd * std1
+            Pmax = P + self.numstd * std1
+            Pmin[P == 0] = 0.
+            Pmax[P == 0] = 0.
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
@@ -578,10 +560,6 @@ class LogisticModel(object):
             if self.uncert is not None:
                 Pmin = Pmin * self.nonzero
                 Pmax = Pmax * self.nonzero
-                # Pmin[Pmin==0.0] = float('nan')
-                # Pmax[Pmax==0.0] = float('nan')
-                # Pmin[np.isnan(Pmin)] = 0.0
-                # Pmax[np.isnan(Pmax)] = 0.0
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
@@ -590,7 +568,10 @@ class LogisticModel(object):
             else:
                 units5 = 'Proportion of area affected'
         elif 'Zhu' in self.modelrefs['shortref']:
-            units5 = 'Proportion of area affected'
+            if 'coverage' not in self.config[self.model].keys() and '2017' in self.modelrefs['shortref']:
+                units5 = 'Relative Hazard'
+            else:
+                units5 = 'Proportion of area affected'
         else:
             units5 = 'Probability of any occurrence'
 
@@ -628,11 +609,22 @@ class LogisticModel(object):
         if self.uncert is not None:
             Pmingrid = Grid2D(Pmin, self.geodict)
             Pmaxgrid = Grid2D(Pmax, self.geodict)
+            Stdgrid = Grid2D(std1, self.geodict)
             if self.trimfile is not None:
                 Pmingrid = trim_ocean(
                     Pmingrid, self.trimfile, nodata=float('nan'))
                 Pmaxgrid = trim_ocean(
                     Pmaxgrid, self.trimfile, nodata=float('nan'))
+                Stdgrid = trim_ocean(
+                    Stdgrid, self.trimfile, nodata=float('nan'))
+            rdict['std'] = {
+                'grid': Stdgrid,
+                'label': ('%s - %s (std)'
+                          % (self.modeltype.capitalize(),
+                             units5.title())),
+                'type': 'output',
+                'description': description
+            }
             rdict['modelmin'] = {
                 'grid': Pmingrid,
                 'label': ('%s - %s (-%0.1f std ground motion)'
