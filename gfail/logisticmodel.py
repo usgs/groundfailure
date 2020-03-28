@@ -540,9 +540,19 @@ class LogisticModel(object):
                     std1 = np.sqrt(varP)
 
             elif 'Jessee' in self.modelrefs['shortref']:
-                pass
+                varT = (self.coeffs['b1']+self.coeffs['b6']*np.arctan(self.layerdict['slope'].getSlice()))**2.*self.uncert['stdpgv'].getSlice()**2.
+                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varT
+                if 'coverage' in self.config[self.model].keys():
+                    a = -7.592
+                    b = 5.237
+                    c = -3.042
+                    d = 4.035
+                    varL = (np.exp(a+b*P+c*P**2.+d*P**3.)*(b+2.*P*c+3.*d*P**2.))**2.*varP
+                    std1 = np.sqrt(varL)
+                else:
+                    std1 = np.sqrt(varP)
             else:
-                print('cannot do uncertainty for %s model, skipping' %
+                print('cannot do uncertainty for %s model currently, skipping' %
                       self.modelrefs['shortref'])
                 self.uncert = None
 
