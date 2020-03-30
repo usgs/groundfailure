@@ -490,40 +490,47 @@ class LogisticModel(object):
 
         if self.uncert is not None:
             if 'Zhu and others (2017)' in self.modelrefs['shortref']:
-                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
+                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. *\
+                (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
                 if 'coverage' in self.config[self.model].keys():
                     a = 0.4915
                     b = 42.4
                     c = 9.165
-                    varL = ((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP
+                    varL = ((2*a*b*c*np.exp(-c*P))/((1+b*np.exp(-c*P))**3.))**2.*varP#((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP
                     std1 = np.sqrt(varL)
                 else:
                     std1 = np.sqrt(varP)
-
+                # Just save std layer
+                std1[P == 0] = 0.
             elif 'Jessee' in self.modelrefs['shortref']:
-                varT = (self.coeffs['b1']+self.coeffs['b6']*np.arctan(self.layerdict['slope'].getSlice()))**2.*self.uncert['stdpgv'].getSlice()**2.
+                varT = (self.coeffs['b1']+self.coeffs['b6']*(np.arctan(\
+                        self.layerdict['slope'].getSlice())* 180 / np.pi))**2.\
+                        *self.uncert['stdpgv'].getSlice()**2.
                 varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varT
                 if 'coverage' in self.config[self.model].keys():
                     a = -7.592
                     b = 5.237
                     c = -3.042
                     d = 4.035
-                    varL = (np.exp(a+b*P+c*P**2.+d*P**3.)*(b+2.*P*c+3.*d*P**2.))**2.*varP
+                    varL = (np.exp(a+b*P+c*P**2.+d*P**3.)*\
+                            (b+2.*P*c+3.*d*P**2.))**2. * varP
                     std1 = np.sqrt(varL)
                 else:
                     std1 = np.sqrt(varP)
+                # Just save std layer
+                std1[P == 0] = 0.
             else:
                 print('cannot do uncertainty for %s model currently, skipping' %
                       self.modelrefs['shortref'])
                 self.uncert = None
-            # Just save std layer
-            std1[P == 0] = 0.
+                std1 = None
+
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
-            if self.uncert is not None:
+            if std1 is not None:
                 std1 *= self.nonzero
 
         # Stuff into Grid2D object

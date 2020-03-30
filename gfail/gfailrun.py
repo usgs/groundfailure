@@ -268,7 +268,6 @@ def run_gfail(args):
                                       uncertfile=args.uncertfile,
                                       saveinputs=args.save_inputs,
                                       bounds=bounds,
-                                      numstd=float(args.std),
                                       trimfile=trimfile)
 
                 maplayers = lm.calculate()
@@ -277,7 +276,6 @@ def run_gfail(args):
                                      uncertfile=args.uncertfile,
                                      saveinputs=args.save_inputs,
                                      bounds=bounds,
-                                     numstd=float(args.std),
                                      trimfile=trimfile)
             else:
                 print('Unknown model function specified in config for %s '
