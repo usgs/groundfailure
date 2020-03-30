@@ -48,7 +48,7 @@ MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
 
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False,
-                 slopefile=None, bounds=None, numstd=1, slopemod=None,
+                 slopefile=None, bounds=None, slopemod=None,
                  trimfile=None):
         """
         Sets up the logistic model
@@ -73,9 +73,6 @@ class LogisticModel(object):
                         'xmin': lonmin, 'xmax': lonmax,
                         'ymin': latmin, 'ymax': latmax
                     }
-
-            numstd (float): Number of +/- standard deviations to use if
-                uncertainty is computed.
             slopemod (str): How slope input should be modified to be in
                 degrees: e.g., ``np.arctan(slope) * 180. / np.pi`` or
                 ``slope/100.`` (note that this may be in the config file
@@ -106,7 +103,7 @@ class LogisticModel(object):
                        if 'pga' in value.lower() or 'pgv' in
                        value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
-        self.numstd = numstd
+        #self.numstd = numstd
         self.clips = validateClips(cmodel, self.layers, self.gmused)
         self.notes = ''
 
@@ -418,54 +415,18 @@ class LogisticModel(object):
             self.nuggets.append('(%g * %s)' % (coeff, term))
 
         self.equation = ' + '.join(self.nuggets)
-
-        if self.uncert is not None:
-            self.nugmin = copy.copy(self.nuggets)
-            self.nugmax = copy.copy(self.nuggets)
-
-            # Find the term with the shakemap input and replace for these
-            # nuggets.
-            for gm in ['pga', 'mmi', 'pgv']:
-                for k, nug in enumerate(self.nuggets):
-                    tempnug = ("self.shakemap['%s'].getSlice(rowstart, "
-                               "rowend, colstart, colend, name='%s')"
-                               % (gm, gm))
-                    if tempnug in nug:
-                        newnug = ("np.exp(np.log(%s) - self.numstd * "
-                                  "self.uncert['std%s'].getSlice(rowstart, "
-                                  "rowend, colstart, colend, name='std%s'))"
-                                  % (tempnug, gm, gm))
-                        self.nugmin[k] = self.nugmin[k].replace(
-                            tempnug, newnug)
-                        newnug = ("np.exp(np.log(%s) + self.numstd * "
-                                  "self.uncert['std%s'].getSlice(rowstart, "
-                                  "rowend, colstart, colend, name='std%s'))"
-                                  % (tempnug, gm, gm))
-                        self.nugmax[k] = self.nugmax[k].replace(
-                            tempnug, newnug)
-
-            self.equationmin = ' + '.join(self.nugmin)
-            self.equationmax = ' + '.join(self.nugmax)
-        else:
-            self.equationmin = None
-            self.equationmax = None
-
         self.geodict = sampledict
 
     def getEquations(self):
         """
         Method for LogisticModel class to extract strings defining the
-        equations for the model for median ground motions and +/- one standard
-        deviation (3 total).
+        equations for the model for median ground motions.
 
         Returns:
-            tuple: (equation, equationmin, equationmax) where:
-                * equation: the equation for median ground motions,
-                * equationmin: the equation for the same model but using
-                  median ground motions minus 1 standard deviation
-                * equationmax: same as above but for plus 1 standard deviation.
+            equation: the equation for median ground motions,
+
         """
-        return self.equation, self.equationmin, self.equationmax
+        return self.equation
 
     def getGeoDict(self):
         """
@@ -555,21 +516,15 @@ class LogisticModel(object):
                 print('cannot do uncertainty for %s model currently, skipping' %
                       self.modelrefs['shortref'])
                 self.uncert = None
-
-            Pmin = P - self.numstd * std1
-            Pmax = P + self.numstd * std1
-            Pmin[P == 0] = 0.
-            Pmax[P == 0] = 0.
+            # Just save std layer
+            std1[P == 0] = 0.
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
-            # P[P==0.0] = float('nan')
-            # P[np.isnan(P)] = 0.0
             if self.uncert is not None:
-                Pmin = Pmin * self.nonzero
-                Pmax = Pmax * self.nonzero
+                std1 *= self.nonzero
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
@@ -617,14 +572,8 @@ class LogisticModel(object):
             'description': description
         }
         if self.uncert is not None:
-            Pmingrid = Grid2D(Pmin, self.geodict)
-            Pmaxgrid = Grid2D(Pmax, self.geodict)
             Stdgrid = Grid2D(std1, self.geodict)
             if self.trimfile is not None:
-                Pmingrid = trim_ocean(
-                    Pmingrid, self.trimfile, nodata=float('nan'))
-                Pmaxgrid = trim_ocean(
-                    Pmaxgrid, self.trimfile, nodata=float('nan'))
                 Stdgrid = trim_ocean(
                     Stdgrid, self.trimfile, nodata=float('nan'))
             rdict['std'] = {
@@ -632,24 +581,6 @@ class LogisticModel(object):
                 'label': ('%s - %s (std)'
                           % (self.modeltype.capitalize(),
                              units5.title())),
-                'type': 'output',
-                'description': description
-            }
-            rdict['modelmin'] = {
-                'grid': Pmingrid,
-                'label': ('%s - %s (-%0.1f std ground motion)'
-                          % (self.modeltype.capitalize(),
-                             units5.title(),
-                             self.numstd)),
-                'type': 'output',
-                'description': description
-            }
-            rdict['modelmax'] = {
-                'grid': Pmaxgrid,
-                'label': ('%s - %s (+%0.1f std ground motion)'
-                          % (self.modeltype.capitalize(),
-                             units5.title(),
-                             self.numstd)),
                 'type': 'output',
                 'description': description
             }
@@ -703,29 +634,6 @@ class LogisticModel(object):
                         'shakemap': shakedetail
                     }
                 }
-                if self.uncert is not None:
-                    uncertlayer = self.uncert[getkey].getSlice(
-                        None, None, None, None, name='std'+getkey)
-                    layer1 = np.exp(np.log(layer) - uncertlayer)
-                    rdict[getkey + 'modelmin'] = {
-                        'grid': Grid2D(layer1, self.geodict),
-                        'label': ('%s - %0.1f std (%s)'
-                                  % (getkey.upper(),
-                                     self.numstd, units)),
-                        'type': 'input',
-                        'description': {'units': units,
-                                        'shakemap': shakedetail}
-                    }
-                    layer2 = np.exp(np.log(layer) + uncertlayer)
-                    rdict[getkey + 'modelmax'] = {
-                        'grid': Grid2D(layer2, self.geodict),
-                        'label': ('%s + %0.1f std (%s)'
-                                  % (getkey.upper(),
-                                     self.numstd, units)),
-                        'type': 'input',
-                        'description': {'units': units,
-                                        'shakemap': shakedetail}
-                    }
         if cleanup:
             shutil.rmtree(self.tempdir)
         return rdict
