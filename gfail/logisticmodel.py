@@ -484,11 +484,7 @@ class LogisticModel(object):
                 None, None, None, None, name='pga')
             P[pga < float(self.config[self.model]['minpga'])] = 0.0
 
-        if 'coverage' in self.config[self.model].keys():
-            eqn = self.config[self.model]['coverage']['eqn']
-            P = eval(eqn)
-
-        if self.uncert is not None:
+        if self.uncert is not None:  # hard code for now
             if 'Zhu and others (2017)' in self.modelrefs['shortref']:
                 varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. *\
                 (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
@@ -500,8 +496,6 @@ class LogisticModel(object):
                     std1 = np.sqrt(varL)
                 else:
                     std1 = np.sqrt(varP)
-                # Just save std layer
-                std1[P == 0] = 0.
             elif 'Jessee' in self.modelrefs['shortref']:
                 varT = (self.coeffs['b1']+self.coeffs['b6']*(np.arctan(\
                         self.layerdict['slope'].getSlice())* 180 / np.pi))**2.\
@@ -517,21 +511,24 @@ class LogisticModel(object):
                     std1 = np.sqrt(varL)
                 else:
                     std1 = np.sqrt(varP)
-                # Just save std layer
-                std1[P == 0] = 0.
             else:
                 print('cannot do uncertainty for %s model currently, skipping' %
                       self.modelrefs['shortref'])
                 self.uncert = None
                 std1 = None
 
+        # P needs to be converted to areal coverage after dealing with uncertainty
+        if 'coverage' in self.config[self.model].keys():
+            eqn = self.config[self.model]['coverage']['eqn']
+            P = eval(eqn)
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
             if std1 is not None:
-                std1 *= self.nonzero
+                # No uncert for masked values
+                std1[P == 0] = 0.
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
