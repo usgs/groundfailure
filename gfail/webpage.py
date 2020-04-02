@@ -165,6 +165,13 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 ls_alert = None
                 lsext = None
 
+            ls_haz_std = None
+            ls_pop_std = None
+            
+            if stdgrid2D is not None and title==prefLS:
+                ls_haz_std = float("%.2f" % stats['Hagg_std_0.10g'])
+                ls_pop_std = float("%.2f" % stats['exp_std_0.10g'])
+
             edict = {
                 'id': id1,
                 'title': metadata['name'],
@@ -176,12 +183,14 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'hazard_alert': {
                     'color': ls_haz_alert,
                     'value': ls_haz_value,
+                    'std': ls_haz_std,
                     'parameter': 'Aggregate Hazard',
                     'units': 'km^2'
                 },
                 'population_alert': {
                     'color': ls_pop_alert,
                     'value': ls_pop_value,
+                    'std': ls_pop_std,
                     'parameter': 'Population exposure',
                     'units': 'people'
                 },
@@ -190,7 +199,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     'max': float("%.2f" % stats['Max']),
                     'std': float("%.2f" % stats['Std']),
                     'hagg0.1g': float("%.2f" % stats['Hagg_0.10g']),
-                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'])
+                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'],),
+                    'hagg0.1g_std': ls_haz_std,
+                    'popexp0.1g_std': ls_pop_std
                 },
                 'longref': metadata['longref'],
                 'parameters': metadata['parameters'],
@@ -260,6 +271,13 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 lq_alert = None
                 lqext = None
 
+            lq_haz_std = None
+            lq_pop_std = None
+            
+            if stdgrid2D is not None and title==prefLQ:
+                lq_haz_std = float("%.2f" % stats['Hagg_std_0.10g'])
+                lq_pop_std = float("%.2f" % stats['exp_std_0.10g'])
+
             edict = {
                 'id': id1,
                 'title': metadata['name'],
@@ -271,12 +289,14 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'hazard_alert': {
                     'color': lq_haz_alert,
                     'value': lq_haz_value,
+                    'std': lq_haz_std,
                     'parameter': 'Aggregate Hazard',
                     'units': 'km^2'
                 },
                 'population_alert': {
                     'color': lq_pop_alert,
                     'value': lq_pop_value,
+                    'std': lq_pop_std,
                     'parameter': 'Population exposure',
                     'units': 'people'
                 },
@@ -285,7 +305,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     'max': float("%.2f" % stats['Max']),
                     'std': float("%.2f" % stats['Std']),
                     'hagg0.1g': float("%.2f" % stats['Hagg_0.10g']),
-                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'])
+                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g']),
+                    'hagg0.1g_std': lq_haz_std,
+                    'popexp0.1g_std': lq_pop_std
                 },
                 'longref': metadata['longref'],
                 'parameters': metadata['parameters'],

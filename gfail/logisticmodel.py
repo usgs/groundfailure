@@ -516,6 +516,8 @@ class LogisticModel(object):
                       self.modelrefs['shortref'])
                 self.uncert = None
                 std1 = None
+        else:
+            std1 = None
 
         # P needs to be converted to areal coverage after dealing with uncertainty
         if 'coverage' in self.config[self.model].keys():

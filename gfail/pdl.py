@@ -98,6 +98,20 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
     ls_pop_alert_value = '"--property-landslide-population-alert-value=%s" ' % \
         ls_pref['population_alert']['value']
 
+    if 'std' in list(lq_pref['hazard_alert'].keys()):
+        lq_haz_alert_std = '"--property-liquefaction-hazard-alert-std=%s" ' % \
+            lq_pref['hazard_alert']['std']
+        ls_haz_alert_std = '"--property-landslide-hazard-alert-std=%s" ' % \
+            ls_pref['hazard_alert']['std']
+        lq_pop_alert_std = '"--property-liquefaction-population-alert-std=%s" ' % \
+            lq_pref['population_alert']['std']
+        ls_pop_alert_std = '"--property-landslide-population-alert-std=%s" ' % \
+            ls_pref['population_alert']['std']
+        stdstr = lq_haz_alert_std + ls_haz_alert_std + lq_pop_alert_std \
+                 + ls_pop_alert_std
+    else:
+        stdstr = ''
+
     lq_haz_alert_parameter = '"--property-liquefaction-hazard-alert-parameter=%s" ' % \
         lq_pref['hazard_alert']['parameter']
     ls_haz_alert_parameter = '"--property-landslide-hazard-alert-parameter=%s" ' % \
@@ -168,7 +182,7 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
         lq_pop_alert_value + ls_pop_alert_value +
         lq_haz_alert_parameter + ls_haz_alert_parameter +
         lq_pop_alert_parameter + ls_pop_alert_parameter +
-        lq_overlay + ls_overlay +
+        stdstr + lq_overlay + ls_overlay +
         lq_xmin + lq_xmax + lq_ymin + lq_ymax +
         ls_xmin + ls_xmax + ls_ymin + ls_ymax +
         prod_xmin + prod_xmax + prod_ymin + prod_ymax +

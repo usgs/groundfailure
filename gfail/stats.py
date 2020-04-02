@@ -56,8 +56,10 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
             - Median
             - Std
             - Hagg_# where # is the shaking threshold
+            - Hagg_std_# (optional) standard deviation of Hagg_#
             - Parea_# where # is the probability threshold
             - exp_pop_# where # is the shaking threshold (if pop_file specified)
+            - exp_std_# (optional) standard deviation of exp_pop_#
     """
     stats = collections.OrderedDict()
     grid = grid2D.getData().copy()
@@ -75,19 +77,27 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
         stats['Max'] = float(np.nanmax(grid))
         stats['Median'] = float(np.nanmedian(grid))
         stats['Std'] = float(np.nanstd(grid))
-    Hagg = computeHagg(grid2D, probthresh=statprobthresh, shakefile=shakefile,
-                       shakethreshtype=shakethreshtype,
-                       shakethresh=shakethresh, stdgrid2D=stdgrid2D)
+    Hagg, StdH = computeHagg(grid2D, probthresh=statprobthresh, shakefile=shakefile,
+                             shakethreshtype=shakethreshtype,
+                             shakethresh=shakethresh, stdgrid2D=stdgrid2D)
     if type(Hagg) != list:
         shakethresh = [shakethresh]
         Hagg = [Hagg]
+        if stdgrid2D is not None:
+            StdH = [StdH]
 
+    k = 0
     for T, H in zip(shakethresh, Hagg):
         if T == 0.:
             stats['Hagg'] = float(H)
+            if stdgrid2D is not None:
+                stats['Hagg_std'] = float(StdH[0])
         else:
             newkey = 'Hagg_%1.2fg' % (T/100.)
             stats[newkey] = float(H)
+            if stdgrid2D is not None:
+                stats['Hagg_std_%1.2fg' % (T/100.)] = float(StdH[0])
+        k += 1
 
     if probthresh is not None:
         Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
@@ -118,12 +128,10 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
         exp_dict = get_exposures(grid2D, pop_file, shakefile=shakefile,
                                  shakethreshtype=shakethreshtype,
                                  shakethresh=shakethresh,
-                                 probthresh=statprobthresh)
+                                 probthresh=statprobthresh,
+                                 stdgrid2D=stdgrid2D)
         for k, v in exp_dict.items():
             stats[k] = v
-    
-    if stdgrid2D is not None:
-        pass
 
     return stats
 
@@ -149,9 +157,12 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             pga, cm/s for pgv, float for mmi.
         stdgrid2D: grid2D object of model standard deviations (optional)
 
-    Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh
+    Returns: Tuple (Hagg, StdH) where
+        * Hagg is Aggregate hazard, (float) if no shakethresh or only one shakethresh
         was defined, otherwise, a list of floats of aggregate hazard for all
         shakethresh values.
+        * StdH is the standard deviation of aggregate hazard corresponding to
+            each shakethresh, None if stdgrid2D is not provided
     """
     Hagg = []
     StdH = None
@@ -196,18 +207,24 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     model[np.isnan(model)] = -1.
     if shakefile is not None:
         shkgrid = shk.project(projection=projs)
+        shkdat = shkgrid.getData()
         for shaket in shakethresh:
-            shkdat = shkgrid.getData()
             # use -1 to avoid nan errors and warnings, will always be thrown
             # out because default probthresh is 0.
             model[np.isnan(shkdat)] = -1.
+            model[shkdat < shaket] = -1.
             Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
             if stdgrid2D is not None:
-                StdH.append(np.sum(model[model >= probthresh] * cell_area_km2))
+                StdH.append(np.nansum(std[model >= probthresh] * cell_area_km2))
     else:
         Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+        if stdgrid2D is not None:
+            StdH.append(np.nansum(std[model >= probthresh] * cell_area_km2))
     if len(Hagg) == 1:
         Hagg = Hagg[0]
+    if stdgrid2D is not None:
+        if len(StdH) == 1:
+            StdH = StdH[0]
     return Hagg, StdH
 
 
@@ -287,7 +304,7 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
 
 
 def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
-                  shakethresh=None, probthresh=None):
+                  shakethresh=None, probthresh=None, stdgrid2D=None):
     """
     Get exposure-based statistics.
 
@@ -302,9 +319,11 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             pga, cm/s for pgv, float for mmi.
         probthresh: Optional, None or float, exclude any cells with
             probabilities less than or equal to this value
+        stdgrid2D: grid2D object of model standard deviations (optional)
 
     Returns:
         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
+            and exp_std_# if stdgrid2D is supplied (stdev of exp_pop)
     """
 
     # If probthresh defined, zero out any areas less than or equal to
@@ -315,8 +334,14 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         moddat = origdata.copy()
         moddat[moddat <= probthresh] = 0.0
         moddat[np.isnan(origdata)] = float('nan')
+        if stdgrid2D is not None:
+            stddat = stdgrid2D.getData().copy()
+            stddat[moddat <= probthresh] = 0.0
+            stddat[np.isnan(origdata)] = 0.0
     else:
-        moddat = grid.getData()
+        moddat = grid.getData().copy()
+        if stdgrid2D is not None:
+            stddat = stdgrid2D.getData().copy()
 
     mdict = grid.getGeoDict()
 
@@ -336,10 +361,17 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         np.abs(np.ceil((mdict.ymin - pdict.ymin)/mdict.dy)))
     pad_dict['padtop'] = int(
         np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
+
     padgrid, mdict2 = Grid2D.padGrid(
         moddat, mdict, pad_dict)  # padds with inf
     padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
     padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
+
+    if stdgrid2D is not None:
+        padstdgrid, mdict3 = Grid2D.padGrid(
+            stddat, mdict, pad_dict)  # padds with inf
+        padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
+        padstdgrid = Grid2D(data=padstdgrid, geodict=mdict3)  # Turn into grid2d object
 
     # Resample model grid so as to be the nearest integer multiple of popdict
     factor = np.round(pdict.dx/mdict2.dx)
@@ -364,6 +396,15 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
                              block_size=(int(factor), int(factor)),
                              cval=float('nan'), func=np.nanmean)
 
+    if stdgrid2D is not None:
+        grid2std = padstdgrid.interpolate2(ndict, method='linear')
+        propstd = block_reduce(~np.isnan(grid2std.getData().copy()),
+                               block_size=(int(factor), int(factor)),
+                               cval=float('nan'), func=np.sum)/(factor**2.)
+        modresampstd = block_reduce(grid2std.getData().copy(),
+                                    block_size=(int(factor), int(factor)),
+                                    cval=float('nan'), func=np.nanmean)
+
     exp_pop = {}
     if shakefile is not None:
         # Resample shakefile to population grid
@@ -377,8 +418,12 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             threshmult = threshmult.astype(float)
             exp_pop['exp_pop_%1.2fg' % (shaket/100.,)] = np.nansum(
                 popdat * prop * modresamp * threshmult)
-
+            if stdgrid2D is not None:
+                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.nansum(
+                    popdat * propstd * modresampstd * threshmult)
     else:
         exp_pop['exp_pop_0.00g'] = np.nansum(popdat * prop * modresamp)
+        if stdgrid2D is not None:
+            exp_pop['exp_std_0.00g'] = np.nansum(popdat * propstd * modresampstd)
 
     return exp_pop
