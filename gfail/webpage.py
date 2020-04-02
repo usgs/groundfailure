@@ -120,9 +120,15 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 else:
                     id1 = 'nowicki_2014_global'
                     statprobthresh = 0.0
+            
+            if 'std' in list(maplayer.keys()):
+                stdgrid2D = maplayer['std']['grid']
+            else:
+                stdgrid2D = None
 
             stats = computeStats(
                 maplayer['model']['grid'],
+                stdgrid2D=stdgrid2D,
                 probthresh=probthresh,
                 shakefile=shakemap,
                 shakethresh=shakethresh,
@@ -209,8 +215,14 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 id1 = 'zhu_2017_general'
                 statprobthresh = 0.005
 
+            if 'std' in list(maplayer.keys()):
+                stdgrid2D = maplayer['std']['grid']
+            else:
+                stdgrid2D = None
+
             stats = computeStats(
                 maplayer['model']['grid'],
+                stdgrid2D=stdgrid2D,
                 probthresh=probthresh,
                 shakefile=shakemap,
                 shakethresh=shakethresh,

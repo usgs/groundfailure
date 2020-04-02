@@ -27,7 +27,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
                                    'sans-serif']
 
 
-def computeStats(grid2D, probthresh=None, shakefile=None,
+def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
                  statprobthresh=None, pop_file=None):
     """
@@ -35,6 +35,7 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
 
     Args:
         grid2D: grid2D object of model output.
+        stdgrid2D: grid2D object of model standard deviations (optional)
         probthresh: Optional, Float or list of probability thresholds
             for use in Parea computation.
         shakefile: Optional, path to shakemap file to use for ground motion
@@ -76,8 +77,8 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
         stats['Std'] = float(np.nanstd(grid))
     Hagg = computeHagg(grid2D, probthresh=statprobthresh, shakefile=shakefile,
                        shakethreshtype=shakethreshtype,
-                       shakethresh=shakethresh)
-    if type(Hagg) != list and type(Hagg) != list:
+                       shakethresh=shakethresh, stdgrid2D=stdgrid2D)
+    if type(Hagg) != list:
         shakethresh = [shakethresh]
         Hagg = [Hagg]
 
@@ -120,12 +121,15 @@ def computeStats(grid2D, probthresh=None, shakefile=None,
                                  probthresh=statprobthresh)
         for k, v in exp_dict.items():
             stats[k] = v
+    
+    if stdgrid2D is not None:
+        pass
 
     return stats
 
 
 def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
-                shakethreshtype='pga', shakethresh=0.0):
+                shakethreshtype='pga', shakethresh=0.0, stdgrid2D=None):
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the
     probability * area of grid cell For models that compute areal coverage,
@@ -143,12 +147,14 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             shakethresh, 'pga', 'pgv', or 'mmi'.
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi.
+        stdgrid2D: grid2D object of model standard deviations (optional)
 
     Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh
         was defined, otherwise, a list of floats of aggregate hazard for all
         shakethresh values.
     """
     Hagg = []
+    StdH = None
     bounds = grid2D.getBounds()
     lat0 = np.mean((bounds[2], bounds[3]))
     lon0 = np.mean((bounds[0], bounds[1]))
@@ -181,23 +187,28 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     grid = grid2D.project(projection=projs, method='bilinear')
     geodictRS = grid.getGeoDict()
     cell_area_km2 = geodictRS.dx * geodictRS.dy
-    model = grid.getData()
+    model = grid.getData().copy()
+    if stdgrid2D is not None:
+        stdgrid = stdgrid2D.project(projection=projs, method='bilinear')
+        StdH = []
+        std = stdgrid.getData().copy()
+        std[np.isnan(model)] = -1.
     model[np.isnan(model)] = -1.
     if shakefile is not None:
+        shkgrid = shk.project(projection=projs)
         for shaket in shakethresh:
-            modcop = model.copy()
-            shkgrid = shk.project(projection=projs)
             shkdat = shkgrid.getData()
             # use -1 to avoid nan errors and warnings, will always be thrown
-            # out because default is 0.
-            shkdat[np.isnan(shkdat)] = -1.
-            modcop[shkdat < shaket] = -1.
-            Hagg.append(np.sum(modcop[modcop >= probthresh] * cell_area_km2))
+            # out because default probthresh is 0.
+            model[np.isnan(shkdat)] = -1.
+            Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+            if stdgrid2D is not None:
+                StdH.append(np.sum(model[model >= probthresh] * cell_area_km2))
     else:
         Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
     if len(Hagg) == 1:
         Hagg = Hagg[0]
-    return Hagg
+    return Hagg, StdH
 
 
 def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
