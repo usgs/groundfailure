@@ -7,6 +7,7 @@ import tempfile
 import urllib
 import re
 from argparse import Namespace
+from zipfile import ZipFile
 
 # local imports
 from mapio.shake import getHeaderData
@@ -22,6 +23,7 @@ from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
     parseMapConfig, text_to_json, write_floats,
     savelayers)
+from libcomcat.search import get_event_by_id
 
 
 def run_gfail(args):
@@ -109,6 +111,11 @@ def run_gfail(args):
         #     to store a copy of it here.
         shake_copy = os.path.join(outfolder, "grid.xml")
         shutil.copyfile(shakefile, shake_copy)
+        
+        if args.uncertfile is not None:
+            uncertfile = os.path.abspath(args.uncertfile)
+            unc_copy = os.path.join(outfolder, "uncertainty.xml")
+            shutil.copyfile(uncertfile, unc_copy)
 
         # Write shakefile to a file for use later
         shakename = os.path.join(outfolder, "shakefile.txt")
@@ -265,7 +272,7 @@ def run_gfail(args):
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
                 lm = LM.LogisticModel(shakefile, conf,
-                                      uncertfile=args.uncertfile,
+                                      uncertfile=uncertfile,
                                       saveinputs=args.save_inputs,
                                       bounds=bounds,
                                       trimfile=trimfile)
@@ -273,7 +280,7 @@ def run_gfail(args):
                 maplayers = lm.calculate()
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(shakefile, conf,
-                                     uncertfile=args.uncertfile,
+                                     uncertfile=uncertfile,
                                      saveinputs=args.save_inputs,
                                      bounds=bounds,
                                      trimfile=trimfile)
@@ -458,6 +465,108 @@ def getGridURL(gridurl, fname=None):
                 f.write(data)
 
     return f.name
+
+
+def getShakefiles(event, outdir, uncert=False, version=None,
+                  source='preferred'):
+    """
+    Download the shakemap grid.xml file and the 
+    
+    Args:
+        event event id or URL
+    """
+    shakefile = os.path.join(outdir, 'grid.xml')
+    if uncert:
+        uncertfile = os.path.join(outdir, 'uncertainty.xml')
+    else:
+        uncertfile = None
+    # If args.event is a url to a shakemap, download from that url
+    if isURL(event):
+        if version is not None or source != 'preferred':
+            raise Exception('Cannot set shakemap version or source when URL of '
+                    'gridfile is provided')
+        try:
+            shakefile = getGridURL(event, shakefile)
+        except Exception as e:
+            raise Exception('Could not download shakemap file from provided '
+                            'URL: %s' % e)
+        # Now get corresponding event detail
+        event = getHeaderData(shakefile)[0]['event_id']
+        version =  getHeaderData(shakefile)[0]['shakemap_version']
+        source = getHeaderData(shakefile)[0]['shakemap_originator']
+        try:
+            detail = get_event_by_id(event)
+        except:  # Maybe originator is missing from event id, try another way
+            try:
+                temp = getHeaderData(shakefile)[0]
+                temp2 = '%s%s' % (temp['shakemap_originator'], temp['shakemap_id'])
+                detail = get_event_by_id(temp2)
+                event = temp2
+            except Exception as e:
+                msg = 'Could not get event detail for shakemap at provided URL: %s'
+                print(msg % e)
+        shakemap = detail.getProducts('shakemap', source=source, version=version)[0]
+    else:
+        detail = get_event_by_id(event, includesuperseded=True)
+        
+    
+    # Get most recent version
+    if version is None:  # Get current preferred
+        shakemap = detail.getProducts('shakemap', source=source)[0]
+        shakemap.getContent('grid.xml', shakefile)
+    else:
+        allversions = detail.getProducts('shakemap', version='all',
+                                         source=source)
+        vers = [allv.version for allv in allversions]
+        idx = np.where(np.array(vers) == version)[0]
+        if len(idx) != 1:
+            msg = 'Could not find version %d of Shakemap from source %s'
+            raise Exception(msg % (version, source))
+        shakemap = allversions[idx[0]]
+        shakemap.getContent('grid.xml', shakefile)
+
+    if uncert:
+        uncertfile = getUncert(shakemap, uncertfile)
+
+    return detail, shakefile, uncertfile
+
+
+def getUncert(shakemap, fname=None):
+    """
+    download and unzip (if needed) the uncertainty grid corresponding to a
+    shakemap
+
+    Args:
+        detail: libcomcat ShakeMap product class for the event and version
+        fname (str): file location name, if None, will create a temporary file
+
+    Returns:
+        file object corresponding to the url.
+    """
+    grid_url = shakemap.getContentURL('uncertainty.*')
+    if grid_url is None:
+        return None
+
+    try:
+        ext = grid_url.split('.')[-1]
+        if fname is None:
+            basedir = tempfile.mkdtemp()
+        else:
+            basedir = os.path.dirname(fname)
+        uncertfile = os.path.join(basedir, 'uncertainty.xml')
+        if ext=='xml':
+            shakemap.getContent('uncertainty.xml', uncertfile)
+        if ext == 'zip':
+            fname = os.path.join(basedir, 'uncertainty.xml.zip')
+            shakemap.getContent('uncertainty.xml.zip', fname)
+            #urllib.request.urlretrieve(grid_url, fname)
+            with ZipFile(fname, 'r') as zipObj:
+                # Extract all the contents of zip file in different directory
+                zipObj.extractall(basedir) 
+    except Exception as e:
+        uncertfile = None
+        print('Unable to download uncertainty.xml: %s' % e)
+    return uncertfile
 
 
 def isURL(gridurl):
