@@ -486,8 +486,9 @@ class LogisticModel(object):
 
         if self.uncert is not None:  # hard code for now
             if 'Zhu and others (2017)' in self.modelrefs['shortref']:
-                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. *\
-                (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
+                stdX = 0.
+                varX = stdX**2. + (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
+                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
                 if 'coverage' in self.config[self.model].keys():
                     a = 0.4915
                     b = 42.4
@@ -497,10 +498,11 @@ class LogisticModel(object):
                 else:
                     std1 = np.sqrt(varP)
             elif 'Jessee' in self.modelrefs['shortref']:
-                varT = (self.coeffs['b1']+self.coeffs['b6']*(np.arctan(\
-                        self.layerdict['slope'].getSlice())* 180 / np.pi))**2.\
-                        *self.uncert['stdpgv'].getSlice()**2.
-                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varT
+                stdX = 0.#16.4  # model uncertainty
+                varX = stdX**2. + ((self.coeffs['b1']+self.coeffs['b6']*(np.arctan(
+                        self.layerdict['slope'].getSlice())* 180 / np.pi))**2.
+                        *self.uncert['stdpgv'].getSlice()**2.)
+                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
                 if 'coverage' in self.config[self.model].keys():
                     a = -7.592
                     b = 5.237

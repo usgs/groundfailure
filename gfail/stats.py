@@ -29,7 +29,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
 
 def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
-                 statprobthresh=None, pop_file=None):
+                 statprobthresh=None, pop_file=None, stdtype='mean'):
     """
     Compute summary stats of a ground failure model output.
 
@@ -49,6 +49,8 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
             probabilities less than or equal to this value
         pop_file (str): File path to population file to use to compute exposure
             stats
+        stdtype (str): assumption of spatial correlation used to compute
+            the stdev of the statistics, 'max', 'min' or 'mean' of max and min
 
     Returns:
         dict: Dictionary with the following keys:
@@ -60,6 +62,8 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
             - Parea_# where # is the probability threshold
             - exp_pop_# where # is the shaking threshold (if pop_file specified)
             - exp_std_# (optional) standard deviation of exp_pop_#
+            - Hlimscal_#
+            - Elimscal_#
     """
     stats = collections.OrderedDict()
     grid = grid2D.getData().copy()
@@ -77,27 +81,12 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
         stats['Max'] = float(np.nanmax(grid))
         stats['Median'] = float(np.nanmedian(grid))
         stats['Std'] = float(np.nanstd(grid))
-    Hagg, StdH = computeHagg(grid2D, probthresh=statprobthresh, shakefile=shakefile,
-                             shakethreshtype=shakethreshtype,
-                             shakethresh=shakethresh, stdgrid2D=stdgrid2D)
-    if type(Hagg) != list:
-        shakethresh = [shakethresh]
-        Hagg = [Hagg]
-        if stdgrid2D is not None:
-            StdH = [StdH]
+    hagg_dict = computeHagg(grid2D, probthresh=statprobthresh, shakefile=shakefile,
+                            shakethreshtype=shakethreshtype, stdtype=stdtype,
+                            shakethresh=shakethresh, stdgrid2D=stdgrid2D)
 
-    k = 0
-    for T, H in zip(shakethresh, Hagg):
-        if T == 0.:
-            stats['Hagg'] = float(H)
-            if stdgrid2D is not None:
-                stats['Hagg_std'] = float(StdH[0])
-        else:
-            newkey = 'Hagg_%1.2fg' % (T/100.)
-            stats[newkey] = float(H)
-            if stdgrid2D is not None:
-                stats['Hagg_std_%1.2fg' % (T/100.)] = float(StdH[0])
-        k += 1
+    for k, v in hagg_dict.items():
+        stats[k] = v
 
     if probthresh is not None:
         Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
@@ -129,7 +118,9 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
                                  shakethreshtype=shakethreshtype,
                                  shakethresh=shakethresh,
                                  probthresh=statprobthresh,
-                                 stdgrid2D=stdgrid2D)
+                                 stdgrid2D=stdgrid2D,
+                                 stdtype=stdtype
+                                 )
         for k, v in exp_dict.items():
             stats[k] = v
 
@@ -137,7 +128,8 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
 
 
 def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
-                shakethreshtype='pga', shakethresh=0.0, stdgrid2D=None):
+                shakethreshtype='pga', shakethresh=0.0, stdgrid2D=None,
+                stdtype='mean'):
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the
     probability * area of grid cell For models that compute areal coverage,
@@ -156,16 +148,18 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         shakethresh: Optional, Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi.
         stdgrid2D: grid2D object of model standard deviations (optional)
+        stdtype (str): assumption of spatial correlation used to compute
+            the stdev of the statistics, 'max', 'min' or 'mean' of max and min
 
-    Returns: Tuple (Hagg, StdH) where
-        * Hagg is Aggregate hazard, (float) if no shakethresh or only one shakethresh
-        was defined, otherwise, a list of floats of aggregate hazard for all
-        shakethresh values.
-        * StdH is the standard deviation of aggregate hazard corresponding to
-            each shakethresh, None if stdgrid2D is not provided
+    Returns:
+        dict: Dictionary with keys:
+            hagg_#g where # is the shakethresh
+            std_# if stdgrid2D is supplied (stdev of exp_pop)
+            hlimscal_#, the maximum exposure value possible with the
+            applied thresholds and assuming Pmax=1
+            N_# the number of cells exceeding that value (in projected coords)
+            cell_area_km2 grid cell area
     """
-    Hagg = []
-    StdH = None
     bounds = grid2D.getBounds()
     lat0 = np.mean((bounds[2], bounds[3]))
     lon0 = np.mean((bounds[0], bounds[1]))
@@ -201,9 +195,10 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     model = grid.getData().copy()
     if stdgrid2D is not None:
         stdgrid = stdgrid2D.project(projection=projs, method='bilinear')
-        StdH = []
         std = stdgrid.getData().copy()
         std[np.isnan(model)] = -1.
+
+    Hagg = {}
     model[np.isnan(model)] = -1.
     if shakefile is not None:
         shkgrid = shk.project(projection=projs)
@@ -213,19 +208,38 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             # out because default probthresh is 0.
             model[np.isnan(shkdat)] = -1.
             model[shkdat < shaket] = -1.
-            Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
+            Hagg['hagg_%1.2fg' % (shaket/100.,)] = np.sum(
+                    model[model >= probthresh] * cell_area_km2)
             if stdgrid2D is not None:
-                StdH.append(np.nansum(std[model >= probthresh] * cell_area_km2))
+                totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
+                totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
+                if stdtype == 'max':
+                    Hagg['std_%1.2fg' % (shaket/100.,)] = totalmax
+                elif stdtype == 'min':
+                    Hagg['std_%1.2fg' % (shaket/100.,)] = totalmin
+                else:
+                    Hagg['std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
+            Hagg['cell_area_km2'] = cell_area_km2
+            N = np.sum([model >= probthresh])
+            Hagg['N_%1.2fg' % (shaket/100.,)] = N
+            Hagg['hlimscal_%1.2fg' % (shaket/100.,)] = cell_area_km2*N
     else:
         Hagg.append(np.sum(model[model >= probthresh] * cell_area_km2))
         if stdgrid2D is not None:
-            StdH.append(np.nansum(std[model >= probthresh] * cell_area_km2))
-    if len(Hagg) == 1:
-        Hagg = Hagg[0]
-    if stdgrid2D is not None:
-        if len(StdH) == 1:
-            StdH = StdH[0]
-    return Hagg, StdH
+            totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
+            totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
+            if stdtype == 'max':
+                Hagg['std_0.00g'] = totalmax
+            elif stdtype == 'min':
+                Hagg['std_0.00g'] = totalmin
+            else:
+                Hagg['std_0.00g'] = (totalmax+totalmin)/2.
+        Hagg['cell_area_km2'] = cell_area_km2
+        N = np.sum([model >= probthresh])
+        Hagg['N_0.00g'] = N
+        Hagg['hlimscal_0.00g'] = cell_area_km2*N
+
+    return Hagg
 
 
 def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
@@ -304,7 +318,8 @@ def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
 
 
 def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
-                  shakethresh=None, probthresh=None, stdgrid2D=None):
+                  shakethresh=None, probthresh=None, stdgrid2D=None,
+                  stdtype='mean'):
     """
     Get exposure-based statistics.
 
@@ -320,10 +335,14 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         probthresh: Optional, None or float, exclude any cells with
             probabilities less than or equal to this value
         stdgrid2D: grid2D object of model standard deviations (optional)
+        stdtype (str): assumption of spatial correlation used to compute
+            the stdev of the statistics, 'max', 'min' or 'mean' of max and min
 
     Returns:
         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
             and exp_std_# if stdgrid2D is supplied (stdev of exp_pop)
+            and elimscal_#, the maximum exposure value possible with the
+            applied thresholds and assuming Pmax=1
     """
 
     # If probthresh defined, zero out any areas less than or equal to
@@ -419,11 +438,29 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             exp_pop['exp_pop_%1.2fg' % (shaket/100.,)] = np.nansum(
                 popdat * prop * modresamp * threshmult)
             if stdgrid2D is not None:
-                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.nansum(
-                    popdat * propstd * modresampstd * threshmult)
+                totalmax = np.nansum(popdat * propstd * modresampstd * threshmult)
+                totalmin = np.sqrt(np.nansum((popdat * propstd * modresampstd * threshmult)**2.))
+                if stdtype == 'max':
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmax
+                elif stdtype == 'min':
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmin
+                else:
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
+            exp_pop['elimscal_%1.2fg' % (shaket/100.,)] = np.nansum(popdat * prop * modresamp * threshmult)
+
     else:
         exp_pop['exp_pop_0.00g'] = np.nansum(popdat * prop * modresamp)
         if stdgrid2D is not None:
-            exp_pop['exp_std_0.00g'] = np.nansum(popdat * propstd * modresampstd)
+            totalmax = np.nansum(popdat * propstd * modresampstd)
+            totalmin = np.sqrt(np.nansum((popdat * propstd * modresampstd)**2.))
+            if stdtype == 'max':
+                exp_pop['exp_std_0.00g'] = totalmax
+            elif stdtype == 'min':
+                exp_pop['exp_std_0.00g'] = totalmin
+            else:
+                exp_pop['exp_std_0.00g'] = (totalmax+totalmin)/2.
+        exp_pop['elimscal_0.00g'] = np.nansum(popdat * prop * modresamp)
+
+            #exp_pop['exp_std_0.00g'] = np.nansum(popdat * propstd * modresampstd)
 
     return exp_pop
