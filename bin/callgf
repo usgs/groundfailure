@@ -143,12 +143,25 @@ EVENT = OrderedDict([('id', 'INTEGER PRIMARY KEY'),
                      ('finitefault', 'INTEGER'),
                      ('HaggLS', 'REAL'),
                      ('HaggLS_std', 'REAL'),
+                     ('HlimLS', 'REAL'),
                      ('ExpPopLS', 'REAL'),
                      ('ExpPopLS_std', 'REAL'),
+                     ('ElimLS', 'REAL'),
                      ('HaggLQ', 'REAL'),
                      ('HaggLQ_std', 'REAL'),
+                     ('HlimLQ', 'REAL'),
                      ('ExpPopLQ', 'REAL'),
-                     ('ExpPopLQ_std', 'REAL')])
+                     ('ExpPopLQ_std', 'REAL'),
+                     ('ElimLQ', 'REAL'),
+                     ('PH_LS', 'REAL'),
+                     ('QH_LS', 'REAL'),
+                     ('PE_LS', 'REAL'),
+                     ('QE_LS', 'REAL'),
+                     ('PH_LQ', 'REAL'),
+                     ('QH_LQ', 'REAL'),
+                     ('PE_LQ', 'REAL'),
+                     ('QE_LQ', 'REAL')
+                     ])
 
 
 def get_next_version(eventdir):
@@ -896,8 +909,11 @@ def process_shakemap(args, config):
         msg = "gf_transfer failed."
         logging.critical(msg)
         update_event_fail(conn, db_id, msg)
-        sys.exit(1)
-    logging.info('gf_transfer completed')
+        #sys.exit(1)  # Still proceed because can enter stuff in database
+        transferred = False
+    else:
+        logging.info('gf_transfer completed')
+        transferred = True
 
     # Enter model results into the database.
     jsonfile = os.path.join(vdir, 'info.json')
@@ -911,6 +927,13 @@ def process_shakemap(args, config):
     ls_hazard_std = landslide['hazard_alert']['std']
     ls_pop_value = landslide['population_alert']['value']
     ls_pop_std = landslide['population_alert']['std']
+    ls_hlim = landslide['probability']['hlim0.1g']
+    ls_elim = landslide['probability']['elim0.1g']
+    ls_hp = landslide['probability']['p_hagg']
+    ls_hq = landslide['probability']['q_hagg']
+    ls_ep = landslide['probability']['p_exp']
+    ls_eq = landslide['probability']['q_exp']  
+
     liquefactions = infodata['Liquefaction']
     liquefaction = None
     for liquefaction in liquefactions:
@@ -921,18 +944,29 @@ def process_shakemap(args, config):
     lq_hazard_std = liquefaction['hazard_alert']['std']
     lq_pop_value = liquefaction['population_alert']['value']
     lq_pop_std = liquefaction['population_alert']['std']
+    lq_hlim = liquefaction['probability']['hlim0.1g']
+    lq_elim = liquefaction['probability']['elim0.1g']
+    lq_hp = liquefaction['probability']['p_hagg']
+    lq_hq = liquefaction['probability']['q_hagg']
+    lq_ep = liquefaction['probability']['p_exp']
+    lq_eq = liquefaction['probability']['q_exp']  
     # values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
+
 
     with conn:
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "UPDATE shakemap SET endtime = ?, finitefault = ?, HaggLS = ?,"
-                "ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?,"
+                "UPDATE shakemap SET endtime = ?, finitefault = ?,"
+                "HaggLS = ?, ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?,"
                 "HaggLS_std = ?, ExpPopLS_std = ?, HaggLQ_std = ?,"
-                "ExpPopLQ_std = ?, eventdir = ?, time = ?, depth = ?,"
+                "ExpPopLQ_std = ?,"
+                "HlimLS = ?, ElimLS = ?, HlimLQ = ?, ElimLQ = ?,"
+                "PH_LS = ?, QH_LS = ?, PE_LS = ?, QE_LS = ?, PH_LQ = ?,"
+                "QH_LQ = ?, PE_LQ = ?, QE_LQ = ?," 
+                "eventdir = ?, time = ?, depth = ?,"
                 "location = ?, note = ? WHERE id = ?",
                 (tnowstr, '%i' % finite_fault,
                  '%.3f' % ls_hazard_value,
@@ -943,6 +977,18 @@ def process_shakemap(args, config):
                  '%.3f' % ls_pop_std,
                  '%.3f' % lq_hazard_std,
                  '%.3f' % lq_pop_std,
+                 '%.3f' % ls_hlim,
+                 '%.3f' % ls_elim,
+                 '%.3f' % lq_hlim,
+                 '%.3f' % lq_elim,
+                 '%.4f' % ls_hp,
+                 '%.4f' % ls_hq,
+                 '%.4f' % ls_ep,
+                 '%.4f' % ls_eq,
+                 '%.4f' % lq_hp,
+                 '%.4f' % lq_hq,
+                 '%.4f' % lq_ep,
+                 '%.4f' % lq_eq,                 
                  eventdir,
                  event['event_timestamp'].strftime(TIMEFMT),
                  '%.1f' % event['depth'],
@@ -955,7 +1001,10 @@ def process_shakemap(args, config):
 
     # close the database
     conn.close()
-    logging.info('Completed gfail run of %s' % eventid)
+    if transferred:
+        logging.info('Completed gfail run of %s' % eventid)
+    else:
+        logging.info('Completed gfail run of %s but transfer failed' % eventid)
 
 
 class ArgWrapper():

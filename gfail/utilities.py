@@ -845,8 +845,8 @@ def view_database(database, starttime=None, endtime=None,
 
     # Now that have requested dataframe, make outputs
     success = df.loc[df['note'] == '']
-    fail = df.loc[df['note'].str.contains('Failure')]
-    notmet = df.loc[(~df['note'].str.contains('Failure')) & (df['note'] != '')]
+    fail = df.loc[df['note'].str.contains('fail')]
+    notmet = df.loc[(~df['note'].str.contains('fail')) & (df['note'] != '')]
 
     if len(df) == 0:
         print('No matching GF runs found')

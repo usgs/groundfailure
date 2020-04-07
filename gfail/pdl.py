@@ -107,8 +107,35 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
             lq_pref['population_alert']['std']
         ls_pop_alert_std = '"--property-landslide-population-alert-std=%s" ' % \
             ls_pref['population_alert']['std']
+        ls_hlim = '"--property-landslide-hazard-alert-lim=%s" ' % \
+            ls_pref['probability']['hlim0.1g']
+        ls_elim = '"--property-landslide-population-alert-lim=%s" ' % \
+            ls_pref['probability']['elim0.1g']
+        ls_hp = '"--property-landslide-hazard-alert-p=%s" ' % \
+            ls_pref['probability']['p_hagg']
+        ls_hq = '"--property-landslide-hazard-alert-q=%s" ' % \
+            ls_pref['probability']['q_hagg']
+        ls_ep = '"--property-landslide-population-alert-p=%s" ' % \
+            ls_pref['probability']['p_exp']
+        ls_eq ='"--property-landslide-population-alert-q=%s" ' % \
+            ls_pref['probability']['q_exp']
+        lq_hlim = '"--property-liquefaction-hazard-alert-lim=%s" ' % \
+            lq_pref['probability']['hlim0.1g']
+        lq_elim = '"--property-liquefaction-population-alert-lim=%s" ' % \
+            lq_pref['probability']['elim0.1g']
+        lq_hp = '"--property-liquefaction-hazard-alert-p=%s" ' % \
+            lq_pref['probability']['p_hagg']
+        lq_hq = '"--property-liquefaction-hazard-alert-q=%s" ' % \
+            lq_pref['probability']['q_hagg']
+        lq_ep = '"--property-liquefaction-population-alert-p=%s" ' % \
+            lq_pref['probability']['p_exp']
+        lq_eq ='"--property-liquefaction-population-alert-q=%s" ' % \
+            lq_pref['probability']['q_exp']
+
         stdstr = lq_haz_alert_std + ls_haz_alert_std + lq_pop_alert_std \
-                 + ls_pop_alert_std
+                 + ls_pop_alert_std + ls_hlim + ls_elim + ls_hp + ls_hq \
+                 + ls_ep + ls_eq + lq_hlim + lq_elim + lq_hp + lq_hq \
+                 + lq_ep + lq_eq 
     else:
         stdstr = ''
 

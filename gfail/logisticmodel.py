@@ -498,7 +498,7 @@ class LogisticModel(object):
                 else:
                     std1 = np.sqrt(varP)
             elif 'Jessee' in self.modelrefs['shortref']:
-                stdX = 0.#16.4  # model uncertainty
+                stdX = 0.02793162#16.4  # model uncertainty
                 varX = stdX**2. + ((self.coeffs['b1']+self.coeffs['b6']*(np.arctan(
                         self.layerdict['slope'].getSlice())* 180 / np.pi))**2.
                         *self.uncert['stdpgv'].getSlice()**2.)

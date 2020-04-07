@@ -58,7 +58,7 @@ def test_stats_models():
 #    np.testing.assert_allclose(tmp[1][0], 0.00098462898029272805)
 
     hagg = stats.computeHagg(maplayers2['model']['grid'])
-    np.testing.assert_allclose(hagg, 66.55234520807204, atol=0.001)#65.73846496428509)
+    np.testing.assert_allclose(hagg['hagg_0.00g'], 66.55234520807204, atol=0.001)#65.73846496428509)
     parea = stats.computeParea(maplayers2['model']['grid'],
                                probthresh=0.2)
     np.testing.assert_allclose(parea, 75.19685308835166, atol=0.001)#80.69906185091396)
