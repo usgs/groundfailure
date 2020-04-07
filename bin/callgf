@@ -17,7 +17,7 @@ import json
 import re
 import shutil
 import numpy as np
-import urllib.request
+#import urllib.request
 import tempfile
 from io import StringIO
 
@@ -35,7 +35,7 @@ from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
 import pytz
 
 # local imports
-from gfail.gfailrun import run_gfail, isURL, getGridURL
+from gfail.gfailrun import run_gfail, getUncert, getShakefiles
 from gfail.transfer import gf_transfer
 
 
@@ -142,9 +142,26 @@ EVENT = OrderedDict([('id', 'INTEGER PRIMARY KEY'),
                      ('eventdir', 'TEXT'),
                      ('finitefault', 'INTEGER'),
                      ('HaggLS', 'REAL'),
+                     ('HaggLS_std', 'REAL'),
+                     ('HlimLS', 'REAL'),
                      ('ExpPopLS', 'REAL'),
+                     ('ExpPopLS_std', 'REAL'),
+                     ('ElimLS', 'REAL'),
                      ('HaggLQ', 'REAL'),
-                     ('ExpPopLQ', 'REAL')])
+                     ('HaggLQ_std', 'REAL'),
+                     ('HlimLQ', 'REAL'),
+                     ('ExpPopLQ', 'REAL'),
+                     ('ExpPopLQ_std', 'REAL'),
+                     ('ElimLQ', 'REAL'),
+                     ('PH_LS', 'REAL'),
+                     ('QH_LS', 'REAL'),
+                     ('PE_LS', 'REAL'),
+                     ('QE_LS', 'REAL'),
+                     ('PH_LQ', 'REAL'),
+                     ('QH_LQ', 'REAL'),
+                     ('PE_LQ', 'REAL'),
+                     ('QE_LQ', 'REAL')
+                     ])
 
 
 def get_next_version(eventdir):
@@ -303,7 +320,6 @@ def get_event_dir(args, connection):
 
         if eventdir == '':
             eventdir = None
-
         # Get latest shakemap version
         with connection:
             cursor = connection.cursor()
@@ -312,7 +328,7 @@ def get_event_dir(args, connection):
                 (eventid,))
             data1 = cursor.fetchall()
         if len(data1) > 0:
-            shakemap_version = np.max([dat[0] for dat in data1])
+            shakemap_version = np.max([dat[0] for dat in data1 if dat[0] is not None])
         break
 
     return (eventdir, shakemap_version)
@@ -531,6 +547,8 @@ def process_shakemap(args, config):
     """
     # did someone run this from the command line?
     is_manual = isinstance(args, ArgWrapper)
+    
+    uncertfile = None
 
     logging.info('###### Event source: %s' % args.preferred_eventsource)
     logging.info('###### Event source code: %s' %
@@ -625,28 +643,28 @@ def process_shakemap(args, config):
 
     if not is_manual:
         # ----------------------------------------------------------------------
-        # Download grid.xml
+        # Download grid.xml and uncertfiles
         # ----------------------------------------------------------------------
         try:
-            detail = get_event_by_id(eventid, includesuperseded=True)
-            allversions = detail.getProducts(
-                'shakemap', version='all')
-            vers = [allv.version for allv in allversions]
-            idx = np.where(np.array(vers) == np.max(vers))[0][0]
-            shakemap = allversions[idx]
-            grid_url = shakemap.getContentURL('grid.xml')
-            urllib.request.urlretrieve(
-                grid_url,
-                os.path.join(args.directory, 'download')
-            )
+            datadir = os.path.join(args.directory, 'download')
+            # Download shakemap and uncertainty grid
+            detail, sh, un = getShakefiles(eventid, datadir,
+                                           uncert=True,
+                                           version=args.version,
+                                           source=args.source)
         except Exception as e:
             logging.info('Failed to download grid.xml')
             logging.info(e)
+
+        if uncertfile is None:
+            logging.info('Failed to download and/or unzip uncertainty.xml '
+                         'continuing without uncertainty')
 
     # ----------------------------------------------------------------------
     # Additional filters for things we'd want to know about in database file
     # ----------------------------------------------------------------------
 
+    # Check that gridfiles are where they should be
     logging.info('Checking gridfile...')
     gridfile = os.path.join(args.directory, 'download', 'grid.xml')
     if not os.path.isfile(gridfile):
@@ -658,6 +676,15 @@ def process_shakemap(args, config):
             if not args.force:
                 update_event_fail(conn, db_id, msg)
                 sys.exit(1)
+
+    logging.info('Checking for uncertainty gridfile...')
+    uncertfile = os.path.join(args.directory, 'download', 'uncertainty.xml')
+    if not os.path.isfile(uncertfile):
+        uncertfile = os.path.join(args.directory, 'uncertainty.xml')
+        if not os.path.isfile(uncertfile):
+            msg = ('No uncertainty file found. Continuing without.')
+            logging.info(msg)
+            uncertfile = None
 
     hdrtuple = getHeaderData(gridfile)
     grid = hdrtuple[2]
@@ -787,7 +814,7 @@ def process_shakemap(args, config):
         'set_bounds': None,
         'make_summary': False,
         'finite_fault': None,
-        'uncertfile': None,
+        'uncertfile': uncertfile,
         'save_inputs': False,
         'std': 1.0,
         'appendname': None,
@@ -796,7 +823,6 @@ def process_shakemap(args, config):
         'config_filepath': config['config_filepath'],
         'mapconfig': config['mapconfig'],
         'mapdata_filepath': config['mapdata_filepath'],
-        'web_template': config['web_template'],
         'popfile': config['popfile'],
         'dry_run': args.dry_run,
         'property_alertlevel': args.property_alertlevel,
@@ -883,8 +909,11 @@ def process_shakemap(args, config):
         msg = "gf_transfer failed."
         logging.critical(msg)
         update_event_fail(conn, db_id, msg)
-        sys.exit(1)
-    logging.info('gf_transfer completed')
+        #sys.exit(1)  # Still proceed because can enter stuff in database
+        transferred = False
+    else:
+        logging.info('gf_transfer completed')
+        transferred = True
 
     # Enter model results into the database.
     jsonfile = os.path.join(vdir, 'info.json')
@@ -895,7 +924,16 @@ def process_shakemap(args, config):
         if landslide['preferred']:
             break
     ls_hazard_value = landslide['hazard_alert']['value']
+    ls_hazard_std = landslide['hazard_alert']['std']
     ls_pop_value = landslide['population_alert']['value']
+    ls_pop_std = landslide['population_alert']['std']
+    ls_hlim = landslide['probability']['hlim0.1g']
+    ls_elim = landslide['probability']['elim0.1g']
+    ls_hp = landslide['probability']['p_hagg']
+    ls_hq = landslide['probability']['q_hagg']
+    ls_ep = landslide['probability']['p_exp']
+    ls_eq = landslide['probability']['q_exp']  
+
     liquefactions = infodata['Liquefaction']
     liquefaction = None
     for liquefaction in liquefactions:
@@ -903,23 +941,54 @@ def process_shakemap(args, config):
             break
 
     lq_hazard_value = liquefaction['hazard_alert']['value']
+    lq_hazard_std = liquefaction['hazard_alert']['std']
     lq_pop_value = liquefaction['population_alert']['value']
+    lq_pop_std = liquefaction['population_alert']['std']
+    lq_hlim = liquefaction['probability']['hlim0.1g']
+    lq_elim = liquefaction['probability']['elim0.1g']
+    lq_hp = liquefaction['probability']['p_hagg']
+    lq_hq = liquefaction['probability']['q_hagg']
+    lq_ep = liquefaction['probability']['p_exp']
+    lq_eq = liquefaction['probability']['q_exp']  
     # values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
+
 
     with conn:
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "UPDATE shakemap SET endtime = ?, finitefault = ?, HaggLS = ?,"
-                "ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?, eventdir = ?,"
-                "time = ?, depth = ?, location = ?, note = ? WHERE id = ?",
+                "UPDATE shakemap SET endtime = ?, finitefault = ?,"
+                "HaggLS = ?, ExpPopLS = ?, HaggLQ = ?, ExpPopLQ = ?,"
+                "HaggLS_std = ?, ExpPopLS_std = ?, HaggLQ_std = ?,"
+                "ExpPopLQ_std = ?,"
+                "HlimLS = ?, ElimLS = ?, HlimLQ = ?, ElimLQ = ?,"
+                "PH_LS = ?, QH_LS = ?, PE_LS = ?, QE_LS = ?, PH_LQ = ?,"
+                "QH_LQ = ?, PE_LQ = ?, QE_LQ = ?," 
+                "eventdir = ?, time = ?, depth = ?,"
+                "location = ?, note = ? WHERE id = ?",
                 (tnowstr, '%i' % finite_fault,
                  '%.3f' % ls_hazard_value,
                  '%.3f' % ls_pop_value,
                  '%.3f' % lq_hazard_value,
                  '%.3f' % lq_pop_value,
+                 '%.3f' % ls_hazard_std,
+                 '%.3f' % ls_pop_std,
+                 '%.3f' % lq_hazard_std,
+                 '%.3f' % lq_pop_std,
+                 '%.3f' % ls_hlim,
+                 '%.3f' % ls_elim,
+                 '%.3f' % lq_hlim,
+                 '%.3f' % lq_elim,
+                 '%.4f' % ls_hp,
+                 '%.4f' % ls_hq,
+                 '%.4f' % ls_ep,
+                 '%.4f' % ls_eq,
+                 '%.4f' % lq_hp,
+                 '%.4f' % lq_hq,
+                 '%.4f' % lq_ep,
+                 '%.4f' % lq_eq,                 
                  eventdir,
                  event['event_timestamp'].strftime(TIMEFMT),
                  '%.1f' % event['depth'],
@@ -932,7 +1001,10 @@ def process_shakemap(args, config):
 
     # close the database
     conn.close()
-    logging.info('Completed gfail run of %s' % eventid)
+    if transferred:
+        logging.info('Completed gfail run of %s' % eventid)
+    else:
+        logging.info('Completed gfail run of %s but transfer failed' % eventid)
 
 
 class ArgWrapper():
@@ -1026,38 +1098,15 @@ def main(args, config):
     if args.event != 'unset':
         # For manual run, event is set (default is 'unset')
         # download the shakemap to a temporary directory
-        tdir = tempfile.mkdtemp()
-        datadir = os.path.join(tdir, 'download')
-        os.mkdir(datadir)
         try:
-            fname = os.path.join(datadir, 'grid.xml')
-            # If args.event is a url to a shakemap, download from that url
-            if isURL(args.event):
-                try:
-                    shakefile = getGridURL(args.event, fname)
-                except Exception as e:
-                    msg = 'Could not download shakemap file from provided URL: %s'
-                    logging.exception(msg % (e))
-                    sys.exit(1)
-
-                args.event = getHeaderData(shakefile)[0]['event_id']
-                try:
-                    detail = get_event_by_id(args.event)
-                except:  # Maybe originator is missing from event id, try another way
-                    try:
-                        temp = getHeaderData(shakefile)[0]
-                        temp2 = '%s%s' % (temp['shakemap_originator'], temp['shakemap_id'])
-                        detail = get_event_by_id(temp2)
-                        args.event = temp2
-                    except Exception as e:
-                        msg = 'Could not get event detail for shakemap at provided URL: %s'
-                        logging.exception(msg % e)
-                        sys.exit(1)
-            else:
-                detail = get_event_by_id(args.event)
-                shakemap = detail.getProducts('shakemap')[0]
-                shakemap.getContent('grid.xml', fname)
-
+            tdir = tempfile.mkdtemp()
+            datadir = os.path.join(tdir, 'download')
+            os.mkdir(datadir)
+            # Download shakemap and uncertainty grid
+            detail, sh, un = getShakefiles(args.event, datadir,
+                                           uncert=True,
+                                           version=args.version,
+                                           source=args.source)
             targs = ArgWrapper()
             targs.time = detail.time
             targs.preferred_eventsource = detail['net']
@@ -1073,6 +1122,8 @@ def main(args, config):
             targs.dry_run = args.dry_run
             targs.warning = args.warning
             targs.event = args.event
+            targs.source = args.source
+            targs.version = args.version
             if args.property_alertlevel == 'pending':
                 targs.property_alertlevel = 'pending'
             else:
@@ -1169,6 +1220,12 @@ the data_path directory.
         help="Event time", metavar='TIME', dest='time')
     argparser.add_argument(
         "--eventids", help="List of associated event IDs")
+    argparser.add_argument(
+        "-v", "--version", type=int, default=None,
+        help="ShakeMap version", metavar='version')
+    argparser.add_argument(
+        "-s", "--source", default='preferred',
+        help="ShakeMap source (us, uu uw, etc.)", metavar='version')
     argparser.add_argument(
         "--dry-run",
         action='store_true', default=False,

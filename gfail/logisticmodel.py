@@ -48,7 +48,7 @@ MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
 
 class LogisticModel(object):
     def __init__(self, shakefile, config, uncertfile=None, saveinputs=False,
-                 slopefile=None, bounds=None, numstd=1, slopemod=None,
+                 slopefile=None, bounds=None, slopemod=None,
                  trimfile=None):
         """
         Sets up the logistic model
@@ -73,9 +73,6 @@ class LogisticModel(object):
                         'xmin': lonmin, 'xmax': lonmax,
                         'ymin': latmin, 'ymax': latmax
                     }
-
-            numstd (float): Number of +/- standard deviations to use if
-                uncertainty is computed.
             slopemod (str): How slope input should be modified to be in
                 degrees: e.g., ``np.arctan(slope) * 180. / np.pi`` or
                 ``slope/100.`` (note that this may be in the config file
@@ -106,7 +103,7 @@ class LogisticModel(object):
                        if 'pga' in value.lower() or 'pgv' in
                        value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
-        self.numstd = numstd
+        #self.numstd = numstd
         self.clips = validateClips(cmodel, self.layers, self.gmused)
         self.notes = ''
 
@@ -258,6 +255,7 @@ class LogisticModel(object):
             try:
                 # Only read in the ones that will be needed
                 temp = ShakeGrid.load(uncertfile)
+                already = []
                 for gm in self.gmused:
                     if 'pgv' in gm:
                         gmsimp = 'pgv'
@@ -265,6 +263,8 @@ class LogisticModel(object):
                         gmsimp = 'pga'
                     elif 'mmi' in gm:
                         gmsimp = 'mmi'
+                    if gmsimp in already:
+                        continue
                     junkfile = os.path.join(self.tempdir, 'temp.bil')
                     GDALGrid.copyFromGrid(temp.getLayer(
                         'std%s' % gmsimp)).save(junkfile)
@@ -281,6 +281,7 @@ class LogisticModel(object):
                     self.uncert['std' + gmsimp] = TempHdf(
                         junkgrid, os.path.join(self.tempdir,
                                                'std%s.hdf5' % gmsimp))
+                    already.append(gmsimp)
                     os.remove(junkfile)
                 del(temp)
             except:
@@ -418,54 +419,18 @@ class LogisticModel(object):
             self.nuggets.append('(%g * %s)' % (coeff, term))
 
         self.equation = ' + '.join(self.nuggets)
-
-        if self.uncert is not None:
-            self.nugmin = copy.copy(self.nuggets)
-            self.nugmax = copy.copy(self.nuggets)
-
-            # Find the term with the shakemap input and replace for these
-            # nuggets.
-            for gm in ['pga', 'mmi', 'pgv']:
-                for k, nug in enumerate(self.nuggets):
-                    tempnug = ("self.shakemap['%s'].getSlice(rowstart, "
-                               "rowend, colstart, colend, name='%s')"
-                               % (gm, gm))
-                    if tempnug in nug:
-                        newnug = ("np.exp(np.log(%s) - self.numstd * "
-                                  "self.uncert['std%s'].getSlice(rowstart, "
-                                  "rowend, colstart, colend, name='std%s'))"
-                                  % (tempnug, gm, gm))
-                        self.nugmin[k] = self.nugmin[k].replace(
-                            tempnug, newnug)
-                        newnug = ("np.exp(np.log(%s) + self.numstd * "
-                                  "self.uncert['std%s'].getSlice(rowstart, "
-                                  "rowend, colstart, colend, name='std%s'))"
-                                  % (tempnug, gm, gm))
-                        self.nugmax[k] = self.nugmax[k].replace(
-                            tempnug, newnug)
-
-            self.equationmin = ' + '.join(self.nugmin)
-            self.equationmax = ' + '.join(self.nugmax)
-        else:
-            self.equationmin = None
-            self.equationmax = None
-
         self.geodict = sampledict
 
     def getEquations(self):
         """
         Method for LogisticModel class to extract strings defining the
-        equations for the model for median ground motions and +/- one standard
-        deviation (3 total).
+        equations for the model for median ground motions.
 
         Returns:
-            tuple: (equation, equationmin, equationmax) where:
-                * equation: the equation for median ground motions,
-                * equationmin: the equation for the same model but using
-                  median ground motions minus 1 standard deviation
-                * equationmax: same as above but for plus 1 standard deviation.
+            equation: the equation for median ground motions,
+
         """
-        return self.equation, self.equationmin, self.equationmax
+        return self.equation
 
     def getGeoDict(self):
         """
@@ -523,65 +488,55 @@ class LogisticModel(object):
                 None, None, None, None, name='pga')
             P[pga < float(self.config[self.model]['minpga'])] = 0.0
 
+        if self.uncert is not None:  # hard code for now
+            if 'Zhu and others (2017)' in self.modelrefs['shortref']:
+                stdX = 0.
+                varX = stdX**2. + (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
+                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
+                if 'coverage' in self.config[self.model].keys():
+                    a = 0.4915
+                    b = 42.4
+                    c = 9.165
+                    varL = ((2*a*b*c*np.exp(-c*P))/((1+b*np.exp(-c*P))**3.))**2.*varP#((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP
+                    std1 = np.sqrt(varL)
+                else:
+                    std1 = np.sqrt(varP)
+            elif 'Jessee' in self.modelrefs['shortref']:
+                stdX = 0.02793162#16.4  # model uncertainty
+                varX = stdX**2. + ((self.coeffs['b1']+self.coeffs['b6']*(np.arctan(
+                        self.layerdict['slope'].getSlice())* 180 / np.pi))**2.
+                        *self.uncert['stdpgv'].getSlice()**2.)
+                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
+                if 'coverage' in self.config[self.model].keys():
+                    a = -7.592
+                    b = 5.237
+                    c = -3.042
+                    d = 4.035
+                    varL = (np.exp(a+b*P+c*P**2.+d*P**3.)*\
+                            (b+2.*P*c+3.*d*P**2.))**2. * varP
+                    std1 = np.sqrt(varL)
+                else:
+                    std1 = np.sqrt(varP)
+            else:
+                print('cannot do uncertainty for %s model currently, skipping' %
+                      self.modelrefs['shortref'])
+                self.uncert = None
+                std1 = None
+        else:
+            std1 = None
+
+        # P needs to be converted to areal coverage after dealing with uncertainty
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
             P = eval(eqn)
-
-        if self.uncert is not None:
-            # Make empty matrix to fill
-            Xmin = np.empty([self.geodict.ny, self.geodict.nx])
-            Xmax = Xmin.copy()
-            # Loop through slices, appending output each time
-            for rowstart, rowend, colstart, colend in \
-                    zip(rowstarts, rowends, colstarts, colends):
-                Xmin[rowstart:rowend, colstart:colend] = eval(self.equationmin)
-                Xmax[rowstart:rowend, colstart:colend] = eval(self.equationmax)
-
-            Pmin = 1/(1 + np.exp(-Xmin))
-            Pmax = 1/(1 + np.exp(-Xmax))
-
-            if 'vs30max' in self.config[self.model].keys():
-                vs30 = self.layerdict['vs30'].getSlice(
-                    None, None, None, None, name='vs30')
-                Pmin[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
-                Pmax[vs30 > float(self.config[self.model]['vs30max'])] = 0.0
-
-            if 'minpgv' in self.config[self.model].keys():
-                pgv = self.shakemap['pgv'].getSlice(
-                    None, None, None, None, name='pgv')
-                Pmin[pgv < float(self.config[self.model]['minpgv'])] = 0.0
-                Pmax[pgv < float(self.config[self.model]['minpgv'])] = 0.0
-
-            if 'minpga' in self.config[self.model].keys():
-                pga = self.shakemap['pgv'].getSlice(
-                    None, None, None, None, name='pga')
-                Pmin[pga < float(self.config[self.model]['minpga'])] = 0.0
-                Pmax[pga < float(self.config[self.model]['minpga'])] = 0.0
-
-            if 'coverage' in self.config[self.model].keys():
-                eqnmin = eqn.replace('P', 'Pmin')
-                eqnmax = eqn.replace('P', 'Pmax')
-                Pmin = eval(eqnmin)
-                Pmax = eval(eqnmax)
-
-            # Pmin[np.isnan(Pmin)] = 0.0
-            # Pmax[np.isnan(Pmax)] = 0.0
-
-        # P[np.isnan(P)] = 0.0
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
             print('applying slope thresholds')
             P = P * self.nonzero
-            # P[P==0.0] = float('nan')
-            # P[np.isnan(P)] = 0.0
-            if self.uncert is not None:
-                Pmin = Pmin * self.nonzero
-                Pmax = Pmax * self.nonzero
-                # Pmin[Pmin==0.0] = float('nan')
-                # Pmax[Pmax==0.0] = float('nan')
-                # Pmin[np.isnan(Pmin)] = 0.0
-                # Pmax[np.isnan(Pmax)] = 0.0
+            if std1 is not None:
+                # No uncert for masked values
+                std1[P == 0] = 0.
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
@@ -590,7 +545,10 @@ class LogisticModel(object):
             else:
                 units5 = 'Proportion of area affected'
         elif 'Zhu' in self.modelrefs['shortref']:
-            units5 = 'Proportion of area affected'
+            if 'coverage' not in self.config[self.model].keys() and '2017' in self.modelrefs['shortref']:
+                units5 = 'Relative Hazard'
+            else:
+                units5 = 'Proportion of area affected'
         else:
             units5 = 'Probability of any occurrence'
 
@@ -626,28 +584,15 @@ class LogisticModel(object):
             'description': description
         }
         if self.uncert is not None:
-            Pmingrid = Grid2D(Pmin, self.geodict)
-            Pmaxgrid = Grid2D(Pmax, self.geodict)
+            Stdgrid = Grid2D(std1, self.geodict)
             if self.trimfile is not None:
-                Pmingrid = trim_ocean(
-                    Pmingrid, self.trimfile, nodata=float('nan'))
-                Pmaxgrid = trim_ocean(
-                    Pmaxgrid, self.trimfile, nodata=float('nan'))
-            rdict['modelmin'] = {
-                'grid': Pmingrid,
-                'label': ('%s - %s (-%0.1f std ground motion)'
+                Stdgrid = trim_ocean(
+                    Stdgrid, self.trimfile, nodata=float('nan'))
+            rdict['std'] = {
+                'grid': Stdgrid,
+                'label': ('%s - %s (std)'
                           % (self.modeltype.capitalize(),
-                             units5.title(),
-                             self.numstd)),
-                'type': 'output',
-                'description': description
-            }
-            rdict['modelmax'] = {
-                'grid': Pmaxgrid,
-                'label': ('%s - %s (+%0.1f std ground motion)'
-                          % (self.modeltype.capitalize(),
-                             units5.title(),
-                             self.numstd)),
+                             units5.title())),
                 'type': 'output',
                 'description': description
             }
@@ -701,29 +646,6 @@ class LogisticModel(object):
                         'shakemap': shakedetail
                     }
                 }
-                if self.uncert is not None:
-                    uncertlayer = self.uncert[getkey].getSlice(
-                        None, None, None, None, name='std'+getkey)
-                    layer1 = np.exp(np.log(layer) - uncertlayer)
-                    rdict[getkey + 'modelmin'] = {
-                        'grid': Grid2D(layer1, self.geodict),
-                        'label': ('%s - %0.1f std (%s)'
-                                  % (getkey.upper(),
-                                     self.numstd, units)),
-                        'type': 'input',
-                        'description': {'units': units,
-                                        'shakemap': shakedetail}
-                    }
-                    layer2 = np.exp(np.log(layer) + uncertlayer)
-                    rdict[getkey + 'modelmax'] = {
-                        'grid': Grid2D(layer2, self.geodict),
-                        'label': ('%s + %0.1f std (%s)'
-                                  % (getkey.upper(),
-                                     self.numstd, units)),
-                        'type': 'input',
-                        'description': {'units': units,
-                                        'shakemap': shakedetail}
-                    }
         if cleanup:
             shutil.rmtree(self.tempdir)
         return rdict

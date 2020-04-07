@@ -111,24 +111,34 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             if 'godt' in maplayer['model']['description']['name'].lower():
                 statprobthresh = None
                 id1 = 'godt_2008'
+                maxP = 1.
             else:
                 # Since logistic models can't equal one, need to eliminate
                 # placeholder zeros before computing stats
                 if 'jessee' in maplayer['model']['description']['name'].lower():
                     id1 = 'jessee_2017'
                     statprobthresh = 0.002
+                    maxP = 0.26
                 else:
                     id1 = 'nowicki_2014_global'
                     statprobthresh = 0.0
+                    maxP = 1.
+            
+            if 'std' in list(maplayer.keys()):
+                stdgrid2D = maplayer['std']['grid']
+            else:
+                stdgrid2D = None
 
             stats = computeStats(
                 maplayer['model']['grid'],
+                stdgrid2D=stdgrid2D,
                 probthresh=probthresh,
                 shakefile=shakemap,
                 shakethresh=shakethresh,
                 statprobthresh=statprobthresh,
                 pop_file=pop_file,
-                shakethreshtype=shakethreshtype)
+                shakethreshtype=shakethreshtype,
+                stdtype='mean', maxP=maxP)
 
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
@@ -143,11 +153,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             if title == prefLS:
                 on = True
                 ls_haz_alert, ls_pop_alert, _, _, ls_alert, _ = get_alert(
-                    stats['Hagg_0.10g'], 0.,
+                    stats['hagg_0.10g'], 0.,
                     stats['exp_pop_0.10g'], 0.)
                 lsext = get_zoomextent(maplayer['model']['grid'])
                 ls_haz_value = set_num_precision(
-                    stats['Hagg_0.10g'], 2, 'float')
+                    stats['hagg_0.10g'], 2, 'float')
                 ls_pop_value = set_num_precision(
                     stats['exp_pop_0.10g'], 2, 'int')
             else:
@@ -158,6 +168,25 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 ls_pop_value = None
                 ls_alert = None
                 lsext = None
+
+            ls_haz_std = None
+            ls_pop_std = None
+            ls_hlim = None
+            ls_elim = None
+            ls_hp = None
+            ls_hq = None
+            ls_ep = None
+            ls_eq = None
+            
+            if stdgrid2D is not None and title==prefLS:
+                ls_haz_std = float("%.4f" % stats['hagg_std_0.10g'])
+                ls_pop_std = float("%.4f" % stats['exp_std_0.10g'])
+                ls_hlim = float("%.4f" % stats['hlim_0.10g'])
+                ls_elim = float("%.4f" % stats['elim_0.10g'])
+                ls_hp = float("%.4f" % stats['p_hagg_0.10g'])
+                ls_hq = float("%.4f" % stats['q_hagg_0.10g'])
+                ls_ep = float("%.4f" % stats['p_exp_0.10g'])
+                ls_eq = float("%.4f" % stats['q_exp_0.10g'])
 
             edict = {
                 'id': id1,
@@ -170,12 +199,14 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'hazard_alert': {
                     'color': ls_haz_alert,
                     'value': ls_haz_value,
+                    'std': ls_haz_std,
                     'parameter': 'Aggregate Hazard',
                     'units': 'km^2'
                 },
                 'population_alert': {
                     'color': ls_pop_alert,
                     'value': ls_pop_value,
+                    'std': ls_pop_std,
                     'parameter': 'Population exposure',
                     'units': 'people'
                 },
@@ -183,8 +214,16 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'probability': {
                     'max': float("%.2f" % stats['Max']),
                     'std': float("%.2f" % stats['Std']),
-                    'hagg0.1g': float("%.2f" % stats['Hagg_0.10g']),
-                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'])
+                    'hagg0.1g': float("%.2f" % stats['hagg_0.10g']),
+                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'],),
+                    'hagg0.1g_std': ls_haz_std,
+                    'popexp0.1g_std': ls_pop_std,
+                    'hlim0.1g': ls_hlim,
+                    'elim0.1g': ls_elim,
+                    'p_hagg': ls_hp,
+                    'q_hagg': ls_hq,
+                    'p_exp': ls_ep,
+                    'q_exp': ls_eq
                 },
                 'longref': metadata['longref'],
                 'parameters': metadata['parameters'],
@@ -205,18 +244,27 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             if '2015' in maplayer['model']['description']['name'].lower():
                 id1 = 'zhu_2015'
                 statprobthresh = 0.0
+                maxP = 1.
             elif '2017' in maplayer['model']['description']['name'].lower():
                 id1 = 'zhu_2017_general'
                 statprobthresh = 0.005
+                maxP = 0.487
+
+            if 'std' in list(maplayer.keys()):
+                stdgrid2D = maplayer['std']['grid']
+            else:
+                stdgrid2D = None
 
             stats = computeStats(
                 maplayer['model']['grid'],
+                stdgrid2D=stdgrid2D,
                 probthresh=probthresh,
                 shakefile=shakemap,
                 shakethresh=shakethresh,
                 pop_file=pop_file,
                 shakethreshtype=shakethreshtype,
-                statprobthresh=statprobthresh)
+                statprobthresh=statprobthresh,
+                stdtype='mean', maxP=maxP)
 
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
@@ -231,11 +279,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             if title == prefLQ:
                 on = True
                 _, _, lq_haz_alert, lq_pop_alert, _, lq_alert = get_alert(
-                    0., stats['Hagg_0.10g'],
+                    0., stats['hagg_0.10g'],
                     0., stats['exp_pop_0.10g'])
                 lqext = get_zoomextent(maplayer['model']['grid'])
                 lq_haz_value = set_num_precision(
-                    stats['Hagg_0.10g'], 2, 'float')
+                    stats['hagg_0.10g'], 2, 'float')
                 lq_pop_value = set_num_precision(
                     stats['exp_pop_0.10g'], 2, 'int')
 
@@ -248,6 +296,25 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 lq_alert = None
                 lqext = None
 
+            lq_haz_std = None
+            lq_pop_std = None
+            lq_hlim = None
+            lq_elim = None
+            lq_hp = None
+            lq_hq = None
+            lq_ep = None
+            lq_eq = None
+            
+            if stdgrid2D is not None and title==prefLQ:
+                lq_haz_std = float("%.2f" % stats['hagg_std_0.10g'])
+                lq_pop_std = float("%.2f" % stats['exp_std_0.10g'])
+                lq_hlim = float("%.4f" % stats['hlim_0.10g'])
+                lq_elim = float("%.4f" % stats['elim_0.10g'])
+                lq_hp = float("%.4f" % stats['p_hagg_0.10g'])
+                lq_hq = float("%.4f" % stats['q_hagg_0.10g'])
+                lq_ep = float("%.4f" % stats['p_exp_0.10g'])
+                lq_eq = float("%.4f" % stats['q_exp_0.10g'])
+
             edict = {
                 'id': id1,
                 'title': metadata['name'],
@@ -259,12 +326,14 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'hazard_alert': {
                     'color': lq_haz_alert,
                     'value': lq_haz_value,
+                    'std': lq_haz_std,
                     'parameter': 'Aggregate Hazard',
                     'units': 'km^2'
                 },
                 'population_alert': {
                     'color': lq_pop_alert,
                     'value': lq_pop_value,
+                    'std': lq_pop_std,
                     'parameter': 'Population exposure',
                     'units': 'people'
                 },
@@ -272,8 +341,16 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'probability': {
                     'max': float("%.2f" % stats['Max']),
                     'std': float("%.2f" % stats['Std']),
-                    'hagg0.1g': float("%.2f" % stats['Hagg_0.10g']),
-                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g'])
+                    'hagg0.1g': float("%.2f" % stats['hagg_0.10g']),
+                    'popexp0.1g': float("%.2f" % stats['exp_pop_0.10g']),
+                    'hagg0.1g_std': lq_haz_std,
+                    'popexp0.1g_std': lq_pop_std,
+                    'hlim0.1g': lq_hlim,
+                    'elim0.1g': lq_elim,
+                    'p_hagg': lq_hp,
+                    'q_hagg': lq_hq,
+                    'p_exp': lq_ep,
+                    'q_exp': lq_eq
                 },
                 'longref': metadata['longref'],
                 'parameters': metadata['parameters'],
@@ -592,8 +669,8 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
             pop_file=pop_file)
 
         # Get alert levels
-        ls_haz_level = ls_stats['Hagg_0.10g']
-        lq_haz_level = lq_stats['Hagg_0.10g']
+        ls_haz_level = ls_stats['hagg_0.10g']
+        lq_haz_level = lq_stats['hagg_0.10g']
         ls_pop_level = ls_stats['exp_pop_0.10g']
         lq_pop_level = lq_stats['exp_pop_0.10g']
 
@@ -639,7 +716,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
                 'probability': {
                     'max': float("%.2f" % ls_stats['Max']),
                     'std': float("%.2f" % ls_stats['Std']),
-                    'hagg0.1g': float("%.2f" % ls_stats['Hagg_0.10g']),
+                    'hagg0.1g': float("%.2f" % ls_stats['hagg_0.10g']),
                     'popexp0.1g': float("%.2f" % ls_stats['exp_pop_0.10g'])
                 }
             }]
@@ -667,7 +744,7 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
                 'probability': {
                     'max': float("%.2f" % lq_stats['Max']),
                     'std': float("%.2f" % lq_stats['Std']),
-                    'hagg0.1g': float("%.2f" % ls_stats['Hagg_0.10g']),
+                    'hagg0.1g': float("%.2f" % ls_stats['hagg_0.10g']),
                     'popexp0.1g': float("%.2f" % ls_stats['exp_pop_0.10g'])
                 }
             }]
