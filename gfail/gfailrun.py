@@ -116,6 +116,8 @@ def run_gfail(args):
             uncertfile = os.path.abspath(args.uncertfile)
             unc_copy = os.path.join(outfolder, "uncertainty.xml")
             shutil.copyfile(uncertfile, unc_copy)
+        else:
+            uncertfile = None
 
         # Write shakefile to a file for use later
         shakename = os.path.join(outfolder, "shakefile.txt")

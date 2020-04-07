@@ -255,6 +255,7 @@ class LogisticModel(object):
             try:
                 # Only read in the ones that will be needed
                 temp = ShakeGrid.load(uncertfile)
+                already = []
                 for gm in self.gmused:
                     if 'pgv' in gm:
                         gmsimp = 'pgv'
@@ -262,6 +263,8 @@ class LogisticModel(object):
                         gmsimp = 'pga'
                     elif 'mmi' in gm:
                         gmsimp = 'mmi'
+                    if gmsimp in already:
+                        continue
                     junkfile = os.path.join(self.tempdir, 'temp.bil')
                     GDALGrid.copyFromGrid(temp.getLayer(
                         'std%s' % gmsimp)).save(junkfile)
@@ -278,6 +281,7 @@ class LogisticModel(object):
                     self.uncert['std' + gmsimp] = TempHdf(
                         junkgrid, os.path.join(self.tempdir,
                                                'std%s.hdf5' % gmsimp))
+                    already.append(gmsimp)
                     os.remove(junkfile)
                 del(temp)
             except:

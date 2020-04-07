@@ -69,7 +69,7 @@ def test_stats_models():
     np.testing.assert_allclose(stats2['Max'], 0.4124294372013628, atol=0.001)
     np.testing.assert_allclose(stats2['Median'], 0.00032535306709405884, atol=0.001)#0.0003196329310881202)
     np.testing.assert_allclose(stats2['Std'], 0.04900971960186791, atol=0.001)#0.049146076928965256)
-    np.testing.assert_allclose(stats2['Hagg_0.20g'], 55.68910225678512, atol=0.001)#53.07695560636296)
+    np.testing.assert_allclose(stats2['hagg_0.20g'], 55.68910225678512, atol=0.001)#53.07695560636296)
     #np.testing.assert_allclose(stats2['Parea_0.20'], 89.25805325934424)
 
 
