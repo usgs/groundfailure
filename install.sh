@@ -55,7 +55,7 @@ conda --version
 if [ $? -ne 0 ]; then
     echo "No conda detected, installing miniconda..."
 
-    curl $mini_conda_url -o miniconda.sh;
+    curl -L $mini_conda_url -o miniconda.sh;
 
     # if curl fails, bow out gracefully
     if [ $? -ne 0 ];then
