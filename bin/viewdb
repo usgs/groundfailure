@@ -7,7 +7,7 @@ from configobj import ConfigObj
 import os
 
 # local imports
-from gfail.utilities import view_database, time_delays, alert_summary
+from gfail.utilities import view_database, alert_summary, plot_evolution
 
 
 if __name__ == '__main__':
@@ -35,7 +35,7 @@ if __name__ == '__main__':
             viewdb -r -c -n 10 -p --LShazmin yellow
             ```
 
-        make timeplots for just a few event ids
+        make time evolution plots for just a few event ids
             ```sh
             viewdb -e us1000h3p4 us70006vll -s --timeplots
             ```
@@ -186,9 +186,10 @@ if __name__ == '__main__':
             changeonly = False
         else:
             changeonly = True
-        time_delays(pargs.database, pargs.starttime, pargs.endtime,
-                    pargs.minmag, pargs.maxmag, pargs.eventids,
-                    filebasename=filebasename, changeonly=changeonly)
+        plot_evolution(pargs.database, pargs.starttime, pargs.endtime,
+                       pargs.minmag, pargs.maxmag, pargs.eventids,
+                       filebasename=filebasename, changeonly=changeonly,
+                       percrange=0.95)
     delattr(pargs, 'timeplots')
     delattr(pargs, 'timeplotsfile')
 

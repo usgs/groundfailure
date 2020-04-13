@@ -562,9 +562,14 @@ def getUncert(shakemap, fname=None):
             fname = os.path.join(basedir, 'uncertainty.xml.zip')
             shakemap.getContent('uncertainty.xml.zip', fname)
             #urllib.request.urlretrieve(grid_url, fname)
-            with ZipFile(fname, 'r') as zipObj:
+            with ZipFile(fname, 'r') as zip1:
+                # See if it's inside a file structure
+                out = zip1.filelist[0]
                 # Extract all the contents of zip file in different directory
-                zipObj.extractall(basedir) 
+                zip1.extractall(basedir)
+                # move file uncertainty.xml file to base dir if it was in a weird subdir
+                if os.path.isdir(os.path.dirname(out.filename)):
+                    os.replace(os.path.join(basedir, out.filename), uncertfile)
     except Exception as e:
         uncertfile = None
         print('Unable to download uncertainty.xml: %s' % e)

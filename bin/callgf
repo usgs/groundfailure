@@ -648,8 +648,7 @@ def process_shakemap(args, config):
         try:
             datadir = os.path.join(args.directory, 'download')
             # Download shakemap and uncertainty grid
-            detail, sh, un = getShakefiles(eventid, datadir,
-                                           uncert=True,
+            detail, sh, un = getShakefiles(eventid, datadir, uncert=True,
                                            version=args.version,
                                            source=args.source)
         except Exception as e:
@@ -969,32 +968,15 @@ def process_shakemap(args, config):
                 "eventdir = ?, time = ?, depth = ?,"
                 "location = ?, note = ? WHERE id = ?",
                 (tnowstr, '%i' % finite_fault,
-                 '%.3f' % ls_hazard_value,
-                 '%.3f' % ls_pop_value,
-                 '%.3f' % lq_hazard_value,
-                 '%.3f' % lq_pop_value,
-                 '%.3f' % ls_hazard_std,
-                 '%.3f' % ls_pop_std,
-                 '%.3f' % lq_hazard_std,
-                 '%.3f' % lq_pop_std,
-                 '%.3f' % ls_hlim,
-                 '%.3f' % ls_elim,
-                 '%.3f' % lq_hlim,
-                 '%.3f' % lq_elim,
-                 '%.4f' % ls_hp,
-                 '%.4f' % ls_hq,
-                 '%.4f' % ls_ep,
-                 '%.4f' % ls_eq,
-                 '%.4f' % lq_hp,
-                 '%.4f' % lq_hq,
-                 '%.4f' % lq_ep,
-                 '%.4f' % lq_eq,                 
-                 eventdir,
-                 event['event_timestamp'].strftime(TIMEFMT),
+                 ls_hazard_value, ls_pop_value, lq_hazard_value, lq_pop_value,
+                 ls_hazard_std, ls_pop_std, lq_hazard_std,
+                 lq_pop_std,
+                 ls_hlim, ls_elim, lq_hlim, lq_elim,
+                 ls_hp, ls_hq, ls_ep, ls_eq, lq_hp,
+                 lq_hq, lq_ep, lq_eq,                 
+                 eventdir, event['event_timestamp'].strftime(TIMEFMT),
                  '%.1f' % event['depth'],
-                 event['event_description'],
-                 '',
-                 '%i' % db_id))
+                 event['event_description'], '', '%i' % db_id))
             logging.info('Final event information entered in database.')
         except Exception as e:
             logging.exception('Final database entry failed: %s' % e)
