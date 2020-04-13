@@ -332,7 +332,8 @@ class LogisticModel(object):
                                 self.clips[layername][1]))
                 if layername == 'rock':  # Convert unconsolidated sediments to a more reasonable coefficient
                     sub1 = temp.getData()
-                    sub1[sub1 <= -3.21] = -1.36  # Change to mixed sed rock coeff
+                    # Change to mixed sed rock coeff
+                    sub1[sub1 <= -3.21] = -1.36
                     temp.setData(sub1)
                     self.notes += 'unconsolidated sediment coefficient changed\
                      to -1.36 (weaker) from -3.22 to better reflect that this \
@@ -490,29 +491,39 @@ class LogisticModel(object):
 
         if self.uncert is not None:  # hard code for now
             if 'Zhu and others (2017)' in self.modelrefs['shortref']:
-                stdX = 0.
-                varX = stdX**2. + (self.coeffs['b1']**2.*self.uncert['stdpgv'].getSlice()**2.)
+                if 'stddev' in self.layerdict.keys():
+                    stdX = self.layerdict['stddev'].getSlice()
+                else:
+                    stdX = float(self.config[self.model]['default_stddev'])
+                varX = stdX**2. + \
+                    (self.coeffs['b1']**2. *
+                     self.uncert['stdpgv'].getSlice()**2.)
                 varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
                 if 'coverage' in self.config[self.model].keys():
                     a = 0.4915
                     b = 42.4
                     c = 9.165
-                    varL = ((2*a*b*c*np.exp(-c*P))/((1+b*np.exp(-c*P))**3.))**2.*varP#((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP
+                    # ((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP
+                    varL = ((2*a*b*c*np.exp(-c*P)) /
+                            ((1+b*np.exp(-c*P))**3.))**2.*varP
                     std1 = np.sqrt(varL)
                 else:
                     std1 = np.sqrt(varP)
             elif 'Jessee' in self.modelrefs['shortref']:
-                stdX = 0.02793162#16.4  # model uncertainty
+                if 'stddev' in self.layerdict.keys():
+                    stdX = self.layerdict['stddev'].getSlice()
+                else:
+                    stdX = float(self.config[self.model]['default_stddev'])
                 varX = stdX**2. + ((self.coeffs['b1']+self.coeffs['b6']*(np.arctan(
-                        self.layerdict['slope'].getSlice())* 180 / np.pi))**2.
-                        *self.uncert['stdpgv'].getSlice()**2.)
+                    self.layerdict['slope'].getSlice()) * 180 / np.pi))**2.
+                    * self.uncert['stdpgv'].getSlice()**2.)
                 varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
                 if 'coverage' in self.config[self.model].keys():
                     a = -7.592
                     b = 5.237
                     c = -3.042
                     d = 4.035
-                    varL = (np.exp(a+b*P+c*P**2.+d*P**3.)*\
+                    varL = (np.exp(a+b*P+c*P**2.+d*P**3.) *
                             (b+2.*P*c+3.*d*P**2.))**2. * varP
                     std1 = np.sqrt(varL)
                 else:

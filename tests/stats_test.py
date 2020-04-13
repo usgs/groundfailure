@@ -58,19 +58,20 @@ def test_stats_models():
 #    np.testing.assert_allclose(tmp[1][0], 0.00098462898029272805)
 
     hagg = stats.computeHagg(maplayers2['model']['grid'])
-    np.testing.assert_allclose(hagg['hagg_0.00g'], 66.55234520807204, atol=0.001)#65.73846496428509)
+    np.testing.assert_allclose(hagg['hagg_0.00g'], 65.85571, atol=0.001)
     parea = stats.computeParea(maplayers2['model']['grid'],
                                probthresh=0.2)
-    np.testing.assert_allclose(parea, 75.19685308835166, atol=0.001)#80.69906185091396)
+    np.testing.assert_allclose(parea, 77.03092, atol=0.001)
 
     stats2 = stats.computeStats(maplayers2['model']['grid'], probthresh=0.2, shakefile=shakefile,
                                 shakethreshtype='pga', shakethresh=20.,
                                 statprobthresh=0.0)
-    np.testing.assert_allclose(stats2['Max'], 0.4124294372013628, atol=0.001)
-    np.testing.assert_allclose(stats2['Median'], 0.00032535306709405884, atol=0.001)#0.0003196329310881202)
-    np.testing.assert_allclose(stats2['Std'], 0.04900971960186791, atol=0.001)#0.049146076928965256)
-    np.testing.assert_allclose(stats2['hagg_0.20g'], 55.68910225678512, atol=0.001)#53.07695560636296)
-    #np.testing.assert_allclose(stats2['Parea_0.20'], 89.25805325934424)
+    np.testing.assert_allclose(stats2['Max'], 0.41278, atol=0.001)
+    np.testing.assert_allclose(
+        stats2['Median'], 0.00032317817, rtol=0.001)
+    np.testing.assert_allclose(stats2['Std'], 0.04855, atol=0.0001)
+    np.testing.assert_allclose(
+        stats2['hagg_0.20g'], 55.47086, atol=0.001)
 
 
 if __name__ == "__main__":
