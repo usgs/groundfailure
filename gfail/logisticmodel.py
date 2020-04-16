@@ -589,7 +589,7 @@ class LogisticModel(object):
         rdict = collections.OrderedDict()
         rdict['model'] = {
             'grid': Pgrid,
-            'label': ('%s - %s') % (self.modeltype.capitalize(),
+            'label': ('%s estimate - %s') % (self.modeltype.capitalize(),
                                     units5.title()),
             'type': 'output',
             'description': description
@@ -601,7 +601,7 @@ class LogisticModel(object):
                     Stdgrid, self.trimfile, nodata=float('nan'))
             rdict['std'] = {
                 'grid': Stdgrid,
-                'label': ('%s - %s (std)'
+                'label': ('%s estimate - %s (std)'
                           % (self.modeltype.capitalize(),
                              units5.title())),
                 'type': 'output',

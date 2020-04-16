@@ -1639,7 +1639,8 @@ def time_delays(database, starttime=None, endtime=None,
                         bbox_inches='tight')
 
 
-def plot_uncertainty(database, eventid, currentonly=True, filebasename=None):
+def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
+                     bars=False, percrange=0.95):
     """
     Make a plot and print stats showing delay times and changes in alert
         statistics over time
@@ -1652,6 +1653,9 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None):
         filebasename (str): If defined, will save a file with a modified
             version of this name depending on which alert is displayed, if no
             path is given it will save in current directory.
+        bars (bool): if True, will use bars spanning percrange
+        percrange (float): percentile to use for error bars to show uncertainty
+            as value <1 (e.g., 0.95).
 
     Returns:
         Figure showing uncertainty
@@ -1676,34 +1680,61 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None):
     for index, row in success.iterrows():
         xvalsHLS, yvalsHLS, probsHLS = get_pdfbeta(row['PH_LS'], row['QH_LS'],
                                                    lshbins, maxlim=row['HlimLS'])
-        axes[0,0].plot(xvalsHLS, yvalsHLS/np.max(yvalsHLS), color=str(colors[i]))
-        axes[0,0].plot(np.max((lshbins[0], row['HaggLS'])),0., marker=7, color=str(colors[i]),
+        if bars:
+            offset = i * 0.1
+            valmin, valmax = get_rangebeta(row['PH_LS'], row['QH_LS'],
+                                           prob=percrange, maxlim=row['HlimLS'])
+            axes[0,0].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            offset = 0.
+            axes[0,0].plot(xvalsHLS, yvalsHLS/np.max(yvalsHLS), color=str(colors[i]))
+        axes[0,0].plot(np.max((lshbins[0], row['HaggLS'])), offset, marker=7, color=str(colors[i]),
                        markersize=11)
         #axes[0,0].text(row['HaggLS'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
         xvalsHLQ, yvalsHLQ, probsHLQ = get_pdfbeta(row['PH_LQ'], row['QH_LQ'],
                                                    lqhbins, maxlim=row['HlimLQ'])
-        axes[0,1].plot(xvalsHLQ, yvalsHLQ/np.max(yvalsHLQ), color=str(colors[i]))
-        axes[0,1].plot(np.max((lqhbins[0], row['HaggLQ'])),0., marker=7, color=str(colors[i]),
+        if bars:
+            valmin, valmax = get_rangebeta(row['PH_LQ'], row['QH_LQ'],
+                                           prob=percrange, maxlim=row['HlimLQ'])
+            axes[0,1].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            axes[0,1].plot(xvalsHLQ, yvalsHLQ/np.max(yvalsHLQ), color=str(colors[i]))
+        axes[0,1].plot(np.max((lqhbins[0], row['HaggLQ'])), offset, marker=7, color=str(colors[i]),
                        markersize=11)
         #axes[0,1].text(row['HaggLQ'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
         xvalsELS, yvalsELS, probsELS = get_pdfbeta(row['PE_LS'], row['QE_LS'],
                                                    lspbins, maxlim=row['ElimLS'])
-        axes[1,0].plot(xvalsELS, yvalsELS/np.max(yvalsELS), color=str(colors[i]))
-        axes[1,0].plot(np.max((lspbins[0], row['ExpPopLS'])),0., marker=7, color=str(colors[i]),
+        if bars:
+            valmin, valmax = get_rangebeta(row['PE_LS'], row['QE_LS'],
+                                           prob=percrange, maxlim=row['ElimLS'])
+            axes[1,0].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            axes[1,0].plot(xvalsELS, yvalsELS/np.max(yvalsELS), color=str(colors[i]))
+        axes[1,0].plot(np.max((lspbins[0], row['ExpPopLS'])), offset, marker=7, color=str(colors[i]),
                        markersize=11)
         #axes[1,0].text(row['ExpPopLS'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
         xvalsELQ, yvalsELQ, probsELQ = get_pdfbeta(row['PE_LQ'], row['QE_LQ'],
                                                    lqpbins, maxlim=row['ElimLQ'])
-        axes[1,1].plot(xvalsELQ, yvalsELQ/np.max(yvalsELQ), color=str(colors[i]))
-        axes[1,1].plot(np.max((lqpbins[0], row['ExpPopLQ'])),0., marker=7, color=str(colors[i]),
+        if bars:
+            valmin, valmax = get_rangebeta(row['PE_LQ'], row['QE_LQ'],
+                                           prob=percrange, maxlim=row['ElimLQ'])
+            axes[1,1].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            axes[1,1].plot(xvalsELQ, yvalsELQ/np.max(yvalsELQ), color=str(colors[i]))
+        axes[1,1].plot(np.max((lqpbins[0], row['ExpPopLQ'])), offset, marker=7, color=str(colors[i]),
                        markersize=11)
         #axes[1,1].text(row['ExpPopLQ'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
 
         i += 1
+    
+    if not bars:
+        offset=0.9
+    elif offset < 0.7:
+        offset = 0.7
     
     if nvers == 1:
         vals = [0.125, 0.375, 0.625, 0.875]
@@ -1748,7 +1779,7 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None):
     for ax in axes:
         for ax1 in ax:
             ax1.set_xscale('log')
-            ax1.set_ylim([-0.3, 1.1])
+            ax1.set_ylim([-0.3, offset+.2])
             ax1.tick_params(labelsize=fontsize)
             plt.setp(ax1.get_yticklabels(), visible=False)
             ax1.set_yticks([])
