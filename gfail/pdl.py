@@ -9,7 +9,7 @@ import json
 import shutil
 from lxml import etree
 from configobj import ConfigObj
-import zipfile
+# import zipfile
 from impactutils.io.cmd import get_command_output
 
 
@@ -277,13 +277,13 @@ def prepare_pdl_directory(event_dir):
         shutil.copy(src, dst)
 
         # Zip the files
-        zfile = os.path.join(pdl_dir, os.path.splitext(tfile)[0] + '.zip')
-        with zipfile.ZipFile(zfile, 'w') as zf:
-            zf.write(os.path.join(pdl_dir, dst), arcname=dst,
-                     compress_type=zipfile.ZIP_DEFLATED)
+        # zfile = os.path.join(pdl_dir, os.path.splitext(tfile)[0] + '.zip')
+        # with zipfile.ZipFile(zfile, 'w') as zf:
+        #     zf.write(os.path.join(pdl_dir, dst), arcname=dst,
+        #              compress_type=zipfile.ZIP_DEFLATED)
 
-        # Remove originals
-        os.remove(os.path.join(pdl_dir, dst))
+        # # Remove originals
+        # os.remove(os.path.join(pdl_dir, dst))
 
     # Put kmz files into pdl directory
     kmz_files = [os.path.join(event_dir, a)
@@ -327,33 +327,33 @@ def prepare_pdl_directory(event_dir):
     #     shutil.copy(src, dst)
 
     # Put binary ShakeCast files into pdl directory
-    flt_files = [os.path.join(event_dir, a)
-                 for a in all_files if a.endswith('.flt')]
-    flth_files = [os.path.join(event_dir, a)
-                  for a in all_files if a.endswith('.hdr')]
-    for f1, f2 in zip(flt_files, flth_files):
-        src = f1
-        f1file = os.path.basename(src)
-        if f1file.startswith(event_prefix):
-            f1file = f1file[len(event_prefix)+1:]
-        dst = os.path.join(pdl_dir, f1file)
-        shutil.copy(src, dst)
-        src = f2
-        f2file = os.path.basename(src)
-        if f2file.startswith(event_prefix):
-            f2file = f2file[len(event_prefix)+1:]
-        dst = os.path.join(pdl_dir, f2file)
-        shutil.copy(src, dst)
+    # flt_files = [os.path.join(event_dir, a)
+    #              for a in all_files if a.endswith('.flt')]
+    # flth_files = [os.path.join(event_dir, a)
+    #               for a in all_files if a.endswith('.hdr')]
+    # for f1, f2 in zip(flt_files, flth_files):
+    #     src = f1
+    #     f1file = os.path.basename(src)
+    #     if f1file.startswith(event_prefix):
+    #         f1file = f1file[len(event_prefix)+1:]
+    #     dst = os.path.join(pdl_dir, f1file)
+    #     shutil.copy(src, dst)
+    #     src = f2
+    #     f2file = os.path.basename(src)
+    #     if f2file.startswith(event_prefix):
+    #         f2file = f2file[len(event_prefix)+1:]
+    #     dst = os.path.join(pdl_dir, f2file)
+    #     shutil.copy(src, dst)
 
     # Make contents.xml
     contents = etree.Element("contents")
 
     json_mime = 'text/json'
     # hdf_mime = 'application/x-hdf'
-    # gtif_mime = 'image/geotiff'
+    gtif_mime = 'image/geotiff'
     png_mime = 'image/png'
     kmz_mime = 'application/vnd.google-earth.kmz'
-    zip_mime = 'application/zip'
+    # zip_mime = 'application/zip'
 
     # Json info file
     j_tree = etree.SubElement(contents, "file", title='Info', id='info_json')
@@ -370,7 +370,7 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017_model.kmz', type=kmz_mime)
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017_model.zip', type=zip_mime)
+                     href='jessee_2017_model.tif', type=gtif_mime)
     # etree.SubElement(jessee_tree, "format",
     #                  href='jessee_2017.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
@@ -385,7 +385,7 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general_model.kmz', type=kmz_mime)
     etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017_general_model.zip', type=zip_mime)
+                     href='zhu_2017_general_model.tif', type=gtif_mime)
     # etree.SubElement(zhu2017_tree, "format",
     #                  href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
@@ -400,7 +400,7 @@ def prepare_pdl_directory(event_dir):
     # etree.SubElement(godt_tree, "format",
     #                  href='godt_2008.hdf5', type=hdf_mime)
     etree.SubElement(godt_tree, "format",
-                     href='godt_2008_model.zip', type=zip_mime)
+                     href='godt_2008_model.tif', type=gtif_mime)
 
     # Nowicki section
     now_tree = etree.SubElement(
@@ -411,7 +411,7 @@ def prepare_pdl_directory(event_dir):
     # etree.SubElement(now_tree, "format",
     #                  href='nowicki_2014_global.hdf5', type=hdf_mime)
     etree.SubElement(now_tree, "format",
-                     href='nowicki_2014_global_model.zip', type=zip_mime)
+                     href='nowicki_2014_global_model.tif', type=gtif_mime)
 
     # zhu 2015 section
     zhu2015_tree = etree.SubElement(
@@ -422,7 +422,7 @@ def prepare_pdl_directory(event_dir):
     # etree.SubElement(zhu2015_tree, "format",
     #                  href='zhu_2015.hdf5', type=hdf_mime)
     etree.SubElement(zhu2015_tree, "format",
-                     href='zhu_2015_model.zip', type=zip_mime)
+                     href='zhu_2015_model.tif', type=gtif_mime)
 
     # Copy over legend files
 #    data_dir = pkg_resources.resource_filename('gfail', 'data')
