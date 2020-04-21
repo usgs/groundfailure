@@ -11,6 +11,8 @@ import matplotlib.patches as patches
 # import numpy as np
 import sqlite3 as lite
 import pandas as pd
+from scipy.stats import beta
+
 
 # local imports
 from mapio.shake import getHeaderData
@@ -22,6 +24,12 @@ from mapio.multihaz import MultiHazardGrid
 # Don't delete this, it's needed in an eval function
 import matplotlib.cm as cm  # DO NOT DELETE
 # DO NOT DELETE ABOVE LINE
+
+# Define bin edges (lower and upper are clipped here but are not clipped in reality)
+lshbins = [0.1, 1., 10., 100., 1000.]
+lspbins = [10., 100., 1000., 10000., 1e5]
+lqhbins = [1., 10., 100., 1000., 10000.]
+lqpbins = [100., 1000., 10000., 100000., 1e6]
 
 
 def is_grid_point_source(grid):
@@ -1223,11 +1231,11 @@ def alert_summary(database, starttime=None, endtime=None,
             fig.savefig('%s_%s%s' % (name, typ, ext), bbox_inches='tight')
 
 
-def time_delays(database, starttime=None, endtime=None,
-                minmag=None, maxmag=None, eventids=None,
-                filebasename=None, changeonly=True):
+def plot_evolution(database, starttime=None, endtime=None,
+                   minmag=None, maxmag=None, eventids=None,
+                   filebasename=None, changeonly=True,
+                   percrange=None):
     """
-    Make plot showing evolution of alerts in time
     Make a plot and print stats showing delay times and changes in alert
         statistics over time
 
@@ -1246,24 +1254,227 @@ def time_delays(database, starttime=None, endtime=None,
         changeonly (bool): if True will only show events that changed alert
             level at least once in the time evolution plots (unless eventids
             are defined, then all will show)
+        percrange: percentile to use for error bars to show uncertainty
+            as value <1 (e.g., 0.95). If None, errors will not be shown
+            
 
     Returns:
         Figures showing alert changes over time and delay and alert change
             statistics
     """
-    lshbins = [0.1, 1, 10, 100, 10000]
-    lspbins = [0.1, 100, 1000, 10000, 1e6]
-    lqhbins = [0.3, 10, 100, 1000, 10000]
-    lqpbins = [10, 1000, 10000, 100000, 1e7]
     fontsize = 10
     out = view_database(database, starttime=starttime, endtime=endtime,
                         minmag=minmag, maxmag=maxmag, realtime=True,
                         currentonly=False, printsummary=False,
                         printsuccess=False, alertreport='value',
                         eventids=eventids)
-
+    if out is None:
+        raise Exception('No events found that meet criteria')
     if eventids is not None:
         changeonly = False
+    success = out[0]
+    elist = np.unique(success['eventcode'].values)
+    HaggLS = []
+    HaggLQ = []
+    ExpPopLS = []
+    ExpPopLQ = []
+    eventtime = []
+    times = []
+    alertLS = []
+    alertLQ = []
+    descrip = []
+    for idx in elist:
+        sel1 = success.loc[success['eventcode'] == idx]
+        hls = sel1['HaggLS'].values
+        hlq = sel1['HaggLQ'].values
+        pls = sel1['ExpPopLS'].values
+        plq = sel1['ExpPopLQ'].values
+        als = []
+        alq = []
+        for s, q, ps, pq in zip(hls, hlq, pls, plq):
+            _, _, _, _, als1, alq1 = get_alert(s, q, ps, pq)
+            als.append(als1)
+            alq.append(alq1)
+        alertLS.append(als)
+        alertLQ.append(alq)
+        HaggLS.append(hls)
+        HaggLQ.append(hlq)
+        ExpPopLS.append(pls)
+        ExpPopLQ.append(plq)
+        times.append(sel1['endtime'].values)
+        eventtime.append(sel1['time'].values[-1])
+        temp = success.loc[success['eventcode'] == idx]
+        date = str(temp['time'].values[-1]).split('T')[0]
+        descrip.append('M%1.1f %s (%s)' % (temp['mag'].values[-1],
+                       temp['location'].values[-1].title(), date))
+        if percrange is not None:
+            if percrange > 1 or percrange < 0.:
+                raise Exception('uncertrange must be between 0 and 1')
+            # Get range for input percentile
+            rangeHLS = []
+            rangeHLQ = []
+            rangeELS = []
+            rangeELQ = []
+            # range for H
+            range1 = get_rangebeta(sel1['PH_LS'], sel1['QH_LS'],
+                                   prob=percrange, maxlim=sel1['HlimLS'])
+            temp1 = [hls-range1[0], range1[1]-hls]
+            temp1[0][temp1[0]<0.] = 0  # zero out any negative values
+            rangeHLS.append(temp1)
+            range2 = get_rangebeta(sel1['PH_LQ'], sel1['QH_LQ'],
+                                   prob=percrange, maxlim=sel1['HlimLQ'])
+            temp2 = [hlq-range2[0], range2[1]-hlq]
+            temp2[0][temp2[0]<0.] = 0  # zero out any negative values
+            rangeHLQ.append(temp2)
+            # range for E
+            # range for H
+            range3 = get_rangebeta(sel1['PE_LS'], sel1['QE_LS'],
+                                   prob=percrange, maxlim=sel1['ElimLS'])
+            temp3 = [pls-range3[0], range3[1]-pls]
+            temp3[0][temp3[0]<0.] = 0
+            rangeELS.append(temp3)
+            range4 = get_rangebeta(sel1['PE_LQ'], sel1['QE_LQ'],
+                                   prob=percrange, maxlim=sel1['ElimLQ'])
+            temp4 = [plq-range4[0], range4[1]-plq]
+            temp4[0][temp4[0]<0.] = 0  # zero out any negative values
+            rangeELQ.append(temp4)
+
+    # Plot of changes over time to each alert level
+    fig1, axes = plt.subplots(2, 1)  # , figsize=(10, 10))
+    ax1, ax2 = axes
+    ax1.set_title('Landslide Summary Statistics', fontsize=fontsize)
+    ax1.set_ylabel(r'Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
+    ax2.set_ylabel('Population Exposure', fontsize=fontsize)
+
+    fig2, axes = plt.subplots(2, 1)  # , figsize=(10, 10))
+    ax3, ax4 = axes
+    ax3.set_title('Liquefaction Summary Statistics', fontsize=fontsize)
+    ax3.set_ylabel(r'Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
+    ax4.set_ylabel('Population Exposure', fontsize=fontsize)
+
+    ax2.set_xlabel('Hours after earthquake', fontsize=fontsize)
+    ax4.set_xlabel('Hours after earthquake', fontsize=fontsize)
+
+    lqplot = 0
+    lsplot = 0
+    lsch = 0
+    lqch = 0
+    mindel = []
+
+    zipped = zip(HaggLS, HaggLQ, ExpPopLS, ExpPopLQ, alertLS, alertLQ,
+                 descrip, times, eventtime)
+    i = 0
+    for hls, hlq, pls, plq, als, alq, des, t, et in zipped:
+        resS = np.unique(als)
+        resL = np.unique(alq)
+        delays = [np.timedelta64(t1 - et, 's').astype(float) for t1 in t]
+        mindel.append(np.min(delays))
+        # Set to lower edge of green bin if zero so ratios will show up
+        hls = np.array(hls)
+        hls[hls == 0.] = lshbins[0]
+        hlq = np.array(hlq)
+        hlq[hlq == 0.] = lqhbins[0]
+        pls = np.array(pls)
+        pls[pls == 0.] = lspbins[0]
+        plq = np.array(plq)
+        plq[plq == 0.] = lqpbins[0]
+
+        if (len(resS) > 1 or 'green' not in resS) or\
+           (len(resL) > 1 or 'green' not in resL):
+            if len(resS) > 1 or not changeonly:
+                if percrange is not None:
+                    ax1.errorbar(np.array(delays)/3600., hls, yerr=rangeHLS[i], label=des)
+                    ax2.errorbar(np.array(delays)/3600., pls, yerr=rangeELS[i])
+                    ax1.set_xscale("log", nonposx='clip')
+                    ax1.set_yscale("log", nonposy='clip')
+                    ax2.set_xscale("log", nonposx='clip')
+                    ax2.set_yscale("log", nonposy='clip')
+                else:
+                    ax1.loglog(np.array(delays)/3600., hls, '.-', label=des)
+                    ax2.loglog(np.array(delays)/3600., pls, '.-')
+                ax1.set_ylim([lshbins[0], np.max((lshbins[-1], np.max(hls)))])
+                ax2.set_ylim([lspbins[0], np.max((lspbins[-1], np.max(pls)))])
+                if changeonly:
+                    lsch += 1
+                lsplot += 1
+            if len(resL) > 1 or not changeonly:
+                if percrange is not None:
+                    ax3.errorbar(np.array(delays)/3600., hlq, yerr=rangeHLQ[i], label=des)
+                    ax4.errorbar(np.array(delays)/3600., plq, yerr=rangeELQ[i])
+                    ax3.set_xscale("log", nonposx='clip')
+                    ax3.set_yscale("log", nonposy='clip')
+                    ax4.set_xscale("log", nonposx='clip')
+                    ax4.set_yscale("log", nonposy='clip')
+                else:
+                    ax3.loglog(np.array(delays)/3600., hlq, '.-', label=des)
+                    ax4.loglog(np.array(delays)/3600., plq, '.-')
+                ax3.set_ylim([lqhbins[0], np.max((lqhbins[-1], np.max(hlq)))])
+                ax4.set_ylim([lqpbins[0], np.max((lqpbins[-1], np.max(plq)))])
+                if changeonly:
+                    lqch += 1
+                lqplot += 1
+        i += 1
+    print('%d of %d events had a liquefaction overall alert that changed' %
+          (lqch, len(elist)))
+    print('%d of %d events had a landslide overall alert that changed' %
+          (lsch, len(elist)))
+
+    if lsplot < 5:
+        ax1.legend(fontsize=fontsize-3)
+    if lqplot < 5:
+        ax3.legend(fontsize=fontsize-3)
+    ax1.tick_params(labelsize=fontsize-2)
+    ax2.tick_params(labelsize=fontsize-2)
+    ax3.tick_params(labelsize=fontsize-2)
+    ax4.tick_params(labelsize=fontsize-2)
+    ax1.grid(True)
+    ax2.grid(True)
+    ax3.grid(True)
+    ax4.grid(True)
+
+    alert_rectangles(ax1, lshbins)
+    alert_rectangles(ax2, lspbins)
+    alert_rectangles(ax3, lqhbins)
+    alert_rectangles(ax4, lqpbins)
+
+    if filebasename is not None:
+        name, ext = os.path.splitext(filebasename)
+        if ext == '':
+            ext = '.png'
+        fig1.savefig('%s_LSalert_evolution%s' % (name, ext),
+                     bbox_inches='tight')
+        fig2.savefig('%s_LQalert_evolution%s' % (name, ext),
+                     bbox_inches='tight')
+
+
+def time_delays(database, starttime=None, endtime=None,
+                minmag=None, maxmag=None, eventids=None,
+                filebasename=None):
+    """
+    Make a plot and print stats showing delay times and changes in alert
+        statistics over time
+
+    Args:
+        database (str): file path to event database (.db file)
+        starttime (str): earliest earthquake time to include in the search,
+            can be any string date recognizable by np.datetime
+        endtime (str): latest earthquake time to include in the search,
+            can be any string date recognizable by datetime
+        minmag (float): minimum magnitude to include in search
+        maxmag (float): maximum magnitude to include in search
+        eventids (list): list of specific event ids to include (optional)
+        filebasename (str): If defined, will save a file with a modified
+            version of this name depending on which alert is displayed, if no
+            path is given it will save in current directory.
+
+    Returns:
+        Figure showing delay and alert change statistics
+    """
+    out = view_database(database, starttime=starttime, endtime=endtime,
+                        minmag=minmag, maxmag=maxmag, realtime=True,
+                        currentonly=False, printsummary=False,
+                        printsuccess=False, alertreport='value',
+                        eventids=eventids)
 
     success = out[0]
     elist = np.unique(success['eventcode'].values)
@@ -1301,26 +1512,6 @@ def time_delays(database, starttime=None, endtime=None,
         descrip.append('M%1.1f %s (%s)' % (temp['mag'].values[-1],
                        temp['location'].values[-1].title(), date))
 
-    # Plot of changes over time to each alert level
-    fig1, axes = plt.subplots(2, 1)  # , figsize=(10, 10))
-    ax1, ax2 = axes
-    ax1.set_title('Landslide Summary Statistics', fontsize=fontsize)
-    ax1.set_ylabel(r'Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
-    ax2.set_ylabel('Population Exposure', fontsize=fontsize)
-
-    fig2, axes = plt.subplots(2, 1)  # , figsize=(10, 10))
-    ax3, ax4 = axes
-    ax3.set_title('Liquefaction Summary Statistics', fontsize=fontsize)
-    ax3.set_ylabel(r'Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
-    ax4.set_ylabel('Population Exposure', fontsize=fontsize)
-
-    ax2.set_xlabel('Hours after earthquake', fontsize=fontsize)
-    ax4.set_xlabel('Hours after earthquake', fontsize=fontsize)
-
-    lqplot = 0
-    lsplot = 0
-    lsch = 0
-    lqch = 0
     mindel = []
     delstableLS = []
     delstableLQ = []
@@ -1331,8 +1522,6 @@ def time_delays(database, starttime=None, endtime=None,
     zipped = zip(HaggLS, HaggLQ, ExpPopLS, ExpPopLQ, alertLS, alertLQ,
                  descrip, elist, times, eventtime)
     for hls, hlq, pls, plq, als, alq, des, el, t, et in zipped:
-        resS = np.unique(als)
-        resL = np.unique(alq)
         delays = [np.timedelta64(t1 - et, 's').astype(float) for t1 in t]
         mindel.append(np.min(delays))
         delstableLS.append(delays[np.min(np.where(np.array(als) == als[-1]))])
@@ -1350,51 +1539,7 @@ def time_delays(database, starttime=None, endtime=None,
         plq = np.array(plq)
         plq[plq == 0.] = 100.
         ratPopLQ.append(plq[-1]/plq[0])
-        if (len(resS) > 1 or 'green' not in resS) and\
-           (len(resL) > 1 or 'green' not in resL):
-            if len(resS) > 1 or not changeonly:
-                ax1.loglog(np.array(delays)/3600., hls, '.-', label=des)
-                ax2.loglog(np.array(delays)/3600., pls, '.-')
-                if changeonly:
-                    lsch += 1
-                lsplot += 1
-            if len(resL) > 1 or not changeonly:
-                ax3.loglog(np.array(delays)/3600., hlq, '.-', label=des)
-                ax4.loglog(np.array(delays)/3600., plq, '.-')
-                if changeonly:
-                    lqch += 1
-                lqplot += 1
-    print('%d of %d events had a liquefaction overall alert that changed' %
-          (lqch, len(elist)))
-    print('%d of %d events had a landslide overall alert that changed' %
-          (lsch, len(elist)))
 
-    if lsplot < 5:
-        ax1.legend(fontsize=fontsize-3)
-    if lqplot < 5:
-        ax3.legend(fontsize=fontsize-3)
-    ax1.tick_params(labelsize=fontsize-2)
-    ax2.tick_params(labelsize=fontsize-2)
-    ax3.tick_params(labelsize=fontsize-2)
-    ax4.tick_params(labelsize=fontsize-2)
-    ax1.grid(True)
-    ax2.grid(True)
-    ax3.grid(True)
-    ax4.grid(True)
-
-    alert_rectangles(ax1, lshbins)
-    alert_rectangles(ax2, lspbins)
-    alert_rectangles(ax3, lqhbins)
-    alert_rectangles(ax4, lqpbins)
-
-    if filebasename is not None:
-        name, ext = os.path.splitext(filebasename)
-        if ext == '':
-            ext = '.png'
-        fig1.savefig('%s_LSalert_evolution%s' % (name, ext),
-                     bbox_inches='tight')
-        fig2.savefig('%s_LQalert_evolution%s' % (name, ext),
-                     bbox_inches='tight')
     # Don't bother making this plot when eventids are specified
     if eventids is None or len(eventids) > 25:
         # Histograms of delay times etc.
@@ -1494,6 +1639,170 @@ def time_delays(database, starttime=None, endtime=None,
                         bbox_inches='tight')
 
 
+def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
+                     bars=False, percrange=0.95):
+    """
+    Make a plot and print stats showing delay times and changes in alert
+        statistics over time
+
+    Args:
+        database (str): file path to event database (.db file)
+        eventid (str): event ids to plot
+        currentonly (bool): if True, will only plot newest version, if False
+            will plot all versions with different colors
+        filebasename (str): If defined, will save a file with a modified
+            version of this name depending on which alert is displayed, if no
+            path is given it will save in current directory.
+        bars (bool): if True, will use bars spanning percrange
+        percrange (float): percentile to use for error bars to show uncertainty
+            as value <1 (e.g., 0.95).
+
+    Returns:
+        Figure showing uncertainty
+    """
+
+    fontsize = 12
+    out = view_database(database, eventids=[eventid], currentonly=currentonly,
+                        printsummary=False)
+    if out is None:
+        raise Exception('No events found that meet criteria')
+
+    success = out[0]
+    nvers = len(success)
+    # Get plots ready
+
+    fig, axes = plt.subplots(2, 2, sharey=True, figsize=(14, 5))
+    
+    colors = np.flipud(np.linspace(0., 0.7, nvers))
+
+    # Fill in plot
+    i = 0
+    for index, row in success.iterrows():
+        xvalsHLS, yvalsHLS, probsHLS = get_pdfbeta(row['PH_LS'], row['QH_LS'],
+                                                   lshbins, maxlim=row['HlimLS'])
+        if bars:
+            offset = i * 0.1
+            valmin, valmax = get_rangebeta(row['PH_LS'], row['QH_LS'],
+                                           prob=percrange, maxlim=row['HlimLS'])
+            axes[0,0].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            offset = 0.
+            axes[0,0].plot(xvalsHLS, yvalsHLS/np.max(yvalsHLS), color=str(colors[i]))
+        axes[0,0].plot(np.max((lshbins[0], row['HaggLS'])), offset, marker=7, color=str(colors[i]),
+                       markersize=11)
+        #axes[0,0].text(row['HaggLS'], 0.13, '%1.0f' % row['version'],
+        #               color=str(colors[i]), ha='center')
+        xvalsHLQ, yvalsHLQ, probsHLQ = get_pdfbeta(row['PH_LQ'], row['QH_LQ'],
+                                                   lqhbins, maxlim=row['HlimLQ'])
+        if bars:
+            valmin, valmax = get_rangebeta(row['PH_LQ'], row['QH_LQ'],
+                                           prob=percrange, maxlim=row['HlimLQ'])
+            axes[0,1].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            axes[0,1].plot(xvalsHLQ, yvalsHLQ/np.max(yvalsHLQ), color=str(colors[i]))
+        axes[0,1].plot(np.max((lqhbins[0], row['HaggLQ'])), offset, marker=7, color=str(colors[i]),
+                       markersize=11)
+        #axes[0,1].text(row['HaggLQ'], 0.13, '%1.0f' % row['version'],
+        #               color=str(colors[i]), ha='center')
+        xvalsELS, yvalsELS, probsELS = get_pdfbeta(row['PE_LS'], row['QE_LS'],
+                                                   lspbins, maxlim=row['ElimLS'])
+        if bars:
+            valmin, valmax = get_rangebeta(row['PE_LS'], row['QE_LS'],
+                                           prob=percrange, maxlim=row['ElimLS'])
+            axes[1,0].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            axes[1,0].plot(xvalsELS, yvalsELS/np.max(yvalsELS), color=str(colors[i]))
+        axes[1,0].plot(np.max((lspbins[0], row['ExpPopLS'])), offset, marker=7, color=str(colors[i]),
+                       markersize=11)
+        #axes[1,0].text(row['ExpPopLS'], 0.13, '%1.0f' % row['version'],
+        #               color=str(colors[i]), ha='center')
+        xvalsELQ, yvalsELQ, probsELQ = get_pdfbeta(row['PE_LQ'], row['QE_LQ'],
+                                                   lqpbins, maxlim=row['ElimLQ'])
+        if bars:
+            valmin, valmax = get_rangebeta(row['PE_LQ'], row['QE_LQ'],
+                                           prob=percrange, maxlim=row['ElimLQ'])
+            axes[1,1].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+        else:
+            axes[1,1].plot(xvalsELQ, yvalsELQ/np.max(yvalsELQ), color=str(colors[i]))
+        axes[1,1].plot(np.max((lqpbins[0], row['ExpPopLQ'])), offset, marker=7, color=str(colors[i]),
+                       markersize=11)
+        #axes[1,1].text(row['ExpPopLQ'], 0.13, '%1.0f' % row['version'],
+        #               color=str(colors[i]), ha='center')
+
+        i += 1
+    
+    if not bars:
+        offset=0.9
+    elif offset < 0.7:
+        offset = 0.7
+    
+    if nvers == 1:
+        vals = [0.125, 0.375, 0.625, 0.875]
+        for i in range(4):
+            axes[0,0].text(vals[i], 0.1, '%.2f' % probsHLS[i], ha='center',
+                           va='center', transform=axes[0,0].transAxes)
+            axes[0,1].text(vals[i], 0.1, '%.2f' % probsHLQ[i], ha='center',
+                           va='center', transform=axes[0,1].transAxes)
+            axes[1,0].text(vals[i], 0.1, '%.2f' % probsELS[i], ha='center',
+                           va='center', transform=axes[1,0].transAxes)
+            axes[1,1].text(vals[i], 0.1, '%.2f' % probsELQ[i], ha='center',
+                           va='center', transform=axes[1,1].transAxes)
+
+    alertcolors = ['g', 'y', 'orange', 'r']
+    for i in range(4):
+        axes[0,0].add_patch(patches.Rectangle((lshbins[i], -0.3),
+                            lshbins[i+1] - lshbins[i], 0.3,
+                            color=alertcolors[i], ec='k'))
+        axes[1,0].add_patch(patches.Rectangle((lspbins[i], -0.3),
+                            lspbins[i+1] - lspbins[i], 0.3,
+                            color=alertcolors[i], ec='k'))
+        axes[0,1].add_patch(patches.Rectangle((lqhbins[i], -0.3),
+                            lqhbins[i+1] - lqhbins[i], 0.3,
+                            color=alertcolors[i], ec='k'))
+        axes[1,1].add_patch(patches.Rectangle((lqpbins[i], -0.3),
+                            lqpbins[i+1] - lqpbins[i], 0.3,
+                            color=alertcolors[i], ec='k'))
+    
+    axes[0,0].set_xlabel(r'Estimated Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
+    axes[1,0].set_xlabel('Estimated Population Exposure', fontsize=fontsize)
+    axes[0,1].set_xlabel(r'Estimated Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
+    axes[1,1].set_xlabel('Estimated Population Exposure', fontsize=fontsize)
+    axes[0,0].set_title('Landslides', fontsize=fontsize+2)
+    axes[0,1].set_title('Liquefaction', fontsize=fontsize+2)
+
+
+    axes[0,0].set_xlim([lshbins[0],lshbins[-1]])
+    axes[1,0].set_xlim([lspbins[0],lspbins[-1]])
+    axes[0,1].set_xlim([lqhbins[0],lqhbins[-1]])
+    axes[1,1].set_xlim([lqpbins[0],lqpbins[-1]])
+    fig.canvas.draw()
+    for ax in axes:
+        for ax1 in ax:
+            ax1.set_xscale('log')
+            ax1.set_ylim([-0.3, offset+.2])
+            ax1.tick_params(labelsize=fontsize)
+            plt.setp(ax1.get_yticklabels(), visible=False)
+            ax1.set_yticks([])
+            ax1.axhline(0, color='k')
+#            labels = [item.get_text() for item in ax1.get_xticklabels()]
+#            labels[0] = '$\leq$%s' % labels[0]
+#            labels[-1] = '$\geq$%s' % labels[-1]
+#            ax1.set_xticklabels(labels)
+            ax1.text(-0.065, -0.13, '<', transform=ax1.transAxes)
+            ax1.text(0.95, -0.13, '>', transform=ax1.transAxes)
+
+    plt.subplots_adjust(hspace=0.5)
+    
+    fig.suptitle('%4.f - M%1.1f - %s' % (row['time'].year,
+                                         row['mag'], row['location']),
+                 fontsize=fontsize+2)
+    plt.show()
+    if filebasename is not None:
+        name, ext = os.path.splitext(filebasename)
+        fig.savefig('%s_uncertainty%s' % (name, ext),
+                    bbox_inches='tight')
+
+
 def alert_rectangles(ax, bins):
     """
     Function used to color bin levels in background of axis
@@ -1517,3 +1826,67 @@ def alert_rectangles(ax, bins):
         rect = patches.Polygon(corners, closed=True, facecolor=col,
                                transform=ax.transData, alpha=0.2)
         ax.add_patch(rect)
+
+
+def get_rangebeta(p, q, prob=0.95, minlim=0, maxlim=1):
+    """
+    Get endpoints of the range of the specified beta function that contain
+    prob percent of the distribution
+    
+    Args:
+        p (float): p shape factor of beta distribution (a in scipy)
+        q (float): q shape factor of beta distribution (b in scipy)
+        prob (float): central probability of distribution to return the range
+            of. Value from 0 to 1
+        minlim (float): minimum possible value of distribution
+        maxlim (float): maximum possible value of distribution
+    
+    Returns: tuple (valmin, valmax) where:
+        * valmin (float): lower edge of range containing prob
+        * valmax (float): upper edge of range containing prob
+    
+    """
+    loc = minlim
+    scale = maxlim-loc
+    valmin, valmax = beta.interval(prob, p, q, loc=loc, scale=scale)
+    return valmin, valmax
+
+
+def get_pdfbeta(p, q, binedges, minlim=0, maxlim=1, npts=1000,
+                openends=True):
+    """
+    Return discretized pdf for plotting curve and report probabilities of
+    each bin
+    
+    Args:
+        p (float): p shape factor of beta distribution (a in scipy)
+        q (float): q shape factor of beta distribution (b in scipy)
+        binedges (list): list of bin edges
+        minlim (float): minimum possible value of distribution
+        maxlim (float): maximum possible value of distribution
+        npts (int): number of points to return in xvals
+        openends (bool): assumes lower and upper bins don't have hard edges
+
+    Returns: tuple of (xvals, yvals, probs) where:
+        * xvals: list of log-distributed values
+        * yvals: corresponding list of 
+        * probs (list): list of len(binedges)-1 that gives probability of
+            value falling in the corresponding bin
+    """
+    loc = minlim
+    scale = maxlim-loc
+    xvals = np.logspace(np.log10(np.min(binedges)), np.log10(maxlim), npts)
+    yvals = beta.pdf(xvals, p, q, loc=loc, scale=scale)
+    #print(beta.mean(p, q, loc=loc, scale=scale))
+    probs = np.empty(len(binedges)-1)
+    bincop = np.copy(binedges)
+    if openends:
+        bincop[0] = -np.inf
+        bincop[-1] = np.inf
+    
+    for i in range(len(bincop)-1):
+        min1 = beta.cdf(bincop[i], p, q, loc=loc, scale=scale)
+        max1 = beta.cdf(bincop[i+1], p, q, loc=loc, scale=scale)
+        probs[i] = max1-min1
+    
+    return xvals, yvals, probs
