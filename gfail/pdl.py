@@ -9,6 +9,7 @@ import json
 import shutil
 from lxml import etree
 from configobj import ConfigObj
+# import zipfile
 from impactutils.io.cmd import get_command_output
 
 
@@ -117,7 +118,7 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
             ls_pref['probability']['q_hagg']
         ls_ep = '"--property-landslide-population-alert-p=%s" ' % \
             ls_pref['probability']['p_exp']
-        ls_eq ='"--property-landslide-population-alert-q=%s" ' % \
+        ls_eq = '"--property-landslide-population-alert-q=%s" ' % \
             ls_pref['probability']['q_exp']
         lq_hlim = '"--property-liquefaction-hazard-alert-lim=%s" ' % \
             lq_pref['probability']['hlim0.1g']
@@ -129,13 +130,13 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
             lq_pref['probability']['q_hagg']
         lq_ep = '"--property-liquefaction-population-alert-p=%s" ' % \
             lq_pref['probability']['p_exp']
-        lq_eq ='"--property-liquefaction-population-alert-q=%s" ' % \
+        lq_eq = '"--property-liquefaction-population-alert-q=%s" ' % \
             lq_pref['probability']['q_exp']
 
         stdstr = lq_haz_alert_std + ls_haz_alert_std + lq_pop_alert_std \
-                 + ls_pop_alert_std + ls_hlim + ls_elim + ls_hp + ls_hq \
-                 + ls_ep + ls_eq + lq_hlim + lq_elim + lq_hp + lq_hq \
-                 + lq_ep + lq_eq 
+            + ls_pop_alert_std + ls_hlim + ls_elim + ls_hp + ls_hq \
+            + ls_ep + ls_eq + lq_hlim + lq_elim + lq_hp + lq_hq \
+            + lq_ep + lq_eq
     else:
         stdstr = ''
 
@@ -275,6 +276,15 @@ def prepare_pdl_directory(event_dir):
         dst = os.path.join(pdl_dir, tfile)
         shutil.copy(src, dst)
 
+        # Zip the files
+        # zfile = os.path.join(pdl_dir, os.path.splitext(tfile)[0] + '.zip')
+        # with zipfile.ZipFile(zfile, 'w') as zf:
+        #     zf.write(os.path.join(pdl_dir, dst), arcname=dst,
+        #              compress_type=zipfile.ZIP_DEFLATED)
+
+        # # Remove originals
+        # os.remove(os.path.join(pdl_dir, dst))
+
     # Put kmz files into pdl directory
     kmz_files = [os.path.join(event_dir, a)
                  for a in all_files if a.endswith('.kmz')]
@@ -304,44 +314,46 @@ def prepare_pdl_directory(event_dir):
         shutil.copy(src, dst)
 
     # Put hdf files into pdl directory
-    hdf_files = [os.path.join(event_dir, a)
-                 for a in all_files if a.endswith('.hdf5')]
-    for i in range(len(hdf_files)):
-        src = hdf_files[i]
-        hfile = os.path.basename(src)
-        if hfile.startswith(event_prefix):
-            hfile = hfile[len(event_prefix)+1:]
-        dst = os.path.join(pdl_dir, hfile)
-        # Strip off event id prefix
+    # hdf_files = [os.path.join(event_dir, a)
+    #              for a in all_files if a.endswith('.hdf5')]
+    # for i in range(len(hdf_files)):
+    #     src = hdf_files[i]
+    #     hfile = os.path.basename(src)
+    #     if hfile.startswith(event_prefix):
+    #         hfile = hfile[len(event_prefix)+1:]
+    #     dst = os.path.join(pdl_dir, hfile)
+    #     # Strip off event id prefix
 
-        shutil.copy(src, dst)
+    #     shutil.copy(src, dst)
 
     # Put binary ShakeCast files into pdl directory
-    flt_files = [os.path.join(event_dir, a)
-                 for a in all_files if a.endswith('.flt')]
-    flth_files = [os.path.join(event_dir, a)
-                  for a in all_files if a.endswith('.hdr')]
-    for f1, f2 in zip(flt_files, flth_files):
-        src = f1
-        f1file = os.path.basename(src)
-        if f1file.startswith(event_prefix):
-            f1file = f1file[len(event_prefix)+1:]
-        dst = os.path.join(pdl_dir, f1file)
-        shutil.copy(src, dst)
-        src = f2
-        f2file = os.path.basename(src)
-        if f2file.startswith(event_prefix):
-            f2file = f2file[len(event_prefix)+1:]
-        dst = os.path.join(pdl_dir, f2file)
-        shutil.copy(src, dst)
+    # flt_files = [os.path.join(event_dir, a)
+    #              for a in all_files if a.endswith('.flt')]
+    # flth_files = [os.path.join(event_dir, a)
+    #               for a in all_files if a.endswith('.hdr')]
+    # for f1, f2 in zip(flt_files, flth_files):
+    #     src = f1
+    #     f1file = os.path.basename(src)
+    #     if f1file.startswith(event_prefix):
+    #         f1file = f1file[len(event_prefix)+1:]
+    #     dst = os.path.join(pdl_dir, f1file)
+    #     shutil.copy(src, dst)
+    #     src = f2
+    #     f2file = os.path.basename(src)
+    #     if f2file.startswith(event_prefix):
+    #         f2file = f2file[len(event_prefix)+1:]
+    #     dst = os.path.join(pdl_dir, f2file)
+    #     shutil.copy(src, dst)
 
     # Make contents.xml
     contents = etree.Element("contents")
 
     json_mime = 'text/json'
-    hdf_mime = 'application/x-hdf'
+    # hdf_mime = 'application/x-hdf'
     gtif_mime = 'image/geotiff'
     png_mime = 'image/png'
+    kmz_mime = 'application/vnd.google-earth.kmz'
+    # zip_mime = 'application/zip'
 
     # Json info file
     j_tree = etree.SubElement(contents, "file", title='Info', id='info_json')
@@ -356,11 +368,11 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(jessee_tree, "caption")
     file_caps.text = 'Nowicki Jessee and others (2017)'
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017_model.kmz', type=gtif_mime)    
+                     href='jessee_2017_model.kmz', type=kmz_mime)
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017_model.tif', type=gtif_mime)
-    etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017.hdf5', type=hdf_mime)
+    # etree.SubElement(jessee_tree, "format",
+    #                  href='jessee_2017.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017.png', type=png_mime)
 
@@ -371,11 +383,11 @@ def prepare_pdl_directory(event_dir):
     file_caps = etree.SubElement(zhu2017_tree, "caption")
     file_caps.text = 'Zhu and others (2017)'
     etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017_general_model.kmz', type=gtif_mime)
+                     href='zhu_2017_general_model.kmz', type=kmz_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general_model.tif', type=gtif_mime)
-    etree.SubElement(zhu2017_tree, "format",
-                     href='zhu_2017_general.hdf5', type=hdf_mime)
+    # etree.SubElement(zhu2017_tree, "format",
+    #                  href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.png', type=png_mime)
 
@@ -385,8 +397,8 @@ def prepare_pdl_directory(event_dir):
                                  (not displayed)')
     file_caps = etree.SubElement(godt_tree, "caption")
     file_caps.text = 'Godt and others (2008)'
-    etree.SubElement(godt_tree, "format",
-                     href='godt_2008.hdf5', type=hdf_mime)
+    # etree.SubElement(godt_tree, "format",
+    #                  href='godt_2008.hdf5', type=hdf_mime)
     etree.SubElement(godt_tree, "format",
                      href='godt_2008_model.tif', type=gtif_mime)
 
@@ -396,8 +408,8 @@ def prepare_pdl_directory(event_dir):
         (not displayed)')
     file_caps = etree.SubElement(now_tree, "caption")
     file_caps.text = 'Nowicki and others (2014)'
-    etree.SubElement(now_tree, "format",
-                     href='nowicki_2014_global.hdf5', type=hdf_mime)
+    # etree.SubElement(now_tree, "format",
+    #                  href='nowicki_2014_global.hdf5', type=hdf_mime)
     etree.SubElement(now_tree, "format",
                      href='nowicki_2014_global_model.tif', type=gtif_mime)
 
@@ -407,8 +419,8 @@ def prepare_pdl_directory(event_dir):
         (not displayed)", id='zhu_2015')
     file_caps = etree.SubElement(zhu2015_tree, "caption")
     file_caps.text = 'Zhu and others (2015)'
-    etree.SubElement(zhu2015_tree, "format",
-                     href='zhu_2015.hdf5', type=hdf_mime)
+    # etree.SubElement(zhu2015_tree, "format",
+    #                  href='zhu_2015.hdf5', type=hdf_mime)
     etree.SubElement(zhu2015_tree, "format",
                      href='zhu_2015_model.tif', type=gtif_mime)
 

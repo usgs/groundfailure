@@ -111,7 +111,7 @@ def run_gfail(args):
         #     to store a copy of it here.
         shake_copy = os.path.join(outfolder, "grid.xml")
         shutil.copyfile(shakefile, shake_copy)
-        
+
         if args.uncertfile is not None:
             uncertfile = os.path.abspath(args.uncertfile)
             unc_copy = os.path.join(outfolder, "uncertainty.xml")
@@ -373,9 +373,12 @@ def run_gfail(args):
                         fileg = os.path.join(outfolder, '%s_%s.tif'
                                              % (filename, keyS))
 
-                        GDALGrid.copyFromGrid(maplayers[key]['grid']).save(filen)
-                        cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % (
-                            filen, fileg)
+                        GDALGrid.copyFromGrid(
+                            maplayers[key]['grid']).save(filen)
+                        cflags = '-co COMPRESS=DEFLATE -co predictor=2'
+                        srs = '-a_srs EPSG:4326'
+                        cmd = 'gdal_translate %s %s -of GTiff %s %s' % (
+                            srs, cflags, filen, fileg)
                         rc, so, se = get_command_output(cmd)
                         # Delete bil file and its header
                         os.remove(filen)
@@ -473,7 +476,7 @@ def getShakefiles(event, outdir, uncert=False, version=None,
                   source='preferred'):
     """
     Download the shakemap grid.xml file and the 
-    
+
     Args:
         event event id or URL
     """
@@ -486,7 +489,7 @@ def getShakefiles(event, outdir, uncert=False, version=None,
     if isURL(event):
         if version is not None or source != 'preferred':
             raise Exception('Cannot set shakemap version or source when URL of '
-                    'gridfile is provided')
+                            'gridfile is provided')
         try:
             shakefile = getGridURL(event, shakefile)
         except Exception as e:
@@ -494,24 +497,25 @@ def getShakefiles(event, outdir, uncert=False, version=None,
                             'URL: %s' % e)
         # Now get corresponding event detail
         event = getHeaderData(shakefile)[0]['event_id']
-        version =  getHeaderData(shakefile)[0]['shakemap_version']
+        version = getHeaderData(shakefile)[0]['shakemap_version']
         source = getHeaderData(shakefile)[0]['shakemap_originator']
         try:
             detail = get_event_by_id(event)
         except:  # Maybe originator is missing from event id, try another way
             try:
                 temp = getHeaderData(shakefile)[0]
-                temp2 = '%s%s' % (temp['shakemap_originator'], temp['shakemap_id'])
+                temp2 = '%s%s' % (
+                    temp['shakemap_originator'], temp['shakemap_id'])
                 detail = get_event_by_id(temp2)
                 event = temp2
             except Exception as e:
                 msg = 'Could not get event detail for shakemap at provided URL: %s'
                 print(msg % e)
-        shakemap = detail.getProducts('shakemap', source=source, version=version)[0]
+        shakemap = detail.getProducts(
+            'shakemap', source=source, version=version)[0]
     else:
         detail = get_event_by_id(event, includesuperseded=True)
-        
-    
+
     # Get most recent version
     if version is None:  # Get current preferred
         shakemap = detail.getProducts('shakemap', source=source)[0]
@@ -556,7 +560,7 @@ def getUncert(shakemap, fname=None):
         else:
             basedir = os.path.dirname(fname)
         uncertfile = os.path.join(basedir, 'uncertainty.xml')
-        if ext=='xml':
+        if ext == 'xml':
             shakemap.getContent('uncertainty.xml', uncertfile)
         if ext == 'zip':
             fname = os.path.join(basedir, 'uncertainty.xml.zip')
