@@ -41,7 +41,7 @@ def test_viewdb(tmpdir):
         runcmd2 = "viewdb -r -c -n 10 -p --LShazmin yellow"
         rc2, so2, se2 = get_command_output(runcmd2)
 
-        runcmd3 = "viewdb -e us1000h3p4 us1000h5el -s --timeplots"
+        runcmd3 = "viewdb -e us1000h3p4 us1000h5el -s" # --timeplots"
         rc3, so3, se3 = get_command_output(runcmd3)
 
         runcmd4 = "viewdb -p -c --minmag 7.5 --color"
