@@ -1,42 +1,42 @@
 #!/usr/bin/env python
 
+from gfail.transfer import gf_transfer
+from gfail.gfailrun import run_gfail, getUncert, getShakefiles
+import pytz
+from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
+from shapely.geometry import shape, box, Polygon, Point
+import fiona
+import configobj
+from mapio.shake import ShakeGrid
+from mapio.shake import getHeaderData
+from impactutils.comcat.query import GeoServe
+from libcomcat.search import get_event_by_id
+from io import StringIO
+import tempfile
+import numpy as np
+import shutil
+import re
+import json
+from collections import OrderedDict
+import sqlite3
+import logging.config
+import logging
+from datetime import datetime, timedelta
+import glob
+import sys
+import os.path
+import argparse
 import matplotlib
 matplotlib.use('Agg')
 
 # stdlib imports
-import argparse
-import os.path
-import sys
-import glob
-from datetime import datetime, timedelta
-import logging
-import logging.config
-import sqlite3
-from collections import OrderedDict
-import json
-import re
-import shutil
-import numpy as np
 #import urllib.request
-import tempfile
-from io import StringIO
 
 # third party imports
 # from impactutils.io.cmd import get_command_output
-from libcomcat.search import get_event_by_id
-from impactutils.comcat.query import GeoServe
-from mapio.shake import getHeaderData
-from mapio.shake import ShakeGrid
-import configobj
-import fiona
-from shapely.geometry import shape, box, Polygon, Point
 # from mpl_toolkits.basemap import Basemap
-from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
-import pytz
 
 # local imports
-from gfail.gfailrun import run_gfail, getUncert, getShakefiles
-from gfail.transfer import gf_transfer
 
 
 # config parameters required for this program to run
@@ -310,9 +310,10 @@ def get_event_dir(args, connection):
             continue
         # Get most recent entry
         try:
-            indx = np.argmax([datetime.strptime(row[2], TIMEFMT) for row in rows])
+            indx = np.argmax([datetime.strptime(row[2], TIMEFMT)
+                              for row in rows])
             id1, eventdir, date = rows[indx]
-        except: # Take any entries where eventdir is not empty
+        except:  # Take any entries where eventdir is not empty
             for row in rows:
                 id1, eventdir, date = row
                 if eventdir is not None and eventdir != '':
@@ -328,7 +329,10 @@ def get_event_dir(args, connection):
                 (eventid,))
             data1 = cursor.fetchall()
         if len(data1) > 0:
-            shakemap_version = np.max([dat[0] for dat in data1 if dat[0] is not None])
+            shakemap_version = np.max(
+                [dat[0]
+                 for dat in data1 if dat[0] is not None]
+            )
         break
 
     return (eventdir, shakemap_version)
@@ -447,7 +451,7 @@ def stop_unstop(args, config):
         if args.unstop is an eventid, remove an existing stopfile to allow new
         versions to be created
         If this code is called, callgf will exit after
-        
+
     Args:
         args (arparser Namespace): Input arguments to callgf containing event id
         config (ConfigObj): Configuration object containing database file location
@@ -455,33 +459,39 @@ def stop_unstop(args, config):
     """
     # Connect to database, which keeps track of folders
     if args.stop and args.unstop:
-        logging.exception('Both stop and unstop were set to True in args, impossible to do both')
+        logging.exception(
+            'Both stop and unstop were set to True in args, '
+            'impossible to do both')
         sys.exit(1)
     if args.stop:
         args.eventids = args.stop
     elif args.unstop:
         args.eventids = args.unstop
 
-    try: # # Get all event ids for this event
+    try:  # Get all event ids for this event
         detail = get_event_by_id(args.eventids)
         eventids = ','.join(detail['ids'][1:].split(','))
         args.eventids = eventids
     except Exception as e:
-        logging.info('Unable to find additional event ids for this event, continuing with just one provided')
+        logging.info(
+            'Unable to find additional event ids for this event, '
+            'continuing with just one provided')
 
     dbfile = config['dbfile']
     conn = connect_database(dbfile)
     eventdir, shakemap_version = get_event_dir(args, conn)
     if eventdir is None:
-        msg = 'No directory found for eventid %s. Stopping or unstopping was not completed.' % args.eventids
+        msg = 'No directory found for eventid %s. Stopping or unstopping '\
+            'was not completed.' % args.eventids
         logging.exception(msg)
         sys.exit(1)
-    
+
     stopfile = os.path.join(eventdir, 'stop')
 
     if args.stop:
         if os.path.isfile(stopfile):
-            msg = 'Stop file already exists for %s: %s' % (args.eventids, stopfile)
+            msg = 'Stop file already exists for %s: %s' % (
+                args.eventids, stopfile)
             logging.info(msg)
             sys.exit(1)
         else:
@@ -494,7 +504,8 @@ def stop_unstop(args, config):
             sys.exit(0)
     elif args.unstop:
         if not os.path.isfile(stopfile):
-            msg = 'No stop file exists to remove for %s in %s' % (args.eventids, eventdir)
+            msg = 'No stop file exists to remove for %s in %s' % (
+                args.eventids, eventdir)
             logging.info(msg)
             sys.exit(1)
         else:
@@ -534,7 +545,8 @@ def isstopped(args, config):
             logging.info(fmt % (eventdir))
             sys.exit(1)
         else:
-            fmt = '"stop" file found in %s, but continuing because force flag was set.'
+            fmt = '"stop" file found in %s, but continuing because force'\
+                ' flag was set.'
             logging.info(fmt % (eventdir))
 
 
@@ -547,7 +559,8 @@ def process_shakemap(args, config):
     """
     # did someone run this from the command line?
     is_manual = isinstance(args, ArgWrapper)
-    
+
+    gridfile = None
     uncertfile = None
 
     logging.info('###### Event source: %s' % args.preferred_eventsource)
@@ -647,12 +660,16 @@ def process_shakemap(args, config):
         # ----------------------------------------------------------------------
         try:
             datadir = os.path.join(args.directory, 'download')
+            if not os.path.exists(datadir):
+                os.makedirs(datadir)
             # Download shakemap and uncertainty grid
-            detail, sh, un = getShakefiles(eventid, datadir, uncert=True,
-                                           version=args.version,
-                                           source=args.source)
+            detail, gridfile, uncertfile = \
+                getShakefiles(eventid, datadir, uncert=True,
+                              version=args.version,
+                              source=args.source)
+
         except Exception as e:
-            logging.info('Failed to download grid.xml')
+            logging.info('Failed to download shakemap files.')
             logging.info(e)
 
         if uncertfile is None:
@@ -665,16 +682,16 @@ def process_shakemap(args, config):
 
     # Check that gridfiles are where they should be
     logging.info('Checking gridfile...')
-    gridfile = os.path.join(args.directory, 'download', 'grid.xml')
-    if not os.path.isfile(gridfile):
+    if gridfile is None:
         gridfile = os.path.join(args.directory, 'grid.xml')
-        if not os.path.isfile(gridfile):
-            msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
-                   % gridfile)
-            logging.info(msg)
-            if not args.force:
-                update_event_fail(conn, db_id, msg)
-                sys.exit(1)
+
+    if not os.path.isfile(gridfile):
+        msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
+               % gridfile)
+        logging.info(msg)
+        if not args.force:
+            update_event_fail(conn, db_id, msg)
+            sys.exit(1)
 
     logging.info('Checking for uncertainty gridfile...')
     uncertfile = os.path.join(args.directory, 'download', 'uncertainty.xml')
@@ -908,7 +925,7 @@ def process_shakemap(args, config):
         msg = "gf_transfer failed."
         logging.critical(msg)
         update_event_fail(conn, db_id, msg)
-        #sys.exit(1)  # Still proceed because can enter stuff in database
+        # sys.exit(1)  # Still proceed because can enter stuff in database
         transferred = False
     else:
         logging.info('gf_transfer completed')
@@ -931,7 +948,7 @@ def process_shakemap(args, config):
     ls_hp = landslide['probability']['p_hagg']
     ls_hq = landslide['probability']['q_hagg']
     ls_ep = landslide['probability']['p_exp']
-    ls_eq = landslide['probability']['q_exp']  
+    ls_eq = landslide['probability']['q_exp']
 
     liquefactions = infodata['Liquefaction']
     liquefaction = None
@@ -948,11 +965,10 @@ def process_shakemap(args, config):
     lq_hp = liquefaction['probability']['p_hagg']
     lq_hq = liquefaction['probability']['q_hagg']
     lq_ep = liquefaction['probability']['p_exp']
-    lq_eq = liquefaction['probability']['q_exp']  
+    lq_eq = liquefaction['probability']['q_exp']
     # values = '(endtime,finitefault,HaggLS,ExpPopLS,HaggLQ,ExpPopLQ)'
     tnowstr = datetime.utcnow().strftime(TIMEFMT)
     finite_fault = not infodata['Summary']['point_source']
-
 
     with conn:
         cursor = conn.cursor()
@@ -964,7 +980,7 @@ def process_shakemap(args, config):
                 "ExpPopLQ_std = ?,"
                 "HlimLS = ?, ElimLS = ?, HlimLQ = ?, ElimLQ = ?,"
                 "PH_LS = ?, QH_LS = ?, PE_LS = ?, QE_LS = ?, PH_LQ = ?,"
-                "QH_LQ = ?, PE_LQ = ?, QE_LQ = ?," 
+                "QH_LQ = ?, PE_LQ = ?, QE_LQ = ?,"
                 "eventdir = ?, time = ?, depth = ?,"
                 "location = ?, note = ? WHERE id = ?",
                 (tnowstr, '%i' % finite_fault,
@@ -973,7 +989,7 @@ def process_shakemap(args, config):
                  lq_pop_std,
                  ls_hlim, ls_elim, lq_hlim, lq_elim,
                  ls_hp, ls_hq, ls_ep, ls_eq, lq_hp,
-                 lq_hq, lq_ep, lq_eq,                 
+                 lq_hq, lq_ep, lq_eq,
                  eventdir, event['event_timestamp'].strftime(TIMEFMT),
                  '%.1f' % event['depth'],
                  event['event_description'], '', '%i' % db_id))
@@ -1038,8 +1054,8 @@ def cleanup_warnings(args, config):
             delta_run = last_start_time - origin_time
             delta_now = datetime.now() - origin_time
             if ((delta_now > timedelta(days=2)) and
-                (not delta_run > timedelta(days=2))):
-               process_shakemap(args, config)
+                    (not delta_run > timedelta(days=2))):
+                process_shakemap(args, config)
 
 
 def main(args, config):
@@ -1246,7 +1262,6 @@ the data_path directory.
              "to be rerun automatically again if ShakeMap is updated. No events "
              "will be run with this command "
              "Example: callgf --unstop us1000abcd")
-            
 
     # argparser.add_argument("--rerun", action='store_true', default=False,
     #                       help="Rerun an event that is already in the database. "
