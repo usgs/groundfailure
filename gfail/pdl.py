@@ -314,17 +314,17 @@ def prepare_pdl_directory(event_dir):
         shutil.copy(src, dst)
 
     # Put hdf files into pdl directory
-    # hdf_files = [os.path.join(event_dir, a)
-    #              for a in all_files if a.endswith('.hdf5')]
-    # for i in range(len(hdf_files)):
-    #     src = hdf_files[i]
-    #     hfile = os.path.basename(src)
-    #     if hfile.startswith(event_prefix):
-    #         hfile = hfile[len(event_prefix)+1:]
-    #     dst = os.path.join(pdl_dir, hfile)
-    #     # Strip off event id prefix
+    hdf_files = [os.path.join(event_dir, a)
+                 for a in all_files if a.endswith('.hdf5')]
+    for i in range(len(hdf_files)):
+        src = hdf_files[i]
+        hfile = os.path.basename(src)
+        if hfile.startswith(event_prefix):
+            hfile = hfile[len(event_prefix)+1:]
+        dst = os.path.join(pdl_dir, hfile)
+        # Strip off event id prefix
 
-    #     shutil.copy(src, dst)
+        shutil.copy(src, dst)
 
     # Put binary ShakeCast files into pdl directory
     # flt_files = [os.path.join(event_dir, a)
@@ -349,7 +349,7 @@ def prepare_pdl_directory(event_dir):
     contents = etree.Element("contents")
 
     json_mime = 'text/json'
-    # hdf_mime = 'application/x-hdf'
+    hdf_mime = 'application/x-hdf'
     gtif_mime = 'image/geotiff'
     png_mime = 'image/png'
     kmz_mime = 'application/vnd.google-earth.kmz'
@@ -371,8 +371,8 @@ def prepare_pdl_directory(event_dir):
                      href='jessee_2017_model.kmz', type=kmz_mime)
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017_model.tif', type=gtif_mime)
-    # etree.SubElement(jessee_tree, "format",
-    #                  href='jessee_2017.hdf5', type=hdf_mime)
+    etree.SubElement(jessee_tree, "format",
+                     href='jessee_2017.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2017.png', type=png_mime)
 
@@ -386,8 +386,8 @@ def prepare_pdl_directory(event_dir):
                      href='zhu_2017_general_model.kmz', type=kmz_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general_model.tif', type=gtif_mime)
-    # etree.SubElement(zhu2017_tree, "format",
-    #                  href='zhu_2017_general.hdf5', type=hdf_mime)
+    etree.SubElement(zhu2017_tree, "format",
+                     href='zhu_2017_general.hdf5', type=hdf_mime)
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.png', type=png_mime)
 
@@ -397,8 +397,8 @@ def prepare_pdl_directory(event_dir):
                                  (not displayed)')
     file_caps = etree.SubElement(godt_tree, "caption")
     file_caps.text = 'Godt and others (2008)'
-    # etree.SubElement(godt_tree, "format",
-    #                  href='godt_2008.hdf5', type=hdf_mime)
+    etree.SubElement(godt_tree, "format",
+                     href='godt_2008.hdf5', type=hdf_mime)
     etree.SubElement(godt_tree, "format",
                      href='godt_2008_model.tif', type=gtif_mime)
 
@@ -408,8 +408,8 @@ def prepare_pdl_directory(event_dir):
         (not displayed)')
     file_caps = etree.SubElement(now_tree, "caption")
     file_caps.text = 'Nowicki and others (2014)'
-    # etree.SubElement(now_tree, "format",
-    #                  href='nowicki_2014_global.hdf5', type=hdf_mime)
+    etree.SubElement(now_tree, "format",
+                     href='nowicki_2014_global.hdf5', type=hdf_mime)
     etree.SubElement(now_tree, "format",
                      href='nowicki_2014_global_model.tif', type=gtif_mime)
 
@@ -419,8 +419,8 @@ def prepare_pdl_directory(event_dir):
         (not displayed)", id='zhu_2015')
     file_caps = etree.SubElement(zhu2015_tree, "caption")
     file_caps.text = 'Zhu and others (2015)'
-    # etree.SubElement(zhu2015_tree, "format",
-    #                  href='zhu_2015.hdf5', type=hdf_mime)
+    etree.SubElement(zhu2015_tree, "format",
+                     href='zhu_2015.hdf5', type=hdf_mime)
     etree.SubElement(zhu2015_tree, "format",
                      href='zhu_2015_model.tif', type=gtif_mime)
 
