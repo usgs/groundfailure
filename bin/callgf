@@ -470,6 +470,9 @@ def stop_unstop(args, config):
     try:  # Get all event ids for this event
         detail = get_event_by_id(args.eventids)
         eventids = ','.join(detail['ids'][1:].split(','))
+
+        # Remove any empty strings in list
+        eventids = [e for e in eventids if len(e) > 0]
         args.eventids = eventids
     except Exception as e:
         logging.info(
