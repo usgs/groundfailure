@@ -405,16 +405,16 @@ def run_gfail(args):
                 # Compile into list of results for later
                 results.append(maplayers)
 
-                # Make binary output for ShakeCast
-                filef = os.path.join(outfolder, '%s_model.flt'
-                                     % filename)
-                # And get name of header
-                filefh = os.path.join(outfolder, '%s_model.hdr'
-                                      % filename)
-                # Make file
-                write_floats(filef, maplayers['model']['grid'])
-                filenames.append(filef)
-                filenames.append(filefh)
+                #  # Make binary output for ShakeCast
+                #  filef = os.path.join(outfolder, '%s_model.flt'
+                #                       % filename)
+                #  # And get name of header
+                #  filefh = os.path.join(outfolder, '%s_model.hdr'
+                #                        % filename)
+                #  # Make file
+                #  write_floats(filef, maplayers['model']['grid'])
+                #  filenames.append(filef)
+                #  filenames.append(filefh)
 
         eventid = getHeaderData(shakefile)[0]['event_id']
         if not hasattr(args, 'eventsource'):
