@@ -27,7 +27,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
                                    'sans-serif']
 
 
-def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
+def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
                  statprobthresh=None, pop_file=None, stdtype='mean',
                  maxP=1.):
@@ -37,8 +37,6 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
     Args:
         grid2D: grid2D object of model output.
         stdgrid2D: grid2D object of model standard deviations (optional)
-        probthresh: Optional, Float or list of probability thresholds
-            for use in Parea computation.
         shakefile: Optional, path to shakemap file to use for ground motion
             threshold.
         shakethreshtype: Optional, Type of ground motion to use for
@@ -71,7 +69,6 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
             - elim_# maximum possible value of E (for given Pmax value)
             - p_exp_# beta function shapefile p for exp_pop
             - q_exp_# beta function shapefile q for exp_pop
-            - Parea_# where # is the probability threshold
 
     """
     stats = collections.OrderedDict()
@@ -98,20 +95,6 @@ def computeStats(grid2D, stdgrid2D=None, probthresh=None, shakefile=None,
 
     for k, v in hagg_dict.items():
         stats[k] = v
-
-    if probthresh is not None:
-        Parea = computeParea(grid2D, probthresh=probthresh, shakefile=None,
-                             shakethreshtype=shakethreshtype, shakethresh=0.0)
-        if type(Parea) != list and type(Parea) != np.ndarray:
-            probthresh = [probthresh]
-            Parea = [Parea]
-
-        for T, P in zip(probthresh, Parea):
-            if T == 0.:
-                stats['Parea'] = float(P)
-            else:
-                newkey = 'Parea_%1.2f' % T
-                stats[newkey] = float(P)
 
     if pop_file is None:
         try:
@@ -160,7 +143,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             pga, cm/s for pgv, float for mmi.
         stdgrid2D: grid2D object of model standard deviations (optional)
         stdtype (str): assumption of spatial correlation used to compute
-            the stdev of the statistics, 'max', 'min' or 'mean' of max and min
+            the stdev of the statistics, 'max', 'min', 'mean' of max and min,
+            or 'full' (default) which estimates the range and accounts for
+            covariance
         maxP (float): the maximum possible probability of the model
 
     Returns:
@@ -236,8 +221,10 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                     Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmax
                 elif stdtype == 'min':
                     Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmin
+                elif stdtype == 'mean':
+                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
+                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = fullvario(std, model, probthresh)
                 var = Hagg['hagg_std_%1.2fg' % (shaket/100.,)]**2.
                 # Beta distribution shape factors
                 Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
@@ -257,8 +244,10 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                 Hagg['hagg_std_0.00g'] = totalmax
             elif stdtype == 'min':
                 Hagg['hagg_std_0.00g'] = totalmin
-            else:
+            elif stdtype == 'mean':
                 Hagg['std_0.00g'] = (totalmax+totalmin)/2.
+            else:
+                Hagg['std_0.00g'] = fullvario(std, model, probthresh)
 
             var = Hagg['hagg_std_0.00g']
             # Beta distribution shape factors
@@ -400,8 +389,15 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
                     exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmax
                 elif stdtype == 'min':
                     exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmin
-                else:
+                elif stdtype == 'mean':
                     exp_pop['exp_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
+                else:
+                    #TODO
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = fullvario(propstd, popdat, threshmult)
+                    
+                    
+                    
+                    
                 # Beta distribution shape factors
                 var = exp_pop['exp_std_%1.2fg' % (shaket/100.,)]**2.
                 exp_pop['p_exp_%1.2fg' % (shaket/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
@@ -419,8 +415,12 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
                 exp_pop['exp_std_0.00g'] = totalmax
             elif stdtype == 'min':
                 exp_pop['exp_std_0.00g'] = totalmin
-            else:
+            elif stdtype == 'mean':
                 exp_pop['exp_std_0.00g'] = (totalmax+totalmin)/2.
+            else:
+                #TODO
+                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = fullvario(propstd, popdat, threshmult)
+                    
             # Beta distribution shape factors
             var = exp_pop['exp_std_0.00g']**2.
             exp_pop['exp_std_0.00g'] = (mu/elim)*((elim*mu-mu**2)/var-1)
@@ -430,78 +430,8 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     return exp_pop
 
 
-def computeParea(grid2D, proj='moll', probthresh=0.0, shakefile=None,
-                 shakethreshtype='pga', shakethresh=0.0):
+def fullvario():
     """
-    NOTE THIS IS NOT CONSISTENT WITH THE OTHER TWO STATS BECAUSE IT IS NOT 
-    CURRENTLY BEING USED IN THE REAL TIME PRODUCT
-    Alternative to Aggregate Hazard (Hagg), which is equal to the
-    the sum of the area of grid cells that exceeds a given probability.
-
-    Args:
-        grid2D: grid2D object of model output.
-        proj: projection to use to obtain equal area, 'moll'  mollweide, or
-            'laea' lambert equal area.
-        probthresh: Optional, Float or list of probability thresholds.
-        shakefile: Optional, path to shakemap file to use for ground motion
-            threshold.
-        shakethreshtype: Optional, Type of ground motion to use for
-            shakethresh, 'pga', 'pgv', or 'mmi'.
-        shakethresh: Optional, Float of shaking thresholds in %g for
-            pga, cm/s for pgv, float for mmi.
-
-    Returns:
-        Parea (float) if no or only one probthresh defined,
-        otherwise, a list of floats of Parea corresponding to all
-        specified probthresh values.
+    
     """
-    if type(probthresh) != list and type(probthresh) != np.ndarray:
-        probthresh = [probthresh]
-
-    Parea = []
-    bounds = grid2D.getBounds()
-    lat0 = np.mean((bounds[2], bounds[3]))
-    lon0 = np.mean((bounds[0], bounds[1]))
-    projs = ('+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 '
-             '+units=km +no_defs' % (proj, lat0, lon0))
-    geodict = grid2D.getGeoDict()
-
-    if shakefile is not None:
-        if shakethresh < 0.:
-            raise Exception('shaking threshold must be equal or greater '
-                            'than zero')
-        tmpdir = tempfile.mkdtemp()
-        # resample shakemap to grid2D
-        temp = ShakeGrid.load(shakefile)
-        junkfile = os.path.join(tmpdir, 'temp.bil')
-        GDALGrid.copyFromGrid(temp.getLayer(shakethreshtype)).save(junkfile)
-        shk = quickcut(junkfile, geodict, precise=True,
-                       method='bilinear')
-        shutil.rmtree(tmpdir)
-        if shk.getGeoDict() != geodict:
-            raise Exception('shakemap was not resampled to exactly the same '
-                            'geodict as the model')
-
-    grid = grid2D.project(projection=projs)
-    geodictRS = grid.getGeoDict()
-    cell_area_km2 = geodictRS.dx * geodictRS.dy
-    model = grid.getData()
-    model[np.isnan(model)] = -1.
-    for probt in probthresh:
-        if probt < 0.:
-            raise Exception('probability threshold must be equal or greater '
-                            'than zero')
-        modcop = model.copy()
-        if shakefile is not None:
-            shkgrid = shk.project(projection=projs)
-            shkdat = shkgrid.getData()
-            # use -1 to avoid nan errors and warnings, will always be thrown
-            # out because default probthresh is 0 and must be positive.
-            shkdat[np.isnan(shkdat)] = -1.
-            modcop[shkdat < shakethresh] = -1.
-        one_mat = np.ones_like(modcop)
-        Parea.append(np.sum(one_mat[modcop >= probt] * cell_area_km2))
-
-    if len(Parea) == 1:
-        Parea = Parea[0]
-    return Parea
+    pass
