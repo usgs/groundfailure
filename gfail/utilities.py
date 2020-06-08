@@ -17,7 +17,6 @@ from scipy.stats import beta
 # local imports
 from mapio.shake import getHeaderData
 from libcomcat.search import get_event_by_id, search
-from mapio.basemapcity import BasemapCities
 from mapio.multihaz import MultiHazardGrid
 
 
@@ -122,89 +121,6 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     infobytes, url = shakemap.getContentBytes('info.json')
     info = json.loads(infobytes.decode('utf-8'))
     return info, detail, shakemap
-
-
-def parseMapConfig(config, fileext=None):
-    """
-    Parse config for mapping options.
-
-    Args:
-        config (ConfigObj): ConfigObj object.
-        fileext (str): File extension to add to relative filepaths, will be
-            prepended to any file paths in config.
-
-    Returns:
-        dict: Dictionary of map options pulled from config file.
-    """
-    topofile = None
-    roadfolder = None
-    cityfile = None
-    roadcolor = '6E6E6E'
-    countrycolor = '177F10'
-    watercolor = 'B8EEFF'
-    ALPHA = 0.7
-    oceanfile = None
-    # oceanref = None
-    # roadref = None
-    # cityref = None
-
-    if fileext is None:
-        fileext = '.'
-    if 'dem' in config:
-        topofile = os.path.join(fileext, config['dem']['file'])
-        if os.path.exists(topofile) is False:
-            print('DEM not valid - hillshade will not be possible\n')
-    if 'ocean' in config:
-        oceanfile = os.path.join(fileext, config['ocean']['file'])
-        # try:
-        #     oceanref = config['ocean']['shortref']
-        # except:
-        #     oceanref = 'unknown'
-    if 'roads' in config:
-        roadfolder = os.path.join(fileext, config['roads']['file'])
-        if os.path.exists(roadfolder) is False:
-            print('roadfolder not valid - roads will not be displayed\n')
-            roadfolder = None
-        # try:
-        #     roadref = config['roads']['shortref']
-        # except:
-        #     roadref = 'unknown'
-    if 'cities' in config:
-        cityfile = os.path.join(fileext, config['cities']['file'])
-        # try:
-        #     cityref = config['cities']['shortref']
-        # except:
-        #     cityref = 'unknown'
-        if os.path.exists(cityfile):
-            try:
-                BasemapCities.loadFromGeoNames(cityfile=cityfile)
-            except Exception as e:
-                print(e)
-                print('cities file not valid - cities will not be displayed\n')
-                cityfile = None
-        else:
-            print('cities file not valid - cities will not be displayed\n')
-            cityfile = None
-    if 'roadcolor' in config['colors']:
-        roadcolor = config['colors']['roadcolor']
-    if 'countrycolor' in config['colors']:
-        countrycolor = config['colors']['countrycolor']
-    if 'watercolor' in config['colors']:
-        watercolor = config['colors']['watercolor']
-    if 'alpha' in config['colors']:
-        ALPHA = float(config['colors']['alpha'])
-
-    countrycolor = '#'+countrycolor
-    watercolor = '#'+watercolor
-    roadcolor = '#'+roadcolor
-
-    mapin = {'topofile': topofile, 'roadfolder': roadfolder,
-             'cityfile': cityfile, 'roadcolor': roadcolor,
-             'countrycolor': countrycolor, 'watercolor': watercolor,
-             'ALPHA': ALPHA, 'oceanfile': oceanfile}
-    # 'roadref': roadref, 'cityref': cityref, 'oceanref': oceanref
-
-    return mapin
 
 
 def parseConfigLayers(maplayers, config, keys=None):

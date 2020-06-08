@@ -17,11 +17,10 @@ from mapio.shake import ShakeGrid
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
-from gfail.makemaps import modelMap, create_kmz
-from gfail.webpage import hazdev
+from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
-    parseMapConfig, text_to_json, write_floats,
+    text_to_json, write_floats,
     savelayers)
 from libcomcat.search import get_event_by_id
 
@@ -75,9 +74,7 @@ def run_gfail(args):
         else:
             outdir = args.output_filepath
 
-        if (hdf5 or args.make_static_pngs or
-                args.make_static_pdfs or
-                gis or kmz):
+        if (hdf5 or gis or kmz):
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
 
@@ -305,52 +302,6 @@ def run_gfail(args):
                 savelayers(maplayers, os.path.join(outfolder, filenameh))
                 filenames.append(filenameh)
 
-            if args.make_static_pdfs or args.make_static_pngs:
-                plotorder, logscale, lims, colormaps, maskthreshes = \
-                    parseConfigLayers(maplayers, conf)
-                mapconfig = ConfigObj(args.mapconfig)
-
-                kwargs = parseMapConfig(
-                    mapconfig, fileext=args.mapdata_filepath)
-                junk, filenames1 = modelMap(
-                    maplayers, shakefile,
-                    suptitle=conf[modelname]['shortref'],
-                    boundaries=None,
-                    zthresh=0.,
-                    lims=lims,
-                    plotorder=plotorder,
-                    maskthreshes=maskthreshes,
-                    maproads=False,
-                    mapcities=True,
-                    colormaps=colormaps,
-                    savepdf=args.make_static_pdfs,
-                    savepng=args.make_static_pngs,
-                    printparam=True,
-                    inventory_shapefile=None,
-                    outputdir=outfolder,
-                    outfilename=filename,
-                    scaletype='continuous',
-                    logscale=logscale, **kwargs)
-                for filen in filenames1:
-                    filenames.append(filen)
-
-                # make model only plots too
-                if len(maplayers) > 1:
-                    plotorder, logscale, lims, colormaps, maskthreshes = \
-                        parseConfigLayers(maplayers, conf, keys=['model'])
-                    junk, filenames1 = modelMap(
-                        maplayers, shakefile,
-                        suptitle=conf[modelname]['shortref'], boundaries=None,
-                        zthresh=0., lims=lims, plotorder=plotorder,
-                        maskthreshes=maskthreshes, maproads=False,
-                        mapcities=True, savepdf=args.make_static_pdfs,
-                        savepng=args.make_static_pngs, printparam=True,
-                        inventory_shapefile=None, outputdir=outfolder,
-                        outfilename=filename + '-just_model',
-                        colormaps=colormaps, scaletype='continuous',
-                        logscale=logscale, **kwargs)
-                    for filen in filenames1:
-                        filenames.append(filen)
             if gis or kmz:
 
                 for key in maplayers:
@@ -659,16 +610,6 @@ def set_default_paths(args):
             else:
                 print('Path given for mapconfig does not exist: %s'
                       % args.mapconfig)
-    if args.mapdata_filepath is not None:
-        if args.mapdata_filepath == 'reset':
-            D.pop('mapdata_filepath')
-        else:
-            # check that it's a valid path
-            if os.path.exists(args.mapdata_filepath):
-                D.update({'mapdata_filepath': args.mapdata_filepath})
-            else:
-                print('Path given for mapdata_filepath does not exist: %s'
-                      % args.mapdata_filepath)
     if args.popfile is not None:
         if args.popfile == 'reset':
             D.pop('popfile')

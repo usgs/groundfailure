@@ -107,8 +107,6 @@ dev_list=(
 # Package list:
 package_list=(
       "python=$py_ver"
-      "basemap"
-      "basemap-data-hires"
       "configobj"
       "descartes"
       "fiona"

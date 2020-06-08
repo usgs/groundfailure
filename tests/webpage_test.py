@@ -10,8 +10,8 @@ from configobj import ConfigObj
 import gfail.logisticmodel as LM
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
-import gfail.makemaps as makemaps
 import tempfile
+from gfail.webpage import create_kmz
 #import shutil
 import gfail.utilities as utilities
 
@@ -96,27 +96,6 @@ modelLS['TestModelLQ']['description'] = 'This is a test landslide model'
 modelLS['TestModelLQ']['gfetype'] = 'landslide'
 
 
-def test_parseMapConfig():
-    config = mapconfig
-    # fileext is None
-    utilities.parseMapConfig(config)
-    # 'ocean' in config, oceanref = config['ocean']['shortref'] fails
-    del config['ocean']['shortref']
-    utilities.parseMapConfig(config)
-    # 'cities' in config, cityref = config['cities']['shortref'] fails
-    del config['cities']['shortref']
-    utilities.parseMapConfig(config)
-    # Give an invalid city file
-    config = mapconfig
-    config['cities']['file'] = os.path.join(datadir,
-                                            'loma_prieta/mapping_inputs/gmted_global_hillshade.grd.aux.xml')
-    utilities.parseMapConfig(config)
-    # 'alpha' in config['colors']
-    config = mapconfig
-    config['colors']['alpha'] = 0.5
-    utilities.parseMapConfig(config)
-
-
 def test_parseConfigLayers():
     lq = LM.LogisticModel(shakefile, modelLQ, saveinputs=True)
     maplayers = lq.calculate()
@@ -146,58 +125,40 @@ def test_maps():
     ls = LM.LogisticModel(shakefile, modelLS, saveinputs=False)
     maplayers2 = ls.calculate()
 
-    # suptitle is None
-    makemaps.modelMap(maplayers, shakefile, suptitle=None,
-                      savepdf=False, savepng=False)  # outputdir=tempdir)
-    # shakefile is None
-    makemaps.modelMap(maplayers, suptitle=None,
-                      savepdf=False, savepng=False)
-    # scaletype == 'binned'
-    makemaps.modelMap(maplayers, scaletype='binned',
-                      savepdf=False, savepng=False)
-    # scaletype == 'binned' and logscale=!False
-    makemaps.modelMap(maplayers, scaletype='binned',
-                      logscale=[False, False, True, True],
-                      savepdf=False, savepng=False)
-    # logscale=!False
-    makemaps.modelMap(maplayers, logscale=[False, False, True, True],
-                      savepdf=False, savepng=False)
-
     # Test create_kmz
     tempdir = tempfile.TemporaryDirectory()
-    makemaps.create_kmz(maplayers['model'], outfile=os.path.join(tempdir.name,
+    create_kmz(maplayers['model'], outfile=os.path.join(tempdir.name,
                         'test.kmz'))
-    makemaps.create_kmz(maplayers2['model'], outfile=os.path.join(tempdir.name,
+    create_kmz(maplayers2['model'], outfile=os.path.join(tempdir.name,
                         'test.kmz'), mask=0.003)
 
 
-def test_zoom():
-
-    # boundaries == 'zoom'
-    shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
-    conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
-                             'zhu_2015.ini')
-    conf = ConfigObj(conf_file)
-    data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
-    conf = correct_config_filepaths(data_path, conf)
-
-    lq = LM.LogisticModel(shakefile, conf, saveinputs=True)
-    maplayers = lq.calculate()
-
-    makemaps.modelMap(maplayers, boundaries='zoom', zthresh=0.3,
-                      savepdf=False, savepng=False)
-
-    # bounaries dictionary
-    bounds = {'xmin': -122.54, 'xmax': -120.36,
-              'ymin': 36.1, 'ymax': 37.0}
-    makemaps.modelMap(maplayers, boundaries=bounds,
-                      savepdf=False, savepng=False)
+#def test_zoom():
+#
+#    # boundaries == 'zoom'
+#    shakefile = os.path.join(datadir, 'loma_prieta', 'grid.xml')
+#    conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
+#                             'zhu_2015.ini')
+#    conf = ConfigObj(conf_file)
+#    data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
+#    conf = correct_config_filepaths(data_path, conf)
+#
+#    lq = LM.LogisticModel(shakefile, conf, saveinputs=True)
+#    maplayers = lq.calculate()
+#
+#    makemaps.modelMap(maplayers, boundaries='zoom', zthresh=0.3,
+#                      savepdf=False, savepng=False)
+#
+#    # bounaries dictionary
+#    bounds = {'xmin': -122.54, 'xmax': -120.36,
+#              'ymin': 36.1, 'ymax': 37.0}
+#    makemaps.modelMap(maplayers, boundaries=bounds,
+#                      savepdf=False, savepng=False)
 
 
 if __name__ == "__main__":
-    test_parseMapConfig()
     test_parseConfigLayers()
     test_maps()
-    test_zoom()
+    #test_zoom()
     # remove tempdir
     #shutil.rmtree(td1)

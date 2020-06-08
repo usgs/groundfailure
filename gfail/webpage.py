@@ -47,7 +47,7 @@ DFBINS = [0.002, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
-           shakethreshtype='pga', probthresh=None, shakethresh=10.,
+           shakethreshtype='pga', shakethresh=10.,
            prefLS='Nowicki Jessee and others (2017)',
            prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True, point=True,
@@ -65,8 +65,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         alpha (float): Transparency to use for overlay pngs, value from 0 to 1.
         shakethreshtype (str): Type of ground motion to use for shakethresh,
             'pga', 'pgv', or 'mmi'.
-        probthresh: Optional. Float or list of probability thresholds to apply
-            before computing stats.
         shakethresh: Float or list of shaking thresholds in %g for pga, cm/s
             for pgv, float for mmi. Used for Hagg and Exposure computation.
         prefLS (str): shortref of "preferred" landslide model.
@@ -150,7 +148,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             stats = computeStats(
                 maplayer['model']['grid'],
                 stdgrid2D=stdgrid2D,
-                probthresh=probthresh,
                 shakefile=shakemap,
                 shakethresh=shakethresh,
                 statprobthresh=statprobthresh,
@@ -276,7 +273,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             stats = computeStats(
                 maplayer['model']['grid'],
                 stdgrid2D=stdgrid2D,
-                probthresh=probthresh,
                 shakefile=shakemap,
                 shakethresh=shakethresh,
                 pop_file=pop_file,
@@ -669,7 +665,6 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
         # Landslide alert statistics
         ls_stats = computeStats(
             ls_mod['model']['grid'],
-            probthresh=None,
             shakefile=shakefile,
             shakethresh=10.0,
             shakethreshtype='pga',
@@ -679,7 +674,6 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
         # Liquefaction alert statistics
         lq_stats = computeStats(
             lq_mod['model']['grid'],
-            probthresh=None,
             shakefile=shakefile,
             shakethresh=10.0,
             shakethreshtype='pga',
