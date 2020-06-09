@@ -7,7 +7,9 @@ import collections
 import shutil
 import tempfile
 import os
-
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
 
 # local imports
 from mapio.shake import ShakeGrid
@@ -20,7 +22,6 @@ from skimage.measure import block_reduce
 from configobj import ConfigObj
 
 # Make fonts readable and recognizable by illustrator
-import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
 mpl.rcParams['font.sans-serif'] = ['Arial',
                                    'Bitstream Vera Serif',
@@ -224,7 +225,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                 elif stdtype == 'mean':
                     Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = fullvario(std, model, probthresh)
+                    range1, sill1 = semivario(model, probthresh)
+                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = svar(
+                            model, std, range1, sill1)
                 var = Hagg['hagg_std_%1.2fg' % (shaket/100.,)]**2.
                 # Beta distribution shape factors
                 Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
@@ -247,7 +250,8 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             elif stdtype == 'mean':
                 Hagg['std_0.00g'] = (totalmax+totalmin)/2.
             else:
-                Hagg['std_0.00g'] = fullvario(std, model, probthresh)
+                range1, sill1 = semivario(model, probthresh)
+                Hagg['std_0.00g'] = svar(model, std, range1, sill1)
 
             var = Hagg['hagg_std_0.00g']
             # Beta distribution shape factors
@@ -378,13 +382,15 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         for shaket in shakethresh:
             threshmult = shkdat > shaket
             threshmult = threshmult.astype(float)
-            mu = np.nansum(popdat * prop * modresamp * threshmult)
+            dat2 = popdat * prop * modresamp * threshmult
+            mu = np.nansum(dat2)
             exp_pop['exp_pop_%1.2fg' % (shaket/100.,)] = mu
             elim = maxP*np.nansum(popdat * prop * threshmult)
             exp_pop['elim_%1.2fg' % (shaket/100.,)] = elim
             if stdgrid2D is not None:
-                totalmax = np.nansum(popdat * propstd * modresampstd * threshmult)
-                totalmin = np.sqrt(np.nansum((popdat * propstd * modresampstd * threshmult)**2.))
+                datstd2 = popdat * propstd * modresampstd * threshmult
+                totalmax = np.nansum(datstd2)
+                totalmin = np.sqrt(np.nansum(datstd2**2.))
                 if stdtype == 'max':
                     exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmax
                 elif stdtype == 'min':
@@ -392,25 +398,25 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
                 elif stdtype == 'mean':
                     exp_pop['exp_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
                 else:
-                    #TODO
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = fullvario(propstd, popdat, threshmult)
-                    
-                    
-                    
-                    
+                    range1, sill1 = semivario(dat2)
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = svar(dat2,
+                            datstd2, range1, sill1)
+
                 # Beta distribution shape factors
                 var = exp_pop['exp_std_%1.2fg' % (shaket/100.,)]**2.
                 exp_pop['p_exp_%1.2fg' % (shaket/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
                 exp_pop['q_exp_%1.2fg' % (shaket/100.,)] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
 
     else:
-        mu = np.nansum(popdat * prop * modresamp)
+        dat2 = popdat * prop * modresamp
+        mu = np.nansum(dat2)
         exp_pop['exp_pop_0.00g'] = mu
         elim = maxP*np.nansum(popdat * prop)
         exp_pop['elim_0.00g'] = elim
         if stdgrid2D is not None:
-            totalmax = np.nansum(popdat * propstd * modresampstd)
-            totalmin = np.sqrt(np.nansum((popdat * propstd * modresampstd)**2.))
+            datstd2 = popdat * propstd * modresampstd
+            totalmax = np.nansum(datstd2)
+            totalmin = np.sqrt(np.nansum(datstd2**2.))
             if stdtype == 'max':
                 exp_pop['exp_std_0.00g'] = totalmax
             elif stdtype == 'min':
@@ -418,8 +424,11 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             elif stdtype == 'mean':
                 exp_pop['exp_std_0.00g'] = (totalmax+totalmin)/2.
             else:
-                #TODO
-                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = fullvario(propstd, popdat, threshmult)
+                range1, sill1 = semivario(dat2)
+                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = svar(dat2,
+                        datstd2, range1, sill1)
+                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = semivario(propstd,
+                        popdat, threshmult)
                     
             # Beta distribution shape factors
             var = exp_pop['exp_std_0.00g']**2.
@@ -430,8 +439,175 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     return exp_pop
 
 
-def fullvario():
+def semivario(model, threshold=0., maxlag=100, nsep=5, nptspb=200, ndists=100,
+              nvbins=15, spacing='log', variomodel='spherical', maxrange=100.,
+              makeplots=False):
     """
+    Quickly estimate semivariogram with emphasis on sampling from full
+    range of model values above defined threshold by sampling equal number
+    of seed points from each range of values and computing a range of random
+    distances pairs from those seed points that are within a maxlag range of
+    pixels. If nsep is set to 1, then nptspb seed points will be selected
+    randomly
+
+    Args:
+        model: 2D array of raster to estimate semivariogram for
+        threshold: 
+        maxlag: in pixels
+        nsep: number of bins to sample from equally, spaced from min to max
+            value of model
+        nptspb: number of seed points to sample from in each separation bin
+        ndists: number of points to sample at random distances from each seed point
+        nvbins: number of semivariogram bins
+        spacing: spacing of nsep, 'log' for logarithmic spacing, or 'linear'
+            for linear spacing
+        model: model to fit to semivariogram
+
+    Returns:
+        range, sill
+
+    """
+    #TODO deal with cases where there are no values above threshold
+    if np.nanmax(model) < threshold:
+        raise Exception('No values above threshold in model')
+
+    # prepare data
+    nrows, ncols = np.shape(model)
+    rows = np.matlib.repmat(np.arange(nrows), ncols, 1).T
+    cols = np.matlib.repmat(np.arange(ncols), nrows, 1)
+    values = model.flatten()
+    rowsf = rows.flatten()
+    colsf = cols.flatten()
+    # Divide range of values into X equally spaced bins and ensure sufficient samples are collected from each
+    if spacing=='log':
+        bins = np.logspace(np.log10(threshold), np.log10(np.nanmax(values)),
+                           num=nsep+1, endpoint=True)
+    else:
+        bins = np.linspace(threshold, np.nanmax(values), num=nsep+1,
+                           endpoint=True)
+
+    # Select nptspb points in each bin
+    seedpts = np.array([], dtype=int)
+    for i in range(nsep):
+        indx = np.where((values>bins[i]) & (values<bins[i+1]))[0]
+        if len(indx) == 0:
+            continue
+        elif len(indx) < nptspb:
+            # keep all points and pick some more than once to equal nptspb
+            picks = np.random.choice(len(indx), size=nptspb, replace=True)
+        elif len(indx) >= nptspb:
+            # randomly select without replacement
+            picks = np.random.choice(len(indx), size=nptspb, replace=False)
+        seedpts = np.hstack((seedpts, indx[picks]))
+    
+    # Get lags and differences for seed point vs. ndists other points around it
+    #TODO vectorize this to remove loop
+    lags = np.array([])
+    diffs = np.array([])
+    vals = np.array([])
+    for seed in seedpts:
+        row1 = rowsf[seed] 
+        col1 = colsf[seed]
+        addr = np.random.randint(np.max((-maxlag, -row1)), np.min((maxlag, nrows-row1)), size=ndists)
+        addc = np.random.randint(np.max((-maxlag, -col1)), np.min((maxlag, ncols-col1)), size=ndists)
+        indr = row1 + addr
+        indc = col1 + addc
+        newvalues = model[indr, indc]
+        ptval = model[row1, col1]
+        dists = np.sqrt(addr**2 + addc**2)  # distance in pixels
+        difvals = np.abs(newvalues - ptval)
+        diffs = np.hstack((diffs, difvals))
+        lags = np.hstack((lags, dists))
+        vals = np.hstack((vals, newvalues, ptval))
+
+    diffs2 = diffs**2
+
+    # % Make variogram out of these samples
+    binedges = np.linspace(0, maxlag, num=nvbins+1, endpoint=True)
+    binmid = (binedges[:-1] + binedges[1:])/2
+    
+    subs = np.zeros(nvbins)
+    N = np.zeros(nvbins)
+    for b in range(nvbins):
+        inrange = diffs2[(lags > binedges[b]) & (lags <= binedges[b+1])]
+        subs[b] = np.nansum(inrange)
+        N[b] = len(inrange)
+    semiv = 1./(2*N)*subs
+
+    model1 = eval(variomodel)
+    
+    # Fit model using weighting by 1/N to weigh bins with more samples more highly
+    popt, pcov = curve_fit(model1, binmid, semiv, sigma=1./N,
+                           absolute_sigma=False, bounds=(0, [maxrange, 1.]))
+    if makeplots:
+        plt.figure()    
+        plt.plot(binmid, semiv, 'ob')
+        plt.xlabel('Lags (pixels)')
+        plt.ylabel('Semivariance')
+        plt.plot(binmid, spherical(binmid, *popt), '-b')
+
+    range2, sill2 = popt
+    
+    return range2, sill2
+
+
+def spherical(lag, range1, sill, nugget=0):
+    """
+    https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L23
+    
+    nugget = value of independent variable at distance of zero
+    """
+    range1 = range1 / 1.
+
+    out = nugget + sill * ((1.5 * (lag / range1)) - (0.5 * ((lag / range1) ** 3.0)))
+    out[lag > range1] = nugget + sill
+    return out
+
+
+def exponential(lag, range1, sill, nugget=0):
+    """
+    https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L87
     
     """
-    pass
+    a = range1 / 3.
+    return nugget + sill * (1. - np.exp(-(lag / a)))
+
+
+def gaussian(lag, range1, sill, nugget=0):
+    a = range1 / 2.
+    return nugget + sill * (1. - np.exp(- (lag ** 2 / a ** 2)))
+
+
+def svar(model, stds, range1, sill1, variomodel='spherical'):
+    """
+    Estimate variance of aggregate statistic using correlation from 
+    semivariogram and std values for each pair of cells that are within range
+    of each other
+    
+    
+    """
+    # prepare data
+    nrows, ncols = np.shape(model)
+    rows = np.matlib.repmat(np.arange(nrows), ncols, 1).T
+    cols = np.matlib.repmat(np.arange(ncols), nrows, 1)
+    values = model.flatten()
+    rowsf = rows.flatten()
+    colsf = cols.flatten()
+    
+    model1 = eval(variomodel)
+
+    var2 = 0 # Simulated using correlation estimated from semivariogram and
+    #std for each cell, only include if two cells are within range of each other
+
+    #TODO vectorize/make more efficient
+    for i in range(len(values)):
+        for j in range(len(values)):
+            if i == j:
+                var2 += stds[i]**2
+            elif i>j:
+                dist = np.sqrt((rowsf[i]-rowsf[j])**2 + (colsf[i]-colsf[j]))
+                sigij = sill1-model1(dist, range1, sill1)
+                corr = sigij/sill1
+                if dist < range1:
+                    var2 += 2 * corr*stds[i]*stds[j]
+    return var2
