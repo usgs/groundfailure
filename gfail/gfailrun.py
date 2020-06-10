@@ -462,8 +462,7 @@ def getShakefiles(event, outdir, uncert=False, version=None,
             except Exception as e:
                 msg = 'Could not get event detail for shakemap at provided URL: %s'
                 print(msg % e)
-        shakemap = detail.getProducts(
-            'shakemap', source=source, version=version)[0]
+
     else:
         detail = get_event_by_id(event, includesuperseded=True)
 
@@ -471,6 +470,7 @@ def getShakefiles(event, outdir, uncert=False, version=None,
     if version is None:  # Get current preferred
         shakemap = detail.getProducts('shakemap', source=source)[0]
         shakemap.getContent('grid.xml', shakefile)
+    # or get version requested
     else:
         allversions = detail.getProducts('shakemap', version='all',
                                          source=source)
