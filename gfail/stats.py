@@ -439,29 +439,24 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     return exp_pop
 
 
-def semivario(model, threshold=0., maxlag=100, nsep=5, nptspb=200, ndists=100,
-              nvbins=15, spacing='log', variomodel='spherical', maxrange=100.,
-              makeplots=False):
+def semivario(model, threshold=0., maxlag=50, npts=1000, ndists=200,
+              nvbins=15, makeplots=False):
     """
-    Quickly estimate semivariogram with emphasis on sampling from full
-    range of model values above defined threshold by sampling equal number
-    of seed points from each range of values and computing a range of random
-    distances pairs from those seed points that are within a maxlag range of
-    pixels. If nsep is set to 1, then nptspb seed points will be selected
-    randomly
+    #TODO this should really be done in a distance preserving project, but
+    is an approximation for now
+
+    Quickly estimate semivariogram with by selecting seed points and then
+    computing semivariogram between each of those points and ndists random
+    locations around it that are within maxlag of the seed point. Will result 
+    in npts x ndists total distance pairs. Uses spherical model.
 
     Args:
         model: 2D array of raster to estimate semivariogram for
         threshold: 
         maxlag: in pixels
-        nsep: number of bins to sample from equally, spaced from min to max
-            value of model
-        nptspb: number of seed points to sample from in each separation bin
+        npts: number of seed points to sample from
         ndists: number of points to sample at random distances from each seed point
         nvbins: number of semivariogram bins
-        spacing: spacing of nsep, 'log' for logarithmic spacing, or 'linear'
-            for linear spacing
-        model: model to fit to semivariogram
 
     Returns:
         range, sill
@@ -478,27 +473,12 @@ def semivario(model, threshold=0., maxlag=100, nsep=5, nptspb=200, ndists=100,
     values = model.flatten()
     rowsf = rows.flatten()
     colsf = cols.flatten()
-    # Divide range of values into X equally spaced bins and ensure sufficient samples are collected from each
-    if spacing=='log':
-        bins = np.logspace(np.log10(threshold), np.log10(np.nanmax(values)),
-                           num=nsep+1, endpoint=True)
-    else:
-        bins = np.linspace(threshold, np.nanmax(values), num=nsep+1,
-                           endpoint=True)
 
-    # Select nptspb points in each bin
-    seedpts = np.array([], dtype=int)
-    for i in range(nsep):
-        indx = np.where((values>bins[i]) & (values<bins[i+1]))[0]
-        if len(indx) == 0:
-            continue
-        elif len(indx) < nptspb:
-            # keep all points and pick some more than once to equal nptspb
-            picks = np.random.choice(len(indx), size=nptspb, replace=True)
-        elif len(indx) >= nptspb:
-            # randomly select without replacement
-            picks = np.random.choice(len(indx), size=nptspb, replace=False)
-        seedpts = np.hstack((seedpts, indx[picks]))
+    # Select npts seed points in each bin
+    indx = np.where(values > threshold)[0]
+    picks = np.random.choice(len(indx), size=np.min((npts, int(len(indx)/2))),
+                             replace=False)
+    seedpts = indx[picks]
     
     # Get lags and differences for seed point vs. ndists other points around it
     #TODO vectorize this to remove loop
@@ -534,11 +514,9 @@ def semivario(model, threshold=0., maxlag=100, nsep=5, nptspb=200, ndists=100,
         N[b] = len(inrange)
     semiv = 1./(2*N)*subs
 
-    model1 = eval(variomodel)
-    
     # Fit model using weighting by 1/N to weigh bins with more samples more highly
-    popt, pcov = curve_fit(model1, binmid, semiv, sigma=1./N,
-                           absolute_sigma=False, bounds=(0, [maxrange, 1.]))
+    popt, pcov = curve_fit(spherical, binmid, semiv, sigma=1./N,
+                           absolute_sigma=False, bounds=(0, [maxlag, 1.]))
     if makeplots:
         plt.figure()    
         plt.plot(binmid, semiv, 'ob')
@@ -548,37 +526,28 @@ def semivario(model, threshold=0., maxlag=100, nsep=5, nptspb=200, ndists=100,
 
     range2, sill2 = popt
     
-    return range2, sill2
+    return range2, sill2 #vals
 
 
-def spherical(lag, range1, sill, nugget=0):
+def spherical(lag, range1, sill):#, nugget=0):
     """
     https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L23
     
     nugget = value of independent variable at distance of zero
     """
+    nugget = 0.
     range1 = range1 / 1.
 
     out = nugget + sill * ((1.5 * (lag / range1)) - (0.5 * ((lag / range1) ** 3.0)))
-    out[lag > range1] = nugget + sill
+    if isinstance(out, float):
+        if lag > range1:
+            out = nugget + sill
+    else:
+        out[lag > range1] = nugget + sill
     return out
 
 
-def exponential(lag, range1, sill, nugget=0):
-    """
-    https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L87
-    
-    """
-    a = range1 / 3.
-    return nugget + sill * (1. - np.exp(-(lag / a)))
-
-
-def gaussian(lag, range1, sill, nugget=0):
-    a = range1 / 2.
-    return nugget + sill * (1. - np.exp(- (lag ** 2 / a ** 2)))
-
-
-def svar(model, stds, range1, sill1, variomodel='spherical'):
+def svar(model, stds, range1, sill1, corrthresh=0.1):
     """
     Estimate variance of aggregate statistic using correlation from 
     semivariogram and std values for each pair of cells that are within range
@@ -591,23 +560,24 @@ def svar(model, stds, range1, sill1, variomodel='spherical'):
     rows = np.matlib.repmat(np.arange(nrows), ncols, 1).T
     cols = np.matlib.repmat(np.arange(ncols), nrows, 1)
     values = model.flatten()
+    stdvalues = stds.flatten()
     rowsf = rows.flatten()
     colsf = cols.flatten()
     
-    model1 = eval(variomodel)
-
     var2 = 0 # Simulated using correlation estimated from semivariogram and
     #std for each cell, only include if two cells are within range of each other
 
     #TODO vectorize/make more efficient
+    corrs = []
     for i in range(len(values)):
         for j in range(len(values)):
             if i == j:
-                var2 += stds[i]**2
+                var2 += stdvalues[i]**2
             elif i>j:
                 dist = np.sqrt((rowsf[i]-rowsf[j])**2 + (colsf[i]-colsf[j]))
-                sigij = sill1-model1(dist, range1, sill1)
+                sigij = sill1-spherical(dist, range1, sill1)
                 corr = sigij/sill1
-                if dist < range1:
-                    var2 += 2 * corr*stds[i]*stds[j]
+                corrs.append(corr)
+                if dist < range1 and corr > corrthresh:
+                    var2 += 2 * corr*stdvalues[i]*stdvalues[j]
     return var2
