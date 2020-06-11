@@ -451,13 +451,13 @@ def getShakefiles(event, outdir, uncert=False, version=None,
         version = getHeaderData(shakefile)[0]['shakemap_version']
         source = getHeaderData(shakefile)[0]['shakemap_originator']
         try:
-            detail = get_event_by_id(event)
+            detail = get_event_by_id(event, includesuperseded=True)
         except:  # Maybe originator is missing from event id, try another way
             try:
                 temp = getHeaderData(shakefile)[0]
                 temp2 = '%s%s' % (
                     temp['shakemap_originator'], temp['shakemap_id'])
-                detail = get_event_by_id(temp2)
+                detail = get_event_by_id(temp2, includesuperseded=True)
                 event = temp2
             except Exception as e:
                 msg = 'Could not get event detail for shakemap at provided URL: %s'
@@ -659,8 +659,8 @@ def set_default_paths(args):
         if args.dbfile == 'reset':
             D.pop('dbfile')
         else:
-            # check that it's a valid path
-            if os.path.exists(args.dbfile):
+            # check that it's a valid path (file itself doesnt have to exist)
+            if os.path.exists(os.path.dirname(args.dbfile)):
                 D.update({'dbfile': args.dbfile})
             else:
                 print('Path given for database file does not exist: %s'

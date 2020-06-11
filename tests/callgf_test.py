@@ -7,32 +7,33 @@ import numpy as np
 
 # third party
 import tempfile
-from mapio.gdal import GDALGrid
 from impactutils.io.cmd import get_command_output
-import gfail.pdl as pdl
-from gfail.gfailrun import getGridURL, isURL
 
 # where is this script?
 homedir = os.path.dirname(os.path.abspath(__file__))
-upone = os.path.join(homedir, os.pardir)
+upone = os.path.join(homedir, os.pardir, 'defaultconfigfiles')
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
 def test_callgf(tmpdir):
-    #url = 'https://raw.githubusercontent.com/usgs/groundfailure/master/tests/data/loma_prieta/grid.xml'
-    #shakegrid = os.path.join(datadir, 'loma_prieta', 'grid.xml')
-    trimfile = '%s/loma_prieta/mapping_inputs/ne_10m_ocean/ne_10m_ocean.shp' \
-               % datadir
+    modinputs = os.path.join(datadir, 'ci39462536', 'model_inputs')
     pathcmd = """
         gfail --set-default-paths \
-        -d %s/loma_prieta/model_inputs \
+        -d %s \
         -o [TMPOUT] \
-        -c %s/defaultconfigfiles/models \
-        -m %s/defaultconfigfiles/mapconfig.ini \
+        -c %s \
+        -m %s \
         -tr %s \
-        -pdl %s/blank.ini \
+        -pdl %s \
         -log [TMPOUT] \
-        -db [TMPOUT]/test.db
-    """ % (datadir, upone, upone, trimfile, datadir)
+        -db %s \
+        -pf %s
+    """ % (modinputs,
+    os.path.join(upone, 'models'),
+    os.path.join(upone, 'mapconfig.ini'),
+    os.path.join(modinputs, 'ne_10m_ocean.shp'),
+    os.path.join(modinputs, 'blank.ini'),
+    os.path.join('[TMPOUT]', 'test.db'),
+    os.path.join(modinputs, 'lspop2016.flt'))
 
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
@@ -51,30 +52,36 @@ def test_callgf(tmpdir):
         # Modify paths
         pathcmd = pathcmd.replace('[TMPOUT]', p)
         rc1, so1, se1 = get_command_output(pathcmd)
+        np.testing.assert_equal(True, rc1, se1.decode())
+        np.testing.assert_equal(True, 'New default paths set' in str(so1), so1.decode())
 
-#        # Run model with url
-#        runcmd = "callgf -e %s --dry-run" % url 
-#        rc4, so4, se4 = get_command_output(runcmd)
-#        np.testing.assert_equal(True, rc4, so4.decode())
-        
-        # Run event that should fail because over water
-        runcmd = "callgf -e us2000hg93 --dry-run" 
+        # Run event that should fail because of magnitude
+        runcmd = "callgf -e ci39473968 --dry-run" 
         rc3, so3, se3 = get_command_output(runcmd)
-        np.testing.assert_equal(True, rc3, se3.decode())
-        
-        # Run Loma Prieta from url
-        runcmd = "callgf -e nc216859 --dry-run" 
-        rc2, so2, se2 = get_command_output(runcmd)
-        np.testing.assert_equal(True, rc2, se2.decode())
+        np.testing.assert_equal(True, 'Magnitude check failed' in str(so3), se3.decode())
 
-        # Run event that shold fail magnitude check
-        runcmd = "callgf -e us6000a8nh --dry-run"
-        rc, so, se = get_command_output(runcmd)
-        np.testing.assert_equal(True, rc, se.decode())
+        # Run event that should fail because of magnitude, force to run
+        runcmd = "callgf -e ci39473968 --dry-run -f" 
+        rc5, so5, se5 = get_command_output(runcmd)
+        np.testing.assert_equal(True,
+                                'Completed gfail run of ci39473968' in str(so5),
+                                se5.decode())
+
+        # Force event to run and use certain version and source
+        runcmd = "callgf -e ci39473968 --dry-run -v 4 -s cgs -f" 
+        rc2, so2, se2 = get_command_output(runcmd)
+        np.testing.assert_equal(True,
+                                'Completed gfail run of ci39473968' in str(so5),
+                                se5.decode())
+
+        # Run model with url
+        url = 'https://earthquake.usgs.gov/archive/product/shakemap/ci39473968/ci/1591852561898/download/grid.xml'
+        runcmd = "callgf -e %s --dry-run" % url
+        rc4, so4, se4 = get_command_output(runcmd)
+        np.testing.assert_equal(True, 'Completed gfail run of ci39473968' in str(so4),
+                                so4.decode())
         
-        import pdb; pdb.set_trace()
         #TODO add test to simulate pdl triggering
-        #TODO test version and source options
 
     except Exception as e:
         print(e)

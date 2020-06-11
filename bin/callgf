@@ -41,7 +41,8 @@ matplotlib.use('Agg')
 
 # config parameters required for this program to run
 REQUIRED_CONFIG = ['log_filepath', 'output_filepath',
-                   'trimfile', 'dbfile', 'pdl_config']
+                   'trimfile', 'dbfile', 'pdl_config',
+                   'popfile']
 
 # what are the networks from which we will accept ShakeMap products?
 WHITELIST = ['us', 'ci', 'nc', 'nn', 'hv', 'uw', 'nn', 'uu', 'ak']
@@ -860,7 +861,6 @@ def process_shakemap(args, config):
         'output_filepath': vdir,
         'config_filepath': config['config_filepath'],
         'mapconfig': config['mapconfig'],
-        'mapdata_filepath': config['mapdata_filepath'],
         'popfile': config['popfile'],
         'dry_run': args.dry_run,
         'property_alertlevel': args.property_alertlevel,
@@ -897,10 +897,10 @@ def process_shakemap(args, config):
         logging.info('Getting shakemap info.json...')
 
         # Is the 'event' argument set? (i.e., manual run)
-        if args.event != 'unset':
+        if args.event != 'unset' and not isURL(args.event):
             evid = args.event
         else:
-            # Ohtersie, need to get from PDL command line arguments, which are
+            # Ohterwise, need to get from PDL command line arguments, which are
             # --preferred-eventsource and --preferred-eventsourcecode
             evid = args.preferred_eventsource + args.preferred_eventsourcecode
         logging.info('event id: %s' % evid)
@@ -923,6 +923,7 @@ def process_shakemap(args, config):
             # alternative of not issueing the warning for moderage magnitude
             # events that have poorly constrained shaking levels.
             mur = 1.0
+
         if mur > 0.98:
             # Also, don't set to warning event is old
             expire_warning_days = 2.0
@@ -1246,10 +1247,10 @@ the data_path directory.
         "--eventids", help="List of associated event IDs")
     argparser.add_argument(
         "-v", "--version", type=int, default=None,
-        help="ShakeMap version", metavar='version')
+        help="ShakeMap version (integer)", metavar='version')
     argparser.add_argument(
         "-s", "--source", default='preferred',
-        help="ShakeMap source (us, uu uw, etc.)", metavar='version')
+        help="ShakeMap source (us, uu uw, etc.)", metavar='source')
     argparser.add_argument(
         "--dry-run",
         action='store_true', default=False,

@@ -56,6 +56,10 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False,
         raise Exception('mask is neither a link to a shapefile or a list of \
                         shapely shapes, cannot proceed')
 
+    if len(features) == 0:
+        print('No coastlines in ShakeMap area')
+        return grid2D
+
     tempfilen = os.path.join(tempdir, 'temp.bil')
     tempfile1 = os.path.join(tempdir, 'temp.tif')
     tempfile2 = os.path.join(tempdir, 'temp2.tif')
