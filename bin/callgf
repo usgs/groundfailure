@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from gfail.transfer import gf_transfer
-from gfail.gfailrun import run_gfail, getUncert, getShakefiles
+from gfail.gfailrun import run_gfail, getShakefiles, isURL
 import pytz
 from impactutils.time.ancient_time import HistoricTime as ShakeDateTime
 from shapely.geometry import shape, box, Polygon, Point
@@ -529,25 +529,26 @@ def isstopped(args, config):
 
     """
     dbfile = config['dbfile']
-    conn = connect_database(dbfile)
-    eventdir, shakemap_version = get_event_dir(args, conn)
-    if eventdir is None:
-        stopstat = False
-    else:
-        stopfile = os.path.join(eventdir, 'stop')
-        if os.path.isfile(stopfile):
-            stopstat = True
-        else:
+    if os.path.exists(dbfile):
+        conn = connect_database(dbfile)
+        eventdir, shakemap_version = get_event_dir(args, conn)
+        if eventdir is None:
             stopstat = False
-    if stopstat:
-        if not args.force:
-            fmt = '"stop" file found in %s.  Stopping processing.'
-            logging.info(fmt % (eventdir))
-            sys.exit(1)
         else:
-            fmt = '"stop" file found in %s, but continuing because force'\
-                ' flag was set.'
-            logging.info(fmt % (eventdir))
+            stopfile = os.path.join(eventdir, 'stop')
+            if os.path.isfile(stopfile):
+                stopstat = True
+            else:
+                stopstat = False
+        if stopstat:
+            if not args.force:
+                fmt = '"stop" file found in %s.  Stopping processing.'
+                logging.info(fmt % (eventdir))
+                sys.exit(1)
+            else:
+                fmt = '"stop" file found in %s, but continuing because force'\
+                    ' flag was set.'
+                logging.info(fmt % (eventdir))
 
 
 def process_shakemap(args, config):
@@ -560,7 +561,7 @@ def process_shakemap(args, config):
     # Did someone run this from the command line?
     #     *** False when called by PDL ***
     is_manual = isinstance(args, ArgWrapper)
-
+    
     gridfile = None
     uncertfile = None
 
@@ -623,6 +624,9 @@ def process_shakemap(args, config):
             logging.info('Magnitude check failed')
             if not args.force:
                 sys.exit(1)
+            else:
+                fmt = 'Continuing because force flag was set.'
+                logging.info(fmt)
 
     # ----------------------------------------------------------------------
     # passed initial filters, enter in database before next set of filters
@@ -696,9 +700,9 @@ def process_shakemap(args, config):
         msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
                % gridfile)
         logging.info(msg)
-        if not args.force:
-            update_event_fail(conn, db_id, msg)
-            sys.exit(1)
+        #if not args.force:
+        update_event_fail(conn, db_id, msg)
+        sys.exit(1)
 
     logging.info('Checking for uncertainty gridfile...')
 
@@ -744,20 +748,24 @@ def process_shakemap(args, config):
         msg = ('Shakemap extends outside of latitude range of slope data. '
                'Exiting.')
         logging.info(msg)
-        if not args.force:
-            update_event_fail(conn, db_id, msg)
-            sys.exit(1)
+        #if not args.force:
+        update_event_fail(conn, db_id, msg)
+        sys.exit(1)
     logging.info('Shakemap bounds check passed.')
 
     logging.info('Checking source...')
     if args.preferred_eventsource not in WHITELIST:
         msg = ('Input ShakeMaps must be from an approved list of sources: %s. '
-               'Exiting.' % str(WHITELIST))
+               % str(WHITELIST))
         logging.info(msg)
         if not args.force:
             update_event_fail(conn, db_id, msg)
             sys.exit(1)
-    logging.info('Shakemap from approved source list. Check passed.')
+        else:
+            fmt = 'Continuing because force flag was set.'
+            logging.info(fmt)
+    else:
+        logging.info('Shakemap from approved source list. Check passed.')
 
     # Use lat,lon and source to exclude ShakeMap providers who are playing
     # outside their sandbox
@@ -790,16 +798,23 @@ def process_shakemap(args, config):
         if not args.force:
             update_event_fail(conn, db_id, msg)
             sys.exit(1)
-    logging.info('Source is authoritative. Check passed.')
+        else:
+            fmt = 'Continuing because force flag was set.'
+            logging.info(fmt)
+    else:
+        logging.info('Source is authoritative. Check passed.')
 
     logging.info('Checking to see if ShakeMap is over any land...')
     landfile = config['trimfile']
     if not shakemap_over_land(landfile, grid):
-        msg = 'Input ShakeMap is completely over water. Exiting.'
+        msg = 'Input ShakeMap is completely over water.'
         logging.info(msg)
         if not args.force:
             update_event_fail(conn, db_id, msg)
             sys.exit(1)
+        else:
+            fmt = 'Continuing because force flag was set.'
+            logging.info(fmt)
     else:
         logging.info('Shakemap is over land. Check passed.')
 
@@ -1119,7 +1134,10 @@ def main(args, config):
             targs.status = 'UPDATE'
             targs.action = 'PRODUCT_UPDATED'
             targs.magnitude = detail.magnitude
-            targs.force = args.force
+            if isURL(args.event):
+                targs.force = True
+            else:
+                targs.force = args.force
             targs.directory = tdir
             targs.latitude = detail.latitude
             targs.longitude = detail.longitude
@@ -1185,7 +1203,8 @@ the data_path directory.
     argparser.add_argument(
         "-e", "--event",
         default='unset',
-        help="Event ID of event to run manually",
+        help="Event ID of event to run manually or url to grid.xml file"
+             "If url is provided, -f flag will be activated",
         metavar='EVENTID')
     argparser.add_argument(
         "--type",

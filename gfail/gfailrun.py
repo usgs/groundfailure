@@ -620,16 +620,6 @@ def set_default_paths(args):
             else:
                 print('Path given for population file does not exist: %s'
                       % args.popfile)
-    if args.web_template is not None:
-        if args.web_template == 'reset':
-            D.pop('web_template')
-        else:
-            # check that it's a valid path
-            if os.path.exists(args.web_template):
-                D.update({'web_template': args.web_template})
-            else:
-                print('Path given for webpage templates does not exist: %s'
-                      % args.web_template)
     if args.trimfile is not None:
         if args.trimfile == 'reset':
             D.pop('trim')
