@@ -78,6 +78,11 @@ else
     echo "conda detected, installing $VENV environment..."
 fi
 
+# make defaults higher priority, set that priority to strict
+conda config --add channels 'conda-forge'
+conda config --add channels 'defaults'
+conda config --set channel_priority strict
+
 # echo "PATH:"
 # echo $PATH
 # echo ""
@@ -94,7 +99,7 @@ fi
 echo "Activate base virtual environment"
 conda activate base
 
-# Remove existing shakemap environment if it exists
+# Remove existing gf environment if it exists
 conda remove -y -n $VENV --all
 
 dev_list=(
