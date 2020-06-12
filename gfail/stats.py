@@ -32,7 +32,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
 
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
-                 statprobthresh=None, pop_file=None, stdtype='min',
+                 statprobthresh=None, pop_file=None, stdtype='full',
                  maxP=1.):
     """
     Compute summary stats of a ground failure model output.

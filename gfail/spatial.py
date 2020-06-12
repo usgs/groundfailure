@@ -131,6 +131,8 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         doesn't hang on the command until the file is created which causes
         problems in the next steps.
     """
+    if gdict.xmax < gdict.xmin:
+        raise Exception('quickcut: your geodict xmax is smaller than xmin')
 
     try:
         filegdict = GDALGrid.getFileGeoDict(filename)
@@ -180,7 +182,7 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             uly = egdict.ymax + extrasamp * egdict.dy
             lrx = egdict.xmax + extrasamp * egdict.dx
             lry = egdict.ymin - extrasamp * egdict.dy
-
+            
             cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f \
             %1.8f %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2,
                                               filename, tempname)

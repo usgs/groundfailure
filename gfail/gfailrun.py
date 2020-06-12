@@ -123,6 +123,20 @@ def run_gfail(args):
         shake_file.close()
         filenames.append(shakename)
 
+        # Check that shakemap bounds do not cross 180/-180 line
+        sd = ShakeGrid.getFileGeoDict(shakefile)
+        if sd.xmin > sd.xmax:
+            print('\nShakeMap crosses 180/-180 line, setting bounds so only '
+                  'side with more area is run (temporary fix, too bad world '
+                  'is not flat)')
+            if sd.xmax + 180. > 180-sd.xmin:
+                set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180., sd.xmax)
+            else:
+                set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin, 180.)
+            print('Bounds applied: %s' % set_bounds)
+        else:
+            set_bounds = args.set_bounds
+
         config = args.config
 
         if args.config_filepath is not None:
@@ -174,15 +188,15 @@ def run_gfail(args):
                 print('\t%s' % conf)
             print('\nContinuing...\n')
 
-        if args.set_bounds is not None:
-            if 'zoom' in args.set_bounds:
-                temp = args.set_bounds.split(',')
+        if set_bounds is not None:
+            if 'zoom' in set_bounds:
+                temp = set_bounds.split(',')
                 print('Using %s threshold of %1.1f to cut model bounds'
                       % (temp[1].strip(), float(temp[2].strip())))
                 bounds = get_bounds(shakefile, temp[1].strip(),
                                     float(temp[2].strip()))
             else:
-                temp = eval(args.set_bounds)
+                temp = eval(set_bounds)
                 latmin = temp[0]
                 latmax = temp[1]
                 lonmin = temp[2]
