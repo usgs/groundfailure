@@ -124,16 +124,20 @@ def run_gfail(args):
         filenames.append(shakename)
 
         # Check that shakemap bounds do not cross 180/-180 line
-        sd = ShakeGrid.getFileGeoDict(shakefile)
-        if sd.xmin > sd.xmax:
-            print('\nShakeMap crosses 180/-180 line, setting bounds so only '
-                  'side with more area is run (temporary fix, too bad world '
-                  'is not flat)')
-            if sd.xmax + 180. > 180-sd.xmin:
-                set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180., sd.xmax)
+
+        if args.set_bounds is None:
+            sd = ShakeGrid.getFileGeoDict(shakefile)
+            if sd.xmin > sd.xmax:
+                print('\nShakeMap crosses 180/-180 line, setting bounds so only '
+                      'side with more area is run (temporary fix, too bad world '
+                      'is not flat)')
+                if sd.xmax + 180. > 180-sd.xmin:
+                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180., sd.xmax)
+                else:
+                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin, 180.)
+                print('Bounds applied: %s' % set_bounds)
             else:
-                set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin, 180.)
-            print('Bounds applied: %s' % set_bounds)
+                set_bounds = args.set_bounds
         else:
             set_bounds = args.set_bounds
 

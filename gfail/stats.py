@@ -219,26 +219,33 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             hlim = cell_area_km2*N*maxP
             Hagg['hlim_%1.2fg' % (shaket/100.,)] = hlim
             if stdgrid2D is not None:
-                totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
-                totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
-                if stdtype == 'max':
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmax
-                elif stdtype == 'min':
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmin
-                elif stdtype == 'mean':
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = (totalmax+totalmin)/2.
+                if np.nanmax(std) > 0.:
+                    totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
+                    totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
+                    if stdtype == 'max':
+                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmax
+                    elif stdtype == 'min':
+                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmin
+                    elif stdtype == 'mean':
+                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = (totalmax+totalmin)/2.
+                    else:
+                        modz = model.copy()
+                        modz[np.isnan(model)] = 0.
+                        range1, sill1 = semivario(modz, probthresh)
+                        stdz = std.copy()
+                        stdz[model < probthresh] = 0.
+                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = cell_area_km2 * np.sqrt(svar(
+                                stdz, range1, sill1))
+                    var = Hagg['hagg_std_%1.2fg' % (shaket/100.,)]**2.
+                    # Beta distribution shape factors
+                    Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
+                    Hagg['q_hagg_%1.2fg' % (shaket/100.,)] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
                 else:
-                    modz = model.copy()
-                    modz[np.isnan(model)] = 0.
-                    range1, sill1 = semivario(modz, probthresh)
-                    stdz = std.copy()
-                    stdz[model < probthresh] = 0.
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = cell_area_km2 * np.sqrt(svar(
-                            stdz, range1, sill1))
-                var = Hagg['hagg_std_%1.2fg' % (shaket/100.,)]**2.
-                # Beta distribution shape factors
-                Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
-                Hagg['q_hagg_%1.2fg' % (shaket/100.,)] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
+                    print('No std values above threshold, skipping uncertainty '
+                          'and filling with zeros')
+                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = 0.
+                    Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = 0.
+                    Hagg['q_hagg_%1.2fg' % (shaket/100.,)] = 0.
     else:
         mu = np.sum(model[model >= probthresh] * cell_area_km2)
         Hagg['hagg_0.00g'] = mu
@@ -248,26 +255,31 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         hlim = cell_area_km2*N*maxP
         Hagg['hlim_0.00g'] = hlim
         if stdgrid2D is not None:
-            totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
-            totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
-            if stdtype == 'max':
-                Hagg['hagg_std_0.00g'] = totalmax
-            elif stdtype == 'min':
-                Hagg['hagg_std_0.00g'] = totalmin
-            elif stdtype == 'mean':
-                Hagg['std_0.00g'] = (totalmax+totalmin)/2.
+            if np.nanmax(std) > 0.:
+                totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
+                totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
+                if stdtype == 'max':
+                    Hagg['hagg_std_0.00g'] = totalmax
+                elif stdtype == 'min':
+                    Hagg['hagg_std_0.00g'] = totalmin
+                elif stdtype == 'mean':
+                    Hagg['std_0.00g'] = (totalmax+totalmin)/2.
+                else:
+                    modz = model.copy()
+                    modz[np.isnan(model)] = 0.
+                    range1, sill1 = semivario(modz, probthresh)
+                    stdz = std.copy()
+                    stdz[model < probthresh] = 0.
+                    Hagg['std_0.00g'] = cell_area_km2 * np.sqrt(svar(stdz, range1, sill1))
+    
+                var = Hagg['hagg_std_0.00g']**2.
+                # Beta distribution shape factors
+                Hagg['p_hagg_0.00g'] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
+                Hagg['q_hagg_0.00g'] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
             else:
-                modz = model.copy()
-                modz[np.isnan(model)] = 0.
-                range1, sill1 = semivario(modz, probthresh)
-                stdz = std.copy()
-                stdz[model < probthresh] = 0.
-                Hagg['std_0.00g'] = cell_area_km2 * np.sqrt(svar(stdz, range1, sill1))
-
-            var = Hagg['hagg_std_0.00g']**2.
-            # Beta distribution shape factors
-            Hagg['p_hagg_0.00g'] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
-            Hagg['q_hagg_0.00g'] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
+                Hagg['hagg_std_0.00g'] = 0.
+                Hagg['p_hagg_0.00g'] = 0.
+                Hagg['q_hagg_0.00g'] = 0.
 
     return Hagg
 
@@ -305,8 +317,6 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
 
     # If probthresh defined, zero out any areas less than or equal to
     # probthresh before proceeding
-    if type(shakethresh) != list and type(shakethresh) != np.ndarray:
-        shakethresh = [shakethresh]
     if probthresh is not None:
         origdata = grid.getData()
         moddat = origdata.copy()
@@ -320,6 +330,9 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         moddat = grid.getData().copy()
         if stdgrid2D is not None:
             stddat = stdgrid2D.getData().copy()
+
+    if type(shakethresh) != list and type(shakethresh) != np.ndarray:
+        shakethresh = [shakethresh]
 
     mdict = grid.getGeoDict()
 
@@ -400,27 +413,34 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             elim = maxP*np.nansum(popdat * prop * threshmult)
             exp_pop['elim_%1.2fg' % (shaket/100.,)] = elim
             if stdgrid2D is not None:
-                datstd2 = popdat * propstd * modresampstd * threshmult
-                totalmax = np.nansum(datstd2)
-                totalmin = np.sqrt(np.nansum(datstd2**2.))
-                if stdtype == 'max':
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmax
-                elif stdtype == 'min':
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmin
-                elif stdtype == 'mean':
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
+                if np.nanmax(modresampstd) > 0.:
+                    datstd2 = popdat * propstd * modresampstd * threshmult
+                    totalmax = np.nansum(datstd2)
+                    totalmin = np.sqrt(np.nansum(datstd2**2.))
+                    if stdtype == 'max':
+                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmax
+                    elif stdtype == 'min':
+                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmin
+                    elif stdtype == 'mean':
+                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
+                    else:
+                        dat2z = dat2.copy()
+                        dat2z[np.isnan(dat2)] = 0.
+                        range1, sill1 = semivario(dat2z, threshold=probthresh)
+                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
+                                datstd2, range1, sill1))
+    
+                    # Beta distribution shape factors
+                    var = exp_pop['exp_std_%1.2fg' % (shaket/100.,)]**2.
+                    exp_pop['p_exp_%1.2fg' % (shaket/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
+                    exp_pop['q_exp_%1.2fg' % (shaket/100.,)] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
                 else:
-                    dat2z = dat2.copy()
-                    dat2z[np.isnan(dat2)] = 0.
-                    range1, sill1 = semivario(dat2z, threshold=probthresh)
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
-                            datstd2, range1, sill1))
-
-                # Beta distribution shape factors
-                var = exp_pop['exp_std_%1.2fg' % (shaket/100.,)]**2.
-                exp_pop['p_exp_%1.2fg' % (shaket/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
-                exp_pop['q_exp_%1.2fg' % (shaket/100.,)] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
-
+                    print('no std values above zero, filling with zeros')
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = 0.
+                    exp_pop['p_exp_%1.2fg' % (shaket/100.,)] = 0.
+                    exp_pop['q_exp_%1.2fg' % (shaket/100.,)] = 0.
+                    
+                    
     else:
         dat2 = popdat * prop * modresamp
         mu = np.nansum(dat2)
@@ -428,27 +448,33 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         elim = maxP*np.nansum(popdat * prop)
         exp_pop['elim_0.00g'] = elim
         if stdgrid2D is not None:
-            datstd2 = popdat * propstd * modresampstd
-            totalmax = np.nansum(datstd2)
-            totalmin = np.sqrt(np.nansum(datstd2**2.))
-            if stdtype == 'max':
-                exp_pop['exp_std_0.00g'] = totalmax
-            elif stdtype == 'min':
-                exp_pop['exp_std_0.00g'] = totalmin
-            elif stdtype == 'mean':
-                exp_pop['exp_std_0.00g'] = (totalmax+totalmin)/2.
+            if np.nanmax(modresampstd) > 0.:
+                datstd2 = popdat * propstd * modresampstd
+                totalmax = np.nansum(datstd2)
+                totalmin = np.sqrt(np.nansum(datstd2**2.))
+                if stdtype == 'max':
+                    exp_pop['exp_std_0.00g'] = totalmax
+                elif stdtype == 'min':
+                    exp_pop['exp_std_0.00g'] = totalmin
+                elif stdtype == 'mean':
+                    exp_pop['exp_std_0.00g'] = (totalmax+totalmin)/2.
+                else:
+                    dat2z = dat2.copy()
+                    dat2z[np.isnan(dat2)] = 0.
+                    range1, sill1 = semivario(dat2z, threshold=probthresh)
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
+                            datstd2, range1, sill1))
+                        
+                # Beta distribution shape factors
+                var = exp_pop['exp_std_0.00g']**2.
+                exp_pop['exp_std_0.00g'] = (mu/elim)*((elim*mu-mu**2)/var-1)
+                exp_pop['exp_std_0.00g'] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
+                #exp_pop['exp_std_0.00g'] = np.nansum(popdat * propstd * modresampstd)
             else:
-                dat2z = dat2.copy()
-                dat2z[np.isnan(dat2)] = 0.
-                range1, sill1 = semivario(dat2z, threshold=probthresh)
-                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
-                        datstd2, range1, sill1))
-                    
-            # Beta distribution shape factors
-            var = exp_pop['exp_std_0.00g']**2.
-            exp_pop['exp_std_0.00g'] = (mu/elim)*((elim*mu-mu**2)/var-1)
-            exp_pop['exp_std_0.00g'] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
-            #exp_pop['exp_std_0.00g'] = np.nansum(popdat * propstd * modresampstd)
+                print('no std values above zero, filling with zeros')
+                exp_pop['exp_std_0.00g'] = 0.
+                exp_pop['p_exp_0.00g'] = 0.
+                exp_pop['q_exp_0.00g'] = 0.
 
     return exp_pop
 

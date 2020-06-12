@@ -768,9 +768,10 @@ def view_database(database, starttime=None, endtime=None,
         df = df.iloc[(numevents*-1):]
 
     # Now that have requested dataframe, make outputs
-    success = df.loc[df['note'] == '']
+    success = df.loc[(df['note'] == '') | (df['note'].str.contains('adjusted to'))]
     fail = df.loc[df['note'].str.contains('fail')]
-    notmet = df.loc[(~df['note'].str.contains('fail')) & (df['note'] != '')]
+    notmet = df.loc[(~df['note'].str.contains('fail')) & (df['note'] != '') &
+                    (~df['note'].str.contains('adjusted to'))]
 
     if len(df) == 0:
         print('No matching GF runs found')

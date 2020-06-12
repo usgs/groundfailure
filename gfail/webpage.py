@@ -1043,6 +1043,11 @@ def get_zoomextent(grid, propofmax=0.3):
     maximum = np.nanmax(grid.getData())
 
     xmin, xmax, ymin, ymax = grid.getBounds()
+    
+    if np.isnan(maximum):
+        # If no finite values, use entire extent for zoom
+        return dict(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
+
     lons = np.linspace(xmin, xmax, grid.getGeoDict().nx)
     lats = np.linspace(ymax, ymin, grid.getGeoDict().ny)
 
