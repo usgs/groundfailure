@@ -10,6 +10,8 @@ import os
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
+from scipy.signal import convolve
+from numpy import matlib
 
 # local imports
 from mapio.shake import ShakeGrid
@@ -30,7 +32,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
 
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
-                 statprobthresh=None, pop_file=None, stdtype='mean',
+                 statprobthresh=None, pop_file=None, stdtype='min',
                  maxP=1.):
     """
     Compute summary stats of a ground failure model output.
@@ -50,7 +52,8 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
         pop_file (str): File path to population file to use to compute exposure
             stats
         stdtype (str): assumption of spatial correlation used to compute
-            the stdev of the statistics, 'max', 'min' or 'mean' of max and min
+            the stdev of the statistics, 'max', 'min' or 'mean' of max and min,
+            or full (default) estimates std considering covariance
         maxP = maximum possible value of P (1 default, but coverge models
             have smaller values, 0.487 and 0.256 for LQ and LS)
 
@@ -124,7 +127,7 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
 
 def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                 shakethreshtype='pga', shakethresh=0.0, stdgrid2D=None,
-                stdtype='mean', maxP=1.):
+                stdtype='full', maxP=1.):
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the
     probability * area of grid cell For models that compute areal coverage,
@@ -145,8 +148,8 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         stdgrid2D: grid2D object of model standard deviations (optional)
         stdtype (str): assumption of spatial correlation used to compute
             the stdev of the statistics, 'max', 'min', 'mean' of max and min,
-            or 'full' (default) which estimates the range and accounts for
-            covariance
+            or 'full' (default) which estimates the range of correlation and
+            accounts for covariance
         maxP (float): the maximum possible probability of the model
 
     Returns:
@@ -225,9 +228,13 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                 elif stdtype == 'mean':
                     Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    range1, sill1 = semivario(model, probthresh)
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = svar(
-                            model, std, range1, sill1)
+                    modz = model.copy()
+                    modz[np.isnan(model)] = 0.
+                    range1, sill1 = semivario(modz, probthresh)
+                    stdz = std.copy()
+                    stdz[model < probthresh] = 0.
+                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = cell_area_km2 * np.sqrt(svar(
+                            stdz, range1, sill1))
                 var = Hagg['hagg_std_%1.2fg' % (shaket/100.,)]**2.
                 # Beta distribution shape factors
                 Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
@@ -250,10 +257,14 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             elif stdtype == 'mean':
                 Hagg['std_0.00g'] = (totalmax+totalmin)/2.
             else:
-                range1, sill1 = semivario(model, probthresh)
-                Hagg['std_0.00g'] = svar(model, std, range1, sill1)
+                modz = model.copy()
+                modz[np.isnan(model)] = 0.
+                range1, sill1 = semivario(modz, probthresh)
+                stdz = std.copy()
+                stdz[model < probthresh] = 0.
+                Hagg['std_0.00g'] = cell_area_km2 * np.sqrt(svar(stdz, range1, sill1))
 
-            var = Hagg['hagg_std_0.00g']
+            var = Hagg['hagg_std_0.00g']**2.
             # Beta distribution shape factors
             Hagg['p_hagg_0.00g'] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
             Hagg['q_hagg_0.00g'] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
@@ -263,7 +274,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
 
 def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
                   shakethresh=0.0, probthresh=None, stdgrid2D=None,
-                  stdtype='mean', maxP=1.):
+                  stdtype='full', maxP=1.):
     """
     Get exposure-based statistics.
 
@@ -280,7 +291,8 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             probabilities less than or equal to this value
         stdgrid2D: grid2D object of model standard deviations (optional)
         stdtype (str): assumption of spatial correlation used to compute
-            the stdev of the statistics, 'max', 'min' or 'mean' of max and min
+            the stdev of the statistics, 'max', 'min' or 'mean' of max and min,
+            'full' estimates the std with covariance
 
     Returns:
         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
@@ -398,9 +410,11 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
                 elif stdtype == 'mean':
                     exp_pop['exp_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
                 else:
-                    range1, sill1 = semivario(dat2)
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = svar(dat2,
-                            datstd2, range1, sill1)
+                    dat2z = dat2.copy()
+                    dat2z[np.isnan(dat2)] = 0.
+                    range1, sill1 = semivario(dat2z, threshold=probthresh)
+                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
+                            datstd2, range1, sill1))
 
                 # Beta distribution shape factors
                 var = exp_pop['exp_std_%1.2fg' % (shaket/100.,)]**2.
@@ -424,11 +438,11 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             elif stdtype == 'mean':
                 exp_pop['exp_std_0.00g'] = (totalmax+totalmin)/2.
             else:
-                range1, sill1 = semivario(dat2)
-                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = svar(dat2,
-                        datstd2, range1, sill1)
-                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = semivario(propstd,
-                        popdat, threshmult)
+                dat2z = dat2.copy()
+                dat2z[np.isnan(dat2)] = 0.
+                range1, sill1 = semivario(dat2z, threshold=probthresh)
+                exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
+                        datstd2, range1, sill1))
                     
             # Beta distribution shape factors
             var = exp_pop['exp_std_0.00g']**2.
@@ -439,10 +453,10 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     return exp_pop
 
 
-def semivario(model, threshold=0., maxlag=50, npts=1000, ndists=200,
-              nvbins=15, makeplots=False):
+def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
+              nvbins=20, makeplots=False):
     """
-    #TODO this should really be done in a distance preserving project, but
+    #TODO this should really be done in a distance preserving projection, but
     is an approximation for now
 
     Quickly estimate semivariogram with by selecting seed points and then
@@ -462,21 +476,24 @@ def semivario(model, threshold=0., maxlag=50, npts=1000, ndists=200,
         range, sill
 
     """
+    if threshold is None:
+        threshold = 0.
+    
     #TODO deal with cases where there are no values above threshold
     if np.nanmax(model) < threshold:
         raise Exception('No values above threshold in model')
 
     # prepare data
     nrows, ncols = np.shape(model)
-    rows = np.matlib.repmat(np.arange(nrows), ncols, 1).T
-    cols = np.matlib.repmat(np.arange(ncols), nrows, 1)
+    rows = matlib.repmat(np.arange(nrows), ncols, 1).T
+    cols = matlib.repmat(np.arange(ncols), nrows, 1)
     values = model.flatten()
     rowsf = rows.flatten()
     colsf = cols.flatten()
 
     # Select npts seed points in each bin
     indx = np.where(values > threshold)[0]
-    picks = np.random.choice(len(indx), size=np.min((npts, int(len(indx)/2))),
+    picks = np.random.choice(len(indx), size=np.min((npts, len(indx))),
                              replace=False)
     seedpts = indx[picks]
     
@@ -513,9 +530,10 @@ def semivario(model, threshold=0., maxlag=50, npts=1000, ndists=200,
         subs[b] = np.nansum(inrange)
         N[b] = len(inrange)
     semiv = 1./(2*N)*subs
-
     # Fit model using weighting by 1/N to weigh bins with more samples more highly
-    popt, pcov = curve_fit(spherical, binmid, semiv, sigma=1./N,
+    popt, pcov = curve_fit(spherical, binmid[np.isfinite(semiv)],
+                           semiv[np.isfinite(semiv)],
+                           sigma=1./N[np.isfinite(semiv)],
                            absolute_sigma=False, bounds=(0, [maxlag, 1.]))
     if makeplots:
         plt.figure()    
@@ -526,7 +544,7 @@ def semivario(model, threshold=0., maxlag=50, npts=1000, ndists=200,
 
     range2, sill2 = popt
     
-    return range2, sill2 #vals
+    return range2, sill2
 
 
 def spherical(lag, range1, sill):#, nugget=0):
@@ -547,37 +565,42 @@ def spherical(lag, range1, sill):#, nugget=0):
     return out
 
 
-def svar(model, stds, range1, sill1, corrthresh=0.1):
+def svar(stds, range1, sill1):
     """
     Estimate variance of aggregate statistic using correlation from 
     semivariogram and std values for each pair of cells that are within range
-    of each other
+    of each other, add up quickly by creating kernal of the correlations and
+    convolving with the image, then multiply by 2*std to equal sum of 2*std1*std2*corr
+    over each valid cell
     
+    Args:
+        stds:
+        range1:
+        sill1:
+    
+    Returns:
+        variance of aggregate statistic
     
     """
-    # prepare data
-    nrows, ncols = np.shape(model)
-    rows = np.matlib.repmat(np.arange(nrows), ncols, 1).T
-    cols = np.matlib.repmat(np.arange(ncols), nrows, 1)
-    values = model.flatten()
-    stdvalues = stds.flatten()
-    rowsf = rows.flatten()
-    colsf = cols.flatten()
+    range5 = int(np.ceil(range1))
+    # Prepare kernal that is size of range of spherical equation
+    nrows = 2*range5 + 1
+    ncols = 2*range5 + 1
+    # get distance in row and col from center point
+    rows = matlib.repmat(np.arange(nrows), ncols, 1).T - (range5)
+    cols = matlib.repmat(np.arange(ncols), nrows, 1) - (range5)
+    dists = np.sqrt(rows**2 + cols**2)
+    # Convert from semivariance to correlation and build kernal
+    kernal = (sill1-spherical(dists, range1, sill1))/sill1
     
-    var2 = 0 # Simulated using correlation estimated from semivariogram and
-    #std for each cell, only include if two cells are within range of each other
-
-    #TODO vectorize/make more efficient
-    corrs = []
-    for i in range(len(values)):
-        for j in range(len(values)):
-            if i == j:
-                var2 += stdvalues[i]**2
-            elif i>j:
-                dist = np.sqrt((rowsf[i]-rowsf[j])**2 + (colsf[i]-colsf[j]))
-                sigij = sill1-spherical(dist, range1, sill1)
-                corr = sigij/sill1
-                corrs.append(corr)
-                if dist < range1 and corr > corrthresh:
-                    var2 += 2 * corr*stdvalues[i]*stdvalues[j]
+    # convolve with stds, equivalent to sum of corr * std at each pixel for within range1
+    #out = convolve2d(stds, kernal, mode='same')
+    # Replace all nans with zeros so can use fft convolve
+    stdzeros = stds.copy()
+    stdzeros[np.isnan(stds)] = 0.
+    out = convolve(stdzeros, kernal, mode='same')
+    # multiply by 2 * stds
+    full1 = 2 * out * stds
+    # add up
+    var2 = np.nansum(full1)
     return var2

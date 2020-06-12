@@ -153,7 +153,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 statprobthresh=statprobthresh,
                 pop_file=pop_file,
                 shakethreshtype=shakethreshtype,
-                stdtype='mean', maxP=maxP)
+                maxP=maxP)
 
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
@@ -278,7 +278,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 pop_file=pop_file,
                 shakethreshtype=shakethreshtype,
                 statprobthresh=statprobthresh,
-                stdtype='mean', maxP=maxP)
+                maxP=maxP)
 
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
