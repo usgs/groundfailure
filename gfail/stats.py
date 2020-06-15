@@ -30,6 +30,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
                                    'sans-serif']
 
 
+
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
                  statprobthresh=None, pop_file=None, stdtype='full',
@@ -517,8 +518,10 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     rowsf = rows.flatten()
     colsf = cols.flatten()
 
-    # Select npts seed points in each bin
+    # Select npts seed points
     indx = np.where(values > threshold)[0]
+    np.random.seed(47)  # Always use same seed so results are repeatable
+    # just select all points if there aren't npts above the threshold
     picks = np.random.choice(len(indx), size=np.min((npts, len(indx))),
                              replace=False)
     seedpts = indx[picks]
@@ -528,10 +531,14 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     lags = np.array([])
     diffs = np.array([])
     vals = np.array([])
-    for seed in seedpts:
+    seednums = range(len(seedpts))
+    seednums2 = reversed(range(len(seedpts)))
+    for seed, seednum1, seednum2 in zip(seedpts, seednums, seednums2):
         row1 = rowsf[seed] 
         col1 = colsf[seed]
+        np.random.seed(seednum1)
         addr = np.random.randint(np.max((-maxlag, -row1)), np.min((maxlag, nrows-row1)), size=ndists)
+        np.random.seed(seednum2)
         addc = np.random.randint(np.max((-maxlag, -col1)), np.min((maxlag, ncols-col1)), size=ndists)
         indr = row1 + addr
         indc = col1 + addc
