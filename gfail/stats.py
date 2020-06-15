@@ -230,9 +230,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                     elif stdtype == 'mean':
                         Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = (totalmax+totalmin)/2.
                     else:
-                        modz = model.copy()
-                        modz[np.isnan(model)] = 0.
-                        range1, sill1 = semivario(modz, probthresh)
+                        range1, sill1 = semivario(model, probthresh)
                         stdz = std.copy()
                         stdz[model < probthresh] = 0.
                         Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = cell_area_km2 * np.sqrt(svar(
@@ -267,7 +265,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                     Hagg['std_0.00g'] = (totalmax+totalmin)/2.
                 else:
                     modz = model.copy()
-                    modz[np.isnan(model)] = 0.
+                    modz[np.isnan(model)] = -1.
                     range1, sill1 = semivario(modz, probthresh)
                     stdz = std.copy()
                     stdz[model < probthresh] = 0.
