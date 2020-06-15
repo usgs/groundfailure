@@ -15,7 +15,7 @@ import tempfile
 # third party imports
 import simplekml
 from folium.utilities import mercator_transform
-from gfail.utilities import parseConfigLayers, get_alert
+from gfail.utilities import parseConfigLayers, get_alert, get_rangebeta
 from gfail.stats import computeStats
 from mapio.shake import ShakeGrid
 
@@ -25,6 +25,7 @@ from impactutils.textformat.text import set_num_precision
 # import pytz
 
 from gfail.utilities import loadlayers
+
 # from gfail.utilities import is_grid_point_source
 
 
@@ -51,7 +52,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            prefLS='Nowicki Jessee and others (2017)',
            prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True, point=True,
-           pager_alert='', eventsource='', eventsourcecode=''):
+           pager_alert='', eventsource='', eventsourcecode='',
+           createpngs=True):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
 
@@ -192,16 +194,43 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             ls_hq = None
             ls_ep = None
             ls_eq = None
+            ls_haz_1std_range = None
+            ls_haz_2std_range = None
+            ls_pop_1std_range = None
+            ls_pop_2std_range = None
             
             if stdgrid2D is not None and title==prefLS:
+                ph = stats['p_hagg_0.10g']
+                qh = stats['q_hagg_0.10g']
+                pe = stats['p_exp_0.10g']
+                qe = stats['q_exp_0.10g']
+                hmax = stats['hlim_0.10g']
+                emax = stats['elim_0.10g']
+                
                 ls_haz_std = float("%.4f" % stats['hagg_std_0.10g'])
                 ls_pop_std = float("%.4f" % stats['exp_std_0.10g'])
-                ls_hlim = float("%.4f" % stats['hlim_0.10g'])
-                ls_elim = float("%.4f" % stats['elim_0.10g'])
-                ls_hp = float("%.4f" % stats['p_hagg_0.10g'])
-                ls_hq = float("%.4f" % stats['q_hagg_0.10g'])
-                ls_ep = float("%.4f" % stats['p_exp_0.10g'])
-                ls_eq = float("%.4f" % stats['q_exp_0.10g'])
+                ls_hlim = float("%.4f" % hmax)
+                ls_elim = float("%.4f" % emax)
+                ls_hp = float("%.4f" % ph)
+                ls_hq = float("%.4f" % qh)
+                ls_ep = float("%.4f" % pe)
+                ls_eq = float("%.4f" % qe)
+
+                #Add bar uncertainty extents here using p and q if applicable
+                if ph > 0. and qh > 0.:  # make sure not a non-event/placeholder
+                    h68 = get_rangebeta(ph, qh, prob=0.6827, minlim=0.,
+                                        maxlim=hmax)
+                    h95 = get_rangebeta(ph, qh, prob=0.9545, minlim=0.,
+                                        maxlim=hmax)
+                    ls_haz_1std_range = h68
+                    ls_haz_2std_range = h95
+                if pe > 0. and qe > 0.:  # make sure not a non-event/placeholder
+                    e68 = get_rangebeta(pe, qe, prob=0.6827, minlim=0.,
+                                        maxlim=emax)
+                    e95 = get_rangebeta(pe, qe, prob=0.9545, minlim=0.,
+                                        maxlim=emax)
+                    ls_pop_1std_range = e68
+                    ls_pop_2std_range = e95
 
             edict = {
                 'id': id1,
@@ -238,7 +267,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     'p_hagg': ls_hp,
                     'q_hagg': ls_hq,
                     'p_exp': ls_ep,
-                    'q_exp': ls_eq
+                    'q_exp': ls_eq,
+                    'hagg_1std': ls_haz_1std_range,
+                    'hagg_2std': ls_haz_2std_range,
+                    'pop_1std': ls_pop_1std_range,
+                    'pop_2std': ls_pop_2std_range,
                 },
                 'longref': metadata['longref'],
                 'parameters': metadata['parameters'],
@@ -318,16 +351,43 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             lq_hq = None
             lq_ep = None
             lq_eq = None
+            lq_haz_1std_range = None
+            lq_haz_2std_range = None
+            lq_pop_1std_range = None
+            lq_pop_2std_range = None
             
             if stdgrid2D is not None and title==prefLQ:
+                ph = stats['p_hagg_0.10g']
+                qh = stats['q_hagg_0.10g']
+                pe = stats['p_exp_0.10g']
+                qe = stats['q_exp_0.10g']
+                hmax = stats['hlim_0.10g']
+                emax = stats['elim_0.10g']
+
                 lq_haz_std = float("%.2f" % stats['hagg_std_0.10g'])
                 lq_pop_std = float("%.2f" % stats['exp_std_0.10g'])
-                lq_hlim = float("%.4f" % stats['hlim_0.10g'])
-                lq_elim = float("%.4f" % stats['elim_0.10g'])
-                lq_hp = float("%.4f" % stats['p_hagg_0.10g'])
-                lq_hq = float("%.4f" % stats['q_hagg_0.10g'])
-                lq_ep = float("%.4f" % stats['p_exp_0.10g'])
-                lq_eq = float("%.4f" % stats['q_exp_0.10g'])
+                lq_hlim = float("%.4f" % hmax)
+                lq_elim = float("%.4f" % emax)
+                lq_hp = float("%.4f" % ph)
+                lq_hq = float("%.4f" % qh)
+                lq_ep = float("%.4f" % pe)
+                lq_eq = float("%.4f" % qe)
+
+                #Add bar uncertainty extents here using p and q if applicable
+                if ph > 0. and qh > 0.:  # make sure not a non-event/placeholder
+                    h68 = get_rangebeta(ph, qh, prob=0.6827, minlim=0.,
+                                        maxlim=hmax)
+                    h95 = get_rangebeta(ph, qh, prob=0.9545, minlim=0.,
+                                        maxlim=hmax)
+                    lq_haz_1std_range = h68
+                    lq_haz_2std_range = h95
+                if pe > 0. and qe > 0.:  # make sure not a non-event/placeholder
+                    e68 = get_rangebeta(pe, qe, prob=0.6827, minlim=0.,
+                                        maxlim=emax)
+                    e95 = get_rangebeta(pe, qe, prob=0.9545, minlim=0.,
+                                        maxlim=emax)
+                    lq_pop_1std_range = e68
+                    lq_pop_2std_range = e95
 
             edict = {
                 'id': id1,
@@ -364,7 +424,12 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     'p_hagg': lq_hp,
                     'q_hagg': lq_hq,
                     'p_exp': lq_ep,
-                    'q_exp': lq_eq
+                    'q_exp': lq_eq,
+                    'hagg_1std': lq_haz_1std_range,
+                    'hagg_2std': lq_haz_2std_range,
+                    'pop_1std': lq_pop_1std_range,
+                    'pop_2std': lq_pop_2std_range,
+                    
                 },
                 'longref': metadata['longref'],
                 'parameters': metadata['parameters'],
@@ -415,8 +480,9 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 lq['bin_colors'] = list(colorlistLQ)
 
     # Create pngs
-    pngfiles = create_png(outfolder, lsmodels, lqmodels)
-    filenames.append(pngfiles)
+    if createpngs:
+        pngfiles = create_png(outfolder, lsmodels, lqmodels)
+        filenames.append(pngfiles)
 
     # If PAGER alert is pending, overwrite our alerts
     if pager_alert == 'pending':
@@ -595,7 +661,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
     return filenames
 
 
-def create_info(event_dir, lsmodels=None, lqmodels=None,
+def create_info(event_dir, lsmodels, lqmodels,
                 eventsource='', eventsourcecode='', point=True):
     """Create info.json for ground failure product.
 
@@ -619,200 +685,58 @@ def create_info(event_dir, lsmodels=None, lqmodels=None,
 
     files = os.listdir(event_dir)
 
-    if lsmodels is None and lqmodels is None:
-
-        # Read in the "preferred" model for landslides and liquefaction
-        ls_mod_file = [f2 for f2 in files if 'jessee_2017.hdf5' in f2]
-        if len(ls_mod_file) == 1:
-            ls_file = os.path.join(event_dir, ls_mod_file[0])
-            ls_mod = loadlayers(ls_file)
-            # get extents
-            lsext = get_zoomextent(ls_mod['model']['grid'])
-        else:
-            raise OSError("Preferred landslide model result not found.")
-        lq_mod_file = [f2 for f2 in files if 'zhu_2017_general.hdf5' in f2]
-        if len(lq_mod_file) == 1:
-            lq_file = os.path.join(event_dir, lq_mod_file[0])
-            lq_mod = loadlayers(lq_file)
-            # get extents
-            lqext = get_zoomextent(lq_mod['model']['grid'])
-        else:
-            raise OSError("Preferred liquefaction model result not found.")
-
-        # Read in extents
-        ls_extent_file = [
-            f2 for f2 in files if 'jessee_2017_extent.json' in f2]
-        if len(ls_extent_file) == 1:
-            ls_file = os.path.join(event_dir, ls_extent_file[0])
-            with open(ls_file) as f:
-                jessee_extent = json.load(f)
-        else:
-            raise OSError("Landslide extent not found.")
-        lq_extent_file = [
-            f2 for f2 in files if 'zhu_2017_general_extent.json' in f2]
-        if len(lq_extent_file) == 1:
-            lq_file = os.path.join(event_dir, lq_extent_file[0])
-            with open(lq_file) as f:
-                zhu_extent = json.load(f)
-        else:
-            raise OSError("Liquefaction extent not found.")
-
-        # Read in default paths to get location of the population grid
-        default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
-        defaults = ConfigObj(default_file)
-        pop_file = defaults['popfile']
-
-        # Landslide alert statistics
-        ls_stats = computeStats(
-            ls_mod['model']['grid'],
-            shakefile=shakefile,
-            shakethresh=10.0,
-            shakethreshtype='pga',
-            statprobthresh=None,
-            pop_file=pop_file)
-
-        # Liquefaction alert statistics
-        lq_stats = computeStats(
-            lq_mod['model']['grid'],
-            shakefile=shakefile,
-            shakethresh=10.0,
-            shakethreshtype='pga',
-            statprobthresh=None,
-            pop_file=pop_file)
-
-        # Get alert levels
-        ls_haz_level = ls_stats['hagg_0.10g']
-        lq_haz_level = lq_stats['hagg_0.10g']
-        ls_pop_level = ls_stats['exp_pop_0.10g']
-        lq_pop_level = lq_stats['exp_pop_0.10g']
-
-        # If hazard alert level is less than 0.1, zero it out
-        # (due to rounding to 2 sig digits later, this can give
-        #  overly precise results, e.g., 0.000012 if we don't clip,
-        #  but this doesn't happen with pop alerts because they are
-        #  integers)
-        if ls_haz_level < 0.1:
-            ls_haz_level = 0.0
-        if lq_haz_level < 0.1:
-            lq_haz_level = 0.0
-
-        # Convert levels into categories
-        alert_info = get_alert(ls_haz_level, lq_haz_level,
-                               ls_pop_level, lq_pop_level)
-        # Unpack info (I think we are now assuming that the statements will be
-        # constructed on the website and so we don't need them here)
-        ls_haz_alert, ls_pop_alert, lq_haz_alert, lq_pop_alert, \
-            ls_alert, lq_alert = alert_info
-
-        if lsmodels is None:
-            lsmodels = [{
-                'id': 'nowicki_jessee_2017',
-                'title': 'Nowicki Jessee and others (2017)',
-                'overlay': 'jessee_2017.png',
-                'extent': jessee_extent,
-                'units': "Proportion of area affected",
-                'preferred': True,
-                'alert': ls_alert,
-                'hazard_alert': {
-                    'color': ls_haz_alert,
-                    'value': set_num_precision(ls_haz_level, 2, 'float'),
-                    'parameter': 'Aggregate Hazard',
-                    'units': 'km^2'
-                },
-                'population_alert': {
-                    'color': ls_pop_alert,
-                    'value': set_num_precision(ls_pop_level, 2, 'int'),
-                    'parameter': 'Population exposure',
-                    'units': 'people'
-                },
-                'probability': {
-                    'max': float("%.2f" % ls_stats['Max']),
-                    'std': float("%.2f" % ls_stats['Std']),
-                    'hagg0.1g': float("%.2f" % ls_stats['hagg_0.10g']),
-                    'popexp0.1g': float("%.2f" % ls_stats['exp_pop_0.10g'])
-                }
-            }]
-        if lqmodels is None:
-            lqmodels = [{
-                'id': 'zhu_2017',
-                'title': 'Zhu and others (2017)',
-                'overlay': 'zhu_2017.png',
-                'extent': zhu_extent,
-                'units': "Proportion of area affected",
-                'preferred': True,
-                'alert': lq_alert,
-                'hazard_alert': {
-                    'color': lq_haz_alert,
-                    'value': set_num_precision(lq_haz_level, 2, 'float'),
-                    'parameter': 'Aggregate Hazard',
-                    'units': 'km^2'
-                },
-                'population_alert': {
-                    'color': lq_pop_alert,
-                    'value': set_num_precision(lq_pop_level, 2, 'int'),
-                    'parameter': 'Population exposure',
-                    'units': 'people'
-                },
-                'probability': {
-                    'max': float("%.2f" % lq_stats['Max']),
-                    'std': float("%.2f" % lq_stats['Std']),
-                    'hagg0.1g': float("%.2f" % ls_stats['hagg_0.10g']),
-                    'popexp0.1g': float("%.2f" % ls_stats['exp_pop_0.10g'])
-                }
-            }]
-    else:
-        # Get all info from dictionaries of preferred events, add in extent
-        # and filename
-        for lsm in lsmodels:
-            # Add extent and filename for preferred model
-            if lsm['preferred']:
-                filesnippet = lsm['id']
-                # Read in extents
-                flnm = '%s_extent.json' % filesnippet
-                ls_extent_file = [f for f in files if flnm in f]
-                if len(ls_extent_file) == 1:
-                    ls_file = os.path.join(event_dir, ls_extent_file[0])
-                    with open(ls_file) as f:
-                        ls_extent = json.load(f)
-                else:
-                    raise OSError("Landslide extent not found.")
-                lsm['extent'] = ls_extent
-                # lsm['filename'] = flnm
-                lsext = lsm['zoomext']  # Get zoom extent
-                ls_alert = lsm['alert']
-                rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
+    # Get all info from dictionaries of preferred events, add in extent
+    # and filename
+    for lsm in lsmodels:
+        # Add extent and filename for preferred model
+        if lsm['preferred']:
+            filesnippet = lsm['id']
+            # Read in extents
+            flnm = '%s_extent.json' % filesnippet
+            ls_extent_file = [f for f in files if flnm in f]
+            if len(ls_extent_file) == 1:
+                ls_file = os.path.join(event_dir, ls_extent_file[0])
+                with open(ls_file) as f:
+                    ls_extent = json.load(f)
             else:
-                # Remove any alert keys
-                rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
-                          'population_alert', 'alert', 'hazard_alert']
-            for key in rmkeys:
-                if key in lsm:
-                    lsm.pop(key)
+                raise OSError("Landslide extent not found.")
+            lsm['extent'] = ls_extent
+            # lsm['filename'] = flnm
+            lsext = lsm['zoomext']  # Get zoom extent
+            ls_alert = lsm['alert']
+            rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
+        else:
+            # Remove any alert keys
+            rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
+                      'population_alert', 'alert', 'hazard_alert']
+        for key in rmkeys:
+            if key in lsm:
+                lsm.pop(key)
 
-        for lqm in lqmodels:
-            if lqm['preferred']:
-                filesnippet = lqm['id']
-                # Read in extents
-                flnm = '%s_extent.json' % filesnippet
-                lq_extent_file = [f2 for f2 in files if flnm in f2]
-                if len(lq_extent_file) == 1:
-                    lq_file = os.path.join(event_dir, lq_extent_file[0])
-                    with open(lq_file) as f:
-                        lq_extent = json.load(f)
-                else:
-                    raise OSError("Liquefaction extent not found.")
-                lqm['extent'] = lq_extent
-                # lqm['filename'] = flnm
-                lqext = lqm['zoomext']  # Get zoom extent
-                lq_alert = lqm['alert']
-                rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
+    for lqm in lqmodels:
+        if lqm['preferred']:
+            filesnippet = lqm['id']
+            # Read in extents
+            flnm = '%s_extent.json' % filesnippet
+            lq_extent_file = [f2 for f2 in files if flnm in f2]
+            if len(lq_extent_file) == 1:
+                lq_file = os.path.join(event_dir, lq_extent_file[0])
+                with open(lq_file) as f:
+                    lq_extent = json.load(f)
             else:
-                # Remove any alert keys
-                rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
-                          'population_alert', 'alert', 'hazard_alert']
-            for key in rmkeys:
-                if key in lqm:
-                    lqm.pop(key)
+                raise OSError("Liquefaction extent not found.")
+            lqm['extent'] = lq_extent
+            # lqm['filename'] = flnm
+            lqext = lqm['zoomext']  # Get zoom extent
+            lq_alert = lqm['alert']
+            rmkeys = ['bin_edges', 'bin_colors', 'zoomext']
+        else:
+            # Remove any alert keys
+            rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
+                      'population_alert', 'alert', 'hazard_alert']
+        for key in rmkeys:
+            if key in lqm:
+                lqm.pop(key)
 
     # Try to get event info
     shake_grid = ShakeGrid.load(shakefile, adjust='res')
