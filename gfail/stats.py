@@ -30,7 +30,6 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
                                    'sans-serif']
 
 
-
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
                  statprobthresh=None, pop_file=None, stdtype='full',
