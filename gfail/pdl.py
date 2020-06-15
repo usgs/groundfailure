@@ -108,21 +108,21 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
             lq_pref['population_alert']['std']
         ls_pop_alert_std = '"--property-landslide-population-std=%s" ' % \
             ls_pref['population_alert']['std']
-        ls_haz_range1s = '"--property-landslide-hazard-1std_range=%s" ' % \
+        ls_haz_range1s = '"--property-landslide-hazard-1std=%s" ' % \
             str(ls_pref['probability']['hagg_1std']).replace('[','').replace( ']','')
-        ls_haz_range2s = '"--property-landslide-hazard-2std_range=%s" ' % \
+        ls_haz_range2s = '"--property-landslide-hazard-2std=%s" ' % \
             str(ls_pref['probability']['hagg_2std']).replace('[','').replace( ']','')
-        ls_pop_range1s = '"--property-landslide-hazard-uncert_ranges=%s" ' % \
+        ls_pop_range1s = '"--property-landslide-population-1std=%s" ' % \
             str(ls_pref['probability']['pop_1std']).replace('[','').replace( ']','')
-        ls_pop_range2s = '"--property-landslide-hazard-uncert_ranges=%s" ' % \
+        ls_pop_range2s = '"--property-landslide-population-2std=%s" ' % \
             str(ls_pref['probability']['pop_2std']).replace('[','').replace( ']','')
-        lq_haz_range1s = '"--property-liquefaction-hazard-1std_range=%s" ' % \
+        lq_haz_range1s = '"--property-liquefaction-hazard-1std=%s" ' % \
             str(lq_pref['probability']['hagg_1std']).replace('[','').replace( ']','')
-        lq_haz_range2s = '"--property-liquefaction-hazard-2std_range=%s" ' % \
+        lq_haz_range2s = '"--property-liquefaction-hazard-2std=%s" ' % \
             str(lq_pref['probability']['hagg_2std']).replace('[','').replace( ']','')
-        lq_pop_range1s = '"--property-liquefaction-hazard-uncert_ranges=%s" ' % \
+        lq_pop_range1s = '"--property-liquefaction-population-1std=%s" ' % \
             str(lq_pref['probability']['pop_1std']).replace('[','').replace( ']','')
-        lq_pop_range2s = '"--property-liquefaction-hazard-uncert_ranges=%s" ' % \
+        lq_pop_range2s = '"--property-liquefaction-population-2std=%s" ' % \
             str(lq_pref['probability']['pop_2std']).replace('[','').replace( ']','')
 
         stdstr = lq_haz_alert_std + ls_haz_alert_std + lq_pop_alert_std \
