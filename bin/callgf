@@ -907,8 +907,7 @@ def process_shakemap(args, config):
         msg = 'Failure running run_gfail:'
         exc_type, exc_value, exc_traceback = sys.exc_info()
         logging.critical(msg)
-        logging.critical(traceback.print_exception(exc_type, exc_value, exc_traceback,
-                         limit=6, file=sys.stdout))
+        logging.critical(traceback.format_exc())
         update_event_fail(conn, db_id, msg)
         sys.exit(1)
     logging.info('run_gfail completed')

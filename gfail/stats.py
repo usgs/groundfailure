@@ -219,7 +219,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             hlim = cell_area_km2*N*maxP
             Hagg['hlim_%1.2fg' % (shaket/100.,)] = hlim
             if stdgrid2D is not None:
-                if np.nanmax(std) > 0.:
+                if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
                     totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
                     totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
                     if stdtype == 'max':
@@ -253,7 +253,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         hlim = cell_area_km2*N*maxP
         Hagg['hlim_0.00g'] = hlim
         if stdgrid2D is not None:
-            if np.nanmax(std) > 0.:
+            if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
                 totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
                 totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
                 if stdtype == 'max':
@@ -411,7 +411,7 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
             elim = maxP*np.nansum(popdat * prop * threshmult)
             exp_pop['elim_%1.2fg' % (shaket/100.,)] = elim
             if stdgrid2D is not None:
-                if np.nanmax(modresampstd) > 0.:
+                if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
                     datstd2 = popdat * propstd * modresampstd * threshmult
                     totalmax = np.nansum(datstd2)
                     totalmin = np.sqrt(np.nansum(datstd2**2.))
@@ -446,7 +446,7 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         elim = maxP*np.nansum(popdat * prop)
         exp_pop['elim_0.00g'] = elim
         if stdgrid2D is not None:
-            if np.nanmax(modresampstd) > 0.:
+            if np.nanmax(modresampstd) > 0. and mu > 0.:
                 datstd2 = popdat * propstd * modresampstd
                 totalmax = np.nansum(datstd2)
                 totalmin = np.sqrt(np.nansum(datstd2**2.))
@@ -505,7 +505,9 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     
     #TODO deal with cases where there are no values above threshold
     if np.nanmax(model) < threshold:
-        raise Exception('No values above threshold in model')
+        print('No values above threshold in model. Returning empty results')
+        return None, None
+        #raise Exception('No values above threshold in model')
 
     # prepare data
     nrows, ncols = np.shape(model)

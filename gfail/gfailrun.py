@@ -444,7 +444,7 @@ def getGridURL(gridurl, fname=None):
 def getShakefiles(event, outdir, uncert=False, version=None,
                   source='preferred'):
     """
-    Download the shakemap grid.xml file and the 
+    Download the shakemap grid.xml file and the
 
     Args:
         event event id or URL
