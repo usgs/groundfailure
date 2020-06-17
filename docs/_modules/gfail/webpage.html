@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.webpage &#8212; groundfailure 0.1 documentation</title>
@@ -947,7 +947,7 @@
     <span class="n">doc</span><span class="o">.</span><span class="n">lookat</span><span class="o">.</span><span class="n">altitude</span> <span class="o">=</span> <span class="mf">0.</span>
     <span class="n">doc</span><span class="o">.</span><span class="n">lookat</span><span class="o">.</span><span class="n">range</span> <span class="o">=</span> <span class="p">(</span><span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span><span class="o">-</span><span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">])</span> <span class="o">*</span> <span class="mf">111.</span> <span class="o">*</span> <span class="mf">1000.</span>  <span class="c1"># dist in m from point</span>
     <span class="n">doc</span><span class="o">.</span><span class="n">description</span> <span class="o">=</span> <span class="s1">&#39;USGS near-real-time earthquake-triggered </span><span class="si">%s</span><span class="s1"> model for </span><span class="se">\</span>
-<span class="s1">                       event id </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;parameters&#39;</span><span class="p">]</span>\
+<span class="s1">                       event id </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;parameters&#39;</span><span class="p">]</span> \
                        <span class="p">[</span><span class="s1">&#39;modeltype&#39;</span><span class="p">],</span> <span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">])</span>
 
     <span class="n">prob</span> <span class="o">=</span> <span class="n">L</span><span class="o">.</span><span class="n">newgroundoverlay</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">])</span>
@@ -961,7 +961,7 @@
     <span class="c1"># Add legend and USGS icon as screen overlays</span>
     <span class="c1"># Make legend</span>
     <span class="n">make_legend</span><span class="p">(</span><span class="n">levels</span><span class="p">,</span> <span class="n">colorlist</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">legfile</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">maplayer</span><span class="p">[</span><span class="s1">&#39;label&#39;</span><span class="p">])</span>
-    
+
     <span class="n">size1</span> <span class="o">=</span> <span class="n">simplekml</span><span class="o">.</span><span class="n">Size</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">xunits</span><span class="o">=</span><span class="n">simplekml</span><span class="o">.</span><span class="n">Units</span><span class="o">.</span><span class="n">fraction</span><span class="p">)</span>
     <span class="n">leg</span> <span class="o">=</span> <span class="n">L</span><span class="o">.</span><span class="n">newscreenoverlay</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;Legend&#39;</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">size1</span><span class="p">)</span>
     <span class="n">leg</span><span class="o">.</span><span class="n">icon</span><span class="o">.</span><span class="n">href</span> <span class="o">=</span> <span class="s1">&#39;files/</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">legshort</span>

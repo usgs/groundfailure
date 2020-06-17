@@ -4,6 +4,7 @@ gfail
 Submodules
 
 .. toctree::
+   :maxdepth: 12
 
    gfail.conf
    gfail.gfailrun

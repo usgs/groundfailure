@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.spatial &#8212; groundfailure 0.1 documentation</title>
@@ -35,9 +35,9 @@
   <div class="section" id="module-gfail.spatial">
 <span id="gfail-spatial"></span><h1>gfail.spatial<a class="headerlink" href="#module-gfail.spatial" title="Permalink to this headline">¶</a></h1>
 <p>Spatial functions used by all models</p>
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.spatial.trim_ocean">
-<code class="sig-prename descclassname">gfail.spatial.</code><code class="sig-name descname">trim_ocean</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">mask</em>, <em class="sig-param">all_touched=True</em>, <em class="sig-param">crop=False</em>, <em class="sig-param">invert=False</em>, <em class="sig-param">nodata=0.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/spatial.html#trim_ocean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.spatial.trim_ocean" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.spatial.</code><code class="sig-name descname">trim_ocean</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grid2D</span></em>, <em class="sig-param"><span class="n">mask</span></em>, <em class="sig-param"><span class="n">all_touched</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">crop</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">invert</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">nodata</span><span class="o">=</span><span class="default_value">0.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/spatial.html#trim_ocean"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.spatial.trim_ocean" title="Permalink to this definition">¶</a></dt>
 <dd><p>Use the mask (a shapefile) to trim offshore areas</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -59,9 +59,9 @@ polygon</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.spatial.quickcut">
-<code class="sig-prename descclassname">gfail.spatial.</code><code class="sig-name descname">quickcut</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">gdict</em>, <em class="sig-param">tempname=None</em>, <em class="sig-param">extrasamp=5.0</em>, <em class="sig-param">method='bilinear'</em>, <em class="sig-param">precise=True</em>, <em class="sig-param">cleanup=True</em>, <em class="sig-param">verbose=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/spatial.html#quickcut"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.spatial.quickcut" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.spatial.</code><code class="sig-name descname">quickcut</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="n">gdict</span></em>, <em class="sig-param"><span class="n">tempname</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">extrasamp</span><span class="o">=</span><span class="default_value">5.0</span></em>, <em class="sig-param"><span class="n">method</span><span class="o">=</span><span class="default_value">'bilinear'</span></em>, <em class="sig-param"><span class="n">precise</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">cleanup</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/spatial.html#quickcut"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.spatial.quickcut" title="Permalink to this definition">¶</a></dt>
 <dd><p>Use gdal to trim a large global file down quickly so mapio can read it
 efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)</p>
 <dl class="field-list simple">

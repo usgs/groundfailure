@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.gfailrun &#8212; groundfailure 0.1 documentation</title>
@@ -651,16 +651,6 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for config_filepath does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
                       <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;mapconfig&#39;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># check that it&#39;s a valid path</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;mapconfig&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">})</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for mapconfig does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
             <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;popfile&#39;</span><span class="p">)</span>

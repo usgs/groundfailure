@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.utilities &#8212; groundfailure 0.1 documentation</title>
@@ -34,9 +34,9 @@
             
   <div class="section" id="module-gfail.utilities">
 <span id="gfail-utilities"></span><h1>gfail.utilities<a class="headerlink" href="#module-gfail.utilities" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.is_grid_point_source">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">is_grid_point_source</code><span class="sig-paren">(</span><em class="sig-param">grid</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#is_grid_point_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.is_grid_point_source" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">is_grid_point_source</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grid</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#is_grid_point_source"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.is_grid_point_source" title="Permalink to this definition">¶</a></dt>
 <dd><p>Was the shakemap grid constructed with a point source?</p>
 <p>This makes use of the ‘urat’ layer, which is the ratio of the predicted
 ground motion standard deviation to the GMPE standard deviation. The only
@@ -57,9 +57,9 @@ locations with ‘urat’ &gt; 1.0.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.get_event_comcat">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_event_comcat</code><span class="sig-paren">(</span><em class="sig-param">shakefile</em>, <em class="sig-param">timewindow=60</em>, <em class="sig-param">degwindow=0.3</em>, <em class="sig-param">magwindow=0.2</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_event_comcat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_event_comcat" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_event_comcat</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shakefile</span></em>, <em class="sig-param"><span class="n">timewindow</span><span class="o">=</span><span class="default_value">60</span></em>, <em class="sig-param"><span class="n">degwindow</span><span class="o">=</span><span class="default_value">0.3</span></em>, <em class="sig-param"><span class="n">magwindow</span><span class="o">=</span><span class="default_value">0.2</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_event_comcat"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_event_comcat" title="Permalink to this definition">¶</a></dt>
 <dd><p>Find an event in comcat, searching first by event id and if that
 fails searching by magnitude, time, and location.</p>
 <dl class="field-list simple">
@@ -88,9 +88,9 @@ magnitude specified in shakefile.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.parseConfigLayers">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">parseConfigLayers</code><span class="sig-paren">(</span><em class="sig-param">maplayers</em>, <em class="sig-param">config</em>, <em class="sig-param">keys=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">parseConfigLayers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">maplayers</span></em>, <em class="sig-param"><span class="n">config</span></em>, <em class="sig-param"><span class="n">keys</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parse things that need to coodinate with each layer (like lims, logscale,
 colormaps etc.) from config file, in right order, where the order is from
 maplayers.</p>
@@ -126,9 +126,9 @@ to keys in plotorder (same order).</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.text_to_json">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">text_to_json</code><span class="sig-paren">(</span><em class="sig-param">input1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#text_to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.text_to_json" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">text_to_json</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">input1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#text_to_json"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.text_to_json" title="Permalink to this definition">¶</a></dt>
 <dd><p>Simplification of text_to_json from shakelib.rupture.factory</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -140,9 +140,9 @@ to keys in plotorder (same order).</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.write_floats">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">write_floats</code><span class="sig-paren">(</span><em class="sig-param">filename</em>, <em class="sig-param">grid2d</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#write_floats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.write_floats" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">write_floats</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="n">grid2d</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#write_floats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.write_floats" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a binary (with acc. header file) version of a Grid2D object.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -158,9 +158,9 @@ create that file, plus a text file called “probability.hdr”.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.savelayers">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">savelayers</code><span class="sig-paren">(</span><em class="sig-param">grids</em>, <em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#savelayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.savelayers" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">savelayers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grids</span></em>, <em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#savelayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.savelayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Save ground failure layers object as a MultiHazard HDF file, preserving
 metadata structures. All layers must have same geodictionary.</p>
 <dl class="field-list simple">
@@ -176,9 +176,9 @@ metadata structures. All layers must have same geodictionary.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.loadlayers">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">loadlayers</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#loadlayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.loadlayers" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">loadlayers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#loadlayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.loadlayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Load a MultiHazard HDF file back in as a ground failure layers object in
 active memory (must have been saved for this purpose).
 :param filename: Path to layers file (hdf5 extension).
@@ -190,9 +190,9 @@ active memory (must have been saved for this purpose).
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.get_alert">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_alert</code><span class="sig-paren">(</span><em class="sig-param">paramalertLS, paramalertLQ, parampopLS, parampopLQ, hazbinLS=[1.0, 10.0, 100.0], popbinLS=[100, 1000, 10000], hazbinLQ=[10.0, 100.0, 1000.0], popbinLQ=[1000, 10000, 100000]</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_alert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_alert" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_alert</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">paramalertLS</span></em>, <em class="sig-param"><span class="n">paramalertLQ</span></em>, <em class="sig-param"><span class="n">parampopLS</span></em>, <em class="sig-param"><span class="n">parampopLQ</span></em>, <em class="sig-param"><span class="n">hazbinLS</span><span class="o">=</span><span class="default_value">[1.0, 10.0, 100.0]</span></em>, <em class="sig-param"><span class="n">popbinLS</span><span class="o">=</span><span class="default_value">[100, 1000, 10000]</span></em>, <em class="sig-param"><span class="n">hazbinLQ</span><span class="o">=</span><span class="default_value">[10.0, 100.0, 1000.0]</span></em>, <em class="sig-param"><span class="n">popbinLQ</span><span class="o">=</span><span class="default_value">[1000, 10000, 100000]</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_alert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_alert" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get alert levels</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -231,9 +231,9 @@ and Red.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.view_database">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">view_database</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">realtime=False</em>, <em class="sig-param">currentonly=False</em>, <em class="sig-param">numevents=None</em>, <em class="sig-param">LShazmin=None</em>, <em class="sig-param">LShazmax=None</em>, <em class="sig-param">LSpopmin=None</em>, <em class="sig-param">LSpopmax=None</em>, <em class="sig-param">LQhazmin=None</em>, <em class="sig-param">LQhazmax=None</em>, <em class="sig-param">LQpopmin=None</em>, <em class="sig-param">LQpopmax=None</em>, <em class="sig-param">verbose=False</em>, <em class="sig-param">printcols=None</em>, <em class="sig-param">csvfile=None</em>, <em class="sig-param">printsummary=True</em>, <em class="sig-param">printsuccess=False</em>, <em class="sig-param">printfailed=False</em>, <em class="sig-param">printnotmet=False</em>, <em class="sig-param">maxcolwidth=100</em>, <em class="sig-param">alertreport='value'</em>, <em class="sig-param">realtime_maxsec=86400.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#view_database"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.view_database" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">view_database</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">database</span></em>, <em class="sig-param"><span class="n">starttime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">endtime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">minmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">eventids</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">realtime</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">currentonly</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">numevents</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LShazmin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LShazmax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LSpopmin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LSpopmax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LQhazmin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LQhazmax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LQpopmin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">LQpopmax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">verbose</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">printcols</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">csvfile</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">printsummary</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">printsuccess</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">printfailed</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">printnotmet</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">maxcolwidth</span><span class="o">=</span><span class="default_value">100</span></em>, <em class="sig-param"><span class="n">alertreport</span><span class="o">=</span><span class="default_value">'value'</span></em>, <em class="sig-param"><span class="n">realtime_maxsec</span><span class="o">=</span><span class="default_value">86400.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#view_database"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.view_database" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prints out information from the ground failure database based on
 search criteria and other options. If nothing is defined except the
 database, it will print out a summary and details on the successful
@@ -367,9 +367,9 @@ for mean, min, max, and standard deviation</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.alert_summary">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">alert_summary</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">realtime=True</em>, <em class="sig-param">currentonly=True</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">summarytypes='all'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#alert_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.alert_summary" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">alert_summary</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">database</span></em>, <em class="sig-param"><span class="n">starttime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">endtime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">minmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">realtime</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">currentonly</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">filebasename</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">summarytypes</span><span class="o">=</span><span class="default_value">'all'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#alert_summary"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.alert_summary" title="Permalink to this definition">¶</a></dt>
 <dd><p>Print summary plot of alerts that have been issued for set of events met
 by defined criteria</p>
 <dl class="field-list simple">
@@ -401,9 +401,9 @@ just the one selected.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.plot_evolution">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">plot_evolution</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">changeonly=True</em>, <em class="sig-param">percrange=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#plot_evolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.plot_evolution" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">plot_evolution</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">database</span></em>, <em class="sig-param"><span class="n">starttime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">endtime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">minmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">eventids</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filebasename</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">changeonly</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">percrange</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#plot_evolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.plot_evolution" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Make a plot and print stats showing delay times and changes in alert</dt><dd><p>statistics over time</p>
 </dd>
@@ -439,9 +439,9 @@ as value &lt;1 (e.g., 0.95). If None, errors will not be shown</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.time_delays">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">time_delays</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">filebasename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#time_delays"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.time_delays" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">time_delays</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">database</span></em>, <em class="sig-param"><span class="n">starttime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">endtime</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">minmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">maxmag</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">eventids</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">filebasename</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#time_delays"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.time_delays" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Make a plot and print stats showing delay times and changes in alert</dt><dd><p>statistics over time</p>
 </dd>
@@ -468,9 +468,9 @@ path is given it will save in current directory.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.plot_uncertainty">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">plot_uncertainty</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">eventid</em>, <em class="sig-param">currentonly=True</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">bars=False</em>, <em class="sig-param">percrange=0.95</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#plot_uncertainty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.plot_uncertainty" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">plot_uncertainty</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">database</span></em>, <em class="sig-param"><span class="n">eventid</span></em>, <em class="sig-param"><span class="n">currentonly</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">filebasename</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bars</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">percrange</span><span class="o">=</span><span class="default_value">0.95</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#plot_uncertainty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.plot_uncertainty" title="Permalink to this definition">¶</a></dt>
 <dd><dl class="simple">
 <dt>Make a plot and print stats showing delay times and changes in alert</dt><dd><p>statistics over time</p>
 </dd>
@@ -496,15 +496,15 @@ as value &lt;1 (e.g., 0.95).</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.alert_rectangles">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">alert_rectangles</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">bins</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#alert_rectangles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.alert_rectangles" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">alert_rectangles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ax</span></em>, <em class="sig-param"><span class="n">bins</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#alert_rectangles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.alert_rectangles" title="Permalink to this definition">¶</a></dt>
 <dd><p>Function used to color bin levels in background of axis</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.get_rangebeta">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_rangebeta</code><span class="sig-paren">(</span><em class="sig-param">p</em>, <em class="sig-param">q</em>, <em class="sig-param">prob=0.95</em>, <em class="sig-param">minlim=0</em>, <em class="sig-param">maxlim=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_rangebeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_rangebeta" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_rangebeta</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">q</span></em>, <em class="sig-param"><span class="n">prob</span><span class="o">=</span><span class="default_value">0.95</span></em>, <em class="sig-param"><span class="n">minlim</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">maxlim</span><span class="o">=</span><span class="default_value">1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_rangebeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_rangebeta" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get endpoints of the range of the specified beta function that contain
 prob percent of the distribution</p>
 <dl class="field-list simple">
@@ -528,9 +528,9 @@ of. Value from 0 to 1</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.utilities.get_pdfbeta">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_pdfbeta</code><span class="sig-paren">(</span><em class="sig-param">p</em>, <em class="sig-param">q</em>, <em class="sig-param">binedges</em>, <em class="sig-param">minlim=0</em>, <em class="sig-param">maxlim=1</em>, <em class="sig-param">npts=1000</em>, <em class="sig-param">openends=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_pdfbeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_pdfbeta" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_pdfbeta</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">p</span></em>, <em class="sig-param"><span class="n">q</span></em>, <em class="sig-param"><span class="n">binedges</span></em>, <em class="sig-param"><span class="n">minlim</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">maxlim</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="n">npts</span><span class="o">=</span><span class="default_value">1000</span></em>, <em class="sig-param"><span class="n">openends</span><span class="o">=</span><span class="default_value">True</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_pdfbeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_pdfbeta" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return discretized pdf for plotting curve and report probabilities of
 each bin</p>
 <dl class="field-list simple">

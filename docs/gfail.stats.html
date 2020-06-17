@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.stats &#8212; groundfailure 0.1 documentation</title>
@@ -34,9 +34,9 @@
             
   <div class="section" id="module-gfail.stats">
 <span id="gfail-stats"></span><h1>gfail.stats<a class="headerlink" href="#module-gfail.stats" title="Permalink to this headline">¶</a></h1>
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.stats.computeStats">
-<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">computeStats</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">stdgrid2D=None</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">shakethreshtype='pga'</em>, <em class="sig-param">shakethresh=0.0</em>, <em class="sig-param">statprobthresh=None</em>, <em class="sig-param">pop_file=None</em>, <em class="sig-param">stdtype='full'</em>, <em class="sig-param">maxP=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeStats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeStats" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">computeStats</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grid2D</span></em>, <em class="sig-param"><span class="n">stdgrid2D</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shakefile</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shakethreshtype</span><span class="o">=</span><span class="default_value">'pga'</span></em>, <em class="sig-param"><span class="n">shakethresh</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">statprobthresh</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">pop_file</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">stdtype</span><span class="o">=</span><span class="default_value">'full'</span></em>, <em class="sig-param"><span class="n">maxP</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeStats"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeStats" title="Permalink to this definition">¶</a></dt>
 <dd><p>Compute summary stats of a ground failure model output.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -86,9 +86,9 @@ or full (default) estimates std considering covariance</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.stats.computeHagg">
-<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">computeHagg</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">proj='moll'</em>, <em class="sig-param">probthresh=0.0</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">shakethreshtype='pga'</em>, <em class="sig-param">shakethresh=0.0</em>, <em class="sig-param">stdgrid2D=None</em>, <em class="sig-param">stdtype='full'</em>, <em class="sig-param">maxP=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeHagg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeHagg" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">computeHagg</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grid2D</span></em>, <em class="sig-param"><span class="n">proj</span><span class="o">=</span><span class="default_value">'moll'</span></em>, <em class="sig-param"><span class="n">probthresh</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">shakefile</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shakethreshtype</span><span class="o">=</span><span class="default_value">'pga'</span></em>, <em class="sig-param"><span class="n">shakethresh</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">stdgrid2D</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">stdtype</span><span class="o">=</span><span class="default_value">'full'</span></em>, <em class="sig-param"><span class="n">maxP</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#computeHagg"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.computeHagg" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes the Aggregate Hazard (Hagg) which is equal to the
 probability * area of grid cell For models that compute areal coverage,
 this is equivalant to the total predicted area affected in km2.</p>
@@ -134,9 +134,9 @@ q_hagg_# beta distribution shape factor q (sometimes called beta)</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.stats.get_exposures">
-<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">get_exposures</code><span class="sig-paren">(</span><em class="sig-param">grid</em>, <em class="sig-param">pop_file</em>, <em class="sig-param">shakefile=None</em>, <em class="sig-param">shakethreshtype=None</em>, <em class="sig-param">shakethresh=0.0</em>, <em class="sig-param">probthresh=None</em>, <em class="sig-param">stdgrid2D=None</em>, <em class="sig-param">stdtype='full'</em>, <em class="sig-param">maxP=1.0</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#get_exposures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.get_exposures" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">get_exposures</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grid</span></em>, <em class="sig-param"><span class="n">pop_file</span></em>, <em class="sig-param"><span class="n">shakefile</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shakethreshtype</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">shakethresh</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">probthresh</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">stdgrid2D</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">stdtype</span><span class="o">=</span><span class="default_value">'full'</span></em>, <em class="sig-param"><span class="n">maxP</span><span class="o">=</span><span class="default_value">1.0</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#get_exposures"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.get_exposures" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get exposure-based statistics.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -174,9 +174,9 @@ q_exp_# beta distribution shape factor q (sometimes called beta)</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.stats.semivario">
-<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">semivario</code><span class="sig-paren">(</span><em class="sig-param">model</em>, <em class="sig-param">threshold=0.0</em>, <em class="sig-param">maxlag=100</em>, <em class="sig-param">npts=1000</em>, <em class="sig-param">ndists=200</em>, <em class="sig-param">nvbins=20</em>, <em class="sig-param">makeplots=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#semivario"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.semivario" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">semivario</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">model</span></em>, <em class="sig-param"><span class="n">threshold</span><span class="o">=</span><span class="default_value">0.0</span></em>, <em class="sig-param"><span class="n">maxlag</span><span class="o">=</span><span class="default_value">100</span></em>, <em class="sig-param"><span class="n">npts</span><span class="o">=</span><span class="default_value">1000</span></em>, <em class="sig-param"><span class="n">ndists</span><span class="o">=</span><span class="default_value">200</span></em>, <em class="sig-param"><span class="n">nvbins</span><span class="o">=</span><span class="default_value">20</span></em>, <em class="sig-param"><span class="n">makeplots</span><span class="o">=</span><span class="default_value">False</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#semivario"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.semivario" title="Permalink to this definition">¶</a></dt>
 <dd><p>#TODO this should really be done in a distance preserving projection, but
 is an approximation for now</p>
 <p>Quickly estimate semivariogram with by selecting seed points and then
@@ -200,16 +200,16 @@ in npts x ndists total distance pairs. Uses spherical model.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.stats.spherical">
-<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">spherical</code><span class="sig-paren">(</span><em class="sig-param">lag</em>, <em class="sig-param">range1</em>, <em class="sig-param">sill</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#spherical"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.spherical" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">spherical</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">lag</span></em>, <em class="sig-param"><span class="n">range1</span></em>, <em class="sig-param"><span class="n">sill</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#spherical"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.spherical" title="Permalink to this definition">¶</a></dt>
 <dd><p><a class="reference external" href="https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L23">https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L23</a></p>
 <p>nugget = value of independent variable at distance of zero</p>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.stats.svar">
-<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">svar</code><span class="sig-paren">(</span><em class="sig-param">stds</em>, <em class="sig-param">range1</em>, <em class="sig-param">sill1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#svar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.svar" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.stats.</code><code class="sig-name descname">svar</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">stds</span></em>, <em class="sig-param"><span class="n">range1</span></em>, <em class="sig-param"><span class="n">sill1</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/stats.html#svar"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.stats.svar" title="Permalink to this definition">¶</a></dt>
 <dd><p>Estimate variance of aggregate statistic using correlation from
 semivariogram and std values for each pair of cells that are within range
 of each other, add up quickly by creating kernal of the correlations and

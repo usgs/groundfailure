@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.logisticmodel &#8212; groundfailure 0.1 documentation</title>
@@ -36,9 +36,9 @@
 <span id="gfail-logisticmodel"></span><h1>gfail.logisticmodel<a class="headerlink" href="#module-gfail.logisticmodel" title="Permalink to this headline">¶</a></h1>
 <p>This module contains functions and class definitions for running forward
 models of models based on logistic regression.</p>
-<dl class="class">
+<dl class="py class">
 <dt id="gfail.logisticmodel.LogisticModel">
-<em class="property">class </em><code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">LogisticModel</code><span class="sig-paren">(</span><em class="sig-param">shakefile</em>, <em class="sig-param">config</em>, <em class="sig-param">uncertfile=None</em>, <em class="sig-param">saveinputs=False</em>, <em class="sig-param">slopefile=None</em>, <em class="sig-param">bounds=None</em>, <em class="sig-param">slopemod=None</em>, <em class="sig-param">trimfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">LogisticModel</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shakefile</span></em>, <em class="sig-param"><span class="n">config</span></em>, <em class="sig-param"><span class="n">uncertfile</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">saveinputs</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">slopefile</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">slopemod</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">trimfile</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Sets up the logistic model</p>
 <dl class="field-list simple">
@@ -72,7 +72,7 @@ offshore areas.</p></li>
 </ul>
 </dd>
 </dl>
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.logisticmodel.LogisticModel.getEquations">
 <code class="sig-name descname">getEquations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.getEquations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.getEquations" title="Permalink to this definition">¶</a></dt>
 <dd><p>Method for LogisticModel class to extract strings defining the
@@ -87,7 +87,7 @@ equations for the model for median ground motions.</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.logisticmodel.LogisticModel.getGeoDict">
 <code class="sig-name descname">getGeoDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.getGeoDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.getGeoDict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the geodictionary of the LogisticModel class defining bounds
@@ -102,9 +102,9 @@ and resolution of model inputs and outputs.</p>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.logisticmodel.LogisticModel.calculate">
-<code class="sig-name descname">calculate</code><span class="sig-paren">(</span><em class="sig-param">cleanup=True</em>, <em class="sig-param">rowmax=300</em>, <em class="sig-param">colmax=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.calculate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.calculate" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">calculate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cleanup</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">rowmax</span><span class="o">=</span><span class="default_value">300</span></em>, <em class="sig-param"><span class="n">colmax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.calculate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.calculate" title="Permalink to this definition">¶</a></dt>
 <dd><p>Calculate the model.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -130,9 +130,9 @@ of the structure.</p>
 
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.getLogisticModelNames">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">getLogisticModelNames</code><span class="sig-paren">(</span><em class="sig-param">config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getLogisticModelNames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getLogisticModelNames" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">getLogisticModelNames</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">config</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getLogisticModelNames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getLogisticModelNames" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the names of the models present in the configobj</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -147,9 +147,9 @@ of the structure.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.getFileType">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">getFileType</code><span class="sig-paren">(</span><em class="sig-param">filename</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getFileType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getFileType" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">getFileType</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getFileType"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getFileType" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine whether input file is a shapefile or a grid (ESRI or GMT).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -164,9 +164,9 @@ of the structure.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.getAllGridFiles">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">getAllGridFiles</code><span class="sig-paren">(</span><em class="sig-param">indir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getAllGridFiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getAllGridFiles" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">getAllGridFiles</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">indir</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#getAllGridFiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.getAllGridFiles" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get list of all gmt or esri (.grd, .bil) files in a directory.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -181,9 +181,9 @@ of the structure.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateCoefficients">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateCoefficients</code><span class="sig-paren">(</span><em class="sig-param">cmodel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateCoefficients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateCoefficients" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateCoefficients</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmodel</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateCoefficients"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateCoefficients" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensures coefficients provided in model description are valid and outputs
 a dictionary of the coefficients.</p>
 <dl class="field-list simple">
@@ -204,9 +204,9 @@ for example:</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateClips">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateClips</code><span class="sig-paren">(</span><em class="sig-param">cmodel</em>, <em class="sig-param">layers</em>, <em class="sig-param">gmused</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateClips"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateClips" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateClips</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmodel</span></em>, <em class="sig-param"><span class="n">layers</span></em>, <em class="sig-param"><span class="n">gmused</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateClips"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateClips" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensures coefficients provided in model description are valid and outputs
 a dictionary of the coefficients.</p>
 <dl class="field-list simple">
@@ -227,9 +227,9 @@ for example:</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateLayers">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateLayers</code><span class="sig-paren">(</span><em class="sig-param">cmodel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateLayers" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateLayers</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmodel</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateLayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Ensures all input files required to run the model exist and are valid
 file types.</p>
 <dl class="field-list simple">
@@ -257,9 +257,9 @@ for example,</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateTerms">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateTerms</code><span class="sig-paren">(</span><em class="sig-param">cmodel</em>, <em class="sig-param">coeffs</em>, <em class="sig-param">layers</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateTerms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateTerms" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateTerms</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmodel</span></em>, <em class="sig-param"><span class="n">coeffs</span></em>, <em class="sig-param"><span class="n">layers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateTerms"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateTerms" title="Permalink to this definition">¶</a></dt>
 <dd><p>Reformats model inputs from config file, replacing functions with numpy
 functions, inserting code for extracting data from each layer (required
 to run eval in the calculate step), addressing any time variables, and
@@ -311,9 +311,9 @@ file to read in, e.g. for monthly average precipitation, ‘MONTH’.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateInterpolations">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateInterpolations</code><span class="sig-paren">(</span><em class="sig-param">cmodel</em>, <em class="sig-param">layers</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateInterpolations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateInterpolations" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateInterpolations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmodel</span></em>, <em class="sig-param"><span class="n">layers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateInterpolations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateInterpolations" title="Permalink to this definition">¶</a></dt>
 <dd><p>Validate logistic model interpolation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -331,9 +331,9 @@ file to read in, e.g. for monthly average precipitation, ‘MONTH’.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateUnits">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateUnits</code><span class="sig-paren">(</span><em class="sig-param">cmodel</em>, <em class="sig-param">layers</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateUnits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateUnits" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateUnits</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmodel</span></em>, <em class="sig-param"><span class="n">layers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateUnits"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateUnits" title="Permalink to this definition">¶</a></dt>
 <dd><p>Validate model units.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -351,9 +351,9 @@ file to read in, e.g. for monthly average precipitation, ‘MONTH’.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateLogisticModels">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateLogisticModels</code><span class="sig-paren">(</span><em class="sig-param">config</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateLogisticModels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateLogisticModels" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateLogisticModels</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">config</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateLogisticModels"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateLogisticModels" title="Permalink to this definition">¶</a></dt>
 <dd><p>Validate model names.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -371,9 +371,9 @@ file to read in, e.g. for monthly average precipitation, ‘MONTH’.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.validateRefs">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateRefs</code><span class="sig-paren">(</span><em class="sig-param">cmodel</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateRefs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateRefs" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">validateRefs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">cmodel</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#validateRefs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.validateRefs" title="Permalink to this definition">¶</a></dt>
 <dd><p>Validate references for models and layers.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -408,9 +408,9 @@ file to read in, e.g. for monthly average precipitation, ‘MONTH’.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.logisticmodel.checkTerm">
-<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">checkTerm</code><span class="sig-paren">(</span><em class="sig-param">term</em>, <em class="sig-param">layers</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#checkTerm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.checkTerm" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">checkTerm</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">term</span></em>, <em class="sig-param"><span class="n">layers</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#checkTerm"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.checkTerm" title="Permalink to this definition">¶</a></dt>
 <dd><p>Checks terms of equation and replaces text with machine readable
 operators</p>
 <dl class="field-list simple">
