@@ -22,7 +22,7 @@ VENV=gf
 py_ver=3.6
 
 # Set to 1 if you are a developer and want ipython etc. installed
-developer=1
+developer=0
 
 # Is conda installed?
 conda --version
