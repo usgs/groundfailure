@@ -89,6 +89,10 @@
         <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;mask is neither a link to a shapefile or a list of </span><span class="se">\</span>
 <span class="s1">                        shapely shapes, cannot proceed&#39;</span><span class="p">)</span>
 
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">features</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No coastlines in ShakeMap area&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">grid2D</span>
+
     <span class="n">tempfilen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.bil&#39;</span><span class="p">)</span>
     <span class="n">tempfile1</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.tif&#39;</span><span class="p">)</span>
     <span class="n">tempfile2</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp2.tif&#39;</span><span class="p">)</span>
@@ -160,6 +164,8 @@
 <span class="sd">        doesn&#39;t hang on the command until the file is created which causes</span>
 <span class="sd">        problems in the next steps.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">gdict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">&lt;</span> <span class="n">gdict</span><span class="o">.</span><span class="n">xmin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;quickcut: your geodict xmax is smaller than xmin&#39;</span><span class="p">)</span>
 
     <span class="k">try</span><span class="p">:</span>
         <span class="n">filegdict</span> <span class="o">=</span> <span class="n">GDALGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
@@ -209,7 +215,7 @@
             <span class="n">uly</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">+</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dy</span>
             <span class="n">lrx</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dx</span>
             <span class="n">lry</span> <span class="o">=</span> <span class="n">egdict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="n">extrasamp</span> <span class="o">*</span> <span class="n">egdict</span><span class="o">.</span><span class="n">dy</span>
-
+            
             <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff -projwin </span><span class="si">%1.8f</span><span class="s1"> </span><span class="se">\</span>
 <span class="s1">            </span><span class="si">%1.8f</span><span class="s1"> </span><span class="si">%1.8f</span><span class="s1"> </span><span class="si">%1.8f</span><span class="s1"> -r </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">ulx</span><span class="p">,</span> <span class="n">uly</span><span class="p">,</span> <span class="n">lrx</span><span class="p">,</span> <span class="n">lry</span><span class="p">,</span> <span class="n">method2</span><span class="p">,</span>
                                               <span class="n">filename</span><span class="p">,</span> <span class="n">tempname</span><span class="p">)</span>

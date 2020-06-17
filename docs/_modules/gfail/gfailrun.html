@@ -40,6 +40,7 @@
 <span class="kn">import</span> <span class="nn">urllib</span>
 <span class="kn">import</span> <span class="nn">re</span>
 <span class="kn">from</span> <span class="nn">argparse</span> <span class="kn">import</span> <span class="n">Namespace</span>
+<span class="kn">from</span> <span class="nn">zipfile</span> <span class="kn">import</span> <span class="n">ZipFile</span>
 
 <span class="c1"># local imports</span>
 <span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">getHeaderData</span>
@@ -49,12 +50,12 @@
 <span class="kn">from</span> <span class="nn">gfail.conf</span> <span class="kn">import</span> <span class="n">correct_config_filepaths</span>
 <span class="kn">import</span> <span class="nn">gfail.logisticmodel</span> <span class="k">as</span> <span class="nn">LM</span>
 <span class="kn">from</span> <span class="nn">gfail.godt</span> <span class="kn">import</span> <span class="n">godt2008</span>
-<span class="kn">from</span> <span class="nn">gfail.makemaps</span> <span class="kn">import</span> <span class="n">modelMap</span><span class="p">,</span> <span class="n">create_kmz</span>
-<span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="kn">import</span> <span class="n">hazdev</span>
+<span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="kn">import</span> <span class="n">hazdev</span><span class="p">,</span> <span class="n">create_kmz</span>
 <span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="kn">import</span> <span class="p">(</span>
     <span class="n">get_event_comcat</span><span class="p">,</span> <span class="n">parseConfigLayers</span><span class="p">,</span>
-    <span class="n">parseMapConfig</span><span class="p">,</span> <span class="n">text_to_json</span><span class="p">,</span> <span class="n">write_floats</span><span class="p">,</span>
+    <span class="n">text_to_json</span><span class="p">,</span> <span class="n">write_floats</span><span class="p">,</span>
     <span class="n">savelayers</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">libcomcat.search</span> <span class="kn">import</span> <span class="n">get_event_by_id</span>
 
 
 <div class="viewcode-block" id="run_gfail"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.run_gfail">[docs]</a><span class="k">def</span> <span class="nf">run_gfail</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
@@ -106,9 +107,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">outdir</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span>
 
-        <span class="k">if</span> <span class="p">(</span><span class="n">hdf5</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span> <span class="ow">or</span>
-                <span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span> <span class="ow">or</span>
-                <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">):</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">hdf5</span> <span class="ow">or</span> <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">):</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
 
@@ -143,12 +142,37 @@
         <span class="n">shake_copy</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;grid.xml&quot;</span><span class="p">)</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">shake_copy</span><span class="p">)</span>
 
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">uncertfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">uncertfile</span><span class="p">)</span>
+            <span class="n">unc_copy</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;uncertainty.xml&quot;</span><span class="p">)</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copyfile</span><span class="p">(</span><span class="n">uncertfile</span><span class="p">,</span> <span class="n">unc_copy</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">uncertfile</span> <span class="o">=</span> <span class="kc">None</span>
+
         <span class="c1"># Write shakefile to a file for use later</span>
         <span class="n">shakename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;shakefile.txt&quot;</span><span class="p">)</span>
         <span class="n">shake_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">shakename</span><span class="p">,</span> <span class="s2">&quot;wt&quot;</span><span class="p">)</span>
         <span class="n">shake_file</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">shake_copy</span><span class="p">)</span>
         <span class="n">shake_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">shakename</span><span class="p">)</span>
+
+        <span class="c1"># Check that shakemap bounds do not cross 180/-180 line</span>
+
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sd</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmin</span> <span class="o">&gt;</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmax</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">ShakeMap crosses 180/-180 line, setting bounds so only &#39;</span>
+                      <span class="s1">&#39;side with more area is run (temporary fix, too bad world &#39;</span>
+                      <span class="s1">&#39;is not flat)&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">180.</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="o">-</span><span class="n">sd</span><span class="o">.</span><span class="n">xmin</span><span class="p">:</span>
+                    <span class="n">set_bounds</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sd</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">ymax</span><span class="p">,</span> <span class="o">-</span><span class="mf">180.</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmax</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">set_bounds</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sd</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">ymax</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmin</span><span class="p">,</span> <span class="mf">180.</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Bounds applied: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">set_bounds</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">set_bounds</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">set_bounds</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span>
 
         <span class="n">config</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">config</span>
 
@@ -201,15 +225,15 @@
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">conf</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Continuing...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="s1">&#39;zoom&#39;</span> <span class="ow">in</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span><span class="p">:</span>
-                <span class="n">temp</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">set_bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;zoom&#39;</span> <span class="ow">in</span> <span class="n">set_bounds</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">set_bounds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Using </span><span class="si">%s</span><span class="s1"> threshold of </span><span class="si">%1.1f</span><span class="s1"> to cut model bounds&#39;</span>
                       <span class="o">%</span> <span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())))</span>
                 <span class="n">bounds</span> <span class="o">=</span> <span class="n">get_bounds</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
                                     <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">temp</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span><span class="p">)</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">set_bounds</span><span class="p">)</span>
                 <span class="n">latmin</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="n">latmax</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
                 <span class="n">lonmin</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
@@ -298,19 +322,17 @@
             <span class="n">modelfunc</span> <span class="o">=</span> <span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s1">&#39;funcname&#39;</span><span class="p">]</span>
             <span class="k">if</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s1">&#39;LogisticModel&#39;</span><span class="p">:</span>
                 <span class="n">lm</span> <span class="o">=</span> <span class="n">LM</span><span class="o">.</span><span class="n">LogisticModel</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span>
-                                      <span class="n">uncertfile</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">uncertfile</span><span class="p">,</span>
+                                      <span class="n">uncertfile</span><span class="o">=</span><span class="n">uncertfile</span><span class="p">,</span>
                                       <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
                                       <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
-                                      <span class="n">numstd</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">std</span><span class="p">),</span>
                                       <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">)</span>
 
                 <span class="n">maplayers</span> <span class="o">=</span> <span class="n">lm</span><span class="o">.</span><span class="n">calculate</span><span class="p">()</span>
             <span class="k">elif</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s1">&#39;godt2008&#39;</span><span class="p">:</span>
                 <span class="n">maplayers</span> <span class="o">=</span> <span class="n">godt2008</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span>
-                                     <span class="n">uncertfile</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">uncertfile</span><span class="p">,</span>
+                                     <span class="n">uncertfile</span><span class="o">=</span><span class="n">uncertfile</span><span class="p">,</span>
                                      <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
                                      <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
-                                     <span class="n">numstd</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">std</span><span class="p">),</span>
                                      <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unknown model function specified in config for </span><span class="si">%s</span><span class="s1"> &#39;</span>
@@ -331,52 +353,6 @@
                 <span class="n">savelayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">filenameh</span><span class="p">))</span>
                 <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filenameh</span><span class="p">)</span>
 
-            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span><span class="p">:</span>
-                <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
-                    <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">)</span>
-                <span class="n">mapconfig</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">)</span>
-
-                <span class="n">kwargs</span> <span class="o">=</span> <span class="n">parseMapConfig</span><span class="p">(</span>
-                    <span class="n">mapconfig</span><span class="p">,</span> <span class="n">fileext</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">)</span>
-                <span class="n">junk</span><span class="p">,</span> <span class="n">filenames1</span> <span class="o">=</span> <span class="n">modelMap</span><span class="p">(</span>
-                    <span class="n">maplayers</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span>
-                    <span class="n">suptitle</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">],</span>
-                    <span class="n">boundaries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                    <span class="n">zthresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span>
-                    <span class="n">lims</span><span class="o">=</span><span class="n">lims</span><span class="p">,</span>
-                    <span class="n">plotorder</span><span class="o">=</span><span class="n">plotorder</span><span class="p">,</span>
-                    <span class="n">maskthreshes</span><span class="o">=</span><span class="n">maskthreshes</span><span class="p">,</span>
-                    <span class="n">maproads</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                    <span class="n">mapcities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span>
-                    <span class="n">savepdf</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span><span class="p">,</span>
-                    <span class="n">savepng</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span><span class="p">,</span>
-                    <span class="n">printparam</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                    <span class="n">inventory_shapefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                    <span class="n">outputdir</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
-                    <span class="n">outfilename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
-                    <span class="n">scaletype</span><span class="o">=</span><span class="s1">&#39;continuous&#39;</span><span class="p">,</span>
-                    <span class="n">logscale</span><span class="o">=</span><span class="n">logscale</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-                <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames1</span><span class="p">:</span>
-                    <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-
-                <span class="c1"># make model only plots too</span>
-                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">maplayers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
-                    <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthreshes</span> <span class="o">=</span> \
-                        <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">])</span>
-                    <span class="n">junk</span><span class="p">,</span> <span class="n">filenames1</span> <span class="o">=</span> <span class="n">modelMap</span><span class="p">(</span>
-                        <span class="n">maplayers</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span>
-                        <span class="n">suptitle</span><span class="o">=</span><span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s1">&#39;shortref&#39;</span><span class="p">],</span> <span class="n">boundaries</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                        <span class="n">zthresh</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">lims</span><span class="o">=</span><span class="n">lims</span><span class="p">,</span> <span class="n">plotorder</span><span class="o">=</span><span class="n">plotorder</span><span class="p">,</span>
-                        <span class="n">maskthreshes</span><span class="o">=</span><span class="n">maskthreshes</span><span class="p">,</span> <span class="n">maproads</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                        <span class="n">mapcities</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">savepdf</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pdfs</span><span class="p">,</span>
-                        <span class="n">savepng</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">make_static_pngs</span><span class="p">,</span> <span class="n">printparam</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                        <span class="n">inventory_shapefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">outputdir</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
-                        <span class="n">outfilename</span><span class="o">=</span><span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;-just_model&#39;</span><span class="p">,</span>
-                        <span class="n">colormaps</span><span class="o">=</span><span class="n">colormaps</span><span class="p">,</span> <span class="n">scaletype</span><span class="o">=</span><span class="s1">&#39;continuous&#39;</span><span class="p">,</span>
-                        <span class="n">logscale</span><span class="o">=</span><span class="n">logscale</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-                    <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames1</span><span class="p">:</span>
-                        <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">:</span>
 
                 <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">maplayers</span><span class="p">:</span>
@@ -399,9 +375,12 @@
                         <span class="n">fileg</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.tif&#39;</span>
                                              <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
 
-                        <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-                        <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate -a_srs EPSG:4326 -of GTiff </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
-                            <span class="n">filen</span><span class="p">,</span> <span class="n">fileg</span><span class="p">)</span>
+                        <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span>
+                            <span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+                        <span class="n">cflags</span> <span class="o">=</span> <span class="s1">&#39;-co COMPRESS=DEFLATE -co predictor=2&#39;</span>
+                        <span class="n">srs</span> <span class="o">=</span> <span class="s1">&#39;-a_srs EPSG:4326&#39;</span>
+                        <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> -of GTiff </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                            <span class="n">srs</span><span class="p">,</span> <span class="n">cflags</span><span class="p">,</span> <span class="n">filen</span><span class="p">,</span> <span class="n">fileg</span><span class="p">)</span>
                         <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
                         <span class="c1"># Delete bil file and its header</span>
                         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
@@ -428,16 +407,16 @@
                 <span class="c1"># Compile into list of results for later</span>
                 <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">maplayers</span><span class="p">)</span>
 
-                <span class="c1"># Make binary output for ShakeCast</span>
-                <span class="n">filef</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_model.flt&#39;</span>
-                                     <span class="o">%</span> <span class="n">filename</span><span class="p">)</span>
-                <span class="c1"># And get name of header</span>
-                <span class="n">filefh</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_model.hdr&#39;</span>
-                                      <span class="o">%</span> <span class="n">filename</span><span class="p">)</span>
-                <span class="c1"># Make file</span>
-                <span class="n">write_floats</span><span class="p">(</span><span class="n">filef</span><span class="p">,</span> <span class="n">maplayers</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span>
-                <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filef</span><span class="p">)</span>
-                <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filefh</span><span class="p">)</span>
+                <span class="c1">#  # Make binary output for ShakeCast</span>
+                <span class="c1">#  filef = os.path.join(outfolder, &#39;%s_model.flt&#39;</span>
+                <span class="c1">#                       % filename)</span>
+                <span class="c1">#  # And get name of header</span>
+                <span class="c1">#  filefh = os.path.join(outfolder, &#39;%s_model.hdr&#39;</span>
+                <span class="c1">#                        % filename)</span>
+                <span class="c1">#  # Make file</span>
+                <span class="c1">#  write_floats(filef, maplayers[&#39;model&#39;][&#39;grid&#39;])</span>
+                <span class="c1">#  filenames.append(filef)</span>
+                <span class="c1">#  filenames.append(filefh)</span>
 
         <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s1">&#39;eventsource&#39;</span><span class="p">):</span>
@@ -493,6 +472,114 @@
                 <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span></div>
+
+
+<div class="viewcode-block" id="getShakefiles"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.getShakefiles">[docs]</a><span class="k">def</span> <span class="nf">getShakefiles</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">outdir</span><span class="p">,</span> <span class="n">uncert</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">source</span><span class="o">=</span><span class="s1">&#39;preferred&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Download the shakemap grid.xml file and the </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        event event id or URL</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">shakefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s1">&#39;grid.xml&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">uncert</span><span class="p">:</span>
+        <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s1">&#39;uncertainty.xml&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">uncertfile</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># If args.event is a url to a shakemap, download from that url</span>
+    <span class="k">if</span> <span class="n">isURL</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">source</span> <span class="o">!=</span> <span class="s1">&#39;preferred&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Cannot set shakemap version or source when URL of &#39;</span>
+                            <span class="s1">&#39;gridfile is provided&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">shakefile</span> <span class="o">=</span> <span class="n">getGridURL</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Could not download shakemap file from provided &#39;</span>
+                            <span class="s1">&#39;URL: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
+        <span class="c1"># Now get corresponding event detail</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;shakemap_originator&#39;</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>  <span class="c1"># Maybe originator is missing from event id, try another way</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">temp2</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                    <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_originator&#39;</span><span class="p">],</span> <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_id&#39;</span><span class="p">])</span>
+                <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">temp2</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">event</span> <span class="o">=</span> <span class="n">temp2</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Could not get event detail for shakemap at provided URL: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">msg</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Get most recent version</span>
+    <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># Get current preferred</span>
+        <span class="n">shakemap</span> <span class="o">=</span> <span class="n">detail</span><span class="o">.</span><span class="n">getProducts</span><span class="p">(</span><span class="s1">&#39;shakemap&#39;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;grid.xml&#39;</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
+    <span class="c1"># or get version requested</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">allversions</span> <span class="o">=</span> <span class="n">detail</span><span class="o">.</span><span class="n">getProducts</span><span class="p">(</span><span class="s1">&#39;shakemap&#39;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span>
+                                         <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">vers</span> <span class="o">=</span> <span class="p">[</span><span class="n">allv</span><span class="o">.</span><span class="n">version</span> <span class="k">for</span> <span class="n">allv</span> <span class="ow">in</span> <span class="n">allversions</span><span class="p">]</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vers</span><span class="p">)</span> <span class="o">==</span> <span class="n">version</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Could not find version </span><span class="si">%d</span><span class="s1"> of Shakemap from source </span><span class="si">%s</span><span class="s1">&#39;</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">msg</span> <span class="o">%</span> <span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">source</span><span class="p">))</span>
+        <span class="n">shakemap</span> <span class="o">=</span> <span class="n">allversions</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+        <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;grid.xml&#39;</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">uncert</span><span class="p">:</span>
+        <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">getUncert</span><span class="p">(</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">uncertfile</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">detail</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span> <span class="n">uncertfile</span></div>
+
+
+<div class="viewcode-block" id="getUncert"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.getUncert">[docs]</a><span class="k">def</span> <span class="nf">getUncert</span><span class="p">(</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    download and unzip (if needed) the uncertainty grid corresponding to a</span>
+<span class="sd">    shakemap</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        detail: libcomcat ShakeMap product class for the event and version</span>
+<span class="sd">        fname (str): file location name, if None, will create a temporary file</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        file object corresponding to the url.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">grid_url</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getContentURL</span><span class="p">(</span><span class="s1">&#39;uncertainty.*&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">grid_url</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">grid_url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">basedir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">basedir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+        <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="s1">&#39;uncertainty.xml&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;xml&#39;</span><span class="p">:</span>
+            <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;uncertainty.xml&#39;</span><span class="p">,</span> <span class="n">uncertfile</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;zip&#39;</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="s1">&#39;uncertainty.xml.zip&#39;</span><span class="p">)</span>
+            <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;uncertainty.xml.zip&#39;</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+            <span class="c1">#urllib.request.urlretrieve(grid_url, fname)</span>
+            <span class="k">with</span> <span class="n">ZipFile</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zip1</span><span class="p">:</span>
+                <span class="c1"># See if it&#39;s inside a file structure</span>
+                <span class="n">out</span> <span class="o">=</span> <span class="n">zip1</span><span class="o">.</span><span class="n">filelist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="c1"># Extract all the contents of zip file in different directory</span>
+                <span class="n">zip1</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">basedir</span><span class="p">)</span>
+                <span class="c1"># move file uncertainty.xml file to base dir if it was in a weird subdir</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">filename</span><span class="p">)):</span>
+                    <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">filename</span><span class="p">),</span> <span class="n">uncertfile</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">uncertfile</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to download uncertainty.xml: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">uncertfile</span></div>
 
 
 <div class="viewcode-block" id="isURL"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.isURL">[docs]</a><span class="k">def</span> <span class="nf">isURL</span><span class="p">(</span><span class="n">gridurl</span><span class="p">):</span>
@@ -574,16 +661,6 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for mapconfig does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
                       <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">mapconfig</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;mapdata_filepath&#39;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># check that it&#39;s a valid path</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;mapdata_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">})</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for mapdata_filepath does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">mapdata_filepath</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
             <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;popfile&#39;</span><span class="p">)</span>
@@ -594,16 +671,6 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for population file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
                       <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;web_template&#39;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># check that it&#39;s a valid path</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;web_template&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">})</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for webpage templates does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">web_template</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
             <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;trim&#39;</span><span class="p">)</span>
@@ -643,8 +710,8 @@
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
             <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dbfile&#39;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="c1"># check that it&#39;s a valid path</span>
-            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">):</span>
+            <span class="c1"># check that it&#39;s a valid path (file itself doesnt have to exist)</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">)):</span>
                 <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;dbfile&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for database file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>

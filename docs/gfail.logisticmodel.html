@@ -14,7 +14,7 @@
     <script src="_static/language_data.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="gfail.makemaps" href="gfail.makemaps.html" />
+    <link rel="next" title="gfail.pdl" href="gfail.pdl.html" />
     <link rel="prev" title="gfail.godt" href="gfail.godt.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -38,7 +38,7 @@
 models of models based on logistic regression.</p>
 <dl class="class">
 <dt id="gfail.logisticmodel.LogisticModel">
-<em class="property">class </em><code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">LogisticModel</code><span class="sig-paren">(</span><em class="sig-param">shakefile</em>, <em class="sig-param">config</em>, <em class="sig-param">uncertfile=None</em>, <em class="sig-param">saveinputs=False</em>, <em class="sig-param">slopefile=None</em>, <em class="sig-param">bounds=None</em>, <em class="sig-param">numstd=1</em>, <em class="sig-param">slopemod=None</em>, <em class="sig-param">trimfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">gfail.logisticmodel.</code><code class="sig-name descname">LogisticModel</code><span class="sig-paren">(</span><em class="sig-param">shakefile</em>, <em class="sig-param">config</em>, <em class="sig-param">uncertfile=None</em>, <em class="sig-param">saveinputs=False</em>, <em class="sig-param">slopefile=None</em>, <em class="sig-param">bounds=None</em>, <em class="sig-param">slopemod=None</em>, <em class="sig-param">trimfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Sets up the logistic model</p>
 <dl class="field-list simple">
@@ -63,8 +63,6 @@ a dictionary of boundaries to cut to like</p>
 </pre></div>
 </div>
 </p></li>
-<li><p><strong>numstd</strong> (<em>float</em>) – Number of +/- standard deviations to use if
-uncertainty is computed.</p></li>
 <li><p><strong>slopemod</strong> (<em>str</em>) – How slope input should be modified to be in
 degrees: e.g., <code class="docutils literal notranslate"><span class="pre">np.arctan(slope)</span> <span class="pre">*</span> <span class="pre">180.</span> <span class="pre">/</span> <span class="pre">np.pi</span></code> or
 <code class="docutils literal notranslate"><span class="pre">slope/100.</span></code> (note that this may be in the config file
@@ -78,23 +76,13 @@ offshore areas.</p></li>
 <dt id="gfail.logisticmodel.LogisticModel.getEquations">
 <code class="sig-name descname">getEquations</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logisticmodel.html#LogisticModel.getEquations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.logisticmodel.LogisticModel.getEquations" title="Permalink to this definition">¶</a></dt>
 <dd><p>Method for LogisticModel class to extract strings defining the
-equations for the model for median ground motions and +/- one standard
-deviation (3 total).</p>
+equations for the model for median ground motions.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns</dt>
-<dd class="field-odd"><p><dl class="simple">
-<dt>(equation, equationmin, equationmax) where:</dt><dd><ul class="simple">
-<li><p>equation: the equation for median ground motions,</p></li>
-<li><p>equationmin: the equation for the same model but using
-median ground motions minus 1 standard deviation</p></li>
-<li><p>equationmax: same as above but for plus 1 standard deviation.</p></li>
-</ul>
-</dd>
-</dl>
-</p>
+<dd class="field-odd"><p>the equation for median ground motions,</p>
 </dd>
 <dt class="field-even">Return type</dt>
-<dd class="field-even"><p>tuple</p>
+<dd class="field-even"><p>equation</p>
 </dd>
 </dl>
 </dd></dl>
@@ -487,7 +475,6 @@ operators</p>
 <li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>

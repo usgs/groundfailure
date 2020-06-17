@@ -9,7 +9,6 @@ Submodules
    gfail.gfailrun
    gfail.godt
    gfail.logisticmodel
-   gfail.makemaps
    gfail.pdl
    gfail.spatial
    gfail.stats

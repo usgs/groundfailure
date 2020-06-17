@@ -35,7 +35,7 @@
 <span id="gfail-webpage"></span><h1>gfail.webpage<a class="headerlink" href="#module-gfail.webpage" title="Permalink to this headline">¶</a></h1>
 <dl class="function">
 <dt id="gfail.webpage.hazdev">
-<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">hazdev</code><span class="sig-paren">(</span><em class="sig-param">maplayerlist</em>, <em class="sig-param">configs</em>, <em class="sig-param">shakemap</em>, <em class="sig-param">outfolder=None</em>, <em class="sig-param">alpha=0.7</em>, <em class="sig-param">shakethreshtype='pga'</em>, <em class="sig-param">probthresh=None</em>, <em class="sig-param">shakethresh=10.0</em>, <em class="sig-param">prefLS='Nowicki Jessee and others (2017)'</em>, <em class="sig-param">prefLQ='Zhu and others (2017)'</em>, <em class="sig-param">pop_file=None</em>, <em class="sig-param">defaultcolors=True</em>, <em class="sig-param">point=True</em>, <em class="sig-param">pager_alert=''</em>, <em class="sig-param">eventsource=''</em>, <em class="sig-param">eventsourcecode=''</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#hazdev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.hazdev" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">hazdev</code><span class="sig-paren">(</span><em class="sig-param">maplayerlist</em>, <em class="sig-param">configs</em>, <em class="sig-param">shakemap</em>, <em class="sig-param">outfolder=None</em>, <em class="sig-param">alpha=0.7</em>, <em class="sig-param">shakethreshtype='pga'</em>, <em class="sig-param">shakethresh=10.0</em>, <em class="sig-param">prefLS='Nowicki Jessee and others (2017)'</em>, <em class="sig-param">prefLQ='Zhu and others (2017)'</em>, <em class="sig-param">pop_file=None</em>, <em class="sig-param">defaultcolors=True</em>, <em class="sig-param">point=True</em>, <em class="sig-param">pager_alert=''</em>, <em class="sig-param">eventsource=''</em>, <em class="sig-param">eventsourcecode=''</em>, <em class="sig-param">createpngs=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#hazdev"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.hazdev" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create all files needed for product page creation
 Assumes gfail has been run already with -w flag</p>
 <dl class="field-list simple">
@@ -50,8 +50,6 @@ current directory.</p></li>
 <li><p><strong>alpha</strong> (<em>float</em>) – Transparency to use for overlay pngs, value from 0 to 1.</p></li>
 <li><p><strong>shakethreshtype</strong> (<em>str</em>) – Type of ground motion to use for shakethresh,
 ‘pga’, ‘pgv’, or ‘mmi’.</p></li>
-<li><p><strong>probthresh</strong> – Optional. Float or list of probability thresholds to apply
-before computing stats.</p></li>
 <li><p><strong>shakethresh</strong> – Float or list of shaking thresholds in %g for pga, cm/s
 for pgv, float for mmi. Used for Hagg and Exposure computation.</p></li>
 <li><p><strong>prefLS</strong> (<em>str</em>) – shortref of “preferred” landslide model.</p></li>
@@ -112,7 +110,7 @@ preferred model</p></li>
 
 <dl class="function">
 <dt id="gfail.webpage.create_info">
-<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">create_info</code><span class="sig-paren">(</span><em class="sig-param">event_dir</em>, <em class="sig-param">lsmodels=None</em>, <em class="sig-param">lqmodels=None</em>, <em class="sig-param">eventsource=''</em>, <em class="sig-param">eventsourcecode=''</em>, <em class="sig-param">point=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#create_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.create_info" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">create_info</code><span class="sig-paren">(</span><em class="sig-param">event_dir</em>, <em class="sig-param">lsmodels</em>, <em class="sig-param">lqmodels</em>, <em class="sig-param">eventsource=''</em>, <em class="sig-param">eventsourcecode=''</em>, <em class="sig-param">point=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#create_info"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.create_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create info.json for ground failure product.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -156,6 +154,176 @@ displayed</p></li>
 </dl>
 </dd></dl>
 
+<dl class="function">
+<dt id="gfail.webpage.create_kmz">
+<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">create_kmz</code><span class="sig-paren">(</span><em class="sig-param">maplayer</em>, <em class="sig-param">outfile</em>, <em class="sig-param">mask=None</em>, <em class="sig-param">levels=None</em>, <em class="sig-param">colorlist=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#create_kmz"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.create_kmz" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create kmz files of models</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>maplayer</strong> (<em>dict</em>) – <p>Dictionary of one model result formatted like:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">mapio</span> <span class="n">grid2D</span> <span class="nb">object</span><span class="p">,</span>
+    <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="s1">&#39;label for colorbar and top line of subtitle&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output or input to model&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;description for subtitle&#39;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</p></li>
+<li><p><strong>outfile</strong> (<em>str</em>) – File extension</p></li>
+<li><p><strong>mask</strong> (<em>float</em>) – make all cells below this value transparent</p></li>
+<li><p><strong>levels</strong> (<em>array</em>) – list of bin edges for each color, must be same length</p></li>
+<li><p><strong>colorlist</strong> (<em>array</em>) – list of colors for each bin, should be length one less than levels</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>kmz file</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.get_zoomextent">
+<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">get_zoomextent</code><span class="sig-paren">(</span><em class="sig-param">grid</em>, <em class="sig-param">propofmax=0.3</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#get_zoomextent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.get_zoomextent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the extent that contains all values with probabilities exceeding
+a threshold in order to determine ideal zoom level for interactive map
+If nothing is above the threshold, uses the full extent</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid</strong> – grid2d of model output</p></li>
+<li><p><strong>propofmax</strong> (<em>float</em>) – Proportion of maximum that should be fully included
+within the bounds.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>a dictionary with keys ‘xmin’, ‘xmax’, ‘ymin’, and</dt><dd><p>’ymax’ that defines the zoomed boundaries in geographic coordinates.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><ul class="simple">
+<li><p>boundaries</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.make_rgba">
+<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">make_rgba</code><span class="sig-paren">(</span><em class="sig-param">grid2D</em>, <em class="sig-param">levels</em>, <em class="sig-param">colorlist</em>, <em class="sig-param">mask=None</em>, <em class="sig-param">mercator=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#make_rgba"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.make_rgba" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make an rgba (red, green, blue, alpha) grid out of raw data values and
+provide extent and limits needed to save as an image file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>grid2D</strong> – Mapio Grid2D object of result to mape</p></li>
+<li><p><strong>levels</strong> (<em>array</em>) – list of bin edges for each color, must be same length</p></li>
+<li><p><strong>colorlist</strong> (<em>array</em>) – list of colors for each bin, should be length one
+less than levels</p></li>
+<li><p><strong>mask</strong> (<em>float</em>) – mask all values below this value</p></li>
+<li><p><strong>mercator</strong> (<em>bool</em>) – project to web mercator (needed for leaflet, not
+for kmz)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(rgba_img, extent, lmin, lmax, cmap), where:</dt><dd><ul class="simple">
+<li><p>rgba_img: rgba (red green blue alpha) image</p></li>
+<li><dl class="simple">
+<dt>extent: list of outside corners of image,</dt><dd><p>[minlat, maxlat, minlon, maxlon]</p>
+</dd>
+</dl>
+</li>
+<li><p>lmin: lowest bin edge</p></li>
+<li><p>lmax: highest bin edge</p></li>
+<li><p>cmap: colormap corresponding to image</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.make_legend">
+<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">make_legend</code><span class="sig-paren">(</span><em class="sig-param">levels</em>, <em class="sig-param">colorlist</em>, <em class="sig-param">filename=None</em>, <em class="sig-param">orientation='horizontal'</em>, <em class="sig-param">title=None</em>, <em class="sig-param">transparent=False</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#make_legend"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.make_legend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Make legend file</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>levels</strong> (<em>array</em>) – list of bin edges for each color, must be same length</p></li>
+<li><p><strong>colorlist</strong> (<em>array</em>) – list of colors for each bin, should be length one
+less than levels</p></li>
+<li><p><strong>filename</strong> (<em>str</em>) – File extension of legend file</p></li>
+<li><p><strong>orientation</strong> (<em>str</em>) – orientation of colorbar, ‘horizontal’ or ‘vertical’</p></li>
+<li><p><strong>title</strong> (<em>str</em>) – title of legend (usually units)</p></li>
+<li><p><strong>transparent</strong> (<em>bool</em>) – if True, background will be transparent</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>figure of legend</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.webpage.setupcolors">
+<code class="sig-prename descclassname">gfail.webpage.</code><code class="sig-name descname">setupcolors</code><span class="sig-paren">(</span><em class="sig-param">sync</em>, <em class="sig-param">plotorder</em>, <em class="sig-param">lims</em>, <em class="sig-param">colormaps</em>, <em class="sig-param">defaultcolormap=&lt;matplotlib.colors.LinearSegmentedColormap object&gt;</em>, <em class="sig-param">logscale=None</em>, <em class="sig-param">alpha=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/webpage.html#setupcolors"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.webpage.setupcolors" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get colors that will be used for all colorbars from reference grid</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sync</strong> (<em>str</em>) – If False, will exit program, else corresponds to the shortref
+of the model which should serve as the template for
+the colorbars used by all other models. All other models must
+have the exact same number of bins</p></li>
+<li><p><strong>plotorder</strong> (<em>list</em>) – List of keys of shortrefs of the grids that will be
+plotted.</p></li>
+<li><p><strong>lims</strong> – <p>Nx1 list of tuples or numpy arrays corresponding to
+plotorder defining the bin edges to use for each model.
+Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="p">[(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mi">15</span><span class="p">)]</span>
+</pre></div>
+</div>
+</p></li>
+<li><p><strong>colormaps</strong> (<em>list</em>) – List of strings of matplotlib colormaps (e.g.
+cm.autumn_r) corresponding to plotorder</p></li>
+<li><p><strong>defaultcolormap</strong> (<em>matplotlib colormap</em>) – Colormap to use if
+colormaps is not defined. default cm.CMRmap_r</p></li>
+<li><p><strong>logscale</strong> – If not None, then a list of booleans corresponding to
+plotorder stating whether to use log scaling in determining colors</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(sync, colorlist, lim1) where:</dt><dd><ul class="simple">
+<li><p>sync (bool): whether or not colorbars are/can be synced</p></li>
+<li><dl class="simple">
+<dt>colorlist (list): list of rgba colors that will be applied to all</dt><dd><p>models regardless of bin edge values</p>
+</dd>
+</dl>
+</li>
+<li><p>lim1 (array): bin edges of model to which others are synced</p></li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 
 
@@ -182,7 +350,6 @@ displayed</p></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>

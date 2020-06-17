@@ -69,6 +69,35 @@ program.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="gfail.gfailrun.getShakefiles">
+<code class="sig-prename descclassname">gfail.gfailrun.</code><code class="sig-name descname">getShakefiles</code><span class="sig-paren">(</span><em class="sig-param">event</em>, <em class="sig-param">outdir</em>, <em class="sig-param">uncert=False</em>, <em class="sig-param">version=None</em>, <em class="sig-param">source='preferred'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#getShakefiles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.getShakefiles" title="Permalink to this definition">¶</a></dt>
+<dd><p>Download the shakemap grid.xml file and the</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>event id</strong><strong> or </strong><strong>URL</strong> (<em>event</em>) – </p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.gfailrun.getUncert">
+<code class="sig-prename descclassname">gfail.gfailrun.</code><code class="sig-name descname">getUncert</code><span class="sig-paren">(</span><em class="sig-param">shakemap</em>, <em class="sig-param">fname=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#getUncert"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.getUncert" title="Permalink to this definition">¶</a></dt>
+<dd><p>download and unzip (if needed) the uncertainty grid corresponding to a
+shakemap</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>detail</strong> – libcomcat ShakeMap product class for the event and version</p></li>
+<li><p><strong>fname</strong> (<em>str</em>) – file location name, if None, will create a temporary file</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>file object corresponding to the url.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="gfail.gfailrun.isURL">
 <code class="sig-prename descclassname">gfail.gfailrun.</code><code class="sig-name descname">isURL</code><span class="sig-paren">(</span><em class="sig-param">gridurl</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/gfailrun.html#isURL"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.gfailrun.isURL" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function determines if the provided string is a valid url</p>
@@ -167,7 +196,6 @@ defines the boundaries in geographic coordinates.</p>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>

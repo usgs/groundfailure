@@ -89,27 +89,6 @@ magnitude specified in shakefile.</p></li>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.utilities.parseMapConfig">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">parseMapConfig</code><span class="sig-paren">(</span><em class="sig-param">config</em>, <em class="sig-param">fileext=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseMapConfig"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseMapConfig" title="Permalink to this definition">¶</a></dt>
-<dd><p>Parse config for mapping options.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters</dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>config</strong> (<em>ConfigObj</em>) – ConfigObj object.</p></li>
-<li><p><strong>fileext</strong> (<em>str</em>) – File extension to add to relative filepaths, will be
-prepended to any file paths in config.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns</dt>
-<dd class="field-even"><p>Dictionary of map options pulled from config file.</p>
-</dd>
-<dt class="field-odd">Return type</dt>
-<dd class="field-odd"><p>dict</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="function">
 <dt id="gfail.utilities.parseConfigLayers">
 <code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">parseConfigLayers</code><span class="sig-paren">(</span><em class="sig-param">maplayers</em>, <em class="sig-param">config</em>, <em class="sig-param">keys=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#parseConfigLayers"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.parseConfigLayers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Parse things that need to coodinate with each layer (like lims, logscale,
@@ -423,13 +402,12 @@ just the one selected.</p></li>
 </dd></dl>
 
 <dl class="function">
-<dt id="gfail.utilities.time_delays">
-<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">time_delays</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">changeonly=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#time_delays"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.time_delays" title="Permalink to this definition">¶</a></dt>
-<dd><p>Make plot showing evolution of alerts in time
-Make a plot and print stats showing delay times and changes in alert</p>
-<blockquote>
-<div><p>statistics over time</p>
-</div></blockquote>
+<dt id="gfail.utilities.plot_evolution">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">plot_evolution</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">changeonly=True</em>, <em class="sig-param">percrange=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#plot_evolution"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.plot_evolution" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Make a plot and print stats showing delay times and changes in alert</dt><dd><p>statistics over time</p>
+</dd>
+</dl>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
 <dd class="field-odd"><ul class="simple">
@@ -447,6 +425,8 @@ path is given it will save in current directory.</p></li>
 <li><p><strong>changeonly</strong> (<em>bool</em>) – if True will only show events that changed alert
 level at least once in the time evolution plots (unless eventids
 are defined, then all will show)</p></li>
+<li><p><strong>percrange</strong> – percentile to use for error bars to show uncertainty
+as value &lt;1 (e.g., 0.95). If None, errors will not be shown</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
@@ -460,9 +440,124 @@ are defined, then all will show)</p></li>
 </dd></dl>
 
 <dl class="function">
+<dt id="gfail.utilities.time_delays">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">time_delays</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">starttime=None</em>, <em class="sig-param">endtime=None</em>, <em class="sig-param">minmag=None</em>, <em class="sig-param">maxmag=None</em>, <em class="sig-param">eventids=None</em>, <em class="sig-param">filebasename=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#time_delays"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.time_delays" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Make a plot and print stats showing delay times and changes in alert</dt><dd><p>statistics over time</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>database</strong> (<em>str</em>) – file path to event database (.db file)</p></li>
+<li><p><strong>starttime</strong> (<em>str</em>) – earliest earthquake time to include in the search,
+can be any string date recognizable by np.datetime</p></li>
+<li><p><strong>endtime</strong> (<em>str</em>) – latest earthquake time to include in the search,
+can be any string date recognizable by datetime</p></li>
+<li><p><strong>minmag</strong> (<em>float</em>) – minimum magnitude to include in search</p></li>
+<li><p><strong>maxmag</strong> (<em>float</em>) – maximum magnitude to include in search</p></li>
+<li><p><strong>eventids</strong> (<em>list</em>) – list of specific event ids to include (optional)</p></li>
+<li><p><strong>filebasename</strong> (<em>str</em>) – If defined, will save a file with a modified
+version of this name depending on which alert is displayed, if no
+path is given it will save in current directory.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Figure showing delay and alert change statistics</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.plot_uncertainty">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">plot_uncertainty</code><span class="sig-paren">(</span><em class="sig-param">database</em>, <em class="sig-param">eventid</em>, <em class="sig-param">currentonly=True</em>, <em class="sig-param">filebasename=None</em>, <em class="sig-param">bars=False</em>, <em class="sig-param">percrange=0.95</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#plot_uncertainty"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.plot_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Make a plot and print stats showing delay times and changes in alert</dt><dd><p>statistics over time</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>database</strong> (<em>str</em>) – file path to event database (.db file)</p></li>
+<li><p><strong>eventid</strong> (<em>str</em>) – event ids to plot</p></li>
+<li><p><strong>currentonly</strong> (<em>bool</em>) – if True, will only plot newest version, if False
+will plot all versions with different colors</p></li>
+<li><p><strong>filebasename</strong> (<em>str</em>) – If defined, will save a file with a modified
+version of this name depending on which alert is displayed, if no
+path is given it will save in current directory.</p></li>
+<li><p><strong>bars</strong> (<em>bool</em>) – if True, will use bars spanning percrange</p></li>
+<li><p><strong>percrange</strong> (<em>float</em>) – percentile to use for error bars to show uncertainty
+as value &lt;1 (e.g., 0.95).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Figure showing uncertainty</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="gfail.utilities.alert_rectangles">
 <code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">alert_rectangles</code><span class="sig-paren">(</span><em class="sig-param">ax</em>, <em class="sig-param">bins</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#alert_rectangles"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.alert_rectangles" title="Permalink to this definition">¶</a></dt>
 <dd><p>Function used to color bin levels in background of axis</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.get_rangebeta">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_rangebeta</code><span class="sig-paren">(</span><em class="sig-param">p</em>, <em class="sig-param">q</em>, <em class="sig-param">prob=0.95</em>, <em class="sig-param">minlim=0</em>, <em class="sig-param">maxlim=1</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_rangebeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_rangebeta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get endpoints of the range of the specified beta function that contain
+prob percent of the distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p</strong> (<em>float</em>) – p shape factor of beta distribution (a in scipy)</p></li>
+<li><p><strong>q</strong> (<em>float</em>) – q shape factor of beta distribution (b in scipy)</p></li>
+<li><p><strong>prob</strong> (<em>float</em>) – central probability of distribution to return the range
+of. Value from 0 to 1</p></li>
+<li><p><strong>minlim</strong> (<em>float</em>) – minimum possible value of distribution</p></li>
+<li><p><strong>maxlim</strong> (<em>float</em>) – maximum possible value of distribution</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Returns: tuple (valmin, valmax) where:</dt><dd><ul class="simple">
+<li><p>valmin (float): lower edge of range containing prob</p></li>
+<li><p>valmax (float): upper edge of range containing prob</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="gfail.utilities.get_pdfbeta">
+<code class="sig-prename descclassname">gfail.utilities.</code><code class="sig-name descname">get_pdfbeta</code><span class="sig-paren">(</span><em class="sig-param">p</em>, <em class="sig-param">q</em>, <em class="sig-param">binedges</em>, <em class="sig-param">minlim=0</em>, <em class="sig-param">maxlim=1</em>, <em class="sig-param">npts=1000</em>, <em class="sig-param">openends=True</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/utilities.html#get_pdfbeta"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.utilities.get_pdfbeta" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return discretized pdf for plotting curve and report probabilities of
+each bin</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>p</strong> (<em>float</em>) – p shape factor of beta distribution (a in scipy)</p></li>
+<li><p><strong>q</strong> (<em>float</em>) – q shape factor of beta distribution (b in scipy)</p></li>
+<li><p><strong>binedges</strong> (<em>list</em>) – list of bin edges</p></li>
+<li><p><strong>minlim</strong> (<em>float</em>) – minimum possible value of distribution</p></li>
+<li><p><strong>maxlim</strong> (<em>float</em>) – maximum possible value of distribution</p></li>
+<li><p><strong>npts</strong> (<em>int</em>) – number of points to return in xvals</p></li>
+<li><p><strong>openends</strong> (<em>bool</em>) – assumes lower and upper bins don’t have hard edges</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="simple">
+<dt>Returns: tuple of (xvals, yvals, probs) where:</dt><dd><ul class="simple">
+<li><p>xvals: list of log-distributed values</p></li>
+<li><p>yvals: corresponding list of</p></li>
+<li><dl class="simple">
+<dt>probs (list): list of len(binedges)-1 that gives probability of</dt><dd><p>value falling in the corresponding bin</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
 </dd></dl>
 
 </div>
@@ -491,7 +586,6 @@ are defined, then all will show)</p></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
