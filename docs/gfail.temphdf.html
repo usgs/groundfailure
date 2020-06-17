@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.temphdf &#8212; groundfailure 0.1 documentation</title>
@@ -34,9 +34,9 @@
             
   <div class="section" id="module-gfail.temphdf">
 <span id="gfail-temphdf"></span><h1>gfail.temphdf<a class="headerlink" href="#module-gfail.temphdf" title="Permalink to this headline">¶</a></h1>
-<dl class="class">
+<dl class="py class">
 <dt id="gfail.temphdf.TempHdf">
-<em class="property">class </em><code class="sig-prename descclassname">gfail.temphdf.</code><code class="sig-name descname">TempHdf</code><span class="sig-paren">(</span><em class="sig-param">grid2dfile</em>, <em class="sig-param">filename</em>, <em class="sig-param">name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="sig-prename descclassname">gfail.temphdf.</code><code class="sig-name descname">TempHdf</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">grid2dfile</span></em>, <em class="sig-param"><span class="n">filename</span></em>, <em class="sig-param"><span class="n">name</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Convert grid2d file into a temporary hdf5 file for reducing memory
 load.</p>
@@ -52,33 +52,33 @@ have its own name.</p></li>
 </ul>
 </dd>
 </dl>
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.temphdf.TempHdf.getFilepath">
 <code class="sig-name descname">getFilepath</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getFilepath"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getFilepath" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return file path.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.temphdf.TempHdf.getGeoDict">
 <code class="sig-name descname">getGeoDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getGeoDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getGeoDict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return geodictionary.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.temphdf.TempHdf.getShakeDict">
 <code class="sig-name descname">getShakeDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getShakeDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getShakeDict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return shake dictionary if it exists.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.temphdf.TempHdf.getEventDict">
 <code class="sig-name descname">getEventDict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getEventDict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getEventDict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return event dictionary if it exists.</p>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.temphdf.TempHdf.getSlice">
-<code class="sig-name descname">getSlice</code><span class="sig-paren">(</span><em class="sig-param">rowstart=None</em>, <em class="sig-param">rowend=None</em>, <em class="sig-param">colstart=None</em>, <em class="sig-param">colend=None</em>, <em class="sig-param">name=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getSlice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getSlice" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">getSlice</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rowstart</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">rowend</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">colstart</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">colend</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">name</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getSlice"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getSlice" title="Permalink to this definition">¶</a></dt>
 <dd><p>Return specified slice of data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -100,9 +100,9 @@ at last row.</p></li>
 </dl>
 </dd></dl>
 
-<dl class="method">
+<dl class="py method">
 <dt id="gfail.temphdf.TempHdf.getSliceDiv">
-<code class="sig-name descname">getSliceDiv</code><span class="sig-paren">(</span><em class="sig-param">rowmax=None</em>, <em class="sig-param">colmax=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getSliceDiv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getSliceDiv" title="Permalink to this definition">¶</a></dt>
+<code class="sig-name descname">getSliceDiv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">rowmax</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">colmax</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/temphdf.html#TempHdf.getSliceDiv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.temphdf.TempHdf.getSliceDiv" title="Permalink to this definition">¶</a></dt>
 <dd><p>Determine how to slice the arrays.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -150,7 +150,6 @@ None uses entire column.</p></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>

@@ -2,18 +2,22 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-from gfail.webpage import create_info
+import os
+from configobj import ConfigObj
+
+
+from gfail.utilities import loadlayers
+from gfail.conf import correct_config_filepaths
+from gfail.webpage import hazdev
 
 
 if __name__ == '__main__':
     desc = '''
     Create info.json for an event's ground failure result. The code
     looks in the event directory for the model results (in hdf5 format)
-    that are output by the 'gfail' program.
+    that are output by the 'gfail' program and other files like the shakemap
+    grid.xml file and zoom extents. This reruns the statistics.
 
-    Note: the file is temporarily named "info2.json" since "info.json"
-    is also created by another script and I don't want to delete that
-    until we are sure that this file is sufficient.
     '''
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('-e', '--event_dir',
@@ -21,4 +25,53 @@ if __name__ == '__main__':
                              'this event.',
                         required=True)
     args = parser.parse_args()
-    create_info(args.event_dir)
+    
+    # Read in stuff from the event directory
+
+    files = os.listdir(args.event_dir)
+    # Read in the "preferred" model for landslides and liquefaction
+    ls_mod_file = [f2 for f2 in files if 'jessee_2017.hdf5' in f2]
+    if len(ls_mod_file) == 1:
+        ls_file = os.path.join(args.event_dir, ls_mod_file[0])
+        ls_mod = loadlayers(ls_file)
+    else:
+        raise OSError("Preferred landslide model result not found.")
+    lq_mod_file = [f2 for f2 in files if 'zhu_2017_general.hdf5' in f2]
+    if len(lq_mod_file) == 1:
+        lq_file = os.path.join(args.event_dir, lq_mod_file[0])
+        lq_mod = loadlayers(lq_file)
+    else:
+        raise OSError("Preferred liquefaction model result not found.")
+    
+    maplayerlist = [ls_mod, lq_mod]
+        
+    # Stuff into maplayerlist and run hazdev on it to get info.json
+    # Find shakemap file
+    shake_file = [f2 for f2 in files if 'grid.xml' in f2]
+    if len(shake_file) == 1:
+        shakefile = os.path.join(args.event_dir, shake_file[0])
+    else:
+        raise OSError("Grid.xml not found in event directory.")
+
+    # Try to find config files
+    default_file = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    try:
+        defaults = ConfigObj(default_file)
+        configpath = defaults['config_filepath']
+        datpath = defaults['data_path']
+        lsconf = correct_config_filepaths(datpath,
+                  ConfigObj(os.path.join(configpath, 'jessee_2017.ini')))
+        lqconf = correct_config_filepaths(datpath,
+                  ConfigObj(os.path.join(configpath, 'zhu_2017_general.ini')))
+        configs = [lsconf, lqconf]
+        
+    except Exception as e:
+        raise OSError("Config files not found, %s" % e)
+
+    # Try to get right event id from model results
+    eventid = ls_mod['model']['description']['event_id']
+    
+    # will break if unusual event id...
+    # Calls this create_info function but with more info to create info.json
+    hazdev(maplayerlist, configs, shakefile, args.event_dir, createpngs=False,
+           eventsource=eventid[:2], eventsourcecode=eventid[2:])

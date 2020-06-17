@@ -59,11 +59,8 @@ def test_stats_models():
 
     hagg = stats.computeHagg(maplayers2['model']['grid'])
     np.testing.assert_allclose(hagg['hagg_0.00g'], 65.85571, atol=0.001)
-    parea = stats.computeParea(maplayers2['model']['grid'],
-                               probthresh=0.2)
-    np.testing.assert_allclose(parea, 77.03092, atol=0.001)
 
-    stats2 = stats.computeStats(maplayers2['model']['grid'], probthresh=0.2, shakefile=shakefile,
+    stats2 = stats.computeStats(maplayers2['model']['grid'], shakefile=shakefile,
                                 shakethreshtype='pga', shakethresh=20.,
                                 statprobthresh=0.0)
     np.testing.assert_allclose(stats2['Max'], 0.41278, atol=0.001)

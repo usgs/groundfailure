@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.stats &#8212; groundfailure 0.1 documentation</title>
@@ -40,7 +40,11 @@
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
 <span class="kn">import</span> <span class="nn">os</span>
-
+<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">from</span> <span class="nn">scipy.optimize</span> <span class="kn">import</span> <span class="n">curve_fit</span>
+<span class="kn">from</span> <span class="nn">scipy.signal</span> <span class="kn">import</span> <span class="n">convolve</span>
+<span class="kn">from</span> <span class="nn">numpy</span> <span class="kn">import</span> <span class="n">matlib</span>
 
 <span class="c1"># local imports</span>
 <span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">ShakeGrid</span>
@@ -53,23 +57,22 @@
 <span class="kn">from</span> <span class="nn">configobj</span> <span class="kn">import</span> <span class="n">ConfigObj</span>
 
 <span class="c1"># Make fonts readable and recognizable by illustrator</span>
-<span class="kn">import</span> <span class="nn">matplotlib</span> <span class="k">as</span> <span class="nn">mpl</span>
 <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;pdf.fonttype&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">42</span>
 <span class="n">mpl</span><span class="o">.</span><span class="n">rcParams</span><span class="p">[</span><span class="s1">&#39;font.sans-serif&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;Arial&#39;</span><span class="p">,</span>
                                    <span class="s1">&#39;Bitstream Vera Serif&#39;</span><span class="p">,</span>
                                    <span class="s1">&#39;sans-serif&#39;</span><span class="p">]</span>
 
 
-<div class="viewcode-block" id="computeStats"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.computeStats">[docs]</a><span class="k">def</span> <span class="nf">computeStats</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<div class="viewcode-block" id="computeStats"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.computeStats">[docs]</a><span class="k">def</span> <span class="nf">computeStats</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">stdgrid2D</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
-                 <span class="n">statprobthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pop_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                 <span class="n">statprobthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pop_file</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stdtype</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span>
+                 <span class="n">maxP</span><span class="o">=</span><span class="mf">1.</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute summary stats of a ground failure model output.</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        grid2D: grid2D object of model output.</span>
-<span class="sd">        probthresh: Optional, Float or list of probability thresholds</span>
-<span class="sd">            for use in Parea computation.</span>
+<span class="sd">        stdgrid2D: grid2D object of model standard deviations (optional)</span>
 <span class="sd">        shakefile: Optional, path to shakemap file to use for ground motion</span>
 <span class="sd">            threshold.</span>
 <span class="sd">        shakethreshtype: Optional, Type of ground motion to use for</span>
@@ -81,15 +84,29 @@
 <span class="sd">            probabilities less than or equal to this value</span>
 <span class="sd">        pop_file (str): File path to population file to use to compute exposure</span>
 <span class="sd">            stats</span>
+<span class="sd">        stdtype (str): assumption of spatial correlation used to compute</span>
+<span class="sd">            the stdev of the statistics, &#39;max&#39;, &#39;min&#39; or &#39;mean&#39; of max and min,</span>
+<span class="sd">            or full (default) estimates std considering covariance</span>
+<span class="sd">        maxP = maximum possible value of P (1 default, but coverge models</span>
+<span class="sd">            have smaller values, 0.487 and 0.256 for LQ and LS)</span>
 
 <span class="sd">    Returns:</span>
-<span class="sd">        dict: Dictionary with the following keys:</span>
+<span class="sd">        dict: Dictionary with all or some of the following keys</span>
+<span class="sd">            (depending on input options):</span>
 <span class="sd">            - Max</span>
 <span class="sd">            - Median</span>
 <span class="sd">            - Std</span>
-<span class="sd">            - Hagg_# where # is the shaking threshold</span>
-<span class="sd">            - Parea_# where # is the probability threshold</span>
+<span class="sd">            - hagg_# where # is the shaking threshold input</span>
+<span class="sd">            - hagg_std_# standard deviation of hagg_#</span>
+<span class="sd">            - hlim_# maximum possible value of hagg (for given Pmax value)</span>
+<span class="sd">            - p_hagg_# beta function shapefile p for hagg</span>
+<span class="sd">            - q_hagg_# beta function shapefile q for hagg</span>
 <span class="sd">            - exp_pop_# where # is the shaking threshold (if pop_file specified)</span>
+<span class="sd">            - exp_std_# (optional) standard deviation of exp_pop_#</span>
+<span class="sd">            - elim_# maximum possible value of E (for given Pmax value)</span>
+<span class="sd">            - p_exp_# beta function shapefile p for exp_pop</span>
+<span class="sd">            - q_exp_# beta function shapefile q for exp_pop</span>
+
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">stats</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
     <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
@@ -107,33 +124,14 @@
         <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Max&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
         <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Median&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanmedian</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
         <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nanstd</span><span class="p">(</span><span class="n">grid</span><span class="p">))</span>
-    <span class="n">Hagg</span> <span class="o">=</span> <span class="n">computeHagg</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="n">statprobthresh</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
-                       <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span>
-                       <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">)</span>
-    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span><span class="p">:</span>
-        <span class="n">shakethresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">shakethresh</span><span class="p">]</span>
-        <span class="n">Hagg</span> <span class="o">=</span> <span class="p">[</span><span class="n">Hagg</span><span class="p">]</span>
 
-    <span class="k">for</span> <span class="n">T</span><span class="p">,</span> <span class="n">H</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">shakethresh</span><span class="p">,</span> <span class="n">Hagg</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">T</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span>
-            <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Hagg&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">newkey</span> <span class="o">=</span> <span class="s1">&#39;Hagg_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">T</span><span class="o">/</span><span class="mf">100.</span><span class="p">)</span>
-            <span class="n">stats</span><span class="p">[</span><span class="n">newkey</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">H</span><span class="p">)</span>
+    <span class="n">hagg_dict</span> <span class="o">=</span> <span class="n">computeHagg</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="n">statprobthresh</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
+                            <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span> <span class="n">stdtype</span><span class="o">=</span><span class="n">stdtype</span><span class="p">,</span>
+                            <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">,</span> <span class="n">stdgrid2D</span><span class="o">=</span><span class="n">stdgrid2D</span><span class="p">,</span>
+                            <span class="n">maxP</span><span class="o">=</span><span class="n">maxP</span><span class="p">)</span>
 
-    <span class="k">if</span> <span class="n">probthresh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">Parea</span> <span class="o">=</span> <span class="n">computeParea</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="n">probthresh</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                             <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">Parea</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">Parea</span><span class="p">)</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-            <span class="n">probthresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">probthresh</span><span class="p">]</span>
-            <span class="n">Parea</span> <span class="o">=</span> <span class="p">[</span><span class="n">Parea</span><span class="p">]</span>
-
-        <span class="k">for</span> <span class="n">T</span><span class="p">,</span> <span class="n">P</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">probthresh</span><span class="p">,</span> <span class="n">Parea</span><span class="p">):</span>
-            <span class="k">if</span> <span class="n">T</span> <span class="o">==</span> <span class="mf">0.</span><span class="p">:</span>
-                <span class="n">stats</span><span class="p">[</span><span class="s1">&#39;Parea&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">P</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">newkey</span> <span class="o">=</span> <span class="s1">&#39;Parea_</span><span class="si">%1.2f</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">T</span>
-                <span class="n">stats</span><span class="p">[</span><span class="n">newkey</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">P</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">hagg_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">stats</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
 
     <span class="k">if</span> <span class="n">pop_file</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">try</span><span class="p">:</span>
@@ -150,7 +148,10 @@
         <span class="n">exp_dict</span> <span class="o">=</span> <span class="n">get_exposures</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">pop_file</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span>
                                  <span class="n">shakethreshtype</span><span class="o">=</span><span class="n">shakethreshtype</span><span class="p">,</span>
                                  <span class="n">shakethresh</span><span class="o">=</span><span class="n">shakethresh</span><span class="p">,</span>
-                                 <span class="n">probthresh</span><span class="o">=</span><span class="n">statprobthresh</span><span class="p">)</span>
+                                 <span class="n">probthresh</span><span class="o">=</span><span class="n">statprobthresh</span><span class="p">,</span>
+                                 <span class="n">stdgrid2D</span><span class="o">=</span><span class="n">stdgrid2D</span><span class="p">,</span>
+                                 <span class="n">stdtype</span><span class="o">=</span><span class="n">stdtype</span><span class="p">,</span> <span class="n">maxP</span><span class="o">=</span><span class="n">maxP</span>
+                                 <span class="p">)</span>
         <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">exp_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
             <span class="n">stats</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">v</span>
 
@@ -158,7 +159,8 @@
 
 
 <div class="viewcode-block" id="computeHagg"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.computeHagg">[docs]</a><span class="k">def</span> <span class="nf">computeHagg</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">proj</span><span class="o">=</span><span class="s1">&#39;moll&#39;</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
+                <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">stdgrid2D</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                <span class="n">stdtype</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span> <span class="n">maxP</span><span class="o">=</span><span class="mf">1.</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Computes the Aggregate Hazard (Hagg) which is equal to the</span>
 <span class="sd">    probability * area of grid cell For models that compute areal coverage,</span>
@@ -176,12 +178,24 @@
 <span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
 <span class="sd">        shakethresh: Optional, Float or list of shaking thresholds in %g for</span>
 <span class="sd">            pga, cm/s for pgv, float for mmi.</span>
+<span class="sd">        stdgrid2D: grid2D object of model standard deviations (optional)</span>
+<span class="sd">        stdtype (str): assumption of spatial correlation used to compute</span>
+<span class="sd">            the stdev of the statistics, &#39;max&#39;, &#39;min&#39;, &#39;mean&#39; of max and min,</span>
+<span class="sd">            or &#39;full&#39; (default) which estimates the range of correlation and</span>
+<span class="sd">            accounts for covariance</span>
+<span class="sd">        maxP (float): the maximum possible probability of the model</span>
 
-<span class="sd">    Returns: Aggregate hazard (float) if no shakethresh or only one shakethresh</span>
-<span class="sd">        was defined, otherwise, a list of floats of aggregate hazard for all</span>
-<span class="sd">        shakethresh values.</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        dict: Dictionary with keys:</span>
+<span class="sd">            hagg_#g where # is the shakethresh</span>
+<span class="sd">            std_# if stdgrid2D is supplied (stdev of exp_pop)</span>
+<span class="sd">            hlim_#, the maximum exposure value possible with the</span>
+<span class="sd">            applied thresholds and given maxP value</span>
+<span class="sd">            N_# the number of cells exceeding that value (in projected coords)</span>
+<span class="sd">            cell_area_km2 grid cell area</span>
+<span class="sd">            p_hagg_# beta distribution shape factor p (sometimes called alpha)</span>
+<span class="sd">            q_hagg_# beta distribution shape factor q (sometimes called beta)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">Hagg</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">bounds</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
     <span class="n">lat0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
     <span class="n">lon0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
@@ -214,102 +228,96 @@
     <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
     <span class="n">geodictRS</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
     <span class="n">cell_area_km2</span> <span class="o">=</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dx</span> <span class="o">*</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dy</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">stdgrid</span> <span class="o">=</span> <span class="n">stdgrid2D</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
+        <span class="n">std</span> <span class="o">=</span> <span class="n">stdgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">std</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">model</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+
+    <span class="n">Hagg</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">model</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">model</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
     <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">shkgrid</span> <span class="o">=</span> <span class="n">shk</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
+        <span class="n">shkdat</span> <span class="o">=</span> <span class="n">shkgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">shaket</span> <span class="ow">in</span> <span class="n">shakethresh</span><span class="p">:</span>
-            <span class="n">modcop</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="n">shkgrid</span> <span class="o">=</span> <span class="n">shk</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
-            <span class="n">shkdat</span> <span class="o">=</span> <span class="n">shkgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
             <span class="c1"># use -1 to avoid nan errors and warnings, will always be thrown</span>
-            <span class="c1"># out because default is 0.</span>
-            <span class="n">shkdat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">shkdat</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
-            <span class="n">modcop</span><span class="p">[</span><span class="n">shkdat</span> <span class="o">&lt;</span> <span class="n">shaket</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
-            <span class="n">Hagg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">modcop</span><span class="p">[</span><span class="n">modcop</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">))</span>
+            <span class="c1"># out because default probthresh is 0.</span>
+            <span class="n">model</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">shkdat</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+            <span class="n">model</span><span class="p">[</span><span class="n">shkdat</span> <span class="o">&lt;</span> <span class="n">shaket</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">)</span>
+            <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">mu</span>
+            <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;cell_area_km2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cell_area_km2</span>
+            <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">])</span>
+            <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;N_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">N</span>
+            <span class="n">hlim</span> <span class="o">=</span> <span class="n">cell_area_km2</span><span class="o">*</span><span class="n">N</span><span class="o">*</span><span class="n">maxP</span>
+            <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hlim_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">hlim</span>
+            <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">std</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+                    <span class="n">totalmin</span> <span class="o">=</span> <span class="n">cell_area_km2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">((</span><span class="n">std</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">])</span><span class="o">**</span><span class="mf">2.</span><span class="p">))</span>
+                    <span class="n">totalmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">std</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;max&#39;</span><span class="p">:</span>
+                        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">totalmax</span>
+                    <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;min&#39;</span><span class="p">:</span>
+                        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">totalmin</span>
+                    <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;mean&#39;</span><span class="p">:</span>
+                        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">totalmax</span><span class="o">+</span><span class="n">totalmin</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span> <span class="o">=</span> <span class="n">semivario</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">probthresh</span><span class="p">)</span>
+                        <span class="n">stdz</span> <span class="o">=</span> <span class="n">std</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                        <span class="n">stdz</span><span class="p">[</span><span class="n">model</span> <span class="o">&lt;</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">cell_area_km2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">svar</span><span class="p">(</span>
+                                <span class="n">stdz</span><span class="p">,</span> <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span><span class="p">))</span>
+                    <span class="n">var</span> <span class="o">=</span> <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span><span class="o">**</span><span class="mf">2.</span>
+                    <span class="c1"># Beta distribution shape factors</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;p_hagg_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">hlim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">hlim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;q_hagg_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">mu</span><span class="o">/</span><span class="n">hlim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">hlim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No std values above threshold, skipping uncertainty &#39;</span>
+                          <span class="s1">&#39;and filling with zeros&#39;</span><span class="p">)</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;p_hagg_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;q_hagg_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="mf">0.</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">Hagg</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">))</span>
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Hagg</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">Hagg</span> <span class="o">=</span> <span class="n">Hagg</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">model</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">)</span>
+        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu</span>
+        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;cell_area_km2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cell_area_km2</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">])</span>
+        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;N_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">N</span>
+        <span class="n">hlim</span> <span class="o">=</span> <span class="n">cell_area_km2</span><span class="o">*</span><span class="n">N</span><span class="o">*</span><span class="n">maxP</span>
+        <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hlim_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">hlim</span>
+        <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">std</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+                <span class="n">totalmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">std</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">)</span>
+                <span class="n">totalmin</span> <span class="o">=</span> <span class="n">cell_area_km2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">((</span><span class="n">std</span><span class="p">[</span><span class="n">model</span> <span class="o">&gt;=</span> <span class="n">probthresh</span><span class="p">])</span><span class="o">**</span><span class="mf">2.</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;max&#39;</span><span class="p">:</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">totalmax</span>
+                <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;min&#39;</span><span class="p">:</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">totalmin</span>
+                <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;mean&#39;</span><span class="p">:</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">totalmax</span><span class="o">+</span><span class="n">totalmin</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">modz</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                    <span class="n">modz</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">model</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
+                    <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span> <span class="o">=</span> <span class="n">semivario</span><span class="p">(</span><span class="n">modz</span><span class="p">,</span> <span class="n">probthresh</span><span class="p">)</span>
+                    <span class="n">stdz</span> <span class="o">=</span> <span class="n">std</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                    <span class="n">stdz</span><span class="p">[</span><span class="n">model</span> <span class="o">&lt;</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cell_area_km2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">svar</span><span class="p">(</span><span class="n">stdz</span><span class="p">,</span> <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span><span class="p">))</span>
+    
+                <span class="n">var</span> <span class="o">=</span> <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_0.00g&#39;</span><span class="p">]</span><span class="o">**</span><span class="mf">2.</span>
+                <span class="c1"># Beta distribution shape factors</span>
+                <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;p_hagg_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">hlim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">hlim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;q_hagg_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">mu</span><span class="o">/</span><span class="n">hlim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">hlim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;hagg_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;p_hagg_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                <span class="n">Hagg</span><span class="p">[</span><span class="s1">&#39;q_hagg_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+
     <span class="k">return</span> <span class="n">Hagg</span></div>
 
 
-<div class="viewcode-block" id="computeParea"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.computeParea">[docs]</a><span class="k">def</span> <span class="nf">computeParea</span><span class="p">(</span><span class="n">grid2D</span><span class="p">,</span> <span class="n">proj</span><span class="o">=</span><span class="s1">&#39;moll&#39;</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                 <span class="n">shakethreshtype</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Alternative to Aggregate Hazard (Hagg), which is equal to the</span>
-<span class="sd">    the sum of the area of grid cells that exceeds a given probability.</span>
-
-<span class="sd">    Args:</span>
-<span class="sd">        grid2D: grid2D object of model output.</span>
-<span class="sd">        proj: projection to use to obtain equal area, &#39;moll&#39;  mollweide, or</span>
-<span class="sd">            &#39;laea&#39; lambert equal area.</span>
-<span class="sd">        probthresh: Optional, Float or list of probability thresholds.</span>
-<span class="sd">        shakefile: Optional, path to shakemap file to use for ground motion</span>
-<span class="sd">            threshold.</span>
-<span class="sd">        shakethreshtype: Optional, Type of ground motion to use for</span>
-<span class="sd">            shakethresh, &#39;pga&#39;, &#39;pgv&#39;, or &#39;mmi&#39;.</span>
-<span class="sd">        shakethresh: Optional, Float of shaking thresholds in %g for</span>
-<span class="sd">            pga, cm/s for pgv, float for mmi.</span>
-
-<span class="sd">    Returns:</span>
-<span class="sd">        Parea (float) if no or only one probthresh defined,</span>
-<span class="sd">        otherwise, a list of floats of Parea corresponding to all</span>
-<span class="sd">        specified probthresh values.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
-    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">probthresh</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">probthresh</span><span class="p">)</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
-        <span class="n">probthresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">probthresh</span><span class="p">]</span>
-
-    <span class="n">Parea</span> <span class="o">=</span> <span class="p">[]</span>
-    <span class="n">bounds</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
-    <span class="n">lat0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">3</span><span class="p">]))</span>
-    <span class="n">lon0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">bounds</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="mi">1</span><span class="p">]))</span>
-    <span class="n">projs</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;+proj=</span><span class="si">%s</span><span class="s1"> +lat_0=</span><span class="si">%f</span><span class="s1"> +lon_0=</span><span class="si">%f</span><span class="s1"> +x_0=0 +y_0=0 +ellps=WGS84 &#39;</span>
-             <span class="s1">&#39;+units=km +no_defs&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">lat0</span><span class="p">,</span> <span class="n">lon0</span><span class="p">))</span>
-    <span class="n">geodict</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
-
-    <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">shakethresh</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;shaking threshold must be equal or greater &#39;</span>
-                            <span class="s1">&#39;than zero&#39;</span><span class="p">)</span>
-        <span class="n">tmpdir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
-        <span class="c1"># resample shakemap to grid2D</span>
-        <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
-        <span class="n">junkfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">,</span> <span class="s1">&#39;temp.bil&#39;</span><span class="p">)</span>
-        <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="n">shakethreshtype</span><span class="p">))</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">junkfile</span><span class="p">)</span>
-        <span class="n">shk</span> <span class="o">=</span> <span class="n">quickcut</span><span class="p">(</span><span class="n">junkfile</span><span class="p">,</span> <span class="n">geodict</span><span class="p">,</span> <span class="n">precise</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
-                       <span class="n">method</span><span class="o">=</span><span class="s1">&#39;bilinear&#39;</span><span class="p">)</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">shk</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span> <span class="o">!=</span> <span class="n">geodict</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;shakemap was not resampled to exactly the same &#39;</span>
-                            <span class="s1">&#39;geodict as the model&#39;</span><span class="p">)</span>
-
-    <span class="n">grid</span> <span class="o">=</span> <span class="n">grid2D</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
-    <span class="n">geodictRS</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
-    <span class="n">cell_area_km2</span> <span class="o">=</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dx</span> <span class="o">*</span> <span class="n">geodictRS</span><span class="o">.</span><span class="n">dy</span>
-    <span class="n">model</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
-    <span class="n">model</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">model</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
-    <span class="k">for</span> <span class="n">probt</span> <span class="ow">in</span> <span class="n">probthresh</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">probt</span> <span class="o">&lt;</span> <span class="mf">0.</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;probability threshold must be equal or greater &#39;</span>
-                            <span class="s1">&#39;than zero&#39;</span><span class="p">)</span>
-        <span class="n">modcop</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-        <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">shkgrid</span> <span class="o">=</span> <span class="n">shk</span><span class="o">.</span><span class="n">project</span><span class="p">(</span><span class="n">projection</span><span class="o">=</span><span class="n">projs</span><span class="p">)</span>
-            <span class="n">shkdat</span> <span class="o">=</span> <span class="n">shkgrid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
-            <span class="c1"># use -1 to avoid nan errors and warnings, will always be thrown</span>
-            <span class="c1"># out because default probthresh is 0 and must be positive.</span>
-            <span class="n">shkdat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">shkdat</span><span class="p">)]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
-            <span class="n">modcop</span><span class="p">[</span><span class="n">shkdat</span> <span class="o">&lt;</span> <span class="n">shakethresh</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.</span>
-        <span class="n">one_mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">modcop</span><span class="p">)</span>
-        <span class="n">Parea</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">one_mat</span><span class="p">[</span><span class="n">modcop</span> <span class="o">&gt;=</span> <span class="n">probt</span><span class="p">]</span> <span class="o">*</span> <span class="n">cell_area_km2</span><span class="p">))</span>
-
-    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">Parea</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">Parea</span> <span class="o">=</span> <span class="n">Parea</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-    <span class="k">return</span> <span class="n">Parea</span></div>
-
-
 <div class="viewcode-block" id="get_exposures"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.get_exposures">[docs]</a><span class="k">def</span> <span class="nf">get_exposures</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">pop_file</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">shakethreshtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                  <span class="n">shakethresh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+                  <span class="n">shakethresh</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">probthresh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stdgrid2D</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">stdtype</span><span class="o">=</span><span class="s1">&#39;full&#39;</span><span class="p">,</span> <span class="n">maxP</span><span class="o">=</span><span class="mf">1.</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get exposure-based statistics.</span>
 
@@ -324,21 +332,38 @@
 <span class="sd">            pga, cm/s for pgv, float for mmi.</span>
 <span class="sd">        probthresh: Optional, None or float, exclude any cells with</span>
 <span class="sd">            probabilities less than or equal to this value</span>
+<span class="sd">        stdgrid2D: grid2D object of model standard deviations (optional)</span>
+<span class="sd">        stdtype (str): assumption of spatial correlation used to compute</span>
+<span class="sd">            the stdev of the statistics, &#39;max&#39;, &#39;min&#39; or &#39;mean&#39; of max and min,</span>
+<span class="sd">            &#39;full&#39; estimates the std with covariance</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        dict: Dictionary with keys named exp_pop_# where # is the shakethresh</span>
+<span class="sd">            and exp_std_# if stdgrid2D is supplied (stdev of exp_pop)</span>
+<span class="sd">            and elim_#, the maximum exposure value possible with the</span>
+<span class="sd">            applied thresholds and given maxP value</span>
+<span class="sd">            p_exp_# beta distribution shape factor p (sometimes called alpha)</span>
+<span class="sd">            q_exp_# beta distribution shape factor q (sometimes called beta)</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="c1"># If probthresh defined, zero out any areas less than or equal to</span>
     <span class="c1"># probthresh before proceeding</span>
-
     <span class="k">if</span> <span class="n">probthresh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">origdata</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
         <span class="n">moddat</span> <span class="o">=</span> <span class="n">origdata</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
         <span class="n">moddat</span><span class="p">[</span><span class="n">moddat</span> <span class="o">&lt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
         <span class="n">moddat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">origdata</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stddat</span> <span class="o">=</span> <span class="n">stdgrid2D</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">stddat</span><span class="p">[</span><span class="n">moddat</span> <span class="o">&lt;=</span> <span class="n">probthresh</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+            <span class="n">stddat</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">origdata</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.0</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">moddat</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
+        <span class="n">moddat</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stddat</span> <span class="o">=</span> <span class="n">stdgrid2D</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">shakethresh</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">list</span> <span class="ow">and</span> <span class="nb">type</span><span class="p">(</span><span class="n">shakethresh</span><span class="p">)</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="n">shakethresh</span> <span class="o">=</span> <span class="p">[</span><span class="n">shakethresh</span><span class="p">]</span>
 
     <span class="n">mdict</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span>
 
@@ -358,10 +383,17 @@
         <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="n">mdict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">-</span> <span class="n">pdict</span><span class="o">.</span><span class="n">ymin</span><span class="p">)</span><span class="o">/</span><span class="n">mdict</span><span class="o">.</span><span class="n">dy</span><span class="p">)))</span>
     <span class="n">pad_dict</span><span class="p">[</span><span class="s1">&#39;padtop&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span>
         <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">((</span><span class="n">pdict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">-</span> <span class="n">mdict</span><span class="o">.</span><span class="n">ymax</span><span class="p">)</span><span class="o">/</span><span class="n">mdict</span><span class="o">.</span><span class="n">dy</span><span class="p">)))</span>
+
     <span class="n">padgrid</span><span class="p">,</span> <span class="n">mdict2</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="o">.</span><span class="n">padGrid</span><span class="p">(</span>
         <span class="n">moddat</span><span class="p">,</span> <span class="n">mdict</span><span class="p">,</span> <span class="n">pad_dict</span><span class="p">)</span>  <span class="c1"># padds with inf</span>
     <span class="n">padgrid</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">padgrid</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>  <span class="c1"># change to pad with nan</span>
     <span class="n">padgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">padgrid</span><span class="p">,</span> <span class="n">geodict</span><span class="o">=</span><span class="n">mdict2</span><span class="p">)</span>  <span class="c1"># Turn into grid2d object</span>
+
+    <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">padstdgrid</span><span class="p">,</span> <span class="n">mdict3</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="o">.</span><span class="n">padGrid</span><span class="p">(</span>
+            <span class="n">stddat</span><span class="p">,</span> <span class="n">mdict</span><span class="p">,</span> <span class="n">pad_dict</span><span class="p">)</span>  <span class="c1"># padds with inf</span>
+        <span class="n">padstdgrid</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="n">padstdgrid</span><span class="p">)]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">)</span>  <span class="c1"># change to pad with nan</span>
+        <span class="n">padstdgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="n">padstdgrid</span><span class="p">,</span> <span class="n">geodict</span><span class="o">=</span><span class="n">mdict3</span><span class="p">)</span>  <span class="c1"># Turn into grid2d object</span>
 
     <span class="c1"># Resample model grid so as to be the nearest integer multiple of popdict</span>
     <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">pdict</span><span class="o">.</span><span class="n">dx</span><span class="o">/</span><span class="n">mdict2</span><span class="o">.</span><span class="n">dx</span><span class="p">)</span>
@@ -386,6 +418,15 @@
                              <span class="n">block_size</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">factor</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">factor</span><span class="p">)),</span>
                              <span class="n">cval</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">),</span> <span class="n">func</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">)</span>
 
+    <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">grid2std</span> <span class="o">=</span> <span class="n">padstdgrid</span><span class="o">.</span><span class="n">interpolate2</span><span class="p">(</span><span class="n">ndict</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;linear&#39;</span><span class="p">)</span>
+        <span class="n">propstd</span> <span class="o">=</span> <span class="n">block_reduce</span><span class="p">(</span><span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">grid2std</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">()),</span>
+                               <span class="n">block_size</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">factor</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">factor</span><span class="p">)),</span>
+                               <span class="n">cval</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">),</span> <span class="n">func</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">factor</span><span class="o">**</span><span class="mf">2.</span><span class="p">)</span>
+        <span class="n">modresampstd</span> <span class="o">=</span> <span class="n">block_reduce</span><span class="p">(</span><span class="n">grid2std</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span><span class="o">.</span><span class="n">copy</span><span class="p">(),</span>
+                                    <span class="n">block_size</span><span class="o">=</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">factor</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">factor</span><span class="p">)),</span>
+                                    <span class="n">cval</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">),</span> <span class="n">func</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nanmean</span><span class="p">)</span>
+
     <span class="n">exp_pop</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="c1"># Resample shakefile to population grid</span>
@@ -397,13 +438,235 @@
         <span class="k">for</span> <span class="n">shaket</span> <span class="ow">in</span> <span class="n">shakethresh</span><span class="p">:</span>
             <span class="n">threshmult</span> <span class="o">=</span> <span class="n">shkdat</span> <span class="o">&gt;</span> <span class="n">shaket</span>
             <span class="n">threshmult</span> <span class="o">=</span> <span class="n">threshmult</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">)</span>
-            <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_pop_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span>
-                <span class="n">popdat</span> <span class="o">*</span> <span class="n">prop</span> <span class="o">*</span> <span class="n">modresamp</span> <span class="o">*</span> <span class="n">threshmult</span><span class="p">)</span>
-
+            <span class="n">dat2</span> <span class="o">=</span> <span class="n">popdat</span> <span class="o">*</span> <span class="n">prop</span> <span class="o">*</span> <span class="n">modresamp</span> <span class="o">*</span> <span class="n">threshmult</span>
+            <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">dat2</span><span class="p">)</span>
+            <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_pop_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">mu</span>
+            <span class="n">elim</span> <span class="o">=</span> <span class="n">maxP</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">popdat</span> <span class="o">*</span> <span class="n">prop</span> <span class="o">*</span> <span class="n">threshmult</span><span class="p">)</span>
+            <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;elim_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">elim</span>
+            <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">modresampstd</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+                    <span class="n">datstd2</span> <span class="o">=</span> <span class="n">popdat</span> <span class="o">*</span> <span class="n">propstd</span> <span class="o">*</span> <span class="n">modresampstd</span> <span class="o">*</span> <span class="n">threshmult</span>
+                    <span class="n">totalmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">datstd2</span><span class="p">)</span>
+                    <span class="n">totalmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">datstd2</span><span class="o">**</span><span class="mf">2.</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;max&#39;</span><span class="p">:</span>
+                        <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">totalmax</span>
+                    <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;min&#39;</span><span class="p">:</span>
+                        <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">totalmin</span>
+                    <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;mean&#39;</span><span class="p">:</span>
+                        <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span><span class="o">=</span><span class="p">(</span><span class="n">totalmax</span><span class="o">+</span><span class="n">totalmin</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">dat2z</span> <span class="o">=</span> <span class="n">dat2</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                        <span class="n">dat2z</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">dat2</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.</span>
+                        <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span> <span class="o">=</span> <span class="n">semivario</span><span class="p">(</span><span class="n">dat2z</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">probthresh</span><span class="p">)</span>
+                        <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">svar</span><span class="p">(</span>
+                                <span class="n">datstd2</span><span class="p">,</span> <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span><span class="p">))</span>
+    
+                    <span class="c1"># Beta distribution shape factors</span>
+                    <span class="n">var</span> <span class="o">=</span> <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span><span class="o">**</span><span class="mf">2.</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;p_exp_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">elim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">elim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;q_exp_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">mu</span><span class="o">/</span><span class="n">elim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">elim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no std values above zero, filling with zeros&#39;</span><span class="p">)</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;p_exp_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;q_exp_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    
+                    
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">popdat</span> <span class="o">*</span> <span class="n">prop</span> <span class="o">*</span> <span class="n">modresamp</span><span class="p">)</span>
+        <span class="n">dat2</span> <span class="o">=</span> <span class="n">popdat</span> <span class="o">*</span> <span class="n">prop</span> <span class="o">*</span> <span class="n">modresamp</span>
+        <span class="n">mu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">dat2</span><span class="p">)</span>
+        <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_pop_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">mu</span>
+        <span class="n">elim</span> <span class="o">=</span> <span class="n">maxP</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">popdat</span> <span class="o">*</span> <span class="n">prop</span><span class="p">)</span>
+        <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;elim_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">elim</span>
+        <span class="k">if</span> <span class="n">stdgrid2D</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">modresampstd</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">0.</span><span class="p">:</span>
+                <span class="n">datstd2</span> <span class="o">=</span> <span class="n">popdat</span> <span class="o">*</span> <span class="n">propstd</span> <span class="o">*</span> <span class="n">modresampstd</span>
+                <span class="n">totalmax</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">datstd2</span><span class="p">)</span>
+                <span class="n">totalmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">datstd2</span><span class="o">**</span><span class="mf">2.</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;max&#39;</span><span class="p">:</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">totalmax</span>
+                <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;min&#39;</span><span class="p">:</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">totalmin</span>
+                <span class="k">elif</span> <span class="n">stdtype</span> <span class="o">==</span> <span class="s1">&#39;mean&#39;</span><span class="p">:</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">totalmax</span><span class="o">+</span><span class="n">totalmin</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">dat2z</span> <span class="o">=</span> <span class="n">dat2</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                    <span class="n">dat2z</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">dat2</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.</span>
+                    <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span> <span class="o">=</span> <span class="n">semivario</span><span class="p">(</span><span class="n">dat2z</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">probthresh</span><span class="p">)</span>
+                    <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_</span><span class="si">%1.2f</span><span class="s1">g&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">shaket</span><span class="o">/</span><span class="mf">100.</span><span class="p">,)]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">svar</span><span class="p">(</span>
+                            <span class="n">datstd2</span><span class="p">,</span> <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span><span class="p">))</span>
+                        
+                <span class="c1"># Beta distribution shape factors</span>
+                <span class="n">var</span> <span class="o">=</span> <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_0.00g&#39;</span><span class="p">]</span><span class="o">**</span><span class="mf">2.</span>
+                <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">mu</span><span class="o">/</span><span class="n">elim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">elim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">mu</span><span class="o">/</span><span class="n">elim</span><span class="p">)</span><span class="o">*</span><span class="p">((</span><span class="n">elim</span><span class="o">*</span><span class="n">mu</span><span class="o">-</span><span class="n">mu</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span><span class="o">/</span><span class="n">var</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                <span class="c1">#exp_pop[&#39;exp_std_0.00g&#39;] = np.nansum(popdat * propstd * modresampstd)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no std values above zero, filling with zeros&#39;</span><span class="p">)</span>
+                <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;exp_std_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;p_exp_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                <span class="n">exp_pop</span><span class="p">[</span><span class="s1">&#39;q_exp_0.00g&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
 
     <span class="k">return</span> <span class="n">exp_pop</span></div>
+
+
+<div class="viewcode-block" id="semivario"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.semivario">[docs]</a><span class="k">def</span> <span class="nf">semivario</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.</span><span class="p">,</span> <span class="n">maxlag</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">npts</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">ndists</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span>
+              <span class="n">nvbins</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">makeplots</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    #TODO this should really be done in a distance preserving projection, but</span>
+<span class="sd">    is an approximation for now</span>
+
+<span class="sd">    Quickly estimate semivariogram with by selecting seed points and then</span>
+<span class="sd">    computing semivariogram between each of those points and ndists random</span>
+<span class="sd">    locations around it that are within maxlag of the seed point. Will result </span>
+<span class="sd">    in npts x ndists total distance pairs. Uses spherical model.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model: 2D array of raster to estimate semivariogram for</span>
+<span class="sd">        threshold: </span>
+<span class="sd">        maxlag: in pixels</span>
+<span class="sd">        npts: number of seed points to sample from</span>
+<span class="sd">        ndists: number of points to sample at random distances from each seed point</span>
+<span class="sd">        nvbins: number of semivariogram bins</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        range, sill</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">threshold</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">threshold</span> <span class="o">=</span> <span class="mf">0.</span>
+    
+    <span class="c1">#TODO deal with cases where there are no values above threshold</span>
+    <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">threshold</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;No values above threshold in model&#39;</span><span class="p">)</span>
+
+    <span class="c1"># prepare data</span>
+    <span class="n">nrows</span><span class="p">,</span> <span class="n">ncols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">matlib</span><span class="o">.</span><span class="n">repmat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nrows</span><span class="p">),</span> <span class="n">ncols</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">matlib</span><span class="o">.</span><span class="n">repmat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ncols</span><span class="p">),</span> <span class="n">nrows</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">values</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+    <span class="n">rowsf</span> <span class="o">=</span> <span class="n">rows</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+    <span class="n">colsf</span> <span class="o">=</span> <span class="n">cols</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span>
+
+    <span class="c1"># Select npts seed points</span>
+    <span class="n">indx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">values</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">47</span><span class="p">)</span>  <span class="c1"># Always use same seed so results are repeatable</span>
+    <span class="c1"># just select all points if there aren&#39;t npts above the threshold</span>
+    <span class="n">picks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indx</span><span class="p">),</span> <span class="n">size</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">npts</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">indx</span><span class="p">))),</span>
+                             <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">seedpts</span> <span class="o">=</span> <span class="n">indx</span><span class="p">[</span><span class="n">picks</span><span class="p">]</span>
+    
+    <span class="c1"># Get lags and differences for seed point vs. ndists other points around it</span>
+    <span class="c1">#TODO vectorize this to remove loop</span>
+    <span class="n">lags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+    <span class="n">diffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+    <span class="n">vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span>
+    <span class="n">seednums</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seedpts</span><span class="p">))</span>
+    <span class="n">seednums2</span> <span class="o">=</span> <span class="nb">reversed</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">seedpts</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">seed</span><span class="p">,</span> <span class="n">seednum1</span><span class="p">,</span> <span class="n">seednum2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">seedpts</span><span class="p">,</span> <span class="n">seednums</span><span class="p">,</span> <span class="n">seednums2</span><span class="p">):</span>
+        <span class="n">row1</span> <span class="o">=</span> <span class="n">rowsf</span><span class="p">[</span><span class="n">seed</span><span class="p">]</span> 
+        <span class="n">col1</span> <span class="o">=</span> <span class="n">colsf</span><span class="p">[</span><span class="n">seed</span><span class="p">]</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seednum1</span><span class="p">)</span>
+        <span class="n">addr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="o">-</span><span class="n">maxlag</span><span class="p">,</span> <span class="o">-</span><span class="n">row1</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">maxlag</span><span class="p">,</span> <span class="n">nrows</span><span class="o">-</span><span class="n">row1</span><span class="p">)),</span> <span class="n">size</span><span class="o">=</span><span class="n">ndists</span><span class="p">)</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">seednum2</span><span class="p">)</span>
+        <span class="n">addc</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">((</span><span class="o">-</span><span class="n">maxlag</span><span class="p">,</span> <span class="o">-</span><span class="n">col1</span><span class="p">)),</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">((</span><span class="n">maxlag</span><span class="p">,</span> <span class="n">ncols</span><span class="o">-</span><span class="n">col1</span><span class="p">)),</span> <span class="n">size</span><span class="o">=</span><span class="n">ndists</span><span class="p">)</span>
+        <span class="n">indr</span> <span class="o">=</span> <span class="n">row1</span> <span class="o">+</span> <span class="n">addr</span>
+        <span class="n">indc</span> <span class="o">=</span> <span class="n">col1</span> <span class="o">+</span> <span class="n">addc</span>
+        <span class="n">newvalues</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">indr</span><span class="p">,</span> <span class="n">indc</span><span class="p">]</span>
+        <span class="n">ptval</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="n">row1</span><span class="p">,</span> <span class="n">col1</span><span class="p">]</span>
+        <span class="n">dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">addr</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">addc</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># distance in pixels</span>
+        <span class="n">difvals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">newvalues</span> <span class="o">-</span> <span class="n">ptval</span><span class="p">)</span>
+        <span class="n">diffs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">diffs</span><span class="p">,</span> <span class="n">difvals</span><span class="p">))</span>
+        <span class="n">lags</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">lags</span><span class="p">,</span> <span class="n">dists</span><span class="p">))</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">vals</span><span class="p">,</span> <span class="n">newvalues</span><span class="p">,</span> <span class="n">ptval</span><span class="p">))</span>
+
+    <span class="n">diffs2</span> <span class="o">=</span> <span class="n">diffs</span><span class="o">**</span><span class="mi">2</span>
+
+    <span class="c1"># % Make variogram out of these samples</span>
+    <span class="n">binedges</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">maxlag</span><span class="p">,</span> <span class="n">num</span><span class="o">=</span><span class="n">nvbins</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">endpoint</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">binmid</span> <span class="o">=</span> <span class="p">(</span><span class="n">binedges</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">binedges</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span><span class="o">/</span><span class="mi">2</span>
+    
+    <span class="n">subs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nvbins</span><span class="p">)</span>
+    <span class="n">N</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">nvbins</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nvbins</span><span class="p">):</span>
+        <span class="n">inrange</span> <span class="o">=</span> <span class="n">diffs2</span><span class="p">[(</span><span class="n">lags</span> <span class="o">&gt;</span> <span class="n">binedges</span><span class="p">[</span><span class="n">b</span><span class="p">])</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">lags</span> <span class="o">&lt;=</span> <span class="n">binedges</span><span class="p">[</span><span class="n">b</span><span class="o">+</span><span class="mi">1</span><span class="p">])]</span>
+        <span class="n">subs</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">inrange</span><span class="p">)</span>
+        <span class="n">N</span><span class="p">[</span><span class="n">b</span><span class="p">]</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">inrange</span><span class="p">)</span>
+    <span class="n">semiv</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="p">(</span><span class="mi">2</span><span class="o">*</span><span class="n">N</span><span class="p">)</span><span class="o">*</span><span class="n">subs</span>
+    <span class="c1"># Fit model using weighting by 1/N to weigh bins with more samples more highly</span>
+    <span class="n">popt</span><span class="p">,</span> <span class="n">pcov</span> <span class="o">=</span> <span class="n">curve_fit</span><span class="p">(</span><span class="n">spherical</span><span class="p">,</span> <span class="n">binmid</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">semiv</span><span class="p">)],</span>
+                           <span class="n">semiv</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">semiv</span><span class="p">)],</span>
+                           <span class="n">sigma</span><span class="o">=</span><span class="mf">1.</span><span class="o">/</span><span class="n">N</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span><span class="n">semiv</span><span class="p">)],</span>
+                           <span class="n">absolute_sigma</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="p">[</span><span class="n">maxlag</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]))</span>
+    <span class="k">if</span> <span class="n">makeplots</span><span class="p">:</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>    
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">binmid</span><span class="p">,</span> <span class="n">semiv</span><span class="p">,</span> <span class="s1">&#39;ob&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s1">&#39;Lags (pixels)&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s1">&#39;Semivariance&#39;</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">binmid</span><span class="p">,</span> <span class="n">spherical</span><span class="p">(</span><span class="n">binmid</span><span class="p">,</span> <span class="o">*</span><span class="n">popt</span><span class="p">),</span> <span class="s1">&#39;-b&#39;</span><span class="p">)</span>
+
+    <span class="n">range2</span><span class="p">,</span> <span class="n">sill2</span> <span class="o">=</span> <span class="n">popt</span>
+    
+    <span class="k">return</span> <span class="n">range2</span><span class="p">,</span> <span class="n">sill2</span></div>
+
+
+<div class="viewcode-block" id="spherical"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.spherical">[docs]</a><span class="k">def</span> <span class="nf">spherical</span><span class="p">(</span><span class="n">lag</span><span class="p">,</span> <span class="n">range1</span><span class="p">,</span> <span class="n">sill</span><span class="p">):</span><span class="c1">#, nugget=0):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L23</span>
+<span class="sd">    </span>
+<span class="sd">    nugget = value of independent variable at distance of zero</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">nugget</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="n">range1</span> <span class="o">=</span> <span class="n">range1</span> <span class="o">/</span> <span class="mf">1.</span>
+
+    <span class="n">out</span> <span class="o">=</span> <span class="n">nugget</span> <span class="o">+</span> <span class="n">sill</span> <span class="o">*</span> <span class="p">((</span><span class="mf">1.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">lag</span> <span class="o">/</span> <span class="n">range1</span><span class="p">))</span> <span class="o">-</span> <span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="n">lag</span> <span class="o">/</span> <span class="n">range1</span><span class="p">)</span> <span class="o">**</span> <span class="mf">3.0</span><span class="p">)))</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="nb">float</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">lag</span> <span class="o">&gt;</span> <span class="n">range1</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">nugget</span> <span class="o">+</span> <span class="n">sill</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">lag</span> <span class="o">&gt;</span> <span class="n">range1</span><span class="p">]</span> <span class="o">=</span> <span class="n">nugget</span> <span class="o">+</span> <span class="n">sill</span>
+    <span class="k">return</span> <span class="n">out</span></div>
+
+
+<div class="viewcode-block" id="svar"><a class="viewcode-back" href="../../gfail.stats.html#gfail.stats.svar">[docs]</a><span class="k">def</span> <span class="nf">svar</span><span class="p">(</span><span class="n">stds</span><span class="p">,</span> <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Estimate variance of aggregate statistic using correlation from </span>
+<span class="sd">    semivariogram and std values for each pair of cells that are within range</span>
+<span class="sd">    of each other, add up quickly by creating kernal of the correlations and</span>
+<span class="sd">    convolving with the image, then multiply by 2*std to equal sum of 2*std1*std2*corr</span>
+<span class="sd">    over each valid cell</span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        stds:</span>
+<span class="sd">        range1:</span>
+<span class="sd">        sill1:</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        variance of aggregate statistic</span>
+<span class="sd">    </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">range5</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">range1</span><span class="p">))</span>
+    <span class="c1"># Prepare kernal that is size of range of spherical equation</span>
+    <span class="n">nrows</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">range5</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">ncols</span> <span class="o">=</span> <span class="mi">2</span><span class="o">*</span><span class="n">range5</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="c1"># get distance in row and col from center point</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="n">matlib</span><span class="o">.</span><span class="n">repmat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">nrows</span><span class="p">),</span> <span class="n">ncols</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">T</span> <span class="o">-</span> <span class="p">(</span><span class="n">range5</span><span class="p">)</span>
+    <span class="n">cols</span> <span class="o">=</span> <span class="n">matlib</span><span class="o">.</span><span class="n">repmat</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">ncols</span><span class="p">),</span> <span class="n">nrows</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="p">(</span><span class="n">range5</span><span class="p">)</span>
+    <span class="n">dists</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">rows</span><span class="o">**</span><span class="mi">2</span> <span class="o">+</span> <span class="n">cols</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
+    <span class="c1"># Convert from semivariance to correlation and build kernal</span>
+    <span class="n">kernal</span> <span class="o">=</span> <span class="p">(</span><span class="n">sill1</span><span class="o">-</span><span class="n">spherical</span><span class="p">(</span><span class="n">dists</span><span class="p">,</span> <span class="n">range1</span><span class="p">,</span> <span class="n">sill1</span><span class="p">))</span><span class="o">/</span><span class="n">sill1</span>
+    
+    <span class="c1"># convolve with stds, equivalent to sum of corr * std at each pixel for within range1</span>
+    <span class="c1">#out = convolve2d(stds, kernal, mode=&#39;same&#39;)</span>
+    <span class="c1"># Replace all nans with zeros so can use fft convolve</span>
+    <span class="n">stdzeros</span> <span class="o">=</span> <span class="n">stds</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">stdzeros</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">stds</span><span class="p">)]</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">convolve</span><span class="p">(</span><span class="n">stdzeros</span><span class="p">,</span> <span class="n">kernal</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;same&#39;</span><span class="p">)</span>
+    <span class="c1"># multiply by 2 * stds</span>
+    <span class="n">full1</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">out</span> <span class="o">*</span> <span class="n">stds</span>
+    <span class="c1"># add up</span>
+    <span class="n">var2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nansum</span><span class="p">(</span><span class="n">full1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">var2</span></div>
 </pre></div>
 
           </div>

@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.pdl &#8212; groundfailure 0.1 documentation</title>
@@ -42,6 +42,7 @@
 <span class="kn">import</span> <span class="nn">shutil</span>
 <span class="kn">from</span> <span class="nn">lxml</span> <span class="kn">import</span> <span class="n">etree</span>
 <span class="kn">from</span> <span class="nn">configobj</span> <span class="kn">import</span> <span class="n">ConfigObj</span>
+<span class="c1"># import zipfile</span>
 <span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="kn">import</span> <span class="n">get_command_output</span>
 
 
@@ -131,6 +132,39 @@
     <span class="n">ls_pop_alert_value</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-population-alert-value=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
         <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;value&#39;</span><span class="p">]</span>
 
+    <span class="k">if</span> <span class="s1">&#39;std&#39;</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+        <span class="n">lq_haz_alert_std</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;std&#39;</span><span class="p">]</span>
+        <span class="n">ls_haz_alert_std</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-hazard-std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;std&#39;</span><span class="p">]</span>
+        <span class="n">lq_pop_alert_std</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-population-std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;std&#39;</span><span class="p">]</span>
+        <span class="n">ls_pop_alert_std</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-population-std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;population_alert&#39;</span><span class="p">][</span><span class="s1">&#39;std&#39;</span><span class="p">]</span>
+        <span class="n">ls_haz_range1s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-hazard-1std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;hagg_1std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">ls_haz_range2s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-hazard-2std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;hagg_2std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">ls_pop_range1s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-population-1std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;pop_1std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">ls_pop_range2s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-population-2std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">ls_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;pop_2std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">lq_haz_range1s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-1std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;hagg_1std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">lq_haz_range2s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-2std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;hagg_2std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">lq_pop_range1s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-population-1std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;pop_1std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">lq_pop_range2s</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-population-2std=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
+            <span class="nb">str</span><span class="p">(</span><span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;probability&#39;</span><span class="p">][</span><span class="s1">&#39;pop_2std&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;[&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span> <span class="s1">&#39;]&#39;</span><span class="p">,</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+        <span class="n">stdstr</span> <span class="o">=</span> <span class="n">lq_haz_alert_std</span> <span class="o">+</span> <span class="n">ls_haz_alert_std</span> <span class="o">+</span> <span class="n">lq_pop_alert_std</span> \
+            <span class="o">+</span> <span class="n">ls_pop_alert_std</span> <span class="o">+</span> <span class="n">ls_haz_range1s</span> <span class="o">+</span> <span class="n">ls_haz_range2s</span> \
+            <span class="o">+</span> <span class="n">ls_pop_range1s</span> <span class="o">+</span> <span class="n">ls_pop_range2s</span> <span class="o">+</span> <span class="n">lq_haz_range1s</span> <span class="o">+</span> <span class="n">lq_haz_range2s</span> \
+            <span class="o">+</span> <span class="n">lq_pop_range1s</span> <span class="o">+</span> <span class="n">lq_pop_range2s</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">stdstr</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+
     <span class="n">lq_haz_alert_parameter</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-liquefaction-hazard-alert-parameter=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
         <span class="n">lq_pref</span><span class="p">[</span><span class="s1">&#39;hazard_alert&#39;</span><span class="p">][</span><span class="s1">&#39;parameter&#39;</span><span class="p">]</span>
     <span class="n">ls_haz_alert_parameter</span> <span class="o">=</span> <span class="s1">&#39;&quot;--property-landslide-hazard-alert-parameter=</span><span class="si">%s</span><span class="s1">&quot; &#39;</span> <span class="o">%</span> \
@@ -201,7 +235,7 @@
         <span class="n">lq_pop_alert_value</span> <span class="o">+</span> <span class="n">ls_pop_alert_value</span> <span class="o">+</span>
         <span class="n">lq_haz_alert_parameter</span> <span class="o">+</span> <span class="n">ls_haz_alert_parameter</span> <span class="o">+</span>
         <span class="n">lq_pop_alert_parameter</span> <span class="o">+</span> <span class="n">ls_pop_alert_parameter</span> <span class="o">+</span>
-        <span class="n">lq_overlay</span> <span class="o">+</span> <span class="n">ls_overlay</span> <span class="o">+</span>
+        <span class="n">stdstr</span> <span class="o">+</span> <span class="n">lq_overlay</span> <span class="o">+</span> <span class="n">ls_overlay</span> <span class="o">+</span>
         <span class="n">lq_xmin</span> <span class="o">+</span> <span class="n">lq_xmax</span> <span class="o">+</span> <span class="n">lq_ymin</span> <span class="o">+</span> <span class="n">lq_ymax</span> <span class="o">+</span>
         <span class="n">ls_xmin</span> <span class="o">+</span> <span class="n">ls_xmax</span> <span class="o">+</span> <span class="n">ls_ymin</span> <span class="o">+</span> <span class="n">ls_ymax</span> <span class="o">+</span>
         <span class="n">prod_xmin</span> <span class="o">+</span> <span class="n">prod_xmax</span> <span class="o">+</span> <span class="n">prod_ymin</span> <span class="o">+</span> <span class="n">prod_ymax</span> <span class="o">+</span>
@@ -267,6 +301,15 @@
         <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">tfile</span><span class="p">)</span>
         <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
 
+        <span class="c1"># Zip the files</span>
+        <span class="c1"># zfile = os.path.join(pdl_dir, os.path.splitext(tfile)[0] + &#39;.zip&#39;)</span>
+        <span class="c1"># with zipfile.ZipFile(zfile, &#39;w&#39;) as zf:</span>
+        <span class="c1">#     zf.write(os.path.join(pdl_dir, dst), arcname=dst,</span>
+        <span class="c1">#              compress_type=zipfile.ZIP_DEFLATED)</span>
+
+        <span class="c1"># # Remove originals</span>
+        <span class="c1"># os.remove(os.path.join(pdl_dir, dst))</span>
+
     <span class="c1"># Put kmz files into pdl directory</span>
     <span class="n">kmz_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
                  <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.kmz&#39;</span><span class="p">)]</span>
@@ -309,23 +352,23 @@
         <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
 
     <span class="c1"># Put binary ShakeCast files into pdl directory</span>
-    <span class="n">flt_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
-                 <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.flt&#39;</span><span class="p">)]</span>
-    <span class="n">flth_files</span> <span class="o">=</span> <span class="p">[</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">event_dir</span><span class="p">,</span> <span class="n">a</span><span class="p">)</span>
-                  <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">all_files</span> <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.hdr&#39;</span><span class="p">)]</span>
-    <span class="k">for</span> <span class="n">f1</span><span class="p">,</span> <span class="n">f2</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">flt_files</span><span class="p">,</span> <span class="n">flth_files</span><span class="p">):</span>
-        <span class="n">src</span> <span class="o">=</span> <span class="n">f1</span>
-        <span class="n">f1file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">f1file</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">):</span>
-            <span class="n">f1file</span> <span class="o">=</span> <span class="n">f1file</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
-        <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">f1file</span><span class="p">)</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
-        <span class="n">src</span> <span class="o">=</span> <span class="n">f2</span>
-        <span class="n">f2file</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">src</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">f2file</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">):</span>
-            <span class="n">f2file</span> <span class="o">=</span> <span class="n">f2file</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="n">event_prefix</span><span class="p">)</span><span class="o">+</span><span class="mi">1</span><span class="p">:]</span>
-        <span class="n">dst</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">pdl_dir</span><span class="p">,</span> <span class="n">f2file</span><span class="p">)</span>
-        <span class="n">shutil</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">)</span>
+    <span class="c1"># flt_files = [os.path.join(event_dir, a)</span>
+    <span class="c1">#              for a in all_files if a.endswith(&#39;.flt&#39;)]</span>
+    <span class="c1"># flth_files = [os.path.join(event_dir, a)</span>
+    <span class="c1">#               for a in all_files if a.endswith(&#39;.hdr&#39;)]</span>
+    <span class="c1"># for f1, f2 in zip(flt_files, flth_files):</span>
+    <span class="c1">#     src = f1</span>
+    <span class="c1">#     f1file = os.path.basename(src)</span>
+    <span class="c1">#     if f1file.startswith(event_prefix):</span>
+    <span class="c1">#         f1file = f1file[len(event_prefix)+1:]</span>
+    <span class="c1">#     dst = os.path.join(pdl_dir, f1file)</span>
+    <span class="c1">#     shutil.copy(src, dst)</span>
+    <span class="c1">#     src = f2</span>
+    <span class="c1">#     f2file = os.path.basename(src)</span>
+    <span class="c1">#     if f2file.startswith(event_prefix):</span>
+    <span class="c1">#         f2file = f2file[len(event_prefix)+1:]</span>
+    <span class="c1">#     dst = os.path.join(pdl_dir, f2file)</span>
+    <span class="c1">#     shutil.copy(src, dst)</span>
 
     <span class="c1"># Make contents.xml</span>
     <span class="n">contents</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">Element</span><span class="p">(</span><span class="s2">&quot;contents&quot;</span><span class="p">)</span>
@@ -334,6 +377,8 @@
     <span class="n">hdf_mime</span> <span class="o">=</span> <span class="s1">&#39;application/x-hdf&#39;</span>
     <span class="n">gtif_mime</span> <span class="o">=</span> <span class="s1">&#39;image/geotiff&#39;</span>
     <span class="n">png_mime</span> <span class="o">=</span> <span class="s1">&#39;image/png&#39;</span>
+    <span class="n">kmz_mime</span> <span class="o">=</span> <span class="s1">&#39;application/vnd.google-earth.kmz&#39;</span>
+    <span class="c1"># zip_mime = &#39;application/zip&#39;</span>
 
     <span class="c1"># Json info file</span>
     <span class="n">j_tree</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">contents</span><span class="p">,</span> <span class="s2">&quot;file&quot;</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s1">&#39;Info&#39;</span><span class="p">,</span> <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;info_json&#39;</span><span class="p">)</span>
@@ -348,7 +393,7 @@
     <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
     <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Nowicki Jessee and others (2017)&#39;</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
-                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;jessee_2017_model.kmz&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>    
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;jessee_2017_model.kmz&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">kmz_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
                      <span class="n">href</span><span class="o">=</span><span class="s1">&#39;jessee_2017_model.tif&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">jessee_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
@@ -363,7 +408,7 @@
     <span class="n">file_caps</span> <span class="o">=</span> <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;caption&quot;</span><span class="p">)</span>
     <span class="n">file_caps</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s1">&#39;Zhu and others (2017)&#39;</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
-                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2017_general_model.kmz&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
+                     <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2017_general_model.kmz&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">kmz_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>
                      <span class="n">href</span><span class="o">=</span><span class="s1">&#39;zhu_2017_general_model.tif&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="n">gtif_mime</span><span class="p">)</span>
     <span class="n">etree</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">zhu2017_tree</span><span class="p">,</span> <span class="s2">&quot;format&quot;</span><span class="p">,</span>

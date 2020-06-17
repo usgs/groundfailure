@@ -4,12 +4,12 @@ gfail
 Submodules
 
 .. toctree::
+   :maxdepth: 12
 
    gfail.conf
    gfail.gfailrun
    gfail.godt
    gfail.logisticmodel
-   gfail.makemaps
    gfail.pdl
    gfail.spatial
    gfail.stats

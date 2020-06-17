@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.logisticmodel &#8212; groundfailure 0.1 documentation</title>
@@ -81,7 +81,7 @@
 
 <div class="viewcode-block" id="LogisticModel"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.LogisticModel">[docs]</a><span class="k">class</span> <span class="nc">LogisticModel</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">uncertfile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">saveinputs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-                 <span class="n">slopefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">numstd</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">slopemod</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                 <span class="n">slopefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">slopemod</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                  <span class="n">trimfile</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Sets up the logistic model</span>
@@ -106,9 +106,6 @@
 <span class="sd">                        &#39;xmin&#39;: lonmin, &#39;xmax&#39;: lonmax,</span>
 <span class="sd">                        &#39;ymin&#39;: latmin, &#39;ymax&#39;: latmax</span>
 <span class="sd">                    }</span>
-
-<span class="sd">            numstd (float): Number of +/- standard deviations to use if</span>
-<span class="sd">                uncertainty is computed.</span>
 <span class="sd">            slopemod (str): How slope input should be modified to be in</span>
 <span class="sd">                degrees: e.g., ``np.arctan(slope) * 180. / np.pi`` or</span>
 <span class="sd">                ``slope/100.`` (note that this may be in the config file</span>
@@ -139,7 +136,7 @@
                        <span class="k">if</span> <span class="s1">&#39;pga&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="s1">&#39;pgv&#39;</span> <span class="ow">in</span>
                        <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">or</span> <span class="s1">&#39;mmi&#39;</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">lower</span><span class="p">()]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">longrefs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortrefs</span> <span class="o">=</span> <span class="n">validateRefs</span><span class="p">(</span><span class="n">cmodel</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span> <span class="o">=</span> <span class="n">numstd</span>
+        <span class="c1">#self.numstd = numstd</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">clips</span> <span class="o">=</span> <span class="n">validateClips</span><span class="p">(</span><span class="n">cmodel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">gmused</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">notes</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
 
@@ -186,13 +183,14 @@
         <span class="c1"># Figure out how/if need to cut anything</span>
         <span class="n">geodict</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># Make sure bounds are within ShakeMap Grid</span>
-            <span class="k">if</span> <span class="p">(</span><span class="n">geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">&gt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="ow">or</span>
-                    <span class="n">geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">&lt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="ow">or</span>
-                    <span class="n">geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">&gt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="ow">or</span>
-                    <span class="n">geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">&lt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Specified bounds are outside shakemap area, using &#39;</span>
-                      <span class="s1">&#39;ShakeMap bounds instead.&#39;</span><span class="p">)</span>
-                <span class="n">bounds</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">&lt;</span> <span class="n">geodict</span><span class="o">.</span><span class="n">xmax</span><span class="p">:</span>  <span class="c1"># only if signs are not opposite</span>
+                <span class="k">if</span> <span class="p">(</span><span class="n">geodict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">&gt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="ow">or</span>
+                        <span class="n">geodict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">&lt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="ow">or</span>
+                        <span class="n">geodict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">&gt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="ow">or</span>
+                        <span class="n">geodict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">&lt;</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]):</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Specified bounds are outside shakemap area, using &#39;</span>
+                          <span class="s1">&#39;ShakeMap bounds instead.&#39;</span><span class="p">)</span>
+                    <span class="n">bounds</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="k">if</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">tempgdict</span> <span class="o">=</span> <span class="n">GeoDict</span><span class="o">.</span><span class="n">createDictFromBox</span><span class="p">(</span>
                 <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">],</span>
@@ -291,6 +289,7 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="c1"># Only read in the ones that will be needed</span>
                 <span class="n">temp</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">uncertfile</span><span class="p">)</span>
+                <span class="n">already</span> <span class="o">=</span> <span class="p">[]</span>
                 <span class="k">for</span> <span class="n">gm</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">gmused</span><span class="p">:</span>
                     <span class="k">if</span> <span class="s1">&#39;pgv&#39;</span> <span class="ow">in</span> <span class="n">gm</span><span class="p">:</span>
                         <span class="n">gmsimp</span> <span class="o">=</span> <span class="s1">&#39;pgv&#39;</span>
@@ -298,6 +297,8 @@
                         <span class="n">gmsimp</span> <span class="o">=</span> <span class="s1">&#39;pga&#39;</span>
                     <span class="k">elif</span> <span class="s1">&#39;mmi&#39;</span> <span class="ow">in</span> <span class="n">gm</span><span class="p">:</span>
                         <span class="n">gmsimp</span> <span class="o">=</span> <span class="s1">&#39;mmi&#39;</span>
+                    <span class="k">if</span> <span class="n">gmsimp</span> <span class="ow">in</span> <span class="n">already</span><span class="p">:</span>
+                        <span class="k">continue</span>
                     <span class="n">junkfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span> <span class="s1">&#39;temp.bil&#39;</span><span class="p">)</span>
                     <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">temp</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span>
                         <span class="s1">&#39;std</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">gmsimp</span><span class="p">))</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">junkfile</span><span class="p">)</span>
@@ -314,6 +315,7 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span><span class="p">[</span><span class="s1">&#39;std&#39;</span> <span class="o">+</span> <span class="n">gmsimp</span><span class="p">]</span> <span class="o">=</span> <span class="n">TempHdf</span><span class="p">(</span>
                         <span class="n">junkgrid</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">,</span>
                                                <span class="s1">&#39;std</span><span class="si">%s</span><span class="s1">.hdf5&#39;</span> <span class="o">%</span> <span class="n">gmsimp</span><span class="p">))</span>
+                    <span class="n">already</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gmsimp</span><span class="p">)</span>
                     <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">junkfile</span><span class="p">)</span>
                 <span class="k">del</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
             <span class="k">except</span><span class="p">:</span>
@@ -364,7 +366,8 @@
                                 <span class="bp">self</span><span class="o">.</span><span class="n">clips</span><span class="p">[</span><span class="n">layername</span><span class="p">][</span><span class="mi">1</span><span class="p">]))</span>
                 <span class="k">if</span> <span class="n">layername</span> <span class="o">==</span> <span class="s1">&#39;rock&#39;</span><span class="p">:</span>  <span class="c1"># Convert unconsolidated sediments to a more reasonable coefficient</span>
                     <span class="n">sub1</span> <span class="o">=</span> <span class="n">temp</span><span class="o">.</span><span class="n">getData</span><span class="p">()</span>
-                    <span class="n">sub1</span><span class="p">[</span><span class="n">sub1</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="mf">3.21</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.36</span>  <span class="c1"># Change to mixed sed rock coeff</span>
+                    <span class="c1"># Change to mixed sed rock coeff</span>
+                    <span class="n">sub1</span><span class="p">[</span><span class="n">sub1</span> <span class="o">&lt;=</span> <span class="o">-</span><span class="mf">3.21</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.36</span>
                     <span class="n">temp</span><span class="o">.</span><span class="n">setData</span><span class="p">(</span><span class="n">sub1</span><span class="p">)</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">notes</span> <span class="o">+=</span> <span class="s1">&#39;unconsolidated sediment coefficient changed</span><span class="se">\</span>
 <span class="s1">                     to -1.36 (weaker) from -3.22 to better reflect that this </span><span class="se">\</span>
@@ -451,54 +454,18 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;(</span><span class="si">%g</span><span class="s1"> * </span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">coeff</span><span class="p">,</span> <span class="n">term</span><span class="p">))</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">equation</span> <span class="o">=</span> <span class="s1">&#39; + &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span><span class="p">)</span>
-
-            <span class="c1"># Find the term with the shakemap input and replace for these</span>
-            <span class="c1"># nuggets.</span>
-            <span class="k">for</span> <span class="n">gm</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="s1">&#39;mmi&#39;</span><span class="p">,</span> <span class="s1">&#39;pgv&#39;</span><span class="p">]:</span>
-                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">nug</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nuggets</span><span class="p">):</span>
-                    <span class="n">tempnug</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;self.shakemap[&#39;</span><span class="si">%s</span><span class="s2">&#39;].getSlice(rowstart, &quot;</span>
-                               <span class="s2">&quot;rowend, colstart, colend, name=&#39;</span><span class="si">%s</span><span class="s2">&#39;)&quot;</span>
-                               <span class="o">%</span> <span class="p">(</span><span class="n">gm</span><span class="p">,</span> <span class="n">gm</span><span class="p">))</span>
-                    <span class="k">if</span> <span class="n">tempnug</span> <span class="ow">in</span> <span class="n">nug</span><span class="p">:</span>
-                        <span class="n">newnug</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;np.exp(np.log(</span><span class="si">%s</span><span class="s2">) - self.numstd * &quot;</span>
-                                  <span class="s2">&quot;self.uncert[&#39;std</span><span class="si">%s</span><span class="s2">&#39;].getSlice(rowstart, &quot;</span>
-                                  <span class="s2">&quot;rowend, colstart, colend, name=&#39;std</span><span class="si">%s</span><span class="s2">&#39;))&quot;</span>
-                                  <span class="o">%</span> <span class="p">(</span><span class="n">tempnug</span><span class="p">,</span> <span class="n">gm</span><span class="p">,</span> <span class="n">gm</span><span class="p">))</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                            <span class="n">tempnug</span><span class="p">,</span> <span class="n">newnug</span><span class="p">)</span>
-                        <span class="n">newnug</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;np.exp(np.log(</span><span class="si">%s</span><span class="s2">) + self.numstd * &quot;</span>
-                                  <span class="s2">&quot;self.uncert[&#39;std</span><span class="si">%s</span><span class="s2">&#39;].getSlice(rowstart, &quot;</span>
-                                  <span class="s2">&quot;rowend, colstart, colend, name=&#39;std</span><span class="si">%s</span><span class="s2">&#39;))&quot;</span>
-                                  <span class="o">%</span> <span class="p">(</span><span class="n">tempnug</span><span class="p">,</span> <span class="n">gm</span><span class="p">,</span> <span class="n">gm</span><span class="p">))</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
-                            <span class="n">tempnug</span><span class="p">,</span> <span class="n">newnug</span><span class="p">)</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span> <span class="o">=</span> <span class="s1">&#39; + &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nugmin</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span> <span class="o">=</span> <span class="s1">&#39; + &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nugmax</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span> <span class="o">=</span> <span class="kc">None</span>
-
         <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span> <span class="o">=</span> <span class="n">sampledict</span>
 
 <div class="viewcode-block" id="LogisticModel.getEquations"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.LogisticModel.getEquations">[docs]</a>    <span class="k">def</span> <span class="nf">getEquations</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Method for LogisticModel class to extract strings defining the</span>
-<span class="sd">        equations for the model for median ground motions and +/- one standard</span>
-<span class="sd">        deviation (3 total).</span>
+<span class="sd">        equations for the model for median ground motions.</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">            tuple: (equation, equationmin, equationmax) where:</span>
-<span class="sd">                * equation: the equation for median ground motions,</span>
-<span class="sd">                * equationmin: the equation for the same model but using</span>
-<span class="sd">                  median ground motions minus 1 standard deviation</span>
-<span class="sd">                * equationmax: same as above but for plus 1 standard deviation.</span>
+<span class="sd">            equation: the equation for median ground motions,</span>
+
 <span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">equation</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span></div>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">equation</span></div>
 
 <div class="viewcode-block" id="LogisticModel.getGeoDict"><a class="viewcode-back" href="../../gfail.logisticmodel.html#gfail.logisticmodel.LogisticModel.getGeoDict">[docs]</a>    <span class="k">def</span> <span class="nf">getGeoDict</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -556,65 +523,65 @@
                 <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">)</span>
             <span class="n">P</span><span class="p">[</span><span class="n">pga</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpga&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># hard code for now</span>
+            <span class="k">if</span> <span class="s1">&#39;Zhu and others (2017)&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="s1">&#39;stddev&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">stdX</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="p">[</span><span class="s1">&#39;stddev&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">stdX</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;default_stddev&#39;</span><span class="p">])</span>
+                <span class="n">varX</span> <span class="o">=</span> <span class="n">stdX</span><span class="o">**</span><span class="mf">2.</span> <span class="o">+</span> \
+                    <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">coeffs</span><span class="p">[</span><span class="s1">&#39;b1&#39;</span><span class="p">]</span><span class="o">**</span><span class="mf">2.</span> <span class="o">*</span>
+                     <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span><span class="p">[</span><span class="s1">&#39;stdpgv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">()</span><span class="o">**</span><span class="mf">2.</span><span class="p">)</span>
+                <span class="n">varP</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mf">2.</span><span class="p">)</span><span class="o">**</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">varX</span>
+                <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">a</span> <span class="o">=</span> <span class="mf">0.4915</span>
+                    <span class="n">b</span> <span class="o">=</span> <span class="mf">42.4</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="mf">9.165</span>
+                    <span class="c1"># ((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP</span>
+                    <span class="n">varL</span> <span class="o">=</span> <span class="p">((</span><span class="mi">2</span><span class="o">*</span><span class="n">a</span><span class="o">*</span><span class="n">b</span><span class="o">*</span><span class="n">c</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">c</span><span class="o">*</span><span class="n">P</span><span class="p">))</span> <span class="o">/</span>
+                            <span class="p">((</span><span class="mi">1</span><span class="o">+</span><span class="n">b</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">c</span><span class="o">*</span><span class="n">P</span><span class="p">))</span><span class="o">**</span><span class="mf">3.</span><span class="p">))</span><span class="o">**</span><span class="mf">2.</span><span class="o">*</span><span class="n">varP</span>
+                    <span class="n">std1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">varL</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">std1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">varP</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="s1">&#39;Jessee&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
+                <span class="k">if</span> <span class="s1">&#39;stddev&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">stdX</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="p">[</span><span class="s1">&#39;stddev&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">stdX</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;default_stddev&#39;</span><span class="p">])</span>
+                <span class="n">varX</span> <span class="o">=</span> <span class="n">stdX</span><span class="o">**</span><span class="mf">2.</span> <span class="o">+</span> <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">coeffs</span><span class="p">[</span><span class="s1">&#39;b1&#39;</span><span class="p">]</span><span class="o">+</span><span class="bp">self</span><span class="o">.</span><span class="n">coeffs</span><span class="p">[</span><span class="s1">&#39;b6&#39;</span><span class="p">]</span><span class="o">*</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="p">[</span><span class="s1">&#39;slope&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">())</span> <span class="o">*</span> <span class="mi">180</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">))</span><span class="o">**</span><span class="mf">2.</span>
+                    <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span><span class="p">[</span><span class="s1">&#39;stdpgv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">()</span><span class="o">**</span><span class="mf">2.</span><span class="p">)</span>
+                <span class="n">varP</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span><span class="o">/</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">X</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span><span class="o">**</span><span class="mf">2.</span><span class="p">)</span><span class="o">**</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">varX</span>
+                <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="n">a</span> <span class="o">=</span> <span class="o">-</span><span class="mf">7.592</span>
+                    <span class="n">b</span> <span class="o">=</span> <span class="mf">5.237</span>
+                    <span class="n">c</span> <span class="o">=</span> <span class="o">-</span><span class="mf">3.042</span>
+                    <span class="n">d</span> <span class="o">=</span> <span class="mf">4.035</span>
+                    <span class="n">varL</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">a</span><span class="o">+</span><span class="n">b</span><span class="o">*</span><span class="n">P</span><span class="o">+</span><span class="n">c</span><span class="o">*</span><span class="n">P</span><span class="o">**</span><span class="mf">2.</span><span class="o">+</span><span class="n">d</span><span class="o">*</span><span class="n">P</span><span class="o">**</span><span class="mf">3.</span><span class="p">)</span> <span class="o">*</span>
+                            <span class="p">(</span><span class="n">b</span><span class="o">+</span><span class="mf">2.</span><span class="o">*</span><span class="n">P</span><span class="o">*</span><span class="n">c</span><span class="o">+</span><span class="mf">3.</span><span class="o">*</span><span class="n">d</span><span class="o">*</span><span class="n">P</span><span class="o">**</span><span class="mf">2.</span><span class="p">))</span><span class="o">**</span><span class="mf">2.</span> <span class="o">*</span> <span class="n">varP</span>
+                    <span class="n">std1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">varL</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">std1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">varP</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;cannot do uncertainty for </span><span class="si">%s</span><span class="s1"> model currently, skipping&#39;</span> <span class="o">%</span>
+                      <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">])</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">std1</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">std1</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="c1"># P needs to be converted to areal coverage after dealing with uncertainty</span>
         <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
             <span class="n">eqn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;coverage&#39;</span><span class="p">][</span><span class="s1">&#39;eqn&#39;</span><span class="p">]</span>
             <span class="n">P</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">eqn</span><span class="p">)</span>
-
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="c1"># Make empty matrix to fill</span>
-            <span class="n">Xmin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="o">.</span><span class="n">ny</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="o">.</span><span class="n">nx</span><span class="p">])</span>
-            <span class="n">Xmax</span> <span class="o">=</span> <span class="n">Xmin</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
-            <span class="c1"># Loop through slices, appending output each time</span>
-            <span class="k">for</span> <span class="n">rowstart</span><span class="p">,</span> <span class="n">rowend</span><span class="p">,</span> <span class="n">colstart</span><span class="p">,</span> <span class="n">colend</span> <span class="ow">in</span> \
-                    <span class="nb">zip</span><span class="p">(</span><span class="n">rowstarts</span><span class="p">,</span> <span class="n">rowends</span><span class="p">,</span> <span class="n">colstarts</span><span class="p">,</span> <span class="n">colends</span><span class="p">):</span>
-                <span class="n">Xmin</span><span class="p">[</span><span class="n">rowstart</span><span class="p">:</span><span class="n">rowend</span><span class="p">,</span> <span class="n">colstart</span><span class="p">:</span><span class="n">colend</span><span class="p">]</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">equationmin</span><span class="p">)</span>
-                <span class="n">Xmax</span><span class="p">[</span><span class="n">rowstart</span><span class="p">:</span><span class="n">rowend</span><span class="p">,</span> <span class="n">colstart</span><span class="p">:</span><span class="n">colend</span><span class="p">]</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">equationmax</span><span class="p">)</span>
-
-            <span class="n">Pmin</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">Xmin</span><span class="p">))</span>
-            <span class="n">Pmax</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">Xmax</span><span class="p">))</span>
-
-            <span class="k">if</span> <span class="s1">&#39;vs30max&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="n">vs30</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">layerdict</span><span class="p">[</span><span class="s1">&#39;vs30&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
-                    <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;vs30&#39;</span><span class="p">)</span>
-                <span class="n">Pmin</span><span class="p">[</span><span class="n">vs30</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;vs30max&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
-                <span class="n">Pmax</span><span class="p">[</span><span class="n">vs30</span> <span class="o">&gt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;vs30max&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
-
-            <span class="k">if</span> <span class="s1">&#39;minpgv&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="n">pgv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="s1">&#39;pgv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
-                    <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pgv&#39;</span><span class="p">)</span>
-                <span class="n">Pmin</span><span class="p">[</span><span class="n">pgv</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpgv&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
-                <span class="n">Pmax</span><span class="p">[</span><span class="n">pgv</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpgv&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
-
-            <span class="k">if</span> <span class="s1">&#39;minpga&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="n">pga</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shakemap</span><span class="p">[</span><span class="s1">&#39;pgv&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
-                    <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">)</span>
-                <span class="n">Pmin</span><span class="p">[</span><span class="n">pga</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpga&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
-                <span class="n">Pmax</span><span class="p">[</span><span class="n">pga</span> <span class="o">&lt;</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">][</span><span class="s1">&#39;minpga&#39;</span><span class="p">])]</span> <span class="o">=</span> <span class="mf">0.0</span>
-
-            <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
-                <span class="n">eqnmin</span> <span class="o">=</span> <span class="n">eqn</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="s1">&#39;Pmin&#39;</span><span class="p">)</span>
-                <span class="n">eqnmax</span> <span class="o">=</span> <span class="n">eqn</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;P&#39;</span><span class="p">,</span> <span class="s1">&#39;Pmax&#39;</span><span class="p">)</span>
-                <span class="n">Pmin</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">eqnmin</span><span class="p">)</span>
-                <span class="n">Pmax</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">eqnmax</span><span class="p">)</span>
-
-            <span class="c1"># Pmin[np.isnan(Pmin)] = 0.0</span>
-            <span class="c1"># Pmax[np.isnan(Pmax)] = 0.0</span>
-
-        <span class="c1"># P[np.isnan(P)] = 0.0</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">slopefile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># Apply slope min/max limits</span>
             <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;applying slope thresholds&#39;</span><span class="p">)</span>
             <span class="n">P</span> <span class="o">=</span> <span class="n">P</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
-            <span class="c1"># P[P==0.0] = float(&#39;nan&#39;)</span>
-            <span class="c1"># P[np.isnan(P)] = 0.0</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">Pmin</span> <span class="o">=</span> <span class="n">Pmin</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
-                <span class="n">Pmax</span> <span class="o">=</span> <span class="n">Pmax</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">nonzero</span>
-                <span class="c1"># Pmin[Pmin==0.0] = float(&#39;nan&#39;)</span>
-                <span class="c1"># Pmax[Pmax==0.0] = float(&#39;nan&#39;)</span>
-                <span class="c1"># Pmin[np.isnan(Pmin)] = 0.0</span>
-                <span class="c1"># Pmax[np.isnan(Pmax)] = 0.0</span>
+            <span class="k">if</span> <span class="n">std1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="c1"># No uncert for masked values</span>
+                <span class="n">std1</span><span class="p">[</span><span class="n">P</span> <span class="o">==</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
 
         <span class="c1"># Stuff into Grid2D object</span>
         <span class="k">if</span> <span class="s1">&#39;Jessee&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
@@ -623,7 +590,10 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Proportion of area affected&#39;</span>
         <span class="k">elif</span> <span class="s1">&#39;Zhu&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
-            <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Proportion of area affected&#39;</span>
+            <span class="k">if</span> <span class="s1">&#39;coverage&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">]</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span> <span class="ow">and</span> <span class="s1">&#39;2017&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">modelrefs</span><span class="p">[</span><span class="s1">&#39;shortref&#39;</span><span class="p">]:</span>
+                <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Relative Hazard&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Proportion of area affected&#39;</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">units5</span> <span class="o">=</span> <span class="s1">&#39;Probability of any occurrence&#39;</span>
 
@@ -653,34 +623,21 @@
         <span class="n">rdict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
         <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pgrid</span><span class="p">,</span>
-            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
+            <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> estimate - </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
                                     <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">()),</span>
             <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output&#39;</span><span class="p">,</span>
             <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
         <span class="p">}</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">Pmingrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">Pmin</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
-            <span class="n">Pmaxgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">Pmax</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
+            <span class="n">Stdgrid</span> <span class="o">=</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">std1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">Pmingrid</span> <span class="o">=</span> <span class="n">trim_ocean</span><span class="p">(</span>
-                    <span class="n">Pmingrid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">))</span>
-                <span class="n">Pmaxgrid</span> <span class="o">=</span> <span class="n">trim_ocean</span><span class="p">(</span>
-                    <span class="n">Pmaxgrid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">))</span>
-            <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;modelmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pmingrid</span><span class="p">,</span>
-                <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1"> (-</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
+                <span class="n">Stdgrid</span> <span class="o">=</span> <span class="n">trim_ocean</span><span class="p">(</span>
+                    <span class="n">Stdgrid</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">trimfile</span><span class="p">,</span> <span class="n">nodata</span><span class="o">=</span><span class="nb">float</span><span class="p">(</span><span class="s1">&#39;nan&#39;</span><span class="p">))</span>
+            <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;std&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Stdgrid</span><span class="p">,</span>
+                <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> estimate - </span><span class="si">%s</span><span class="s1"> (std)&#39;</span>
                           <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
-                             <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span>
-                             <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span><span class="p">)),</span>
-                <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output&#39;</span><span class="p">,</span>
-                <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
-            <span class="p">}</span>
-            <span class="n">rdict</span><span class="p">[</span><span class="s1">&#39;modelmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Pmaxgrid</span><span class="p">,</span>
-                <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%s</span><span class="s1"> (+</span><span class="si">%0.1f</span><span class="s1"> std ground motion)&#39;</span>
-                          <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">modeltype</span><span class="o">.</span><span class="n">capitalize</span><span class="p">(),</span>
-                             <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">(),</span>
-                             <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span><span class="p">)),</span>
+                             <span class="n">units5</span><span class="o">.</span><span class="n">title</span><span class="p">())),</span>
                 <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;output&#39;</span><span class="p">,</span>
                 <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="n">description</span>
             <span class="p">}</span>
@@ -734,29 +691,6 @@
                         <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span>
                     <span class="p">}</span>
                 <span class="p">}</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">uncertlayer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">uncert</span><span class="p">[</span><span class="n">getkey</span><span class="p">]</span><span class="o">.</span><span class="n">getSlice</span><span class="p">(</span>
-                        <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;std&#39;</span><span class="o">+</span><span class="n">getkey</span><span class="p">)</span>
-                    <span class="n">layer1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="o">-</span> <span class="n">uncertlayer</span><span class="p">)</span>
-                    <span class="n">rdict</span><span class="p">[</span><span class="n">getkey</span> <span class="o">+</span> <span class="s1">&#39;modelmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                        <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">layer1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">),</span>
-                        <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> - </span><span class="si">%0.1f</span><span class="s1"> std (</span><span class="si">%s</span><span class="s1">)&#39;</span>
-                                  <span class="o">%</span> <span class="p">(</span><span class="n">getkey</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
-                                     <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span><span class="p">,</span> <span class="n">units</span><span class="p">)),</span>
-                        <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;input&#39;</span><span class="p">,</span>
-                        <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">units</span><span class="p">,</span>
-                                        <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span><span class="p">}</span>
-                    <span class="p">}</span>
-                    <span class="n">layer2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span> <span class="o">+</span> <span class="n">uncertlayer</span><span class="p">)</span>
-                    <span class="n">rdict</span><span class="p">[</span><span class="n">getkey</span> <span class="o">+</span> <span class="s1">&#39;modelmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
-                        <span class="s1">&#39;grid&#39;</span><span class="p">:</span> <span class="n">Grid2D</span><span class="p">(</span><span class="n">layer2</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">geodict</span><span class="p">),</span>
-                        <span class="s1">&#39;label&#39;</span><span class="p">:</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1"> + </span><span class="si">%0.1f</span><span class="s1"> std (</span><span class="si">%s</span><span class="s1">)&#39;</span>
-                                  <span class="o">%</span> <span class="p">(</span><span class="n">getkey</span><span class="o">.</span><span class="n">upper</span><span class="p">(),</span>
-                                     <span class="bp">self</span><span class="o">.</span><span class="n">numstd</span><span class="p">,</span> <span class="n">units</span><span class="p">)),</span>
-                        <span class="s1">&#39;type&#39;</span><span class="p">:</span> <span class="s1">&#39;input&#39;</span><span class="p">,</span>
-                        <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="n">units</span><span class="p">,</span>
-                                        <span class="s1">&#39;shakemap&#39;</span><span class="p">:</span> <span class="n">shakedetail</span><span class="p">}</span>
-                    <span class="p">}</span>
         <span class="k">if</span> <span class="n">cleanup</span><span class="p">:</span>
             <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tempdir</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">rdict</span></div></div>

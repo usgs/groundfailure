@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.godt &#8212; groundfailure 0.1 documentation</title>
@@ -36,9 +36,9 @@
 <span id="gfail-godt"></span><h1>gfail.godt<a class="headerlink" href="#module-gfail.godt" title="Permalink to this headline">¶</a></h1>
 <p>This module contains functions that can be used to run Newmark-based
 mechanistic landslide models.</p>
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.godt.godt2008">
-<code class="sig-prename descclassname">gfail.godt.</code><code class="sig-name descname">godt2008</code><span class="sig-paren">(</span><em class="sig-param">shakefile</em>, <em class="sig-param">config</em>, <em class="sig-param">uncertfile=None</em>, <em class="sig-param">saveinputs=False</em>, <em class="sig-param">displmodel=None</em>, <em class="sig-param">bounds=None</em>, <em class="sig-param">slopediv=100.0</em>, <em class="sig-param">codiv=10.0</em>, <em class="sig-param">numstd=None</em>, <em class="sig-param">trimfile=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#godt2008"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.godt2008" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.godt.</code><code class="sig-name descname">godt2008</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">shakefile</span></em>, <em class="sig-param"><span class="n">config</span></em>, <em class="sig-param"><span class="n">uncertfile</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">saveinputs</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">displmodel</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">bounds</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">slopediv</span><span class="o">=</span><span class="default_value">100.0</span></em>, <em class="sig-param"><span class="n">codiv</span><span class="o">=</span><span class="default_value">10.0</span></em>, <em class="sig-param"><span class="n">numstd</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">trimfile</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#godt2008"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.godt2008" title="Permalink to this definition">¶</a></dt>
 <dd><p>This function runs the Godt and others (2008) global method for a given
 ShakeMap. The Factor of Safety is calculated using infinite slope analysis
 assumuing dry conditions. The method uses threshold newmark displacement
@@ -110,9 +110,9 @@ saveinputs=True):</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.godt.NMdisp">
-<code class="sig-prename descclassname">gfail.godt.</code><code class="sig-name descname">NMdisp</code><span class="sig-paren">(</span><em class="sig-param">Ac</em>, <em class="sig-param">PGA</em>, <em class="sig-param">model='J_PGA'</em>, <em class="sig-param">M=None</em>, <em class="sig-param">PGV=None</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#NMdisp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.NMdisp" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.godt.</code><code class="sig-name descname">NMdisp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">Ac</span></em>, <em class="sig-param"><span class="n">PGA</span></em>, <em class="sig-param"><span class="n">model</span><span class="o">=</span><span class="default_value">'J_PGA'</span></em>, <em class="sig-param"><span class="n">M</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">PGV</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/godt.html#NMdisp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.godt.NMdisp" title="Permalink to this definition">¶</a></dt>
 <dd><p>PGA-based Newmark Displacement model</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -182,7 +182,6 @@ for models with PGV in the name.</p></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>

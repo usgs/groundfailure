@@ -1,7 +1,7 @@
 
 <!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>gfail.pdl &#8212; groundfailure 0.1 documentation</title>
@@ -15,7 +15,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="gfail.spatial" href="gfail.spatial.html" />
-    <link rel="prev" title="gfail.makemaps" href="gfail.makemaps.html" />
+    <link rel="prev" title="gfail.logisticmodel" href="gfail.logisticmodel.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
   
@@ -41,9 +41,9 @@
 <li><p>Potentially add more files (e.g., png, pdf)</p></li>
 </ul>
 </div>
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.pdl.transfer">
-<code class="sig-prename descclassname">gfail.pdl.</code><code class="sig-name descname">transfer</code><span class="sig-paren">(</span><em class="sig-param">event_dir</em>, <em class="sig-param">version</em>, <em class="sig-param">pdl_conf</em>, <em class="sig-param">pdl_bin=None</em>, <em class="sig-param">source='us'</em>, <em class="sig-param">dryrun=False</em>, <em class="sig-param">status='UPDATE'</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#transfer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.transfer" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.pdl.</code><code class="sig-name descname">transfer</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">event_dir</span></em>, <em class="sig-param"><span class="n">version</span></em>, <em class="sig-param"><span class="n">pdl_conf</span></em>, <em class="sig-param"><span class="n">pdl_bin</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">source</span><span class="o">=</span><span class="default_value">'us'</span></em>, <em class="sig-param"><span class="n">dryrun</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">status</span><span class="o">=</span><span class="default_value">'UPDATE'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#transfer"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.transfer" title="Permalink to this definition">¶</a></dt>
 <dd><p>This is to transfer the event’s ‘pdl_directory’ to comcat. PDL must be
 installed separately, see <a class="reference external" href="https://usgs.github.io/pdl/">https://usgs.github.io/pdl/</a> for information.</p>
 <dl class="field-list simple">
@@ -76,9 +76,9 @@ error for dryrun=False; PDL command for dryrun=True.</p>
 </dl>
 </dd></dl>
 
-<dl class="function">
+<dl class="py function">
 <dt id="gfail.pdl.prepare_pdl_directory">
-<code class="sig-prename descclassname">gfail.pdl.</code><code class="sig-name descname">prepare_pdl_directory</code><span class="sig-paren">(</span><em class="sig-param">event_dir</em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#prepare_pdl_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.prepare_pdl_directory" title="Permalink to this definition">¶</a></dt>
+<code class="sig-prename descclassname">gfail.pdl.</code><code class="sig-name descname">prepare_pdl_directory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">event_dir</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/pdl.html#prepare_pdl_directory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#gfail.pdl.prepare_pdl_directory" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make directory for transferring to comcat.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters</dt>
@@ -117,7 +117,6 @@ be sent to comcat</p>
 <li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.godt.html">gfail.godt</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.logisticmodel.html">gfail.logisticmodel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="gfail.makemaps.html">gfail.makemaps</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.pdl</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
 <li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>

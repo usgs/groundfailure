@@ -24,32 +24,6 @@ py_ver=3.6
 # Set to 1 if you are a developer and want ipython etc. installed
 developer=0
 
-# create a matplotlibrc file with the non-interactive backend "Agg" in it.
-if [ ! -d "$matplotlibdir" ]; then
-    mkdir -p $matplotlibdir
-    # if mkdir fails, bow out gracefully
-    if [ $? -ne 0 ];then
-        echo "Failed to create matplotlib configuration file. Exiting."
-        exit 1
-    fi
-fi
-matplotlibrc=$matplotlibdir/matplotlibrc
-if [ ! -e "$matplotlibrc" ]; then
-    echo "backend : Agg" > "$matplotlibrc"
-    echo "NOTE: A non-interactive matplotlib backend (Agg) has been set for this user."
-elif grep -Fxq "backend : Agg" $matplotlibrc ; then
-    :
-elif [ ! grep -Fxq "backend" $matplotlibrc ]; then
-    echo "backend : Agg" >> $matplotlibrc
-    echo "NOTE: A non-interactive matplotlib backend (Agg) has been set for this user."
-else
-    sed -i '' 's/backend.*/backend : Agg/' $matplotlibrc
-    echo "###############"
-    echo "NOTE: $matplotlibrc has been changed to set 'backend : Agg'"
-    echo "###############"
-fi
-
-
 # Is conda installed?
 conda --version
 if [ $? -ne 0 ]; then
@@ -78,6 +52,11 @@ else
     echo "conda detected, installing $VENV environment..."
 fi
 
+# # make defaults higher priority, set that priority to strict
+# conda config --add channels 'conda-forge'
+# conda config --add channels 'defaults'
+# conda config --set channel_priority strict
+
 # echo "PATH:"
 # echo $PATH
 # echo ""
@@ -94,7 +73,7 @@ fi
 echo "Activate base virtual environment"
 conda activate base
 
-# Remove existing shakemap environment if it exists
+# Remove existing gf environment if it exists
 conda remove -y -n $VENV --all
 
 dev_list=(
@@ -102,18 +81,17 @@ dev_list=(
     "spyder"
     "sphinx"
     "sphinx-argparse"
+    "jupyterlab"
 )
 
 # Package list:
 package_list=(
       "python=$py_ver"
-      "basemap"
-      "basemap-data-hires"
       "configobj"
       "descartes"
       "fiona"
       "folium"
-      "gdal"
+      "gdal=2.2.4"
       "impactutils"
       "libcomcat"
       "mapio"
