@@ -914,7 +914,7 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     doc.lookat.altitude = 0.
     doc.lookat.range = (boundaries1['ymax']-boundaries1['ymin']) * 111. * 1000.  # dist in m from point
     doc.description = 'USGS near-real-time earthquake-triggered %s model for \
-                       event id %s' % (maplayer['description']['parameters']\
+                       event id %s' % (maplayer['description']['parameters'] \
                        ['modeltype'], maplayer['description']['event_id'])
 
     prob = L.newgroundoverlay(name=maplayer['label'])
@@ -928,7 +928,7 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     # Add legend and USGS icon as screen overlays
     # Make legend
     make_legend(levels, colorlist, filename=legfile, title=maplayer['label'])
-    
+
     size1 = simplekml.Size(x=0.3, xunits=simplekml.Units.fraction)
     leg = L.newscreenoverlay(name='Legend', size=size1)
     leg.icon.href = 'files/%s' % legshort

@@ -14,6 +14,7 @@ homedir = os.path.dirname(os.path.abspath(__file__))
 upone = os.path.join(homedir, os.pardir, 'defaultconfigfiles')
 datadir = os.path.abspath(os.path.join(homedir, 'data'))
 
+
 def test_callgf(tmpdir):
     modinputs = os.path.join(datadir, 'ci39462536', 'model_inputs')
     pathcmd = """
@@ -21,19 +22,17 @@ def test_callgf(tmpdir):
         -d %s \
         -o [TMPOUT] \
         -c %s \
-        -m %s \
         -tr %s \
         -pdl %s \
         -log [TMPOUT] \
         -db %s \
         -pf %s
     """ % (modinputs,
-    os.path.join(upone, 'models'),
-    os.path.join(upone, 'mapconfig.ini'),
-    os.path.join(modinputs, 'ne_10m_ocean.shp'),
-    os.path.join(modinputs, 'blank.ini'),
-    os.path.join('[TMPOUT]', 'test.db'),
-    os.path.join(modinputs, 'lspop2016.flt'))
+           os.path.join(upone, 'models'),
+           os.path.join(modinputs, 'ne_10m_ocean.shp'),
+           os.path.join(modinputs, 'blank.ini'),
+           os.path.join('[TMPOUT]', 'test.db'),
+           os.path.join(modinputs, 'lspop2016.flt'))
 
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")

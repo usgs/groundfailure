@@ -618,16 +618,6 @@ def set_default_paths(args):
             else:
                 print('Path given for config_filepath does not exist: %s'
                       % args.config_filepath)
-    if args.mapconfig is not None:
-        if args.mapconfig == 'reset':
-            D.pop('mapconfig')
-        else:
-            # check that it's a valid path
-            if os.path.exists(args.mapconfig):
-                D.update({'mapconfig': args.mapconfig})
-            else:
-                print('Path given for mapconfig does not exist: %s'
-                      % args.mapconfig)
     if args.popfile is not None:
         if args.popfile == 'reset':
             D.pop('popfile')

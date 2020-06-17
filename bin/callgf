@@ -416,7 +416,7 @@ def cleanup_database(connection, config):
 
     Args:
         connection (sqlite connection): connection object.
-        config 
+        config
     """
     with connection:
         cursor = connection.cursor()
@@ -563,7 +563,7 @@ def process_shakemap(args, config):
     # Did someone run this from the command line?
     #     *** False when called by PDL ***
     is_manual = isinstance(args, ArgWrapper)
-    
+
     gridfile = None
     uncertfile = None
 
@@ -768,8 +768,8 @@ def process_shakemap(args, config):
     note = ''
     if sd.xmin > sd.xmax:
         msg = ('\nShakeMap crosses 180/-180 line, setting bounds so only '
-              'side with more area is run (temporary fix, too bad world '
-              'is not flat)')
+               'side with more area is run (temporary fix, too bad world '
+               'is not flat)')
         logging.info(msg)
         if sd.xmax + 180. > 180-sd.xmin:
             set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180., sd.xmax)
@@ -891,7 +891,6 @@ def process_shakemap(args, config):
         'data_path': config['data_path'],
         'output_filepath': vdir,
         'config_filepath': config['config_filepath'],
-        'mapconfig': config['mapconfig'],
         'popfile': config['popfile'],
         'dry_run': args.dry_run,
         'property_alertlevel': args.property_alertlevel,
