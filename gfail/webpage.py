@@ -33,7 +33,7 @@ from gfail.utilities import loadlayers
 import warnings
 warnings.filterwarnings('ignore')
 
-plt.switch_backend('agg')
+#plt.switch_backend('agg')
 
 DFCOLORS = [
     [0.94, 0.94, 0.70, 0.7],
