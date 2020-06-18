@@ -158,11 +158,18 @@ class LogisticModel(object):
                     print('Specified bounds are outside shakemap area, using '
                           'ShakeMap bounds instead.')
                     bounds = None
+
         if bounds is not None:
             tempgdict = GeoDict.createDictFromBox(
                 bounds['xmin'], bounds['xmax'],
                 bounds['ymin'], bounds['ymax'],
                 geodict.dx, geodict.dy, inside=False)
+            # Is Shakemap geodict crosses 180/-180 line, fix geodict so things don't break
+            if geodict.xmin > geodict.xmax:
+                if tempgdict.xmin < 0:
+                    geodict._xmin -= 360.
+                else:
+                    geodict._xmax += 360.
             gdict = geodict.getBoundsWithin(tempgdict)
         else:
             gdict = geodict
