@@ -164,7 +164,7 @@ class LogisticModel(object):
                 bounds['xmin'], bounds['xmax'],
                 bounds['ymin'], bounds['ymax'],
                 geodict.dx, geodict.dy, inside=False)
-            # Is Shakemap geodict crosses 180/-180 line, fix geodict so things don't break
+            # If Shakemap geodict crosses 180/-180 line, fix geodict so things don't break
             if geodict.xmin > geodict.xmax:
                 if tempgdict.xmin < 0:
                     geodict._xmin -= 360.

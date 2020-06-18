@@ -179,6 +179,12 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             bounds['xmin'], bounds['xmax'],
             bounds['ymin'], bounds['ymax'],
             geodict.dx, geodict.dy, inside=False)
+        # If Shakemap geodict crosses 180/-180 line, fix geodict so things don't break
+        if geodict.xmin > geodict.xmax:
+            if tempgdict.xmin < 0:
+                geodict._xmin -= 360.
+            else:
+                geodict._xmax += 360.
         geodict = geodict.getBoundsWithin(tempgdict)
 
     basegeodict, firstcol = GDALGrid.getFileGeoDict(

@@ -21,7 +21,8 @@ Besides the API, there are five command-line programs:
 
 `gfail` - runs ground failure models
 
-`callgf` - automation wrapper for gfail
+`callgf` - automation wrapper for gfail (A file called "autogf_models" that lists the models to run must be placed in
+the data_path directory.)
 
 `gfail_transfer` - transfers model results to USGS comcat
 
@@ -146,7 +147,6 @@ gfail --set-default-paths \
     -d full/modelinput/data/path \
     -o full/output/location/filepath \
     -c full/filepath/to/model/config/files \
-    -m full/filepath/to/mapping/config/file \
     -md full/filepath/to/data/for/mapping
 ```
 
@@ -331,44 +331,6 @@ described in detail
       pga = None
       slope = None
       cti1 = None
-```
-
-### Mapping config file format
-The mapping config file tells the program what files to use (roads, cities etc.)
-for creating static maps. It is not required, but static maps may be bland
-without these.
-
-```ini
-# All map inputs are optional, but desireable. File paths are relative to the
-# mapping_inputs folder. Default display options for each input layer are found
-# in the model config file. 
-
-[dem]  # Optional, for making hillshade
-  file = md30_gmted_gmt.grd
-
-[roads]  # Optional
-  file = roads  # Folder in this case
-  longref = """Center for International Earth Science Information Network - CIESIN, 2013, Global Roads Open Access Data Set,
-   Version 1 (gROADSv1): Columbia University, and Information Technology Outreach Services - ITOS - University of Georgia,
-   Palisades, NY, NASA Socioeconomic Data and Applications Center (SEDAC). http://dx.doi.org/10.7927/H4VD6WCT.""
-  shortref = 'CIESIN (2013)"""
-
-[cities]  # Optional
-  file = cities1000.txt
-  longref = GeoNames, http://geonames.org/ Accessed: 2 Sept 2015
-  shortref = GeoNames
-
-[ocean]  # Optional
-  file = ne_10m_ocean/ne_10m_ocean.shp
-  longref = Natural Earth (acc. 2016)
-  shortref = Natural Earth (2016) Ocean polygon http://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-ocean/
-
-[colors]
-  # Define basic colors
-  roadcolor = 808080
-  countrycolor = 474747
-  watercolor = B8EEFF
-
 ```
 
 ## API for Model Output
