@@ -28,7 +28,8 @@ import os.path
 import argparse
 import matplotlib
 import traceback
-matplotlib.use('Agg')
+
+#matplotlib.use('Agg')
 
 # stdlib imports
 #import urllib.request
@@ -209,13 +210,44 @@ def shakemap_over_land(landfile, grid):
     with fiona.open(landfile, 'r') as shapefile:
         tfeatures = shapefile.items(bbox=box_tuple)
         features = [shape(feature[1]["geometry"]) for feature in tfeatures]
-
     for feature in features:
         if feature.intersects(grid_box):
             on_land = True
             break
 
     return on_land
+
+
+def getnewbounds180(landfile, gdict):
+    """Adjust bounds that cross 180/-180 line to select side with more land
+    area
+
+    Args:
+        landfile (str): Path to global shapefile of land masses.
+        gdict: mapio geodict of current shakemap bounds
+
+    Returns:
+        set_bounds: string of new bounds like 'ymin, ymax, xmin, xmax'
+
+    """
+    # Split into two boxes
+    
+    boxpos = (gdict.xmin, gdict.ymin, 180., gdict.ymax)
+    #boxpos = box(*boxpos)
+    
+    boxneg = (-180., gdict.ymin, gdict.xmax, gdict.ymax)
+    #boxneg = box(*boxneg)
+
+    with fiona.open(landfile, 'r') as shapefile:
+        tfeaturespos = shapefile.items(bbox=boxpos)
+        areapos = np.sum([shape(feature[1]["geometry"]).area for feature in tfeaturespos])
+        tfeaturesneg = shapefile.items(bbox=boxneg)
+        areaneg = np.sum([shape(feature[1]["geometry"]).area for feature in tfeaturesneg])
+    if areaneg > areapos:
+        set_bounds = '%s, %s, %s, %s' % (gdict.ymin, gdict.ymax, -180., gdict.xmax)
+    else:
+        set_bounds = '%s, %s, %s, %s' % (gdict.ymin, gdict.ymax, gdict.xmin, 180.)
+    return set_bounds
 
 
 def connect_database(dbfile):
@@ -768,15 +800,11 @@ def process_shakemap(args, config):
     note = ''
     if sd.xmin > sd.xmax:
         msg = ('\nShakeMap crosses 180/-180 line, setting bounds so only '
-               'side with more area is run (temporary fix, too bad world '
-               'is not flat)')
+               'side with more land area is run')
         logging.info(msg)
-        if sd.xmax + 180. > 180-sd.xmin:
-            set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180., sd.xmax)
-        else:
-            set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin, 180.)
-            msg = ('Bounds applied: %s' % set_bounds)
-            logging.info(msg)
+        set_bounds = getnewbounds180(config['trimfile'], sd)
+        msg = ('Bounds applied: %s' % set_bounds)
+        logging.info(msg)
 
     if set_bounds is not None:
         msg = ('Bounds adjusted to: %s' % set_bounds)
@@ -903,8 +931,8 @@ def process_shakemap(args, config):
         if outfiles is None:
             logging.critical("run_gfail failed - no files created.")
             sys.exit(1)
-    except Exception:
-        msg = 'Failure running run_gfail:'
+    except Exception as e:
+        msg = 'Failure running run_gfail: %s' % e
         exc_type, exc_value, exc_traceback = sys.exc_info()
         logging.critical(msg)
         logging.critical(traceback.format_exc())

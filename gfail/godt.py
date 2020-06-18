@@ -167,18 +167,26 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     # Figure out how/if need to cut anything
     geodict = ShakeGrid.getFileGeoDict(shakefile)  # , adjust='res')
     if bounds is not None:  # Make sure bounds are within ShakeMap Grid
-        if (geodict.xmin > bounds['xmin'] or
-                geodict.xmax < bounds['xmax'] or
-                geodict.ymin > bounds['ymin'] or
-                geodict.ymax < bounds['ymax']):
-            print('Specified bounds are outside shakemap area, using '
-                  'ShakeMap bounds instead.')
-            bounds = None
+        if geodict.xmin < geodict.xmax:  # only if signs are not opposite
+            if (geodict.xmin > bounds['xmin'] or
+                    geodict.xmax < bounds['xmax'] or
+                    geodict.ymin > bounds['ymin'] or
+                    geodict.ymax < bounds['ymax']):
+                print('Specified bounds are outside shakemap area, using '
+                      'ShakeMap bounds instead.')
+                bounds = None
+
     if bounds is not None:
         tempgdict = GeoDict.createDictFromBox(
             bounds['xmin'], bounds['xmax'],
             bounds['ymin'], bounds['ymax'],
             geodict.dx, geodict.dy, inside=False)
+        # If Shakemap geodict crosses 180/-180 line, fix geodict so things don't break
+        if geodict.xmin > geodict.xmax:
+            if tempgdict.xmin < 0:
+                geodict._xmin -= 360.
+            else:
+                geodict._xmax += 360.
         geodict = geodict.getBoundsWithin(tempgdict)
 
     basegeodict, firstcol = GDALGrid.getFileGeoDict(

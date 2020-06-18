@@ -129,8 +129,7 @@ def run_gfail(args):
             sd = ShakeGrid.getFileGeoDict(shakefile)
             if sd.xmin > sd.xmax:
                 print('\nShakeMap crosses 180/-180 line, setting bounds so only '
-                      'side with more area is run (temporary fix, too bad world '
-                      'is not flat)')
+                      'side with more land area is run')
                 if sd.xmax + 180. > 180-sd.xmin:
                     set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180., sd.xmax)
                 else:
