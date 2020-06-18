@@ -32,7 +32,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
 
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
-                 statprobthresh=None, pop_file=None, stdtype='full',
+                 probthresh=None, pop_file=None, stdtype='full',
                  maxP=1.):
     """
     Compute summary stats of a ground failure model output.
@@ -44,10 +44,10 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
             threshold.
         shakethreshtype: Optional, Type of ground motion to use for
             shakethresh, 'pga', 'pgv', or 'mmi'.
-        shakethresh: Optional, Float or list of shaking thresholds in %g for
+        shakethresh: Optional, Float in %g for
             pga, cm/s for pgv, float for mmi. Used for Hagg and Exposure
             computation
-        statprobthresh: Optional, None or float, exclude any cells with
+        probthresh: Optional, None or float, exclude any cells with
             probabilities less than or equal to this value
         pop_file (str): File path to population file to use to compute exposure
             stats
@@ -77,13 +77,13 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
     """
     stats = collections.OrderedDict()
     grid = grid2D.getData().copy()
-    if statprobthresh is not None:
-        grid = grid[grid > statprobthresh]
+    if probthresh is not None:
+        grid = grid[grid > probthresh]
     else:
-        statprobthresh = 0.0
+        probthresh = 0.0
 
     if len(grid) == 0:
-        print('no probability values above statprobthresh')
+        print('no probability values above probthresh')
         stats['Max'] = 0.  # float('nan')
         stats['Median'] = 0.  # float('nan')
         stats['Std'] = 0.  # float('nan')
@@ -92,10 +92,17 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
         stats['Median'] = float(np.nanmedian(grid))
         stats['Std'] = float(np.nanstd(grid))
 
-    hagg_dict = computeHagg(grid2D, probthresh=statprobthresh, shakefile=shakefile,
+    # Get sill and range, should be same for both models
+    if stdtype == 'full':
+        pass
+    else:
+        sill1 = None
+        range1 = None
+
+    hagg_dict = computeHagg(grid2D, probthresh=probthresh, shakefile=shakefile,
                             shakethreshtype=shakethreshtype, stdtype=stdtype,
                             shakethresh=shakethresh, stdgrid2D=stdgrid2D,
-                            maxP=maxP)
+                            maxP=maxP, sill1=None, range1=None)
 
     for k, v in hagg_dict.items():
         stats[k] = v
@@ -115,10 +122,10 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
         exp_dict = get_exposures(grid2D, pop_file, shakefile=shakefile,
                                  shakethreshtype=shakethreshtype,
                                  shakethresh=shakethresh,
-                                 probthresh=statprobthresh,
+                                 probthresh=probthresh,
                                  stdgrid2D=stdgrid2D,
-                                 stdtype=stdtype, maxP=maxP
-                                 )
+                                 stdtype=stdtype, maxP=maxP,
+                                 sill=None, range1=None)
         for k, v in exp_dict.items():
             stats[k] = v
 
@@ -127,7 +134,7 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
 
 def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                 shakethreshtype='pga', shakethresh=0.0, stdgrid2D=None,
-                stdtype='full', maxP=1.):
+                stdtype='full', maxP=1., sill1=None, range1=None):
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the
     probability * area of grid cell For models that compute areal coverage,
@@ -151,6 +158,8 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             or 'full' (default) which estimates the range of correlation and
             accounts for covariance
         maxP (float): the maximum possible probability of the model
+        sill1 (float):
+        range1 (float):
 
     Returns:
         dict: Dictionary with keys:
@@ -171,12 +180,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     geodict = grid2D.getGeoDict()
 
     if shakefile is not None:
-        if type(shakethresh) != list and type(shakethresh) != np.ndarray:
-            shakethresh = [shakethresh]
-        for shaket in shakethresh:
-            if shaket < 0.:
-                raise Exception('shaking threshold must be equal or greater '
-                                'than zero')
+        if shakethresh < 0.:
+            raise Exception('shaking threshold must be equal or greater '
+                            'than zero')
         tmpdir = tempfile.mkdtemp()
         # resample shakemap to grid2D
         temp = ShakeGrid.load(shakefile)
@@ -203,88 +209,58 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
 
     Hagg = {}
     model[np.isnan(model)] = -1.
+
     if shakefile is not None:
         shkgrid = shk.project(projection=projs)
         shkdat = shkgrid.getData()
-        for shaket in shakethresh:
-            # use -1 to avoid nan errors and warnings, will always be thrown
-            # out because default probthresh is 0.
-            model[np.isnan(shkdat)] = -1.
-            model[shkdat < shaket] = -1.
-            mu = np.sum(model[model >= probthresh] * cell_area_km2)
-            Hagg['hagg_%1.2fg' % (shaket/100.,)] = mu
-            Hagg['cell_area_km2'] = cell_area_km2
-            N = np.sum([model >= probthresh])
-            Hagg['N_%1.2fg' % (shaket/100.,)] = N
-            hlim = cell_area_km2*N*maxP
-            Hagg['hlim_%1.2fg' % (shaket/100.,)] = hlim
-            if stdgrid2D is not None:
-                if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
-                    totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
-                    totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
-                    if stdtype == 'max':
-                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmax
-                    elif stdtype == 'min':
-                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = totalmin
-                    elif stdtype == 'mean':
-                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = (totalmax+totalmin)/2.
-                    else:
-                        range1, sill1 = semivario(model, probthresh)
-                        stdz = std.copy()
-                        stdz[model < probthresh] = 0.
-                        Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = cell_area_km2 * np.sqrt(svar(
-                                stdz, range1, sill1))
-                    var = Hagg['hagg_std_%1.2fg' % (shaket/100.,)]**2.
-                    # Beta distribution shape factors
-                    Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
-                    Hagg['q_hagg_%1.2fg' % (shaket/100.,)] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
-                else:
-                    print('No std values above threshold, skipping uncertainty '
-                          'and filling with zeros')
-                    Hagg['hagg_std_%1.2fg' % (shaket/100.,)] = 0.
-                    Hagg['p_hagg_%1.2fg' % (shaket/100.,)] = 0.
-                    Hagg['q_hagg_%1.2fg' % (shaket/100.,)] = 0.
+        # use -1 to avoid nan errors and warnings, will always be thrown
+        # out because default probthresh is 0.
+        model[np.isnan(shkdat)] = -1.
+        model[shkdat < shakethresh] = -1.
     else:
-        mu = np.sum(model[model >= probthresh] * cell_area_km2)
-        Hagg['hagg_0.00g'] = mu
-        Hagg['cell_area_km2'] = cell_area_km2
-        N = np.sum([model >= probthresh])
-        Hagg['N_0.00g'] = N
-        hlim = cell_area_km2*N*maxP
-        Hagg['hlim_0.00g'] = hlim
-        if stdgrid2D is not None:
-            if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
-                totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
-                totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
-                if stdtype == 'max':
-                    Hagg['hagg_std_0.00g'] = totalmax
-                elif stdtype == 'min':
-                    Hagg['hagg_std_0.00g'] = totalmin
-                elif stdtype == 'mean':
-                    Hagg['std_0.00g'] = (totalmax+totalmin)/2.
-                else:
-                    modz = model.copy()
-                    modz[np.isnan(model)] = -1.
-                    range1, sill1 = semivario(modz, probthresh)
-                    stdz = std.copy()
-                    stdz[model < probthresh] = 0.
-                    Hagg['std_0.00g'] = cell_area_km2 * np.sqrt(svar(stdz, range1, sill1))
-    
-                var = Hagg['hagg_std_0.00g']**2.
-                # Beta distribution shape factors
-                Hagg['p_hagg_0.00g'] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
-                Hagg['q_hagg_0.00g'] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
+        shakethresh == 0.
+
+    mu = np.sum(model[model >= probthresh] * cell_area_km2)
+    Hagg['hagg_%1.2fg' % (shakethresh/100.,)] = mu
+    Hagg['cell_area_km2'] = cell_area_km2
+    N = np.sum([model >= probthresh])
+    Hagg['N_%1.2fg' % (shakethresh/100.,)] = N
+    hlim = cell_area_km2*N*maxP
+    Hagg['hlim_%1.2fg' % (shakethresh/100.,)] = hlim
+    if stdgrid2D is not None:
+        if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
+            totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
+            totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
+            if stdtype == 'max':
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+            elif stdtype == 'min':
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+            elif stdtype == 'mean':
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
             else:
-                Hagg['hagg_std_0.00g'] = 0.
-                Hagg['p_hagg_0.00g'] = 0.
-                Hagg['q_hagg_0.00g'] = 0.
+                if sill1 is None or range1 is None:
+                    range1, sill1 = semivario(model, probthresh)
+                stdz = std.copy()
+                stdz[model < probthresh] = 0.
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = cell_area_km2 * np.sqrt(svar(
+                        stdz, range1, sill1))
+            var = Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)]**2.
+            # Beta distribution shape factors
+            Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
+            Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
+        else:
+            print('No std values above threshold, skipping uncertainty '
+                  'and filling with zeros')
+            Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
+            Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+            Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
 
     return Hagg
 
 
 def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
                   shakethresh=0.0, probthresh=None, stdgrid2D=None,
-                  stdtype='full', maxP=1.):
+                  stdtype='full', maxP=1., sill1=None, range1=None):
     """
     Get exposure-based statistics.
 
@@ -328,9 +304,6 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         moddat = grid.getData().copy()
         if stdgrid2D is not None:
             stddat = stdgrid2D.getData().copy()
-
-    if type(shakethresh) != list and type(shakethresh) != np.ndarray:
-        shakethresh = [shakethresh]
 
     mdict = grid.getGeoDict()
 
@@ -402,77 +375,44 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
         shakemap = shakemap.getLayer(shakethreshtype)
         shakemap = shakemap.interpolate2(pdict)
         shkdat = shakemap.getData()
-        for shaket in shakethresh:
-            threshmult = shkdat > shaket
-            threshmult = threshmult.astype(float)
-            dat2 = popdat * prop * modresamp * threshmult
-            mu = np.nansum(dat2)
-            exp_pop['exp_pop_%1.2fg' % (shaket/100.,)] = mu
-            elim = maxP*np.nansum(popdat * prop * threshmult)
-            exp_pop['elim_%1.2fg' % (shaket/100.,)] = elim
-            if stdgrid2D is not None:
-                if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
-                    datstd2 = popdat * propstd * modresampstd * threshmult
-                    totalmax = np.nansum(datstd2)
-                    totalmin = np.sqrt(np.nansum(datstd2**2.))
-                    if stdtype == 'max':
-                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmax
-                    elif stdtype == 'min':
-                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = totalmin
-                    elif stdtype == 'mean':
-                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)]=(totalmax+totalmin)/2.
-                    else:
-                        dat2z = dat2.copy()
-                        dat2z[np.isnan(dat2)] = 0.
-                        range1, sill1 = semivario(dat2z, threshold=probthresh)
-                        exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
-                                datstd2, range1, sill1))
-    
-                    # Beta distribution shape factors
-                    var = exp_pop['exp_std_%1.2fg' % (shaket/100.,)]**2.
-                    exp_pop['p_exp_%1.2fg' % (shaket/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
-                    exp_pop['q_exp_%1.2fg' % (shaket/100.,)] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
-                else:
-                    print('no std values above zero, filling with zeros')
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = 0.
-                    exp_pop['p_exp_%1.2fg' % (shaket/100.,)] = 0.
-                    exp_pop['q_exp_%1.2fg' % (shaket/100.,)] = 0.
-                    
-                    
+        threshmult = shkdat > shakethresh
+        threshmult = threshmult.astype(float)
+        dat2 = popdat * prop * modresamp * threshmult
     else:
         dat2 = popdat * prop * modresamp
-        mu = np.nansum(dat2)
-        exp_pop['exp_pop_0.00g'] = mu
-        elim = maxP*np.nansum(popdat * prop)
-        exp_pop['elim_0.00g'] = elim
-        if stdgrid2D is not None:
-            if np.nanmax(modresampstd) > 0. and mu > 0.:
-                datstd2 = popdat * propstd * modresampstd
-                totalmax = np.nansum(datstd2)
-                totalmin = np.sqrt(np.nansum(datstd2**2.))
-                if stdtype == 'max':
-                    exp_pop['exp_std_0.00g'] = totalmax
-                elif stdtype == 'min':
-                    exp_pop['exp_std_0.00g'] = totalmin
-                elif stdtype == 'mean':
-                    exp_pop['exp_std_0.00g'] = (totalmax+totalmin)/2.
-                else:
+        shakethresh = 0.0
+
+    mu = np.nansum(dat2)
+    exp_pop['exp_pop_%1.2fg' % (shakethresh/100.,)] = mu
+    elim = maxP*np.nansum(popdat * prop * threshmult)
+    exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
+    if stdgrid2D is not None:
+        if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
+            datstd2 = popdat * propstd * modresampstd * threshmult
+            totalmax = np.nansum(datstd2)
+            totalmin = np.sqrt(np.nansum(datstd2**2.))
+            if stdtype == 'max':
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+            elif stdtype == 'min':
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+            elif stdtype == 'mean':
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+            else:
+                if sill1 is None or range1 is None:
                     dat2z = dat2.copy()
                     dat2z[np.isnan(dat2)] = 0.
                     range1, sill1 = semivario(dat2z, threshold=probthresh)
-                    exp_pop['exp_std_%1.2fg' % (shaket/100.,)] = np.sqrt(svar(
-                            datstd2, range1, sill1))
-                        
-                # Beta distribution shape factors
-                var = exp_pop['exp_std_0.00g']**2.
-                exp_pop['exp_std_0.00g'] = (mu/elim)*((elim*mu-mu**2)/var-1)
-                exp_pop['exp_std_0.00g'] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
-                #exp_pop['exp_std_0.00g'] = np.nansum(popdat * propstd * modresampstd)
-            else:
-                print('no std values above zero, filling with zeros')
-                exp_pop['exp_std_0.00g'] = 0.
-                exp_pop['p_exp_0.00g'] = 0.
-                exp_pop['q_exp_0.00g'] = 0.
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar(datstd2, range1, sill1))
+
+            # Beta distribution shape factors
+            var = exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)]**2.
+            exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
+            exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
+        else:
+            print('no std values above zero, filling with zeros')
+            exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
+            exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+            exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
 
     return exp_pop
 
