@@ -127,7 +127,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             concLS.append(title)
 
             if 'godt' in maplayer['model']['description']['name'].lower():
-                statprobthresh = None
+                probthresh = None
                 id1 = 'godt_2008'
                 maxP = 1.
             else:
@@ -135,11 +135,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 # placeholder zeros before computing stats
                 if 'jessee' in maplayer['model']['description']['name'].lower():
                     id1 = 'jessee_2017'
-                    statprobthresh = 0.002
+                    probthresh = 0.002
                     maxP = 0.26
                 else:
                     id1 = 'nowicki_2014_global'
-                    statprobthresh = 0.0
+                    probthresh = 0.0
                     maxP = 1.
             
             if 'std' in list(maplayer.keys()):
@@ -152,7 +152,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 stdgrid2D=stdgrid2D,
                 shakefile=shakemap,
                 shakethresh=shakethresh,
-                statprobthresh=statprobthresh,
+                probthresh=probthresh,
                 pop_file=pop_file,
                 shakethreshtype=shakethreshtype,
                 maxP=maxP)
@@ -291,11 +291,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
             if '2015' in maplayer['model']['description']['name'].lower():
                 id1 = 'zhu_2015'
-                statprobthresh = 0.0
+                probthresh = 0.0
                 maxP = 1.
             elif '2017' in maplayer['model']['description']['name'].lower():
                 id1 = 'zhu_2017_general'
-                statprobthresh = 0.005
+                probthresh = 0.005
                 maxP = 0.487
 
             if 'std' in list(maplayer.keys()):
@@ -310,7 +310,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 shakethresh=shakethresh,
                 pop_file=pop_file,
                 shakethreshtype=shakethreshtype,
-                statprobthresh=statprobthresh,
+                probthresh=probthresh,
                 maxP=maxP)
 
             metadata = maplayer['model']['description']
