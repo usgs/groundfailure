@@ -28,8 +28,9 @@ import os.path
 import argparse
 import matplotlib
 import traceback
+import time
 
-#matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 # stdlib imports
 #import urllib.request
@@ -231,22 +232,26 @@ def getnewbounds180(landfile, gdict):
 
     """
     # Split into two boxes
-    
+
     boxpos = (gdict.xmin, gdict.ymin, 180., gdict.ymax)
     #boxpos = box(*boxpos)
-    
+
     boxneg = (-180., gdict.ymin, gdict.xmax, gdict.ymax)
     #boxneg = box(*boxneg)
 
     with fiona.open(landfile, 'r') as shapefile:
         tfeaturespos = shapefile.items(bbox=boxpos)
-        areapos = np.sum([shape(feature[1]["geometry"]).area for feature in tfeaturespos])
+        areapos = np.sum(
+            [shape(feature[1]["geometry"]).area for feature in tfeaturespos])
         tfeaturesneg = shapefile.items(bbox=boxneg)
-        areaneg = np.sum([shape(feature[1]["geometry"]).area for feature in tfeaturesneg])
+        areaneg = np.sum(
+            [shape(feature[1]["geometry"]).area for feature in tfeaturesneg])
     if areaneg > areapos:
-        set_bounds = '%s, %s, %s, %s' % (gdict.ymin, gdict.ymax, -180., gdict.xmax)
+        set_bounds = '%s, %s, %s, %s' % (
+            gdict.ymin, gdict.ymax, -180., gdict.xmax)
     else:
-        set_bounds = '%s, %s, %s, %s' % (gdict.ymin, gdict.ymax, gdict.xmin, 180.)
+        set_bounds = '%s, %s, %s, %s' % (
+            gdict.ymin, gdict.ymax, gdict.xmin, 180.)
     return set_bounds
 
 
@@ -363,9 +368,9 @@ def get_event_dir(args, connection):
                 (eventid,))
             data1 = cursor.fetchall()
         if len(data1) > 0:
-            shakemap_version = np.max(
-                [dat[0] for dat in data1 if dat[0] is not None]
-            )
+            temp = [dat[0] for dat in data1 if dat[0] is not None]
+            if len(temp) > 0:
+                shakemap_version = np.max(temp)
         break
 
     return (eventdir, shakemap_version)
@@ -705,19 +710,29 @@ def process_shakemap(args, config):
             args.directory, 'download', 'uncertainty.xml')
     else:
         # Called by PDL. Download grid.xml and uncertainty.xml files.
-        try:
-            datadir = os.path.join(args.directory, 'download')
-            if not os.path.exists(datadir):
-                os.makedirs(datadir)
-            # Download shakemap and uncertainty grid
-            detail, gridfile, uncertfile = \
-                getShakefiles(eventid, datadir, uncert=True,
-                              version=args.version,
-                              source=args.source)
+        max_attempts = 4
+        sleep = 60.0  # seconds
+        attempts = 0
+        while attempts < max_attempts:
+            try:
+                datadir = os.path.join(args.directory, 'download')
+                if not os.path.exists(datadir):
+                    os.makedirs(datadir)
+                # Download shakemap and uncertainty grid
+                detail, gridfile, uncertfile = \
+                    getShakefiles(eventid, datadir, uncert=True,
+                                  version=args.version,
+                                  source=args.source)
 
-        except Exception as e:
-            logging.info('Failed to download shakemap files.')
-            logging.info(e)
+            except Exception as e:
+                logging.info(
+                    'Failed to download shakemap files. Attempt %s of %s.'
+                    % (attempts, max_attempts)
+                )
+                logging.info(e)
+                attempts += 1
+                if attempts < max_attempts:
+                    time.sleep(sleep)
 
         if uncertfile is None:
             logging.info('Failed to download and/or unzip uncertainty.xml '
@@ -730,11 +745,11 @@ def process_shakemap(args, config):
     # Check that gridfiles are where they should be
     logging.info('Checking gridfile...')
 
-    if not os.path.isfile(gridfile):
-        msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
+    if gridfile is None or (not os.path.isfile(gridfile)):
+        msg = ('Could not find input ShakeMap grid file at %s. Exiting. Rerun.'
                % gridfile)
         logging.info(msg)
-        #if not args.force:
+        # if not args.force:
         update_event_fail(conn, db_id, msg)
         sys.exit(1)
 
@@ -781,18 +796,20 @@ def process_shakemap(args, config):
                'Exiting.')
         logging.info(msg)
         # Run just part of area if remaining area is larger than 1 deg
-        if (sd.ymax+56. > 1.) and (84.-sd.ymin > 1.):
+        if (sd.ymax + 56. > 1.) and (84. - sd.ymin > 1.):
             msg = ('\nRunning just part of ShakeMap that overlaps with slope '
                    'data by adjusting bounds')
             logging.info(msg)
             if sd.ymin < -56.:
-                set_bounds = '%s, %s, %s, %s' % (-56., sd.ymax, sd.xmin, sd.xmax)
+                set_bounds = '%s, %s, %s, %s' % (-56.,
+                                                 sd.ymax, sd.xmin, sd.xmax)
                 sd._ymin = -56.  # change gdict so next check includes this change
             elif sd.ymax > 84:
-                set_bounds = '%s, %s, %s, %s' % (sd.ymin, 84., sd.xmin, sd.xmax)
+                set_bounds = '%s, %s, %s, %s' % (
+                    sd.ymin, 84., sd.xmin, sd.xmax)
                 sd._ymax = 84.  # change gdict so next check includes this change
         else:
-            #if not args.force:
+            # if not args.force:
             update_event_fail(conn, db_id, msg)
             sys.exit(1)
 
@@ -990,7 +1007,7 @@ def process_shakemap(args, config):
             expire_warning_sec = expire_warning_days * 24.0 * 60.0 * 60.0
             utc = pytz.utc
             detail_time = ShakeDateTime.fromtimestamp(
-                detail['time']/1000.0, utc)
+                detail['time'] / 1000.0, utc)
             delta = ShakeDateTime.now(utc) - detail_time
             if delta.total_seconds() < expire_warning_sec:
                 status = "WARNING"
