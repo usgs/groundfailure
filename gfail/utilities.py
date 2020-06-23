@@ -736,21 +736,28 @@ def view_database(database, starttime=None, endtime=None,
     event_codes = df['eventcode'].values
     elist, counts = np.unique(event_codes, return_counts=True)
     keep = []
+    rejects = []
     for idx in elist:
         vers = df.loc[df['eventcode'] == idx]['shakemap_version'].values
         vermin = np.nanmin(vers)
         sel1 = df.loc[(df['eventcode'] == idx) &
                       (df['shakemap_version'] == vermin)]
-        delay = np.timedelta64(sel1['endtime'].values[0] -
-                               sel1['time'].values[0], 's').astype(int)
-        if delay <= realtime_maxsec:
-            keep.append(idx)
-            delays.append(delay)
+        if len(sel1) > 0:
+            delay = np.timedelta64(sel1['endtime'].values[0] -
+                                   sel1['time'].values[0], 's').astype(int)
+            if delay <= realtime_maxsec:
+                keep.append(idx)
+                delays.append(delay)
+            else:
+                delays.append(float('nan'))
         else:
-            delays.append(float('nan'))
+            rejects.append(idx)
 
     if realtime:  # Keep just realtime events
         df = df.loc[df['eventcode'].isin(keep)]
+
+    # Remove any bad/incomplete entries
+    df = df.loc[~df['eventcode'].isin(rejects)]
 
     # Get only latest version for each event id if requested
     if currentonly:
