@@ -636,6 +636,12 @@ def view_database(database, starttime=None, endtime=None,
     import warnings
     warnings.filterwarnings("ignore")
 
+    formatters = {"time": "{:%Y-%m-%d}".format,
+                  "shakemap_version": "{:.0f}".format,
+                  "version": "{:.0f}".format,
+                  "starttime": "{:%Y-%m-%d %H:%M}".format,
+                  "endtime": "{:%Y-%m-%d %H:%M}".format}
+
     criteria = dict(locals())
     # Define alert bins for later use
     hazbinLS = dict(green=[0., 1], yellow=[1., 10.], orange=[10., 100.],
@@ -654,6 +660,21 @@ def view_database(database, starttime=None, endtime=None,
 
     # Read in entire shakemap table, do selection using pandas
     df = pd.read_sql_query("SELECT * FROM shakemap", connection)
+
+    # Print currently running info to screen
+    print('-------------------------------------------------')
+    curt = df.loc[df['note'].str.contains('Currently running')]
+    if len(curt) > 0:
+        ccols = ['eventcode', 'time', 'shakemap_version', 'note', 'starttime']
+        ccols2 = ['eventcode', 'time', 'shake_v', 'note', 'startrun']
+        print('Currently running - %d runs' % len(curt))
+        print('-------------------------------------------------')
+        print(curt.to_string(columns=ccols, index=False,
+              justify='left', header=ccols2,
+              formatters=formatters))
+    else:
+        print('No events currently running')
+        print('-------------------------------------------------')
 
     okcols = list(df.keys())
 
@@ -736,21 +757,28 @@ def view_database(database, starttime=None, endtime=None,
     event_codes = df['eventcode'].values
     elist, counts = np.unique(event_codes, return_counts=True)
     keep = []
+    rejects = []
     for idx in elist:
         vers = df.loc[df['eventcode'] == idx]['shakemap_version'].values
         vermin = np.nanmin(vers)
         sel1 = df.loc[(df['eventcode'] == idx) &
                       (df['shakemap_version'] == vermin)]
-        delay = np.timedelta64(sel1['endtime'].values[0] -
-                               sel1['time'].values[0], 's').astype(int)
-        if delay <= realtime_maxsec:
-            keep.append(idx)
-            delays.append(delay)
+        if len(sel1) > 0:
+            delay = np.timedelta64(sel1['endtime'].values[0] -
+                                   sel1['time'].values[0], 's').astype(int)
+            if delay <= realtime_maxsec:
+                keep.append(idx)
+                delays.append(delay)
+            else:
+                delays.append(float('nan'))
         else:
-            delays.append(float('nan'))
+            rejects.append(idx)
 
     if realtime:  # Keep just realtime events
         df = df.loc[df['eventcode'].isin(keep)]
+
+    # Remove any bad/incomplete entries
+    df = df.loc[~df['eventcode'].isin(rejects)]
 
     # Get only latest version for each event id if requested
     if currentonly:
@@ -915,11 +943,6 @@ def view_database(database, starttime=None, endtime=None,
         else:
             raise Exception('Cannot save csv file to %s' % csvfile)
 
-    formatters = {"time": "{:%Y-%m-%d}".format,
-                  "shakemap_version": "{:.0f}".format,
-                  "version": "{:.0f}".format,
-                  "starttime": "{:%Y-%m-%d %H:%M}".format,
-                  "endtime": "{:%Y-%m-%d %H:%M}".format}
     # Print to screen
     if stats['nsuccess'] > 0 and printsuccess:
         print('Successful - %d runs' % stats['nsuccess'])

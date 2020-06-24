@@ -28,8 +28,9 @@ import os.path
 import argparse
 import matplotlib
 import traceback
+import time
 
-#matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 # stdlib imports
 #import urllib.request
@@ -231,22 +232,26 @@ def getnewbounds180(landfile, gdict):
 
     """
     # Split into two boxes
-    
+
     boxpos = (gdict.xmin, gdict.ymin, 180., gdict.ymax)
     #boxpos = box(*boxpos)
-    
+
     boxneg = (-180., gdict.ymin, gdict.xmax, gdict.ymax)
     #boxneg = box(*boxneg)
 
     with fiona.open(landfile, 'r') as shapefile:
         tfeaturespos = shapefile.items(bbox=boxpos)
-        areapos = np.sum([shape(feature[1]["geometry"]).area for feature in tfeaturespos])
+        areapos = np.sum(
+            [shape(feature[1]["geometry"]).area for feature in tfeaturespos])
         tfeaturesneg = shapefile.items(bbox=boxneg)
-        areaneg = np.sum([shape(feature[1]["geometry"]).area for feature in tfeaturesneg])
+        areaneg = np.sum(
+            [shape(feature[1]["geometry"]).area for feature in tfeaturesneg])
     if areaneg > areapos:
-        set_bounds = '%s, %s, %s, %s' % (gdict.ymin, gdict.ymax, -180., gdict.xmax)
+        set_bounds = '%s, %s, %s, %s' % (
+            gdict.ymin, gdict.ymax, -180., gdict.xmax)
     else:
-        set_bounds = '%s, %s, %s, %s' % (gdict.ymin, gdict.ymax, gdict.xmin, 180.)
+        set_bounds = '%s, %s, %s, %s' % (
+            gdict.ymin, gdict.ymax, gdict.xmin, 180.)
     return set_bounds
 
 
@@ -363,9 +368,9 @@ def get_event_dir(args, connection):
                 (eventid,))
             data1 = cursor.fetchall()
         if len(data1) > 0:
-            shakemap_version = np.max(
-                [dat[0] for dat in data1 if dat[0] is not None]
-            )
+            temp = [dat[0] for dat in data1 if dat[0] is not None]
+            if len(temp) > 0:
+                shakemap_version = np.max(temp)
         break
 
     return (eventdir, shakemap_version)
@@ -390,13 +395,14 @@ def insert_event(connection, eventid, args, version):
         time = 'unknown'
     else:
         time = args.time
+        if isinstance(time, str):
+            time = datetime.strptime(time, '%Y-%m-%dT%H:%M:%S.%fZ')
     if args.depth is None:
         depth = -999.
     else:
         depth = args.depth
-
     tpl = (eventid, version,
-           args.latitude, args.longitude, time,
+           args.latitude, args.longitude, time.strftime(TIMEFMT),
            args.magnitude, tnowstr,
            'Currently running...', depth)
     list1 = []
@@ -655,7 +661,7 @@ def process_shakemap(args, config):
         if any_pass:
             logging.info('Magnitude check passed')
         else:
-            logging.info('Magnitude check failed')
+            logging.info('Magnitude below thresholds')
             if not args.force:
                 sys.exit(1)
             else:
@@ -692,7 +698,7 @@ def process_shakemap(args, config):
         logging.critical('Database entry failed: %s' % e)
         logging.info('Continuing to run without database.')
         shakemap_version = 0
-
+        db_id = None
     # ----------------------------------------------------------------------
     # Download grid.xml and uncertfiles
     # ----------------------------------------------------------------------
@@ -705,19 +711,31 @@ def process_shakemap(args, config):
             args.directory, 'download', 'uncertainty.xml')
     else:
         # Called by PDL. Download grid.xml and uncertainty.xml files.
-        try:
-            datadir = os.path.join(args.directory, 'download')
-            if not os.path.exists(datadir):
-                os.makedirs(datadir)
-            # Download shakemap and uncertainty grid
-            detail, gridfile, uncertfile = \
-                getShakefiles(eventid, datadir, uncert=True,
-                              version=args.version,
-                              source=args.source)
+        max_attempts = 4
+        sleep = 60.0  # seconds
+        attempts = 0
 
-        except Exception as e:
-            logging.info('Failed to download shakemap files.')
-            logging.info(e)
+        while attempts < max_attempts:
+            try:
+                datadir = os.path.join(args.directory, 'download')
+                if not os.path.exists(datadir):
+                    os.makedirs(datadir)
+                # Download shakemap and uncertainty grid
+                detail, gridfile, uncertfile = \
+                    getShakefiles(eventid, datadir, uncert=True,
+                                  version=args.version,
+                                  source=args.source)
+                break
+
+            except Exception as e:
+                logging.info(
+                    'Failed to download shakemap files. Attempt %s of %s.'
+                    % (attempts, max_attempts)
+                )
+                logging.info(e)
+                attempts += 1
+                if attempts < max_attempts:
+                    time.sleep(sleep)
 
         if uncertfile is None:
             logging.info('Failed to download and/or unzip uncertainty.xml '
@@ -730,12 +748,13 @@ def process_shakemap(args, config):
     # Check that gridfiles are where they should be
     logging.info('Checking gridfile...')
 
-    if not os.path.isfile(gridfile):
-        msg = ('Could not find input ShakeMap grid file at %s. Exiting.'
+    if gridfile is None or (not os.path.isfile(gridfile)):
+        msg = ('Could not find input ShakeMap grid file at %s. Exiting. Rerun.'
                % gridfile)
         logging.info(msg)
-        #if not args.force:
-        update_event_fail(conn, db_id, msg)
+        # if not args.force:
+        if db_id is not None:
+            update_event_fail(conn, db_id, msg)
         sys.exit(1)
 
     logging.info('Checking for uncertainty gridfile...')
@@ -781,18 +800,20 @@ def process_shakemap(args, config):
                'Exiting.')
         logging.info(msg)
         # Run just part of area if remaining area is larger than 1 deg
-        if (sd.ymax+56. > 1.) and (84.-sd.ymin > 1.):
+        if (sd.ymax + 56. > 1.) and (84. - sd.ymin > 1.):
             msg = ('\nRunning just part of ShakeMap that overlaps with slope '
                    'data by adjusting bounds')
             logging.info(msg)
             if sd.ymin < -56.:
-                set_bounds = '%s, %s, %s, %s' % (-56., sd.ymax, sd.xmin, sd.xmax)
+                set_bounds = '%s, %s, %s, %s' % (-56.,
+                                                 sd.ymax, sd.xmin, sd.xmax)
                 sd._ymin = -56.  # change gdict so next check includes this change
             elif sd.ymax > 84:
-                set_bounds = '%s, %s, %s, %s' % (sd.ymin, 84., sd.xmin, sd.xmax)
+                set_bounds = '%s, %s, %s, %s' % (
+                    sd.ymin, 84., sd.xmin, sd.xmax)
                 sd._ymax = 84.  # change gdict so next check includes this change
         else:
-            #if not args.force:
+            # if not args.force:
             update_event_fail(conn, db_id, msg)
             sys.exit(1)
 
@@ -807,7 +828,7 @@ def process_shakemap(args, config):
         logging.info(msg)
 
     if set_bounds is not None:
-        msg = ('Bounds adjusted to: %s' % set_bounds)
+        msg = ('Bounds adjusted to: %s. ' % set_bounds)
         logging.info(msg)
         note = msg
 
@@ -990,7 +1011,7 @@ def process_shakemap(args, config):
             expire_warning_sec = expire_warning_days * 24.0 * 60.0 * 60.0
             utc = pytz.utc
             detail_time = ShakeDateTime.fromtimestamp(
-                detail['time']/1000.0, utc)
+                detail['time'] / 1000.0, utc)
             delta = ShakeDateTime.now(utc) - detail_time
             if delta.total_seconds() < expire_warning_sec:
                 status = "WARNING"
@@ -1007,9 +1028,10 @@ def process_shakemap(args, config):
     if not success:
         msg = "gf_transfer failed."
         logging.critical(msg)
-        update_event_fail(conn, db_id, msg)
+        #update_event_fail(conn, db_id, msg)
         # sys.exit(1)  # Still proceed because can enter stuff in database
         transferred = False
+        note += msg
     else:
         logging.info('gf_transfer completed')
         transferred = True
@@ -1092,8 +1114,9 @@ class ArgWrapper():
     pass
 
 
-def cleanup_warnings(args, config):
-    """Function to cleaning up warnings.
+def cleanup(args, config):
+    """Function to clean up database and check if any events need to be rerun.
+    Should be run periodically using crontab, for example
 
     Args:
         args (arparser Namespace): Input arguments.
@@ -1112,36 +1135,96 @@ def cleanup_warnings(args, config):
     logging.config.dictConfig(log_cfg)
     logger = logging.getLogger()
     logging.info('---------------------------------------------------------')
-    logging.info('Running cleanup_warnings')
+    logging.info('Running cleanup')
 
     # Database
     dbfile = config['dbfile']
     conn = connect_database(dbfile)
+    # Now rerun any events that haven't run in 2 days to reset warning flags
+    # And rerun any events that didn't run because couldn't get ShakeMap
+    # grid.xml due to network problems
     with conn:
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT eventcode FROM shakemap")
         unique_events = cursor.fetchall()
         for uevent in unique_events:
             cursor.execute(
-                "SELECT id, eventcode, time, starttime FROM shakemap "
-                "where eventcode='%s'" % uevent[0]
+                "SELECT id, eventcode, time, starttime, note "
+                "FROM shakemap where eventcode='%s'" % uevent[0]
             )
             lines = cursor.fetchall()
             start_time_list = []
+            notelist = []
             for line in lines:
-                cid, eventcode, time, starttime = line
+                cid, eventcode, time, starttime, note = line
+                notelist.append(note)
                 start_time_list.append(
                     datetime.strptime(starttime, TIMEFMT))
-            last_start_time = max(start_time_list)
-            origin_time = datetime.strptime(time, TIMEFMT)
+            # See if currently running, if started a long time ago, cleanup
+            if 'Currently running...' in notelist:
+                idx = notelist.index('Currently running...')
+                # If has been currently running for more than 40 mins, 
+                # probably failed and needs to be cleaned up
+                if datetime.now() - start_time_list[idx] > timedelta(minutes=40):
+                    cleanup_database(conn, config)
+                    notelist.pop(idx)
+                    start_time_list.pop(idx)
+                    logging.info('Removed stalled entry for %s' % uevent[0])
+            idx2 = np.argmax(start_time_list)
+            last_start_time = start_time_list[idx2]
+            try:
+                origin_time = datetime.strptime(time, TIMEFMT)
+            except:
+                origin_time = datetime.strptime(time, '%Y-%m-%dT%H:%M:%S.%fZ')
             delta_run = last_start_time - origin_time
-            delta_now = datetime.now() - origin_time
-            if ((delta_now > timedelta(days=2)) and
-                    (not delta_run > timedelta(days=2))):
-                process_shakemap(args, config)
+            delta_now = datetime.utcnow() - origin_time
+            A = 'Failed to download shakemap files' in notelist[idx2]
+            B = ((delta_now > timedelta(days=2)) and
+                    (not delta_run > timedelta(days=2))
+                    and ('over water' not in notelist[idx2]))
+            if A or B:
+                if A:
+                    logging.info('Missing ShakeMap for %s, rerunning' %
+                        uevent[0])
+                if B:
+                    logging.info('Rerunning %s to remove warning flags '
+                    'because sufficient time has elapsed' % uevent[0])
+                #import pdb; pdb.set_trace()
+                args.event = uevent[0]
+                args.force = True
+                main(args, config, exitafter=False)
+    
+    # Check if any didn't transfer and need to be resent
+    with conn:
+        cursor.execute("SELECT id, eventcode, note, eventdir, version FROM shakemap")
+        lines = cursor.fetchall()
+        for line in lines:
+            if 'gf_transfer failed.' in line:
+                pdl_conf = config['pdl_config']
+                id1, eid, note, eventdir, version = line
+                if eventdir is not None:
+                    fulldir = os.path.join(eventdir, 'version.%03i' % version)
+                    success = gf_transfer(fulldir, version=version,
+                                          pdl_config=pdl_conf,
+                                          dry_run=args.dry_run)
+                    logging.info('Attempting to resend %s. gfail_transfer '
+                                 'failed previously' % eid)
+                    if success:  # Update database entry
+                        msg = 'gf_transfer completed after retry at %s' % \
+                            datetime.now().strftime(TIMEFMT)
+                        logging.info(msg)
+                        logging.info('Updating database')
+                        cursor.execute(
+                            "UPDATE shakemap SET note = ? WHERE id = ?",
+                            (msg, id1))
+                    else:
+                        logging.info('gf_transfer failed again')
+
+    logging.info('Finished running cleanup')
+    logging.info('---------------------------------------------------------')
 
 
-def main(args, config):
+def main(args, config, exitafter=True):
     """Main entry point method.
 
     Args:
@@ -1220,7 +1303,11 @@ def main(args, config):
             isstopped(targs, config)
             process_shakemap(targs, config)
         except Exception as e:
-            print('Processing failed on %s. "%s"' % (args.event, str(e)))
+            msg = 'Processing failed on %s. "%s"' % (args.event, str(e))
+            logging.critical(msg)
+            print(msg)
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            logging.critical(traceback.format_exc())
         finally:
             shutil.rmtree(tdir)
     else:
@@ -1232,7 +1319,8 @@ def main(args, config):
         else:
             logging.info('Incorrect type specified, exiting.')
 
-    sys.exit(0)
+    if exitafter:
+        sys.exit(0)
 
 
 if __name__ == '__main__':
@@ -1330,10 +1418,12 @@ the data_path directory.
         help="PAGER alert level. If pending then override ground-failure "
              "alert levels to be pending.")
     argparser.add_argument(
-        "-c", "--cleanup-warnings",
+        "-c", "--cleanup",
         action='store_true', default=False,
-        help="Check database for events that need to be resent to remove "
-             "the warning banner. If set, nothing else happens and no other "
+        help="Clean stalled runs from database, check database for events that" 
+             " need to be rerun to remove the warning banner or if the"
+             "ShakeMap wasn't downloaded successfully. If set, nothing else "
+             "happens and no other "
              "flags matter.")
     argparser.add_argument(
         "--stop",
@@ -1368,7 +1458,7 @@ the data_path directory.
             print('\t%s' % req)
         sys.exit(1)
 
-    if pargs.cleanup_warnings:
-        cleanup_warnings(pargs, pconfig)
+    if pargs.cleanup:
+        cleanup(pargs, pconfig)
     else:
         main(pargs, pconfig)
