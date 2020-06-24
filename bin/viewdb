@@ -15,7 +15,7 @@ if __name__ == '__main__':
     Code for easily getting information from the database of all ground failure
     events that have been run
 
-    If run with no arguments, it will just print a summary of the database
+    If run with no arguments, it will just print any currently running events
 
     If .gfail_defaults defines the database file, it does not need to be
     defined with -db flag.
@@ -152,8 +152,8 @@ if __name__ == '__main__':
         '--color', action='store_true',
         help='report alert colors instead of values on database printouts')
     parser.add_argument(
-        '-s', '--printsummary', action='store_false',
-        help='Suppress printing of summary')
+        '-s', '--printsummary', action='store_true',
+        help='Print summary')
     parser.add_argument(
         '--summaryplotfile', nargs='?', type=str, metavar='file_extension',
         help='Save summaryplot to this location (include extension)',
