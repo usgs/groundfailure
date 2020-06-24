@@ -661,7 +661,7 @@ def process_shakemap(args, config):
         if any_pass:
             logging.info('Magnitude check passed')
         else:
-            logging.info('Magnitude check failed')
+            logging.info('Magnitude below thresholds')
             if not args.force:
                 sys.exit(1)
             else:
@@ -828,7 +828,7 @@ def process_shakemap(args, config):
         logging.info(msg)
 
     if set_bounds is not None:
-        msg = ('Bounds adjusted to: %s' % set_bounds)
+        msg = ('Bounds adjusted to: %s. ' % set_bounds)
         logging.info(msg)
         note = msg
 
@@ -1028,9 +1028,10 @@ def process_shakemap(args, config):
     if not success:
         msg = "gf_transfer failed."
         logging.critical(msg)
-        update_event_fail(conn, db_id, msg)
+        #update_event_fail(conn, db_id, msg)
         # sys.exit(1)  # Still proceed because can enter stuff in database
         transferred = False
+        note += msg
     else:
         logging.info('gf_transfer completed')
         transferred = True
@@ -1138,7 +1139,7 @@ def cleanup(args, config):
 
     # Database
     dbfile = config['dbfile']
-    conn = connect_database(dbfile) 
+    conn = connect_database(dbfile)
     # Now rerun any events that haven't run in 2 days to reset warning flags
     # And rerun any events that didn't run because couldn't get ShakeMap
     # grid.xml due to network problems
@@ -1192,6 +1193,32 @@ def cleanup(args, config):
                 args.event = uevent[0]
                 args.force = True
                 main(args, config, exitafter=False)
+    
+    # Check if any didn't transfer and need to be resent
+    with conn:
+        cursor.execute("SELECT id, eventcode, note, eventdir, version FROM shakemap")
+        lines = cursor.fetchall()
+        for line in lines:
+            if 'gf_transfer failed.' in line:
+                pdl_conf = config['pdl_config']
+                id1, eid, note, eventdir, version = line
+                if eventdir is not None:
+                    fulldir = os.path.join(eventdir, 'version.%03i' % version)
+                    success = gf_transfer(fulldir, version=version,
+                                          pdl_config=pdl_conf,
+                                          dry_run=args.dry_run)
+                    logging.info('Attempting to resend %s. gfail_transfer '
+                                 'failed previously' % eid)
+                    if success:  # Update database entry
+                        msg = 'gf_transfer completed after retry at %s' % \
+                            datetime.now().strftime(TIMEFMT)
+                        logging.info(msg)
+                        logging.info('Updating database')
+                        cursor.execute(
+                            "UPDATE shakemap SET note = ? WHERE id = ?",
+                            (msg, id1))
+                    else:
+                        logging.info('gf_transfer failed again')
 
     logging.info('Finished running cleanup')
     logging.info('---------------------------------------------------------')
