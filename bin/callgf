@@ -395,6 +395,8 @@ def insert_event(connection, eventid, args, version):
         time = 'unknown'
     else:
         time = args.time
+        if isinstance(time, str):
+            time = datetime.strptime(time, '%Y-%m-%dT%H:%M:%S.%fZ')
     if args.depth is None:
         depth = -999.
     else:
@@ -696,7 +698,7 @@ def process_shakemap(args, config):
         logging.critical('Database entry failed: %s' % e)
         logging.info('Continuing to run without database.')
         shakemap_version = 0
-
+        db_id = None
     # ----------------------------------------------------------------------
     # Download grid.xml and uncertfiles
     # ----------------------------------------------------------------------
@@ -712,6 +714,7 @@ def process_shakemap(args, config):
         max_attempts = 4
         sleep = 60.0  # seconds
         attempts = 0
+
         while attempts < max_attempts:
             try:
                 datadir = os.path.join(args.directory, 'download')
@@ -722,6 +725,7 @@ def process_shakemap(args, config):
                     getShakefiles(eventid, datadir, uncert=True,
                                   version=args.version,
                                   source=args.source)
+                break
 
             except Exception as e:
                 logging.info(
@@ -749,7 +753,8 @@ def process_shakemap(args, config):
                % gridfile)
         logging.info(msg)
         # if not args.force:
-        update_event_fail(conn, db_id, msg)
+        if db_id is not None:
+            update_event_fail(conn, db_id, msg)
         sys.exit(1)
 
     logging.info('Checking for uncertainty gridfile...')
