@@ -1157,9 +1157,9 @@ def cleanup(args, config):
             # See if currently running, if started a long time ago, cleanup
             if 'Currently running...' in notelist:
                 idx = notelist.index('Currently running...')
-                # If has been currently running for more than 2 hrs, 
+                # If has been currently running for more than 40 mins, 
                 # probably failed and needs to be cleaned up
-                if datetime.now() - start_time_list[idx] > timedelta(hours=2):
+                if datetime.now() - start_time_list[idx] > timedelta(minutes=40):
                     cleanup_database(conn, config)
                     notelist.pop(idx)
                     start_time_list.pop(idx)
