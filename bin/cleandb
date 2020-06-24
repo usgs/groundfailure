@@ -6,6 +6,7 @@ import argparse
 from configobj import ConfigObj
 import os
 import sqlite3 as lite
+import glob
 
 
 
@@ -13,17 +14,18 @@ if __name__ == '__main__':
     """
     Manually remove any "Currently running..." entries from the database
     """
-    # See if there is a default path file, load in if there is and
-    # replace any nones
+    # Get config file   
     defaults = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
     dbfile = None
     alerttype = 'value'
 
     if os.path.exists(defaults):
-        D = ConfigObj(defaults)
-        for key in D:
+        pconfig = ConfigObj(defaults)
+        for key in pconfig:
             if key == 'dbfile':
-                dbfile = D[key]
+                dbfile = pconfig[key]
+    else:
+        pconfig = None
 
     parser = argparse.ArgumentParser(
         description='Remove stalled runs from database',
@@ -38,7 +40,7 @@ if __name__ == '__main__':
         raise Exception('No database file defined or found in defaults')
     
     connection = None
-    connection = lite.connect(database)
+    connection = lite.connect(db)
     with connection:
         cursor = connection.cursor()
         # Check if "currently running" in note, if it is, we do want to rerun
@@ -47,23 +49,25 @@ if __name__ == '__main__':
         lines = cursor.fetchall()
         for line in lines:
             id1, note1, eventid, ver = line
-            if 'Currently running...' in note1:
+            if 'Currently running' in note1:
                 # Delete it from the table
                 cursor.execute("DELETE FROM shakemap WHERE id = ?", (id1,))
-                # Delete the version directory, if it exists
-                verdirs = glob.glob(os.path.join(
-                    config['output_filepath'], '%s*' % eventid,
-                    'version.%03i' % ver))
-                if len(verdirs) > 0:
-                    for verd in verdirs:
-                        shutil.rmtree(verd)
+                if pconfig is not None and ver is not None:
+                    # Delete the version directory, if it exists
+                    verdirs = glob.glob(os.path.join(
+                        pconfig['output_filepath'], '%s*' % eventid,
+                        'version.%03i' % ver))
+                    if len(verdirs) > 0:
+                        for verd in verdirs:
+                            shutil.rmtree(verd)
 
     # Delete any empty output directories (might have been left from failed
     # runs)
-    for entry in os.scandir(config['output_filepath']):
-        if entry.is_dir():
-            files = glob.glob(os.path.join(entry.path, '*'))
-            if len(files) == 0:
-                shutil.rmtree(entry.path)
+    if pconfig is not None:
+        for entry in os.scandir(pconfig['output_filepath']):
+            if entry.is_dir():
+                files = glob.glob(os.path.join(entry.path, '*'))
+                if len(files) == 0:
+                    shutil.rmtree(entry.path)
 
 
