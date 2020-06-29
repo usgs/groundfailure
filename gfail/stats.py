@@ -33,7 +33,7 @@ mpl.rcParams['font.sans-serif'] = ['Arial',
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
                  probthresh=None, pop_file=None, stdtype='full',
-                 maxP=1.):
+                 maxP=1., proj='moll'):
     """
     Compute summary stats of a ground failure model output.
 
@@ -95,7 +95,7 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
     output = computeHagg(grid2D, probthresh=probthresh, shakefile=shakefile,
                          shakethreshtype=shakethreshtype, stdtype=stdtype,
                          shakethresh=shakethresh, stdgrid2D=stdgrid2D,
-                         maxP=maxP, sill1=None, range1=None)
+                         maxP=maxP, sill1=None, range1=None, proj=proj)
 
     hagg_dict, sill1, range1km = output
 
@@ -119,13 +119,13 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
             range1 = range1km/(GDALGrid.getFileGeoDict(pop_file)[0].dy * 111.)
         else:
             range1 = None
-        exp_dict = get_exposures(grid2D, pop_file, shakefile=shakefile,
-                                 shakethreshtype=shakethreshtype,
-                                 shakethresh=shakethresh,
-                                 probthresh=probthresh,
-                                 stdgrid2D=stdgrid2D,
-                                 stdtype=stdtype, maxP=maxP,
-                                 sill1=sill1, range1=range1)
+        exp_dict = computePexp(grid2D, pop_file, shakefile=shakefile,
+                               shakethreshtype=shakethreshtype,
+                               shakethresh=shakethresh,
+                               probthresh=probthresh,
+                               stdgrid2D=stdgrid2D,
+                               stdtype=stdtype, maxP=maxP,
+                               sill1=sill1, range1=range1, proj=proj)
         for k, v in exp_dict.items():
             stats[k] = v
 
@@ -241,6 +241,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                     range1, sill1 = semivario(modelfresh, probthresh,
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat)
+                    
                 range1km = range1 * geodictRS.dx
                 stdz = std.copy()
                 stdz[model < probthresh] = 0.
@@ -260,9 +261,10 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     return Hagg, sill1, range1km
 
 
-def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
-                  shakethresh=0.0, probthresh=None, stdgrid2D=None,
-                  stdtype='full', maxP=1., sill1=None, range1=None):
+def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
+                shakethresh=0.0, probthresh=None, stdgrid2D=None,
+                stdtype='full', maxP=1., sill1=None, range1=None,
+                proj='moll'):
     """
     Get exposure-based statistics.
 
@@ -293,20 +295,7 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
 
     # If probthresh defined, zero out any areas less than or equal to
     # probthresh before proceeding
-    if probthresh is not None:
-        origdata = grid.getData()
-        moddat = origdata.copy()
-        # moddat[moddat <= probthresh] = 0.0
-        # moddat[np.isnan(origdata)] = float('nan')
-        if stdgrid2D is not None:
-            stddat = stdgrid2D.getData().copy()
-            # stddat[moddat <= probthresh] = 0.0
-            # stddat[np.isnan(origdata)] = 0.0
-    else:
-        moddat = grid.getData().copy()
-        if stdgrid2D is not None:
-            stddat = stdgrid2D.getData().copy()
-
+    moddat = grid.getData().copy()
     mdict = grid.getGeoDict()
 
     # Cut out area from population file
@@ -331,14 +320,44 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
     padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
 
-    if stdgrid2D is not None:
-        padstdgrid, mdict3 = Grid2D.padGrid(
-            stddat, mdict, pad_dict)  # padds with inf
-        padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
-        padstdgrid = Grid2D(data=padstdgrid, geodict=mdict3)  # Turn into grid2d object
-
     # Resample model grid so as to be the nearest integer multiple of popdict
     factor = np.round(pdict.dx/mdict2.dx)
+
+    if stdgrid2D is not None:
+        stddat = stdgrid2D.getData().copy()
+        if stdtype=='full':
+            # Get range and sill from original data if not provided
+            if sill1 is None or range1 is None:
+                # Compute variogram of data in distance preserving space
+                bounds = grid.getBounds()
+                lat0 = np.mean((bounds[2], bounds[3]))
+                lon0 = np.mean((bounds[0], bounds[1]))
+                projs = ('+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 '
+                         '+units=km +no_defs' % (proj, lat0, lon0))
+                gridP = grid.project(projection=projs)
+                geodictRS = gridP.getGeoDict()
+                if shakefile is not None:
+                    # resample shakemap to grid2D
+                    temp = ShakeGrid.load(shakefile)
+                    shk = temp.getLayer(shakethreshtype)
+                    shk = shk.interpolate2(grid.getGeoDict())
+                    shkgrid = shk.project(projection=projs)
+                    shkdat = shkgrid.getData()
+                else:
+                    shkdat = None
+                    shakethresh = 0.
+                model = gridP.getData().copy()
+                if np.nanmax(stddat) > 0. and np.nanmax(model) >= probthresh:
+                    range1, sill1 = semivario(model, probthresh,
+                                              shakethresh=shakethresh,
+                                              shakegrid=shkdat)
+                range1km = range1 * geodictRS.dx
+                # Convert to approx # of gridpts relative to pop_file
+                range1 = range1km/(pdict.dy * 111.)
+
+        padstdgrid, mdict3 = Grid2D.padGrid(stddat, mdict, pad_dict)  # padds with inf
+        padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
+        padstdgrid = Grid2D(data=padstdgrid, geodict=mdict3)  # Turn into grid2d object
 
     # Create geodictionary that is a factor of X higher res but otherwise
     # identical
@@ -378,8 +397,9 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     else:
         shakethresh = 0.0
         shkdat = None
-        threshmult = modresamp < probthresh
+        threshmult = modresamp >= probthresh
     threshmult = threshmult.astype(float)
+
     dat2 = popdat * prop * modresamp * threshmult
 
     mu = np.nansum(dat2)
@@ -389,15 +409,8 @@ def get_exposures(grid, pop_file, shakefile=None, shakethreshtype=None,
     if stdgrid2D is not None:
         if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
             if stdtype=='full':
-                if sill1 is None or range1 is None:
-                    dat2z = dat2.copy()
-                    dat2z[np.isnan(dat2)] = 0.
-                    range1, sill1 = semivario(dat2z, threshold=probthresh,
-                                              shakethresh=shakethresh,
-                                              shakegrid=shkdat)
-                datstdz = np.copy(modresampstd)
                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
-                    np.sqrt(svar(datstdz, range1, sill1, scale=popdat))
+                    np.sqrt(svar(np.copy(modresampstd), range1, sill1, scale=popdat))
             else:                
                 datstd2 = modresampstd * threshmult
                 totalmax = np.nansum(popdat * prop * datstd2)
@@ -586,8 +599,8 @@ def svar(stds, range1, sill1, scale=1.):
         scale[np.isnan(scale)] = 0.
     stdzeros *= scale
     out = convolve(stdzeros, kernal, mode='same')
-    # multiply by 2 * stds
-    full1 = 2 * scale * out * stds
+    # multiply by stds and scale again
+    full1 = scale * out * stds
     # add up
     var2 = np.nansum(full1)
     return var2
