@@ -156,10 +156,13 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         stdtype (str): assumption of spatial correlation used to compute
             the stdev of the statistics, 'max', 'min', 'mean' of max and min,
             or 'full' (default) which estimates the range of correlation and
-            accounts for covariance
+            accounts for covariance. Will return 'mean' if
+            ridge and sill cannot be estimated.
         maxP (float): the maximum possible probability of the model
-        sill1 (float):
-        range1 (float):
+        sill1 (float): If known, the sill of the variogram of grid2D, will be
+            estimated if None and stdtype='full'
+        range1 (float): If known, the range of the variogram of grid2D, will
+            be estimated if None and stdtype='full'
 
     Returns:
         dict: Dictionary with keys:
@@ -229,13 +232,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
             totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
-            if stdtype == 'max':
-                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
-            elif stdtype == 'min':
-                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmin
-            elif stdtype == 'mean':
-                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
-            else:
+            if stdtype == 'full':
                 if sill1 is None or range1 is None:
                     modelfresh = grid.getData().copy()
                     range1, sill1 = semivario(modelfresh, probthresh,
@@ -245,8 +242,18 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                 range1km = range1 * geodictRS.dx
                 stdz = std.copy()
                 stdz[model < probthresh] = 0.
-                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar(
-                        stdz, range1, sill1, scale=cell_area_km2))
+                svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
+                if np.sqrt(svar1) > totalmax:  # Can't be more than totalmax
+                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
+                else:
+                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+            if stdtype == 'max':
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+            elif stdtype == 'min':
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+            else:
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+
             var = Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)]**2.
             # Beta distribution shape factors
             Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
@@ -281,8 +288,15 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
             probabilities less than or equal to this value
         stdgrid2D: grid2D object of model standard deviations (optional)
         stdtype (str): assumption of spatial correlation used to compute
-            the stdev of the statistics, 'max', 'min' or 'mean' of max and min,
-            'full' estimates the std with covariance
+            the stdev of the statistics, 'max', 'min', 'mean' of max and min,
+            or 'full' (default) which estimates the range of correlation and
+            accounts for covariance. Will return 'mean' if
+            ridge and sill cannot be estimated.
+        maxP (float): the maximum possible probability of the model
+        sill1 (float): If known, the sill of the variogram of grid2D, will be
+            estimated if None and stdtype='full'
+        range1 (float): If known, the range of the variogram of grid2D, will
+            be estimated if None and stdtype='full'
 
     Returns:
         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
@@ -327,7 +341,8 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
         stddat = stdgrid2D.getData().copy()
         if stdtype=='full':
             # Get range and sill from original data if not provided
-            if sill1 is None or range1 is None:
+            if (sill1 is None or range1 is None) and \
+            (np.nanmax(stddat) > 0. and np.nanmax(grid.getData()) >= probthresh):
                 # Compute variogram of data in distance preserving space
                 bounds = grid.getBounds()
                 lat0 = np.mean((bounds[2], bounds[3]))
@@ -336,24 +351,24 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
                          '+units=km +no_defs' % (proj, lat0, lon0))
                 gridP = grid.project(projection=projs)
                 geodictRS = gridP.getGeoDict()
-                if shakefile is not None:
-                    # resample shakemap to grid2D
-                    temp = ShakeGrid.load(shakefile)
-                    shk = temp.getLayer(shakethreshtype)
-                    shk = shk.interpolate2(grid.getGeoDict())
-                    shkgrid = shk.project(projection=projs)
-                    shkdat = shkgrid.getData()
-                else:
-                    shkdat = None
-                    shakethresh = 0.
-                model = gridP.getData().copy()
-                if np.nanmax(stddat) > 0. and np.nanmax(model) >= probthresh:
+                if np.nanmax(gridP.getData()) >= probthresh:
+                    if shakefile is not None:
+                        # resample shakemap to grid2D
+                        temp = ShakeGrid.load(shakefile)
+                        shk = temp.getLayer(shakethreshtype)
+                        shk = shk.interpolate2(grid.getGeoDict())
+                        shkgrid = shk.project(projection=projs)
+                        shkdat = shkgrid.getData()
+                    else:
+                        shkdat = None
+                        shakethresh = 0.
+                    model = gridP.getData().copy()
                     range1, sill1 = semivario(model, probthresh,
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat)
-                range1km = range1 * geodictRS.dx
-                # Convert to approx # of gridpts relative to pop_file
-                range1 = range1km/(pdict.dy * 111.)
+                    range1km = range1 * geodictRS.dx
+                    # Convert to approx # of gridpts relative to pop_file
+                    range1 = range1km/(pdict.dy * 111.)
 
         padstdgrid, mdict3 = Grid2D.padGrid(stddat, mdict, pad_dict)  # padds with inf
         padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
@@ -408,19 +423,21 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
     exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
     if stdgrid2D is not None:
         if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
-            if stdtype=='full':
-                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
-                    np.sqrt(svar(np.copy(modresampstd), range1, sill1, scale=popdat))
-            else:                
-                datstd2 = modresampstd * threshmult
-                totalmax = np.nansum(popdat * prop * datstd2)
-                totalmin = np.sqrt(np.nansum(popdat * prop * datstd2**2.))
-                if stdtype == 'max':
+            datstd2 = modresampstd * threshmult
+            totalmax = np.nansum(popdat * prop * datstd2)
+            totalmin = np.sqrt(np.nansum(popdat * prop * datstd2**2.))
+            if stdtype=='full' and range1 is not None and sill1 is not None:
+                var1 = svar(np.copy(modresampstd), range1, sill1, scale=popdat)
+                if np.sqrt(var1) > totalmax:
+                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(var1)
+                else:
                     exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax
-                elif stdtype == 'min':
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmin
-                elif stdtype == 'mean':
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+            elif stdtype == 'max':
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+            elif stdtype == 'min':
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+            else:
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
 
             # Beta distribution shape factors
             var = exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)]**2.
@@ -544,9 +561,15 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
 
 def spherical(lag, range1, sill):#, nugget=0):
     """
-    https://github.com/mmaelicke/scikit-gstat/blob/master/skgstat/models.py#L23
+    Spherical variogram model assuming nugget = 0
     
-    nugget = value of independent variable at distance of zero
+    Args:
+        lag: float or array of lags as # of pixels/cells
+        range1 (float): range of spherical model
+        sill (float): sill of spherical model
+        
+    Returns:
+        semivariance as float or array, depending on type(lag)
     """
     nugget = 0.
     range1 = range1 / 1.
@@ -565,15 +588,15 @@ def svar(stds, range1, sill1, scale=1.):
     Estimate variance of aggregate statistic using correlation from 
     semivariogram and std values for each pair of cells that are within range
     of each other, add up quickly by creating kernal of the correlations and
-    convolving with the image, then multiply by 2*std to equal sum of 2*std1*std2*corr
-    over each valid cell
+    convolving with the image, then multiply by std to equal sum of 
+    std1*std2*corr*scale1*scale2 over each valid cell
     
     Args:
-        stds:
-        range1:
-        sill1:
+        stds (array): grid of standard deviation of model
+        range1 (float): range of empirical variogram used to estimate correlation model
+        sill1 (float): sill of empirical variogram used to estimate correlation model
         scale: float or array same size as std, factor to multiply by
-            (area or population) and include in conv
+            (area or population) and include in convolution
     
     Returns:
         variance of aggregate statistic
