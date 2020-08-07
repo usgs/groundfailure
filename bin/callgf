@@ -1179,9 +1179,12 @@ def cleanup(args, config):
             delta_run = last_start_time - origin_time
             delta_now = datetime.utcnow() - origin_time
             A = 'Failed to download shakemap files' in notelist[idx2]
-            B = ((delta_now > timedelta(days=2)) and
-                    (not delta_run > timedelta(days=2))
-                    and ('over water' not in notelist[idx2]))
+            B = False
+            #TODO fix logic in B to avoid infinite rerun loops when event ids were
+            #changed for a given event
+            # B = ((delta_now > timedelta(days=2)) and  # event was >2 days ago
+            #         (not delta_run > timedelta(days=2))  # has been rerun recently
+            #         and ('over water' not in notelist[idx2]))  # not over water            
             if A or B:
                 if A:
                     logging.info('Missing ShakeMap for %s, rerunning' %
@@ -1189,7 +1192,6 @@ def cleanup(args, config):
                 if B:
                     logging.info('Rerunning %s to remove warning flags '
                     'because sufficient time has elapsed' % uevent[0])
-                #import pdb; pdb.set_trace()
                 args.event = uevent[0]
                 args.force = True
                 main(args, config, exitafter=False)

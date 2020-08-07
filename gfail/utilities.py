@@ -760,6 +760,10 @@ def view_database(database, starttime=None, endtime=None,
     rejects = []
     for idx in elist:
         vers = df.loc[df['eventcode'] == idx]['shakemap_version'].values
+        if len(vers) == 0:
+            rejects.append(idx)
+            delays.append(float('nan'))
+            continue
         vermin = np.nanmin(vers)
         sel1 = df.loc[(df['eventcode'] == idx) &
                       (df['shakemap_version'] == vermin)]
@@ -773,6 +777,7 @@ def view_database(database, starttime=None, endtime=None,
                 delays.append(float('nan'))
         else:
             rejects.append(idx)
+            delays.append(float('nan'))
 
     if realtime:  # Keep just realtime events
         df = df.loc[df['eventcode'].isin(keep)]
