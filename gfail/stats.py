@@ -23,12 +23,8 @@ from skimage.measure import block_reduce
 
 from configobj import ConfigObj
 
-# Make fonts readable and recognizable by illustrator
-mpl.rcParams['pdf.fonttype'] = 42
-mpl.rcParams['font.sans-serif'] = ['Arial',
-                                   'Bitstream Vera Serif',
-                                   'sans-serif']
-
+# Turn off warnings that will pop up regarding nan's in greater than operations
+np.warnings.filterwarnings('ignore')
 
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
@@ -97,7 +93,7 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                          shakethresh=shakethresh, stdgrid2D=stdgrid2D,
                          maxP=maxP, sill1=None, range1=None, proj=proj)
 
-    hagg_dict, sill1, range1km = output
+    hagg_dict = output
 
     for k, v in hagg_dict.items():
         stats[k] = v
@@ -114,26 +110,21 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                   'skipping exp_pop')
 
     if pop_file is not None:
-        # convert range1km to range1 in pixels of size of population grid
-        if stdtype == 'full' and range1km is not None:
-            range1 = range1km/(GDALGrid.getFileGeoDict(pop_file)[0].dy * 111.)
-        else:
-            range1 = None
         exp_dict = computePexp(grid2D, pop_file, shakefile=shakefile,
                                shakethreshtype=shakethreshtype,
                                shakethresh=shakethresh,
                                probthresh=probthresh,
                                stdgrid2D=stdgrid2D,
                                stdtype=stdtype, maxP=maxP,
-                               sill1=sill1, range1=range1, proj=proj)
+                               sill1=None, range1=None, proj=proj)
         for k, v in exp_dict.items():
             stats[k] = v
 
     return stats
 
 
-def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
-                shakethreshtype='pga', shakethresh=0.0, stdgrid2D=None,
+def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
+                shakethreshtype='pga', shakethresh=0., stdgrid2D=None,
                 stdtype='full', maxP=1., sill1=None, range1=None):
     """
     Computes the Aggregate Hazard (Hagg) which is equal to the
@@ -200,7 +191,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
 
     grid = grid2D.project(projection=projs, method='bilinear')
     geodictRS = grid.getGeoDict()
+    
     cell_area_km2 = geodictRS.dx * geodictRS.dy
+    
     model = grid.getData().copy()
     if stdgrid2D is not None:
         stdgrid = stdgrid2D.project(projection=projs, method='bilinear')
@@ -215,7 +208,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
         # out because default probthresh is 0.
         model[shkdat < shakethresh] = float('nan')
     else:
-        shakethresh == 0.
+        shakethresh = 0.
         shkdat = None
 
     mu = np.nansum(model[model >= probthresh] * cell_area_km2)
@@ -226,8 +219,6 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
     hlim = cell_area_km2*N*maxP
     Hagg['hlim_%1.2fg' % (shakethresh/100.,)] = hlim
 
-    sill1 = None
-    range1km = None
     if stdgrid2D is not None:
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
@@ -238,15 +229,16 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
                     range1, sill1 = semivario(modelfresh, probthresh,
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat)
-                    
-                range1km = range1 * geodictRS.dx
-                stdz = std.copy()
-                stdz[model < probthresh] = 0.
-                svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
-                if np.sqrt(svar1) > totalmax:  # Can't be more than totalmax
-                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
+                if range1 is None:
+                    # Use mean
+                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+                    stdz = std.copy()
+                    stdz[model < probthresh] = 0.
+                    svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
+                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
+                    Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
+                    Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1 
             if stdtype == 'max':
                 Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
             elif stdtype == 'min':
@@ -259,17 +251,17 @@ def computeHagg(grid2D, proj='moll', probthresh=0.0, shakefile=None,
             Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
             Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
         else:
-            print('No std values above threshold, skipping uncertainty '
+            print('No model values above threshold, skipping uncertainty '
                   'and filling with zeros')
             Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
             Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
             Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
 
-    return Hagg, sill1, range1km
+    return Hagg
 
 
 def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
-                shakethresh=0.0, probthresh=None, stdgrid2D=None,
+                shakethresh=0., probthresh=0., stdgrid2D=None,
                 stdtype='full', maxP=1., sill1=None, range1=None,
                 proj='moll'):
     """
@@ -282,9 +274,9 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
             motion threshold.
         shakethreshtype(str): Optional, Type of ground motion to use for
             shakethresh, 'pga', 'pgv', or 'mmi'.
-        shakethresh: Optional, Float or list of shaking thresholds in %g for
+        shakethresh: Float or list of shaking thresholds in %g for
             pga, cm/s for pgv, float for mmi.
-        probthresh: Optional, None or float, exclude any cells with
+        probthresh: Float, exclude any cells with
             probabilities less than or equal to this value
         stdgrid2D: grid2D object of model standard deviations (optional)
         stdtype (str): assumption of spatial correlation used to compute
@@ -336,43 +328,26 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
 
     # Resample model grid so as to be the nearest integer multiple of popdict
     factor = np.round(pdict.dx/mdict2.dx)
-
+    
+    # Compute range and sill of original model if not provided and correct to resamplin
     if stdgrid2D is not None:
-        stddat = stdgrid2D.getData().copy()
-        if stdtype=='full':
-            # Get range and sill from original data if not provided
-            if (sill1 is None or range1 is None) and \
-            (np.nanmax(stddat) > 0. and np.nanmax(grid.getData()) >= probthresh):
-                # Compute variogram of data in distance preserving space
-                bounds = grid.getBounds()
-                lat0 = np.mean((bounds[2], bounds[3]))
-                lon0 = np.mean((bounds[0], bounds[1]))
-                projs = ('+proj=%s +lat_0=%f +lon_0=%f +x_0=0 +y_0=0 +ellps=WGS84 '
-                         '+units=km +no_defs' % (proj, lat0, lon0))
-                gridP = grid.project(projection=projs)
-                geodictRS = gridP.getGeoDict()
-                if np.nanmax(gridP.getData()) >= probthresh:
-                    if shakefile is not None:
-                        # resample shakemap to grid2D
-                        temp = ShakeGrid.load(shakefile)
-                        shk = temp.getLayer(shakethreshtype)
-                        shk = shk.interpolate2(grid.getGeoDict())
-                        shkgrid = shk.project(projection=projs)
-                        shkdat = shkgrid.getData()
-                    else:
-                        shkdat = None
-                        shakethresh = 0.
-                    model = gridP.getData().copy()
-                    range1, sill1 = semivario(model, probthresh,
-                                              shakethresh=shakethresh,
-                                              shakegrid=shkdat)
-                    range1km = range1 * geodictRS.dx
-                    # Convert to approx # of gridpts relative to pop_file
-                    range1 = range1km/(pdict.dy * 111.)
+        if stdtype == 'full':
+            if sill1 is None or range1 is None:
+                if shakefile is not None:
+                    # resample shakemap to grid2D
+                    temp = ShakeGrid.load(shakefile)
+                    shk = temp.getLayer(shakethreshtype)
+                    shk = shk.interpolate2(mdict)
+                else:
+                    shakethresh = 0.
+                    shk = None
+                modelfresh = grid.getData().copy()
+                range1, sill1 = semivario(modelfresh, probthresh,
+                                          shakethresh=shakethresh,
+                                          shakegrid=shk)
+                range1 /= factor  # Correct range for resampling
 
-        padstdgrid, mdict3 = Grid2D.padGrid(stddat, mdict, pad_dict)  # padds with inf
-        padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
-        padstdgrid = Grid2D(data=padstdgrid, geodict=mdict3)  # Turn into grid2d object
+    exp_pop = {}
 
     # Create geodictionary that is a factor of X higher res but otherwise
     # identical
@@ -385,22 +360,39 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
 
     # Get proportion of each cell that has values (to account properly
     # for any nans)
+    """
     prop = block_reduce(~np.isnan(grid2.getData().copy()),
                         block_size=(int(factor), int(factor)),
-                        cval=float('nan'), func=np.sum)/(factor**2.)
+                        cval=0., func=np.sum)/(factor**2.)
+    """
+
+
+
+
 
     # Now block reduce to same geodict as popfile
     modresamp = block_reduce(grid2.getData().copy(),
                              block_size=(int(factor), int(factor)),
                              cval=float('nan'), func=np.nanmean)
+    
+    #TODO delete this line and uncomment above prop section, did this just to make
+    #testing of exp_pop more straightforward
+    prop = np.ones(np.shape(modresamp))
+    
+    
+    
+    
 
     if stdgrid2D is not None:
+        stddat = stdgrid2D.getData().copy()
+        padstdgrid, mdict3 = Grid2D.padGrid(stddat, mdict, pad_dict)  # padds with inf
+        padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
+        padstdgrid = Grid2D(data=padstdgrid, geodict=mdict3)  # Turn into grid2d object
         grid2std = padstdgrid.interpolate2(ndict, method='linear')
         modresampstd = block_reduce(grid2std.getData().copy(),
                                     block_size=(int(factor), int(factor)),
                                     cval=float('nan'), func=np.nanmean)
 
-    exp_pop = {}
     if shakefile is not None:
         # Resample shakefile to population grid
         # , doPadding=True, padValue=0.)
@@ -421,17 +413,21 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
     exp_pop['exp_pop_%1.2fg' % (shakethresh/100.,)] = mu
     elim = maxP*np.nansum(popdat * prop * threshmult)
     exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
+
     if stdgrid2D is not None:
         if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
             datstd2 = modresampstd * threshmult
             totalmax = np.nansum(popdat * prop * datstd2)
             totalmin = np.sqrt(np.nansum(popdat * prop * datstd2**2.))
-            if stdtype=='full' and range1 is not None and sill1 is not None:
-                var1 = svar(np.copy(modresampstd), range1, sill1, scale=popdat)
-                if np.sqrt(var1) > totalmax:
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(var1)
+            if stdtype=='full':
+                if range1 is None:  # Use mean
+                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+                    var1 = svar(datstd2, range1, sill1, scale=popdat)
+                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(var1)
+                    exp_pop['exp_range_%1.2fg' % (shakethresh/100.,)] = range1
+                    exp_pop['exp_sill_%1.2fg' % (shakethresh/100.,)] = sill1
+
             elif stdtype == 'max':
                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax
             elif stdtype == 'min':
@@ -448,12 +444,17 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
             exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
             exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = 0.
             exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+    else:
+        exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
+        exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+        exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
 
     return exp_pop
 
 
 def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
-              nvbins=20, makeplots=False, shakegrid=None, shakethresh=0.):
+              nvbins=20, makeplots=False, shakegrid=None, shakethresh=0.,
+              minpts=50.):
     """
     Quickly estimate semivariogram with by selecting seed points and then
     computing semivariogram between each of those points and ndists random
@@ -467,6 +468,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
         npts: number of seed points to sample from
         ndists: number of points to sample at random distances from each seed point
         nvbins: number of semivariogram bins
+        minpts (float): minimum number of samples above threshold required to compute
 
     Returns:
         range, sill
@@ -476,7 +478,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
         threshold = 0.
 
     if shakegrid is None or shakethresh == 0.:
-        shakegrid == np.zeros(np.shape(model))
+        shakegrid = np.zeros(np.shape(model))
     
     if np.shape(shakegrid) != np.shape(model):
         raise Exception('Shakegrid is not the same shape as the model')
@@ -492,8 +494,8 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
 
     # Select npts seed points
     indx = np.where((values >= threshold) & (shkvals >= shakethresh))[0]
-    if len(indx) == 0:
-        print('No values above thresholds in model. Returning empty results')
+    if len(indx) < minpts:
+        print('Not enough values above thresholds in model. Returning empty results')
         return None, None
     
     np.random.seed(47)  # Always use same seed so results are repeatable
@@ -602,7 +604,7 @@ def svar(stds, range1, sill1, scale=1.):
         variance of aggregate statistic
     
     """
-    range5 = int(np.ceil(range1))
+    range5 = int(range1)
     # Prepare kernal that is size of range of spherical equation
     nrows = 2*range5 + 1
     ncols = 2*range5 + 1
