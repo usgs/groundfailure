@@ -215,7 +215,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
     Hagg['hagg_%1.2fg' % (shakethresh/100.,)] = mu
     Hagg['cell_area_km2'] = cell_area_km2
     N = np.nansum([model >= probthresh])
-    Hagg['N_%1.2fg' % (shakethresh/100.,)] = N
+    #Hagg['N_%1.2fg' % (shakethresh/100.,)] = N
     hlim = cell_area_km2*N*maxP
     Hagg['hlim_%1.2fg' % (shakethresh/100.,)] = hlim
 
@@ -233,9 +233,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                     # Use mean
                     Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    stdz = std.copy()
-                    stdz[model < probthresh] = 0.
-                    svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
+                    #stdz = std.copy()
+                    #stdz[model < probthresh] = 0.
+                    svar1 = svar(std, range1, sill1, scale=cell_area_km2)
                     Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
                     Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
                     Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1 
@@ -256,6 +256,11 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
             Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
             Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
             Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+    else:
+        print('No uncertainty provided, filling with zeros')
+        Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
+        Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+        Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
 
     return Hagg
 
@@ -299,132 +304,69 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
             q_exp_# beta distribution shape factor q (sometimes called beta)
     """
 
-    # If probthresh defined, zero out any areas less than or equal to
-    # probthresh before proceeding
-    moddat = grid.getData().copy()
+    model = grid.getData().copy()
     mdict = grid.getGeoDict()
 
+    # Figure out difference in resolution of popfile to shakefile
+    ptemp, J = GDALGrid.getFileGeoDict(pop_file)
+    factor = ptemp.dx/mdict.dx
+
     # Cut out area from population file
-    popcut = quickcut(pop_file, mdict, precise=False,
-                      extrasamp=2., method='nearest')
-    popdat = popcut.getData()
-    pdict = popcut.getGeoDict()
-
-    # Pad grid with nans to beyond extent of pdict
-    pad_dict = {}
-    pad_dict['padleft'] = int(
-        np.abs(np.ceil((mdict.xmin - pdict.xmin)/mdict.dx)))
-    pad_dict['padright'] = int(
-        np.abs(np.ceil((pdict.xmax - mdict.xmax)/mdict.dx)))
-    pad_dict['padbottom'] = int(
-        np.abs(np.ceil((mdict.ymin - pdict.ymin)/mdict.dy)))
-    pad_dict['padtop'] = int(
-        np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
-
-    padgrid, mdict2 = Grid2D.padGrid(
-        moddat, mdict, pad_dict)  # padds with inf
-    padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
-    padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
-
-    # Resample model grid so as to be the nearest integer multiple of popdict
-    factor = np.round(pdict.dx/mdict2.dx)
+    popcut1 = quickcut(pop_file, mdict, precise=False, extrasamp=2., method='nearest')
+    #tot1 = np.sum(popcut1.getData())
+    # Adjust for factor to prepare for upsampling to avoid creating new people
+    popcut1.setData(popcut1.getData()/factor**2)
     
-    # Compute range and sill of original model if not provided and correct to resamplin
-    if stdgrid2D is not None:
-        if stdtype == 'full':
-            if sill1 is None or range1 is None:
-                if shakefile is not None:
-                    # resample shakemap to grid2D
-                    temp = ShakeGrid.load(shakefile)
-                    shk = temp.getLayer(shakethreshtype)
-                    shk = shk.interpolate2(mdict)
-                else:
-                    shakethresh = 0.
-                    shk = None
-                modelfresh = grid.getData().copy()
-                range1, sill1 = semivario(modelfresh, probthresh,
-                                          shakethresh=shakethresh,
-                                          shakegrid=shk)
-                range1 /= factor  # Correct range for resampling
-
+    # Upsample to mdict
+    popcut = popcut1.interpolate2(mdict, method='nearest')
+    popdat = popcut.getData()
     exp_pop = {}
 
-    # Create geodictionary that is a factor of X higher res but otherwise
-    # identical
-    ndict = GeoDict.createDictFromBox(
-        pdict.xmin, pdict.xmax, pdict.ymin, pdict.ymax,
-        pdict.dx/factor, pdict.dy/factor)
-
-    # Resample
-    grid2 = padgrid.interpolate2(ndict, method='linear')
-
-    # Get proportion of each cell that has values (to account properly
-    # for any nans)
-    """
-    prop = block_reduce(~np.isnan(grid2.getData().copy()),
-                        block_size=(int(factor), int(factor)),
-                        cval=0., func=np.sum)/(factor**2.)
-    """
-
-
-
-
-
-    # Now block reduce to same geodict as popfile
-    modresamp = block_reduce(grid2.getData().copy(),
-                             block_size=(int(factor), int(factor)),
-                             cval=float('nan'), func=np.nanmean)
-    
-    #TODO delete this line and uncomment above prop section, did this just to make
-    #testing of exp_pop more straightforward
-    prop = np.ones(np.shape(modresamp))
-    
-    
-    
-    
-
-    if stdgrid2D is not None:
-        stddat = stdgrid2D.getData().copy()
-        padstdgrid, mdict3 = Grid2D.padGrid(stddat, mdict, pad_dict)  # padds with inf
-        padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
-        padstdgrid = Grid2D(data=padstdgrid, geodict=mdict3)  # Turn into grid2d object
-        grid2std = padstdgrid.interpolate2(ndict, method='linear')
-        modresampstd = block_reduce(grid2std.getData().copy(),
-                                    block_size=(int(factor), int(factor)),
-                                    cval=float('nan'), func=np.nanmean)
-
     if shakefile is not None:
-        # Resample shakefile to population grid
-        # , doPadding=True, padValue=0.)
-        shakemap = ShakeGrid.load(shakefile, resample=False)
-        shakemap = shakemap.getLayer(shakethreshtype)
-        shakemap = shakemap.interpolate2(pdict)
-        shkdat = shakemap.getData()
-        threshmult = (shkdat >= shakethresh) & (modresamp >= probthresh)
+        if shakethresh < 0.:
+            raise Exception('shaking threshold must be equal or greater '
+                            'than zero')
+        # resample shakemap to grid2D
+        temp = ShakeGrid.load(shakefile)
+        shk = temp.getLayer(shakethreshtype)
+        shk = shk.interpolate2(mdict)
+        if shk.getGeoDict() != mdict:
+            raise Exception('shakemap was not resampled to exactly the same '
+                            'geodict as the model')
+        shkdat = shk.getData()
+        # use -1 to avoid nan errors and warnings, will always be thrown
+        # out because default probthresh is 0.
+        model[shkdat < shakethresh] = float('nan')
     else:
-        shakethresh = 0.0
+        shakethresh = 0.
         shkdat = None
-        threshmult = modresamp >= probthresh
-    threshmult = threshmult.astype(float)
 
-    dat2 = popdat * prop * modresamp * threshmult
-
-    mu = np.nansum(dat2)
+    mu = np.nansum(model[model >= probthresh] * popdat[model >= probthresh])
     exp_pop['exp_pop_%1.2fg' % (shakethresh/100.,)] = mu
-    elim = maxP*np.nansum(popdat * prop * threshmult)
+    #N = np.nansum([model >= probthresh])
+    #exp_pop['N_%1.2fg' % (shakethresh/100.,)] = N
+    elim = np.sum(popdat[model >= probthresh])*maxP
     exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
 
     if stdgrid2D is not None:
-        if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
-            datstd2 = modresampstd * threshmult
-            totalmax = np.nansum(popdat * prop * datstd2)
-            totalmin = np.sqrt(np.nansum(popdat * prop * datstd2**2.))
+        std = stdgrid2D.getData()
+        if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
+            totalmin = np.sqrt(np.nansum((popdat[model >= probthresh]*std[model >= probthresh])**2.))
+            totalmax = np.nansum(std[model >= probthresh] * popdat[model >= probthresh])
             if stdtype=='full':
-                if range1 is None:  # Use mean
+                if sill1 is None or range1 is None:
+                    modelfresh = grid.getData().copy()
+                    range1, sill1 = semivario(modelfresh, probthresh,
+                                              shakethresh=shakethresh,
+                                              shakegrid=shkdat)
+                if range1 is None:
+                    # Use mean
                     exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    var1 = svar(datstd2, range1, sill1, scale=popdat)
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(var1)
+                    #stdz = std.copy()
+                    #stdz[model < probthresh] = 0.
+                    svar1 = svar(std, range1, sill1, scale=popdat)
+                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
                     exp_pop['exp_range_%1.2fg' % (shakethresh/100.,)] = range1
                     exp_pop['exp_sill_%1.2fg' % (shakethresh/100.,)] = sill1
 
@@ -434,7 +376,6 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmin
             else:
                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
-
             # Beta distribution shape factors
             var = exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)]**2.
             exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
@@ -450,6 +391,184 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
         exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
 
     return exp_pop
+
+
+# def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
+#                 shakethresh=0., probthresh=0., stdgrid2D=None,
+#                 stdtype='full', maxP=1., sill1=None, range1=None,
+#                 proj='moll'):
+#     """
+#     Get exposure-based statistics.
+
+#     Args:
+#         grid: Model grid.
+#         pop_file (str):  Path to the landscan population grid.
+#         shakefile (str): Optional, path to shakemap file to use for ground
+#             motion threshold.
+#         shakethreshtype(str): Optional, Type of ground motion to use for
+#             shakethresh, 'pga', 'pgv', or 'mmi'.
+#         shakethresh: Float or list of shaking thresholds in %g for
+#             pga, cm/s for pgv, float for mmi.
+#         probthresh: Float, exclude any cells with
+#             probabilities less than or equal to this value
+#         stdgrid2D: grid2D object of model standard deviations (optional)
+#         stdtype (str): assumption of spatial correlation used to compute
+#             the stdev of the statistics, 'max', 'min', 'mean' of max and min,
+#             or 'full' (default) which estimates the range of correlation and
+#             accounts for covariance. Will return 'mean' if
+#             ridge and sill cannot be estimated.
+#         maxP (float): the maximum possible probability of the model
+#         sill1 (float): If known, the sill of the variogram of grid2D, will be
+#             estimated if None and stdtype='full'
+#         range1 (float): If known, the range of the variogram of grid2D, will
+#             be estimated if None and stdtype='full'
+
+#     Returns:
+#         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
+#             and exp_std_# if stdgrid2D is supplied (stdev of exp_pop)
+#             and elim_#, the maximum exposure value possible with the
+#             applied thresholds and given maxP value
+#             p_exp_# beta distribution shape factor p (sometimes called alpha)
+#             q_exp_# beta distribution shape factor q (sometimes called beta)
+#     """
+
+#     # If probthresh defined, zero out any areas less than or equal to
+#     # probthresh before proceeding
+#     moddat = grid.getData().copy()
+#     mdict = grid.getGeoDict()
+
+#     # Cut out area from population file
+#     popcut = quickcut(pop_file, mdict, precise=False,
+#                       extrasamp=2., method='nearest')
+#     popdat = popcut.getData()
+#     pdict = popcut.getGeoDict()
+
+#     # Pad grid with nans to beyond extent of pdict
+#     pad_dict = {}
+#     pad_dict['padleft'] = int(
+#         np.abs(np.ceil((mdict.xmin - pdict.xmin)/mdict.dx)))
+#     pad_dict['padright'] = int(
+#         np.abs(np.ceil((pdict.xmax - mdict.xmax)/mdict.dx)))
+#     pad_dict['padbottom'] = int(
+#         np.abs(np.ceil((mdict.ymin - pdict.ymin)/mdict.dy)))
+#     pad_dict['padtop'] = int(
+#         np.abs(np.ceil((pdict.ymax - mdict.ymax)/mdict.dy)))
+
+#     padgrid, mdict2 = Grid2D.padGrid(
+#         moddat, mdict, pad_dict)  # padds with inf
+#     padgrid[np.isinf(padgrid)] = float('nan')  # change to pad with nan
+#     padgrid = Grid2D(data=padgrid, geodict=mdict2)  # Turn into grid2d object
+
+#     # Resample model grid so as to be the nearest integer multiple of popdict
+#     factor = np.round(pdict.dx/mdict2.dx)
+    
+#     # Compute range and sill of original model if not provided and correct to resamplin
+#     if stdgrid2D is not None:
+#         if stdtype == 'full':
+#             if sill1 is None or range1 is None:
+#                 if shakefile is not None:
+#                     # resample shakemap to grid2D
+#                     temp = ShakeGrid.load(shakefile)
+#                     shk = temp.getLayer(shakethreshtype)
+#                     shk = shk.interpolate2(mdict)
+#                 else:
+#                     shakethresh = 0.
+#                     shk = None
+#                 modelfresh = grid.getData().copy()
+#                 range1, sill1 = semivario(modelfresh, probthresh,
+#                                           shakethresh=shakethresh,
+#                                           shakegrid=shk)
+#                 range1 /= factor  # Correct range for resampling
+
+#     exp_pop = {}
+
+#     # Create geodictionary that is a factor of X higher res but otherwise
+#     # identical
+#     ndict = GeoDict.createDictFromBox(
+#         pdict.xmin, pdict.xmax, pdict.ymin, pdict.ymax,
+#         pdict.dx/factor, pdict.dy/factor)
+
+#     # Resample
+#     grid2 = padgrid.interpolate2(ndict, method='linear')
+
+#     # Get proportion of each cell that has values (to account properly
+#     # for any nans)
+#     prop = block_reduce(~np.isnan(grid2.getData().copy()),
+#                         block_size=(int(factor), int(factor)),
+#                         cval=0., func=np.sum)/(factor**2.)
+
+#     # Now block reduce to same geodict as popfile
+#     modresamp = block_reduce(grid2.getData().copy(),
+#                              block_size=(int(factor), int(factor)),
+#                              cval=float('nan'), func=np.nanmean)
+
+#     if stdgrid2D is not None:
+#         stddat = stdgrid2D.getData().copy()
+#         padstdgrid, mdict3 = Grid2D.padGrid(stddat, mdict, pad_dict)  # padds with inf
+#         padstdgrid[np.isinf(padstdgrid)] = float('nan')  # change to pad with nan
+#         padstdgrid = Grid2D(data=padstdgrid, geodict=mdict3)  # Turn into grid2d object
+#         grid2std = padstdgrid.interpolate2(ndict, method='linear')
+#         modresampstd = block_reduce(grid2std.getData().copy(),
+#                                     block_size=(int(factor), int(factor)),
+#                                     cval=float('nan'), func=np.nanmean)
+
+#     if shakefile is not None:
+#         # Resample shakefile to population grid
+#         # , doPadding=True, padValue=0.)
+#         shakemap = ShakeGrid.load(shakefile, resample=False)
+#         shakemap = shakemap.getLayer(shakethreshtype)
+#         shakemap = shakemap.interpolate2(pdict)
+#         shkdat = shakemap.getData()
+#         threshmult = (shkdat >= shakethresh) & (modresamp >= probthresh)
+#     else:
+#         shakethresh = 0.0
+#         shkdat = None
+#         threshmult = modresamp >= probthresh
+#     threshmult = threshmult.astype(float)
+
+#     dat2 = popdat * prop * modresamp * threshmult
+
+#     mu = np.nansum(dat2)
+#     exp_pop['exp_pop_%1.2fg' % (shakethresh/100.,)] = mu
+#     elim = maxP*np.nansum(popdat * prop * threshmult)
+#     exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
+
+#     if stdgrid2D is not None:
+#         if np.nanmax(modresampstd) > 0. and np.sum(threshmult) > 0:
+#             datstd2 = modresampstd * threshmult
+#             totalmax = np.nansum(popdat * prop * datstd2)
+#             totalmin = np.sqrt(np.nansum(popdat * prop * datstd2**2.))
+#             if stdtype=='full':
+#                 if range1 is None:  # Use mean
+#                     exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+#                 else:
+#                     var1 = svar(datstd2, range1, sill1, scale=popdat)
+#                     exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(var1)
+#                     exp_pop['exp_range_%1.2fg' % (shakethresh/100.,)] = range1
+#                     exp_pop['exp_sill_%1.2fg' % (shakethresh/100.,)] = sill1
+
+#             elif stdtype == 'max':
+#                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+#             elif stdtype == 'min':
+#                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+#             else:
+#                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+
+#             # Beta distribution shape factors
+#             var = exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)]**2.
+#             exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
+#             exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
+#         else:
+#             print('no std values above zero, filling with zeros')
+#             exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
+#             exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+#             exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+#     else:
+#         exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
+#         exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+#         exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+
+#     return exp_pop
 
 
 def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
