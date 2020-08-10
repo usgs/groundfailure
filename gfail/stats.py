@@ -345,7 +345,7 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
     exp_pop['exp_pop_%1.2fg' % (shakethresh/100.,)] = mu
     #N = np.nansum([model >= probthresh])
     #exp_pop['N_%1.2fg' % (shakethresh/100.,)] = N
-    elim = np.sum(popdat[model >= probthresh])*maxP
+    elim = np.nansum(popdat[model >= probthresh])*maxP
     exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
 
     if stdgrid2D is not None:
