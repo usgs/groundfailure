@@ -156,7 +156,6 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
             std_# if stdgrid2D is supplied (stdev of exp_pop)
             hlim_#, the maximum exposure value possible with the
             applied thresholds and given maxP value
-            N_# the number of cells exceeding that value (in projected coords)
             cell_area_km2 grid cell area
             p_hagg_# beta distribution shape factor p (sometimes called alpha)
             q_hagg_# beta distribution shape factor q (sometimes called beta)
@@ -196,9 +195,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
     if shakefile is not None:
         shkgrid = shk.project(projection=projs)
         shkdat = shkgrid.getData()
-        # use -1 to avoid nan errors and warnings, will always be thrown
-        # out because default probthresh is 0.
-        model[shkdat < shakethresh] = -1. # float('nan')
+        model[shkdat < shakethresh] = float('nan')
     else:
         shakethresh = 0.
         shkdat = None
@@ -227,12 +224,14 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                     # Use mean
                     Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    #stdz = std.copy()
-                    #stdz[model < probthresh] = 0.
-                    svar1 = svar(std, range1, sill1, scale=cell_area_km2)
+                    # Zero out std at cells where the model probability was below
+                    # the threshold because we aren't including those cells in Hagg
+                    stdz = std.copy()
+                    stdz[model < probthresh] = 0.
+                    svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
                     Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
-                    Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
-                    Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1 
+                    #Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
+                    #Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1 
             elif stdtype == 'max':
                 Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
             elif stdtype == 'min':
@@ -309,7 +308,7 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
     #tot1 = np.sum(popcut1.getData())
     # Adjust for factor to prepare for upsampling to avoid creating new people
     popcut1.setData(popcut1.getData()/factor**2)
-    
+
     # Upsample to mdict
     popcut = popcut1.interpolate2(mdict, method='nearest')
     popdat = popcut.getData()
@@ -327,8 +326,6 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
             raise Exception('shakemap was not resampled to exactly the same '
                             'geodict as the model')
         shkdat = shk.getData()
-        # use -1 to avoid nan errors and warnings, will always be thrown
-        # out because default probthresh is 0.
         model[shkdat < shakethresh] = float('nan')
     else:
         shakethresh = 0.
@@ -342,7 +339,7 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
     exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
 
     if stdgrid2D is not None:
-        std = stdgrid2D.getData()
+        std = stdgrid2D.getData().copy()
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = np.sqrt(np.nansum((popdat[model >= probthresh]*std[model >= probthresh])**2.))
             totalmax = np.nansum(std[model >= probthresh] * popdat[model >= probthresh])
@@ -356,12 +353,14 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                     # Use mean
                     exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    #stdz = std.copy()
-                    #stdz[model < probthresh] = 0.
-                    svar1 = svar(std, range1, sill1, scale=popdat)
+                    # Zero out std at cells where the model probability was below
+                    # the threshold because we aren't including those cells in Hagg
+                    stdz = std.copy()
+                    stdz[model < probthresh] = 0.
+                    svar1 = svar(stdz, range1, sill1, scale=popdat)
                     exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
-                    exp_pop['exp_range_%1.2fg' % (shakethresh/100.,)] = range1
-                    exp_pop['exp_sill_%1.2fg' % (shakethresh/100.,)] = sill1
+                    #exp_pop['exp_range_%1.2fg' % (shakethresh/100.,)] = range1
+                    #exp_pop['exp_sill_%1.2fg' % (shakethresh/100.,)] = sill1
 
             elif stdtype == 'max':
                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax

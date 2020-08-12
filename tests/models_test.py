@@ -47,7 +47,6 @@ def test_zhu2015():
                                'zhu2015.grd')
     target_grid = GMTGrid.load(target_file)
     target_data = target_grid.getData()
-
     # Assert
     np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
