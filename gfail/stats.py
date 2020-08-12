@@ -111,7 +111,7 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                                probthresh=probthresh,
                                stdgrid2D=stdgrid2D,
                                stdtype=stdtype, maxP=maxP,
-                               sill1=None, range1=None, proj=proj)
+                               sill1=None, range1=None)
         for k, v in exp_dict.items():
             stats[k] = v
 
@@ -190,9 +190,6 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
     cell_area_km2 = geodictRS.dx * geodictRS.dy
     
     model = grid.getData().copy()
-    if stdgrid2D is not None:
-        stdgrid = stdgrid2D.project(projection=projs, method='bilinear')
-        std = stdgrid.getData().copy()
 
     Hagg = {}
 
@@ -201,7 +198,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
         shkdat = shkgrid.getData()
         # use -1 to avoid nan errors and warnings, will always be thrown
         # out because default probthresh is 0.
-        model[shkdat < shakethresh] = float('nan')
+        model[shkdat < shakethresh] = -1. # float('nan')
     else:
         shakethresh = 0.
         shkdat = None
@@ -215,13 +212,15 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
     Hagg['hlim_%1.2fg' % (shakethresh/100.,)] = hlim
 
     if stdgrid2D is not None:
+        stdgrid = GDALGrid.copyFromGrid(stdgrid2D) # Make a copy
+        stdgrid = stdgrid.project(projection=projs, method='bilinear')
+        std = stdgrid.getData().copy()
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
             totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
             if stdtype == 'full':
                 if sill1 is None or range1 is None:
-                    modelfresh = grid.getData().copy()
-                    range1, sill1 = semivario(modelfresh, probthresh,
+                    range1, sill1 = semivario(grid.getData().copy(), probthresh,
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat)
                 if range1 is None:
@@ -234,7 +233,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                     Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
                     Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
                     Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1 
-            if stdtype == 'max':
+            elif stdtype == 'max':
                 Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
             elif stdtype == 'min':
                 Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmin
@@ -260,10 +259,133 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
     return Hagg
 
 
-def computePexp(grid, pop_file, shakefile=None, shakethreshtype=None,
+def computeHagg_noproj(grid, probthresh=0., shakefile=None,
+                shakethreshtype='pga', shakethresh=0., stdgrid2D=None,
+                stdtype='full', maxP=1., sill1=None, range1=None):
+    """
+    Computes the Aggregate Hazard (Hagg) which is equal to the
+    probability * area of grid cell For models that compute areal coverage,
+    this is equivalant to the total predicted area affected in km2.
+
+    Args:
+        grid2D: grid2D object of model output.
+        proj: projection to use to obtain equal area, 'moll'  mollweide, or
+            'laea' lambert equal area.
+        probthresh: Probability threshold, any values less than this will not
+            be included in aggregate hazard estimation.
+        shakefile: Optional, path to shakemap file to use for ground motion
+            threshold.
+        shakethreshtype: Optional, Type of ground motion to use for
+            shakethresh, 'pga', 'pgv', or 'mmi'.
+        shakethresh: Optional, Float or list of shaking thresholds in %g for
+            pga, cm/s for pgv, float for mmi.
+        stdgrid2D: grid2D object of model standard deviations (optional)
+        stdtype (str): assumption of spatial correlation used to compute
+            the stdev of the statistics, 'max', 'min', 'mean' of max and min,
+            or 'full' (default) which estimates the range of correlation and
+            accounts for covariance. Will return 'mean' if
+            ridge and sill cannot be estimated.
+        maxP (float): the maximum possible probability of the model
+        sill1 (float): If known, the sill of the variogram of grid2D, will be
+            estimated if None and stdtype='full'
+        range1 (float): If known, the range of the variogram of grid2D, will
+            be estimated if None and stdtype='full'
+
+    Returns:
+        dict: Dictionary with keys:
+            hagg_#g where # is the shakethresh
+            std_# if stdgrid2D is supplied (stdev of exp_pop)
+            hlim_#, the maximum exposure value possible with the
+            applied thresholds and given maxP value
+            N_# the number of cells exceeding that value (in projected coords)
+            cell_area_km2 grid cell area
+            p_hagg_# beta distribution shape factor p (sometimes called alpha)
+            q_hagg_# beta distribution shape factor q (sometimes called beta)
+    """
+    model = grid.getData().copy()
+    mdict = grid.getGeoDict()
+
+    if shakefile is not None:
+        if shakethresh < 0.:
+            raise Exception('shaking threshold must be equal or greater '
+                            'than zero')
+        # resample shakemap to grid2D
+        temp = ShakeGrid.load(shakefile)
+        shk = temp.getLayer(shakethreshtype)
+        shk = shk.interpolate2(mdict)
+        if shk.getGeoDict() != mdict:
+            raise Exception('shakemap was not resampled to exactly the same '
+                            'geodict as the model')
+        shkdat = shk.getData()
+        # use -1 to avoid nan errors and warnings, will always be thrown
+        # out because default probthresh is 0.
+        model[shkdat < shakethresh] = -1.
+    else:
+        shakethresh = 0.
+        shkdat = None
+
+    cell_area_km2 = mdict.dx * mdict.dy * 111.**2
+
+    Hagg = {}
+
+    mu = np.nansum(model[model >= probthresh] * cell_area_km2)
+    Hagg['hagg_%1.2fg' % (shakethresh/100.,)] = mu
+    Hagg['cell_area_km2'] = cell_area_km2
+    N = np.nansum([model >= probthresh])
+    #Hagg['N_%1.2fg' % (shakethresh/100.,)] = N
+    hlim = cell_area_km2*N*maxP
+    Hagg['hlim_%1.2fg' % (shakethresh/100.,)] = hlim
+
+    if stdgrid2D is not None:
+        std = stdgrid2D.getData().copy()
+        if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
+            totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
+            totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
+            if stdtype == 'full':
+                if sill1 is None or range1 is None:
+                    range1, sill1 = semivario(grid.getData().copy(), probthresh,
+                                              shakethresh=shakethresh,
+                                              shakegrid=shkdat)
+                if range1 is None:
+                    # Use mean
+                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+                else:
+                    #stdz = std.copy()
+                    #stdz[model < probthresh] = 0.
+                    scal = cell_area_km2 * np.ones(np.shape(std))
+                    svar1 = svar(std, range1, sill1, scale=scal)
+                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
+                    Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
+                    Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1 
+            elif stdtype == 'max':
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+            elif stdtype == 'min':
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+            else:
+                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+
+            var = Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)]**2.
+            # Beta distribution shape factors
+            Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
+            Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
+        else:
+            print('No model values above threshold, skipping uncertainty '
+                  'and filling with zeros')
+            Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
+            Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+            Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+    else:
+        print('No uncertainty provided, filling with zeros')
+        Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
+        Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+        Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+
+    return Hagg
+
+
+def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                 shakethresh=0., probthresh=0., stdgrid2D=None,
-                stdtype='full', maxP=1., sill1=None, range1=None,
-                proj='moll'):
+                stdtype='full', maxP=1., sill1=None, range1=None):
     """
     Get exposure-based statistics.
 
@@ -410,6 +532,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
         range, sill
 
     """
+    model = model.copy()
     if threshold is None:
         threshold = 0.
 
