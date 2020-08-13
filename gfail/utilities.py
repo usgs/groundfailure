@@ -661,6 +661,10 @@ def view_database(database, starttime=None, endtime=None,
     # Read in entire shakemap table, do selection using pandas
     df = pd.read_sql_query("SELECT * FROM shakemap", connection)
 
+    df['starttime'] = pd.to_datetime(df['starttime'], utc=True)
+    df['endtime'] = pd.to_datetime(df['endtime'], utc=True)
+    df['time'] = pd.to_datetime(df['time'], utc=True)
+
     # Print currently running info to screen
     print('-------------------------------------------------')
     curt = df.loc[df['note'].str.contains('Currently running')]
@@ -672,6 +676,9 @@ def view_database(database, starttime=None, endtime=None,
         print(curt.to_string(columns=ccols, index=False,
               justify='left', header=ccols2,
               formatters=formatters))
+        # Remove currently running from list
+        df.drop(curt.index, inplace = True) 
+
     else:
         print('No events currently running')
         print('-------------------------------------------------')
@@ -687,10 +694,6 @@ def view_database(database, starttime=None, endtime=None,
         df = df.loc[df['mag'] >= minmag]
     if maxmag is not None:
         df = df.loc[df['mag'] <= maxmag]
-
-    df['starttime'] = pd.to_datetime(df['starttime'], utc=True)
-    df['endtime'] = pd.to_datetime(df['endtime'], utc=True)
-    df['time'] = pd.to_datetime(df['time'], utc=True)
 
     # Narrow down the database based on input criteria
 
