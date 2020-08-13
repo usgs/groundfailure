@@ -180,8 +180,8 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
 
             ulx = egdict.xmin - extrasamp * egdict.dx
             uly = egdict.ymax + extrasamp * egdict.dy
-            lrx = egdict.xmax + extrasamp * egdict.dx
-            lry = egdict.ymin - extrasamp * egdict.dy
+            lrx = egdict.xmax + (extrasamp+1) * egdict.dx
+            lry = egdict.ymin - (extrasamp+1) * egdict.dy
             
             cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f \
             %1.8f %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2,

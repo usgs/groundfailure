@@ -749,8 +749,8 @@ def process_shakemap(args, config):
     logging.info('Checking gridfile...')
 
     if gridfile is None or (not os.path.isfile(gridfile)):
-        msg = ('Could not find input ShakeMap grid file at %s. Exiting. Rerun.'
-               % gridfile)
+        msg = ('Could not find input ShakeMap grid \
+               file at %s. Exiting.' % gridfile)
         logging.info(msg)
         # if not args.force:
         if db_id is not None:
@@ -1179,20 +1179,32 @@ def cleanup(args, config):
             delta_run = last_start_time - origin_time
             delta_now = datetime.utcnow() - origin_time
             A = 'Failed to download shakemap files' in notelist[idx2]
-            B = ((delta_now > timedelta(days=2)) and
-                    (not delta_run > timedelta(days=2))
-                    and ('over water' not in notelist[idx2]))
+            B = ((delta_now > timedelta(days=2)) and  # event was >2 days ago
+                    (not delta_run > timedelta(days=2))  # has been rerun recently
+                    and ('over water' not in notelist[idx2]))  # not over water            
             if A or B:
                 if A:
-                    logging.info('Missing ShakeMap for %s, rerunning' %
+                    logging.info('Missing ShakeMap for %s, trying to rerun' %
                         uevent[0])
                 if B:
-                    logging.info('Rerunning %s to remove warning flags '
+                    logging.info('Trying to rerun %s to remove warning flags '
                     'because sufficient time has elapsed' % uevent[0])
-                #import pdb; pdb.set_trace()
-                args.event = uevent[0]
-                args.force = True
-                main(args, config, exitafter=False)
+                # Check and make sure the event hasn't been given a new event id before
+                # rerunning in order to avoid potential infinite rerun loops
+                detail = get_event_by_id(uevent[0])
+                if detail.id != uevent[0]:
+                    logging.info('Event id of %s has been replaced with %s'\
+                        % (uevent[0], detail.id))
+                    logging.info('Updating preferred event id in database')
+                    nt = notelist[-1] + ' Previously had event id: %s' % uevent[0]
+                    cursor.execute(
+                        'UPDATE shakemap SET eventcode = ?, note = ? WHERE eventcode = ?',
+                        (detail.id, nt, uevent[0]))
+                    # don't rerun, it will be rerun next time if it needs to be
+                else:  # rerun
+                    args.event = uevent[0]
+                    args.force = True
+                    main(args, config, exitafter=False)
     
     # Check if any didn't transfer and need to be resent
     with conn:

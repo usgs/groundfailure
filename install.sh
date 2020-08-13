@@ -102,7 +102,6 @@ package_list=(
       "pytest-cov"
       "pytest-faulthandler"
       "rasterio"
-      "scikit-image"
       "scipy"
       "simplekml"
 )
