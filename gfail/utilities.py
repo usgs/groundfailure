@@ -478,7 +478,7 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
         popLS = 'yellow'
     elif parampopLS >= popbinLS[1] and parampopLS < popbinLS[2]:
         popLS = 'orange'
-    elif parampopLS > popbinLS[2]:
+    elif parampopLS >= popbinLS[2]:
         popLS = 'red'
     else:
         popLS = None
@@ -491,7 +491,7 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
         hazLQ = 'yellow'
     elif paramalertLQ >= hazbinLQ[1] and paramalertLQ < hazbinLQ[2]:
         hazLQ = 'orange'
-    elif paramalertLQ > hazbinLQ[2]:
+    elif paramalertLQ >= hazbinLQ[2]:
         hazLQ = 'red'
     else:
         hazLQ = None
@@ -521,7 +521,6 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
     LSnum2 = col2num[popLS]
     LSnum = str(np.max([int(LSnum1), int(LSnum2)]))
     LS = num2color[LSnum]
-
     LQnum1 = col2num[hazLQ]
     LQnum2 = col2num[popLQ]
     LQnum = str(np.max([int(LQnum1), int(LQnum2)]))
