@@ -724,7 +724,7 @@ def process_shakemap(args, config):
                 detail, gridfile, uncertfile = \
                     getShakefiles(eventid, datadir, uncert=True,
                                   version=args.version,
-                                  source=args.source)
+                                  source=args.shakesource)
                 break
 
             except Exception as e:
@@ -1311,7 +1311,7 @@ def main(args, config, exitafter=True):
             detail, sh, un = getShakefiles(args.event, datadir,
                                            uncert=True,
                                            version=args.version,
-                                           source=args.source)
+                                           source=args.shakesource)
             targs = ArgWrapper()
             targs.time = detail.time
             targs.preferred_eventsource = detail['net']
@@ -1330,7 +1330,7 @@ def main(args, config, exitafter=True):
             targs.dry_run = args.dry_run
             targs.warning = args.warning
             targs.event = args.event
-            targs.source = args.source
+            targs.shakesource = args.shakesource
             targs.version = args.version
             if args.property_alertlevel == 'pending':
                 targs.property_alertlevel = 'pending'
@@ -1438,8 +1438,8 @@ the data_path directory.
         "-v", "--version", type=int, default=None,
         help="ShakeMap version (integer)", metavar='version')
     argparser.add_argument(
-        "-s", "--source", default='preferred',
-        help="ShakeMap source (us, uu uw, etc.)", metavar='source')
+        "-s", "--shakesource", default='preferred',
+        help="ShakeMap source (us, uu uw, etc.)", metavar='shakesource')
     argparser.add_argument(
         "--dry-run",
         action='store_true', default=False,
