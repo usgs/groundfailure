@@ -964,6 +964,10 @@ def process_shakemap(args, config):
     # Transfer
     logging.info("Starting gfail_transfer")
     pdl_conf_file = config['pdl_config']
+    if 'comcat_config' in config.keys():
+        comcat_conf_file = config['comcat_config']
+    else:
+        comcat_conf_file = None
 
     # What to do about status? This is the status of the ground-failure
     # product. Not to be confused with status of PAGER, which we use
@@ -1020,8 +1024,28 @@ def process_shakemap(args, config):
         else:
             status = "UPDATE"
 
+    # Choose correct pdl_conf file, use comcat_conf file if older than 30 days
+    # otherwise use real time system. If didn't get detail, just use pdl_conf
+
+    if 'detail' in vars() and comcat_conf_file is not None:
+        utc = pytz.utc
+        detail_time = ShakeDateTime.fromtimestamp(
+            detail['time'] / 1000.0, utc)
+        delta = ShakeDateTime.now(utc) - detail_time
+        days30 = 30. * 24.0 * 60.0 * 60.0
+        if delta.total_seconds() < days30:
+            pdl_sender = pdl_conf_file
+            p1 = 'Using pdl_conf_file to send'
+            logging.info(p1)
+        else:
+            p1 = 'Using comcat_conf_file to send because event is older than 30 days'
+            pdl_sender = comcat_conf_file
+            logging.info(p1)
+    else:
+        pdl_sender = pdl_conf_file
+
     success = gf_transfer(
-        vdir, version, pdl_conf_file, dry_run=args.dry_run,
+        vdir, version, pdl_sender, dry_run=args.dry_run,
         status=status
     )
 
@@ -1208,12 +1232,18 @@ def cleanup(args, config):
     
     # Check if any didn't transfer and need to be resent
     with conn:
-        cursor.execute("SELECT id, eventcode, note, eventdir, version FROM shakemap")
+        cursor.execute("SELECT id, time, eventcode, note, eventdir, version FROM shakemap")
         lines = cursor.fetchall()
         for line in lines:
             if 'gf_transfer failed.' in line:
-                pdl_conf = config['pdl_config']
-                id1, eid, note, eventdir, version = line
+                id1, time, eid, note, eventdir, version = line
+                # Choose right pdl sender file
+                if datetime.now() - datetime.strptime(time, TIMEFMT) > \
+                    timedelta(days=30) and 'comcat_config' in config.keys():
+                    pdl_conf = config['comcat_config']
+                else:
+                    pdl_conf = config['pdl_config']
+
                 if eventdir is not None:
                     fulldir = os.path.join(eventdir, 'version.%03i' % version)
                     success = gf_transfer(fulldir, version=version,
@@ -1230,7 +1260,7 @@ def cleanup(args, config):
                             "UPDATE shakemap SET note = ? WHERE id = ?",
                             (msg, id1))
                     else:
-                        logging.info('gf_transfer failed again')
+                        logging.info('gf_transfer failed again.')
 
     logging.info('Finished running cleanup')
     logging.info('---------------------------------------------------------')
