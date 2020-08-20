@@ -749,8 +749,7 @@ def process_shakemap(args, config):
     logging.info('Checking gridfile...')
 
     if gridfile is None or (not os.path.isfile(gridfile)):
-        msg = ('Could not find input ShakeMap grid \
-               file at %s. Exiting.' % gridfile)
+        msg = ('Could not find input ShakeMap grid file at %s. Exiting.' % gridfile)
         logging.info(msg)
         # if not args.force:
         if db_id is not None:
