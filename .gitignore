@@ -73,6 +73,9 @@ target/
 .spyderworkspace
 .spyderproject
 .spyproject
+
+#PyCharm
+.idea*
 *~
 
 #generated pelican themes
