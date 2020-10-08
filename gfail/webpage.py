@@ -49,7 +49,7 @@ DFBINS = [0.002, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            shakethreshtype='pga', shakethresh=10.,
-           prefLS='Nowicki Jessee and others (2017)',
+           prefLS='Nowicki Jessee and others (2018)',
            prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True, point=True,
            pager_alert='', eventsource='', eventsourcecode='',
@@ -134,7 +134,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 # Since logistic models can't equal one, need to eliminate
                 # placeholder zeros before computing stats
                 if 'jessee' in maplayer['model']['description']['name'].lower():
-                    id1 = 'jessee_2017'
+                    id1 = 'jessee_2018'
                     probthresh = 0.002
                     maxP = 0.26
                 else:
@@ -531,11 +531,11 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
     files = os.listdir(event_dir)
     if lsmodels is None:
         # Read in the "preferred" model for landslides
-        ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
+        ls_mod_file = [f for f in files if 'jessee_2018.hdf5' in f]
         if len(ls_mod_file) == 1:
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
-            filesnippet = 'jessee_2017'
+            filesnippet = 'jessee_2018'
             out = make_rgba(ls_mod['model']['grid'], mask=lsmask,
                             mercator=mercator, levels=DFBINS,
                             colorlist=DFCOLORS)

@@ -181,9 +181,9 @@ def test_nowicki_2014_global():
     np.testing.assert_allclose(target_data, test_data, rtol=1e-3)
 
 
-def test_jessee_2017():
+def test_jessee_2018():
     conf_file = os.path.join(upone, 'defaultconfigfiles', 'models',
-                             'jessee_2017.ini')
+                             'jessee_2018.ini')
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, 'loma_prieta', 'model_inputs')
     conf = correct_config_filepaths(data_path, conf)
@@ -203,18 +203,18 @@ def test_jessee_2017():
         # To change target data:
         pgrd = GMTGrid(pgrid.getData(), pgrid.getGeoDict())
         pgrd.save(os.path.join(datadir, 'loma_prieta',
-                               'targets', 'jessee_2017.grd'))
+                               'targets', 'jessee_2018.grd'))
         stdgrd = GMTGrid(stdgrid.getData(), stdgrid.getGeoDict())
         stdgrd.save(os.path.join(datadir, 'loma_prieta',
-                                 'targets', 'jessee_2017_std.grd'))
+                                 'targets', 'jessee_2018_std.grd'))
 
     # Load target
     target_file = os.path.join(datadir, 'loma_prieta', 'targets',
-                               'jessee_2017.grd')
+                               'jessee_2018.grd')
     target_grid = GMTGrid.load(target_file)
     target_data = target_grid.getData()
     std_file = os.path.join(datadir, 'loma_prieta', 'targets',
-                            'jessee_2017_std.grd')
+                            'jessee_2018_std.grd')
     target_grid_std = GMTGrid.load(std_file)
     target_data_std = target_grid_std.getData()
 
@@ -257,5 +257,5 @@ if __name__ == "__main__":
     test_zhu_2017_general()
     test_zhu_2017_coastal()
     test_nowicki_2014_global()
-    test_jessee_2017()
+    test_jessee_2018()
     test_godt_2008()
