@@ -18,8 +18,7 @@ from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
 
 
-def trim_ocean(grid2D, mask, all_touched=True, crop=False,
-               invert=False, nodata=0.):
+def trim_ocean(grid2D, mask, all_touched=True, crop=False):
     """Use the mask (a shapefile) to trim offshore areas
 
     Args:
@@ -29,9 +28,6 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False,
         all_touched (bool): if True, won't mask cells that touch any part of
             polygon edge
         crop (bool): crop boundaries of raster to new masked area
-        invert (bool): if True, will mask areas that do not overlap with the
-            polygon
-        nodata (flt): value to use as mask
 
     Returns:
         grid2D file with ocean masked
@@ -39,8 +35,6 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False,
     gdict = grid2D.getGeoDict()
 
     tempdir = tempfile.mkdtemp()
-    tempfile1 = os.path.join(tempdir, 'temp.tif')
-    tempfile2 = os.path.join(tempdir, 'temp2.tif')
 
     # Get shapes ready
     if type(mask) == str:
@@ -68,22 +62,6 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False,
         (tempfilen, tempfile1)
     rc, so, se = get_command_output(cmd)
 
-    # #Convert grid2D to rasterio format
-    #
-    # source_crs = rasterio.crs.CRS.from_string(gdict.projection)
-    # src_transform = rasterio.Affine.from_gdal(gdict.xmin - gdict.dx/2.0,
-    #                                           gdict.dx, 0.0,  gdict.ymax + gdict.dy/2.0,
-    #                                           0.0, -1*gdict.dy)  # from mapio.grid2D
-    # with rasterio.open(tempfile1, 'w', driver='GTIff',
-    #                    height=gdict.ny,    # numpy of rows
-    #                    width=gdict.nx,     # number of columns
-    #                    count=1,                        # number of bands
-    #                    dtype=rasterio.dtypes.float64,  # this must match the dtype of our array
-    #                    crs=source_crs,
-    #                    transform=src_transform) as src_raster:
-    #     src_raster.write(grid2D.getData().astype(float), 1)  # optional second parameter is the band number to write to
-    #     #ndvi_raster.nodata = -1  # set the raster's nodata value
-
     if rc:
         with rasterio.open(tempfile1, 'r') as src_raster:
             out_image, out_transform = rasterio.mask.mask(src_raster, features,
@@ -100,8 +78,8 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False,
         newgrid = GDALGrid.load(tempfile2)
 
     else:
-        raise Exception('ocean trimming failed')
         print(se)
+        raise Exception('ocean trimming failed')
 
     shutil.rmtree(tempdir)
     return newgrid
@@ -125,6 +103,8 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             possible, if False it will just roughly cut around the area of
             interest without changing resolution
         cleanup (bool): if True, delete tempname after reading it back in
+        verbose (bool): if True, prints more details
+
     Returns: New grid2D layer
 
     Note: This function uses the subprocess approach because ``gdal.Translate``
@@ -147,6 +127,7 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         tempname = os.path.join(tempdir, 'junk.tif')
         deltemp = True
     else:
+        tempdir = None
         deltemp = False
 
     # if os.path.exists(tempname):
