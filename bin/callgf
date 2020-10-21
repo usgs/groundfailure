@@ -942,7 +942,8 @@ def process_shakemap(args, config):
         'property_alertlevel': args.property_alertlevel,
         'eventsource': args.preferred_eventsource,
         'eventsourcecode': args.preferred_eventsourcecode,
-        'gf_version': version
+        'gf_version': version,
+        'pdlcall': not is_manual
     }
 
     try:

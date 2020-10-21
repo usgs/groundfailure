@@ -11,7 +11,7 @@ import numpy as np
 import os
 from configobj import ConfigObj
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # third party imports
 import simplekml
@@ -54,7 +54,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True, point=True,
            pager_alert='', eventsource='', eventsourcecode='',
-           createpngs=True, gf_version=1):
+           createpngs=True, gf_version=1, pdlcall=False):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
 
@@ -84,6 +84,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         eventsourcecode (str): event code (e.g. '123456pq')
         createpngs (bool): if True, create pngs for web map
         gf_version (int): ground failure version
+        pdlcall (bool): True if callgf was called by pdl automatically,
+            false if called manually (or otherwise).
 
     Returns:
         Files that need to be sent to comcat for hazdev to create the product
@@ -518,7 +520,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
 
     # Create info.json
     infojson = create_info(outfolder, lsmodels, lqmodels, gf_version,
-                           eventsource, eventsourcecode, point)
+                           eventsource, eventsourcecode, point, pdlcall)
     filenames.append(infojson)
 
     return filenames
@@ -682,7 +684,8 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
 
 
 def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
-                eventsource='', eventsourcecode='', point=True):
+                eventsource='', eventsourcecode='', point=True,
+                pdlcall=False):
     """Create info.json for ground failure product.
 
     Args:
@@ -697,6 +700,7 @@ def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
         eventsourcecode (str): event code (e.g. '123456pq')
         point (bool): if True, event is a point source and warning should be
             displayed
+        pdlcall (bool): True if callgf was called by pdl automatically
 
     Returns:
         creates info.json for this event
@@ -816,6 +820,13 @@ def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
     if point and event_dict['magnitude'] > 6.5:
         rupture_warning = True
 
+    # Figure out if realtime (pdl run and same week as event)
+    if pdlcall and datetime.utcnow() - event_dict['event_timestamp'] < \
+            timedelta(days=7):
+        realtime = True
+    else:
+        realtime = False
+
     # Create info.json for website rendering and metadata purposes
     info_dict = {
         'Summary': {
@@ -828,18 +839,17 @@ def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
             'lon': event_dict['lon'],
             'event_url': event_url,
             'gf_version': gf_version,
-            'gf_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
+            'gf_time': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
             'shakemap_version': sm_dict['shakemap_version'],
             'shakemap_source': sm_dict['shakemap_originator'],
             'shakemap_time': sm_dict['process_timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ'),
             'rupture_warning': rupture_warning,
             'point_source': point,
             'zoom_extent': [xmin, xmax, ymin, ymax],
-            'realtime': None
+            'realtime': realtime
         },
         'Landslides': lsmodels,
         'Liquefaction': lqmodels
-
     }
 
     info_file = os.path.join(event_dir, 'info.json')

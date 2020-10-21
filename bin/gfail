@@ -204,5 +204,6 @@ if __name__ == '__main__':
 
         pargs.eventsource = network
         pargs.eventsourcecode = eid
+    pargs.pdlcall = False  # Always manual when using gfail
 
     run_gfail(pargs)

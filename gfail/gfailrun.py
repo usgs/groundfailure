@@ -398,7 +398,8 @@ def run_gfail(args):
                 pager_alert=args.property_alertlevel,
                 eventsource=args.eventsource,
                 eventsourcecode=args.eventsourcecode,
-                point=point, gf_version=args.gf_version)
+                point=point, gf_version=args.gf_version,
+                pdlcall=args.pdlcall)
             filenames = filenames + outputs
 
 #        # create transparent png file
