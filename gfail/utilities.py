@@ -11,13 +11,12 @@ import matplotlib.patches as patches
 # import numpy as np
 import sqlite3 as lite
 import pandas as pd
-from scipy.stats import beta
-
 
 # local imports
 from mapio.shake import getHeaderData
 from libcomcat.search import get_event_by_id, search
 from mapio.multihaz import MultiHazardGrid
+from gfail.stats import get_rangebeta, get_pdfbeta
 
 
 # Don't delete this, it's needed in an eval function
@@ -1794,67 +1793,3 @@ def alert_rectangles(ax, bins):
         rect = patches.Polygon(corners, closed=True, facecolor=col,
                                transform=ax.transData, alpha=0.2)
         ax.add_patch(rect)
-
-
-def get_rangebeta(p, q, prob=0.95, minlim=0, maxlim=1):
-    """
-    Get endpoints of the range of the specified beta function that contain
-    prob percent of the distribution
-    
-    Args:
-        p (float): p shape factor of beta distribution (a in scipy)
-        q (float): q shape factor of beta distribution (b in scipy)
-        prob (float): central probability of distribution to return the range
-            of. Value from 0 to 1
-        minlim (float): minimum possible value of distribution
-        maxlim (float): maximum possible value of distribution
-    
-    Returns: tuple (valmin, valmax) where:
-        * valmin (float): lower edge of range containing prob
-        * valmax (float): upper edge of range containing prob
-    
-    """
-    loc = minlim
-    scale = maxlim-loc
-    valmin, valmax = beta.interval(prob, p, q, loc=loc, scale=scale)
-    return valmin, valmax
-
-
-def get_pdfbeta(p, q, binedges, minlim=0, maxlim=1, npts=1000,
-                openends=True):
-    """
-    Return discretized pdf for plotting curve and report probabilities of
-    each bin
-    
-    Args:
-        p (float): p shape factor of beta distribution (a in scipy)
-        q (float): q shape factor of beta distribution (b in scipy)
-        binedges (list): list of bin edges
-        minlim (float): minimum possible value of distribution
-        maxlim (float): maximum possible value of distribution
-        npts (int): number of points to return in xvals
-        openends (bool): assumes lower and upper bins don't have hard edges
-
-    Returns: tuple of (xvals, yvals, probs) where:
-        * xvals: list of log-distributed values
-        * yvals: corresponding list of 
-        * probs (list): list of len(binedges)-1 that gives probability of
-            value falling in the corresponding bin
-    """
-    loc = minlim
-    scale = maxlim-loc
-    xvals = np.logspace(np.log10(np.min(binedges)), np.log10(maxlim), npts)
-    yvals = beta.pdf(xvals, p, q, loc=loc, scale=scale)
-    #print(beta.mean(p, q, loc=loc, scale=scale))
-    probs = np.empty(len(binedges)-1)
-    bincop = np.copy(binedges)
-    if openends:
-        bincop[0] = -np.inf
-        bincop[-1] = np.inf
-    
-    for i in range(len(bincop)-1):
-        min1 = beta.cdf(bincop[i], p, q, loc=loc, scale=scale)
-        max1 = beta.cdf(bincop[i+1], p, q, loc=loc, scale=scale)
-        probs[i] = max1-min1
-    
-    return xvals, yvals, probs

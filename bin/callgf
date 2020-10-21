@@ -941,7 +941,8 @@ def process_shakemap(args, config):
         'dry_run': args.dry_run,
         'property_alertlevel': args.property_alertlevel,
         'eventsource': args.preferred_eventsource,
-        'eventsourcecode': args.preferred_eventsourcecode
+        'eventsourcecode': args.preferred_eventsourcecode,
+        'gf_version': version
     }
 
     try:

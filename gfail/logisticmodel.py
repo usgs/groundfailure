@@ -96,7 +96,7 @@ class LogisticModel(object):
         self.layers = validateLayers(cmodel)
         self.terms, timeField = validateTerms(cmodel, self.coeffs, self.layers)
         self.interpolations = validateInterpolations(cmodel, self.layers)
-        self.units = validateUnits(cmodel, self.layers)
+        self.units = validateUnits(cmodel)
         self.gmused = [value for term, value in cmodel['terms'].items()
                        if 'pga' in value.lower() or 'pgv' in
                        value.lower() or 'mmi' in value.lower()]

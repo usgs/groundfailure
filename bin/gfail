@@ -136,6 +136,10 @@ if __name__ == '__main__':
         help='Number of ground motion standard deviations to use '
              '(only used if uncertainty file used)',
         default=1.)
+    parser.add_argument(
+        '-gv', '--gf_version', metavar='gf_version', nargs='?', type=int,
+        help='Ground failure run version, default 1', default=1
+    )
 
     # Binary
 

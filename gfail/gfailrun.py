@@ -321,7 +321,6 @@ def run_gfail(args):
                 filenames.append(filenameh)
 
             if gis or kmz:
-
                 for key in maplayers:
                     # Get simplified name of key for file naming
                     RIDOF = r'[+-]?(?=\d*[.eE])(?=\.?\d)'\
@@ -399,7 +398,7 @@ def run_gfail(args):
                 pager_alert=args.property_alertlevel,
                 eventsource=args.eventsource,
                 eventsourcecode=args.eventsourcecode,
-                point=point)
+                point=point, gf_version=args.gf_version)
             filenames = filenames + outputs
 
 #        # create transparent png file

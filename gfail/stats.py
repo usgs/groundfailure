@@ -9,14 +9,13 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from scipy.signal import convolve
 from numpy import matlib
+from scipy.stats import beta
+from configobj import ConfigObj
 
 # local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
 from gfail.spatial import quickcut
-
-
-from configobj import ConfigObj
 
 # Turn off warnings that will pop up regarding nan's in greater than operations
 np.warnings.filterwarnings('ignore')
@@ -187,9 +186,9 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
 
     grid = grid2D.project(projection=projs, method='bilinear')
     geodictRS = grid.getGeoDict()
-    
+
     cell_area_km2 = geodictRS.dx * geodictRS.dy
-    
+
     model = grid.getData().copy()
 
     Hagg = {}
@@ -235,7 +234,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                     svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
                     Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
                     #Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
-                    #Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1 
+                    #Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1
             elif stdtype == 'max':
                 Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
             elif stdtype == 'min':
@@ -402,12 +401,12 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     """
     Quickly estimate semivariogram with by selecting seed points and then
     computing semivariogram between each of those points and ndists random
-    locations around it that are within maxlag of the seed point. Will result 
+    locations around it that are within maxlag of the seed point. Will result
     in npts x ndists total distance pairs. Uses spherical model.
 
     Args:
         model (array): array of raster to estimate semivariogram for
-        threshold: 
+        threshold:
         maxlag (int): in pixels
         npts (int): number of seed points to sample from
         ndists (int): number of points to sample at random distances from each
@@ -428,7 +427,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
 
     if shakegrid is None or shakethresh == 0.:
         shakegrid = np.zeros(np.shape(model))
-    
+
     if np.shape(shakegrid) != np.shape(model):
         raise Exception('Shakegrid is not the same shape as the model')
 
@@ -447,13 +446,13 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
         print('Not enough values above thresholds in model. '
               'Returning empty results')
         return None, None
-    
+
     np.random.seed(47)  # Always use same seed so results are repeatable
     # just select all points if there aren't npts above the threshold
     picks = np.random.choice(len(indx), size=np.min((npts, len(indx))),
                              replace=False)
     seedpts = indx[picks]
-    
+
     # Get lags and differences for seed point vs. ndists other points around it
     #TODO vectorize this to remove loop
     lags = np.array([])
@@ -462,7 +461,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     seednums = range(len(seedpts))
     seednums2 = reversed(range(len(seedpts)))
     for seed, seednum1, seednum2 in zip(seedpts, seednums, seednums2):
-        row1 = rowsf[seed] 
+        row1 = rowsf[seed]
         col1 = colsf[seed]
         np.random.seed(seednum1)
         addr = np.random.randint(np.max((-maxlag, -row1)),
@@ -488,7 +487,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     # % Make variogram out of these samples
     binedges = np.linspace(0, maxlag, num=nvbins+1, endpoint=True)
     binmid = (binedges[:-1] + binedges[1:])/2
-    
+
     subs = np.zeros(nvbins)
     N = np.zeros(nvbins)
     for b in range(nvbins):
@@ -502,26 +501,26 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
                            sigma=1./N[np.isfinite(semiv)],
                            absolute_sigma=False, bounds=(0, [maxlag, 1.]))
     if makeplots:
-        plt.figure()    
+        plt.figure()
         plt.plot(binmid, semiv, 'ob')
         plt.xlabel('Lags (pixels)')
         plt.ylabel('Semivariance')
         plt.plot(binmid, spherical(binmid, *popt), '-b')
 
     range2, sill2 = popt
-    
+
     return range2, sill2
 
 
 def spherical(lag, range1, sill):  # , nugget=0):
     """
     Spherical variogram model assuming nugget = 0
-    
+
     Args:
         lag: float or array of lags as # of pixels/cells
         range1 (float): range of spherical model
         sill (float): sill of spherical model
-        
+
     Returns:
         semivariance as float or array, depending on type(lag)
     """
@@ -540,12 +539,12 @@ def spherical(lag, range1, sill):  # , nugget=0):
 
 def svar(stds, range1, sill1, scale=1.):
     """
-    Estimate variance of aggregate statistic using correlation from 
+    Estimate variance of aggregate statistic using correlation from
     semivariogram and std values for each pair of cells that are within range
     of each other, add up quickly by creating kernal of the correlations and
-    convolving with the image, then multiply by std to equal sum of 
+    convolving with the image, then multiply by std to equal sum of
     std1*std2*corr*scale1*scale2 over each valid cell
-    
+
     Args:
         stds (array): grid of standard deviation of model
         range1 (float): range of empirical variogram used to estimate
@@ -554,10 +553,10 @@ def svar(stds, range1, sill1, scale=1.):
             correlation model
         scale: float or array same size as std, factor to multiply by
             (area or population) and include in convolution
-    
+
     Returns:
         variance of aggregate statistic
-    
+
     """
     range5 = int(range1)
     # Prepare kernal that is size of range of spherical equation
@@ -569,7 +568,7 @@ def svar(stds, range1, sill1, scale=1.):
     dists = np.sqrt(rows**2 + cols**2)
     # Convert from semivariance to correlation and build kernal
     kernal = (sill1-spherical(dists, range1, sill1))/sill1
-    
+
     # convolve with stds, equivalent to sum of corr * std at each pixel for
     # within range1
     #out = convolve2d(stds, kernal, mode='same')
@@ -585,3 +584,67 @@ def svar(stds, range1, sill1, scale=1.):
     # add up
     var2 = np.nansum(full1)
     return var2
+
+
+def get_rangebeta(p, q, prob=0.95, minlim=0, maxlim=1):
+    """
+    Get endpoints of the range of the specified beta function that contain
+    prob percent of the distribution
+
+    Args:
+        p (float): p shape factor of beta distribution (a in scipy)
+        q (float): q shape factor of beta distribution (b in scipy)
+        prob (float): central probability of distribution to return the range
+            of. Value from 0 to 1
+        minlim (float): minimum possible value of distribution
+        maxlim (float): maximum possible value of distribution
+
+    Returns: tuple (valmin, valmax) where:
+        * valmin (float): lower edge of range containing prob
+        * valmax (float): upper edge of range containing prob
+
+    """
+    loc = minlim
+    scale = maxlim - loc
+    valmin, valmax = beta.interval(prob, p, q, loc=loc, scale=scale)
+    return valmin, valmax
+
+
+def get_pdfbeta(p, q, binedges, minlim=0, maxlim=1, npts=1000,
+                openends=True):
+    """
+    Return discretized pdf for plotting curve and report probabilities of
+    each bin
+
+    Args:
+        p (float): p shape factor of beta distribution (a in scipy)
+        q (float): q shape factor of beta distribution (b in scipy)
+        binedges (list): list of bin edges
+        minlim (float): minimum possible value of distribution
+        maxlim (float): maximum possible value of distribution
+        npts (int): number of points to return in xvals
+        openends (bool): assumes lower and upper bins don't have hard edges
+
+    Returns: tuple of (xvals, yvals, probs) where:
+        * xvals: list of log-distributed values
+        * yvals: corresponding list of
+        * probs (list): list of len(binedges)-1 that gives probability of
+            value falling in the corresponding bin
+    """
+    loc = minlim
+    scale = maxlim - loc
+    xvals = np.logspace(np.log10(np.min(binedges)), np.log10(maxlim), npts)
+    yvals = beta.pdf(xvals, p, q, loc=loc, scale=scale)
+    # print(beta.mean(p, q, loc=loc, scale=scale))
+    probs = np.empty(len(binedges) - 1)
+    bincop = np.copy(binedges)
+    if openends:
+        bincop[0] = -np.inf
+        bincop[-1] = np.inf
+
+    for i in range(len(bincop) - 1):
+        min1 = beta.cdf(bincop[i], p, q, loc=loc, scale=scale)
+        max1 = beta.cdf(bincop[i + 1], p, q, loc=loc, scale=scale)
+        probs[i] = max1 - min1
+
+    return xvals, yvals, probs

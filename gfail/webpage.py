@@ -11,6 +11,7 @@ import numpy as np
 import os
 from configobj import ConfigObj
 import tempfile
+from datetime import datetime
 
 # third party imports
 import simplekml
@@ -53,7 +54,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True, point=True,
            pager_alert='', eventsource='', eventsourcecode='',
-           createpngs=True):
+           createpngs=True, gf_version=1):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
 
@@ -82,6 +83,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         eventsource (str): net id (e.g., 'us')
         eventsourcecode (str): event code (e.g. '123456pq')
         createpngs (bool): if True, create pngs for web map
+        gf_version (int): ground failure version
+
     Returns:
         Files that need to be sent to comcat for hazdev to create the product
             webpage including:
@@ -514,8 +517,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             lq['population_alert']['color'] = 'pending'
 
     # Create info.json
-    infojson = create_info(outfolder, lsmodels, lqmodels, eventsource,
-                           eventsourcecode, point)
+    infojson = create_info(outfolder, lsmodels, lqmodels, gf_version,
+                           eventsource, eventsourcecode, point)
     filenames.append(infojson)
 
     return filenames
@@ -678,7 +681,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
     return filenames
 
 
-def create_info(event_dir, lsmodels, lqmodels,
+def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
                 eventsource='', eventsourcecode='', point=True):
     """Create info.json for ground failure product.
 
@@ -689,6 +692,7 @@ def create_info(event_dir, lsmodels, lqmodels,
             the hdf5 files for the preferred model and will create this
             dictionary and will apply default colorbars and bins.
         lqmodels (list): Same as above for liquefaction.
+        gf_version (int): ground failure version
         eventsource (str): net id (e.g., 'us')
         eventsourcecode (str): event code (e.g. '123456pq')
         point (bool): if True, event is a point source and warning should be
@@ -783,9 +787,6 @@ def create_info(event_dir, lsmodels, lqmodels,
 
     # Is this a point source?
     # point = is_grid_point_source(shake_grid)
-    # Temporarily hard code this until we can get a better solution via
-    # new grid.xml attributes.
-    #point = True
 
     net = eventsource
     code = eventsourcecode
@@ -826,10 +827,15 @@ def create_info(event_dir, lsmodels, lqmodels,
             'lat': event_dict['lat'],
             'lon': event_dict['lon'],
             'event_url': event_url,
+            'gf_version': gf_version,
+            'gf_time': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'),
             'shakemap_version': sm_dict['shakemap_version'],
+            'shakemap_source': sm_dict['shakemap_originator'],
+            'shakemap_time': sm_dict['process_timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ'),
             'rupture_warning': rupture_warning,
             'point_source': point,
-            'zoom_extent': [xmin, xmax, ymin, ymax]
+            'zoom_extent': [xmin, xmax, ymin, ymax],
+            'realtime': None
         },
         'Landslides': lsmodels,
         'Liquefaction': lqmodels
