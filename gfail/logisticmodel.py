@@ -9,8 +9,6 @@ import numpy as np
 import os.path
 import re
 import collections
-import copy
-# from scipy import sparse
 import shutil
 import tempfile
 from timeit import default_timer as timer
@@ -145,7 +143,7 @@ class LogisticModel(object):
         # Get month of event
         griddict, eventdict, specdict, fields, uncertainties = \
             getHeaderData(shakefile)
-        MONTH = MONTHS[(eventdict['event_timestamp'].month) - 1]
+        MONTH = MONTHS[eventdict['event_timestamp'].month - 1]
 
         # Figure out how/if need to cut anything
         geodict = ShakeGrid.getFileGeoDict(shakefile, adjust='res')
@@ -164,7 +162,8 @@ class LogisticModel(object):
                 bounds['xmin'], bounds['xmax'],
                 bounds['ymin'], bounds['ymax'],
                 geodict.dx, geodict.dy, inside=False)
-            # If Shakemap geodict crosses 180/-180 line, fix geodict so things don't break
+            # If Shakemap geodict crosses 180/-180 line, fix geodict so
+            # things don't break
             if geodict.xmin > geodict.xmax:
                 if tempgdict.xmin < 0:
                     geodict._xmin -= 360.
@@ -316,7 +315,7 @@ class LogisticModel(object):
                     if timeField == 'MONTH':
                         if lfile.find(MONTH) > -1:
                             layerfile = lfile
-                            ftype = getFileType(layerfile)
+                            # ftype = getFileType(layerfile)
                             interp = self.interpolations[layername]
                             temp = quickcut(layerfile, sampledict,
                                             precise=True, method=interp)
@@ -338,7 +337,8 @@ class LogisticModel(object):
                         np.clip(temp.getData(),
                                 self.clips[layername][0],
                                 self.clips[layername][1]))
-                if layername == 'rock':  # Convert unconsolidated sediments to a more reasonable coefficient
+                # Convert unconsolidated sediments to more reasonable coeff
+                if layername == 'rock':
                     sub1 = temp.getData()
                     # Change to mixed sed rock coeff
                     sub1[sub1 <= -3.21] = -1.36
@@ -537,14 +537,14 @@ class LogisticModel(object):
                 else:
                     std1 = np.sqrt(varP)
             else:
-                print('cannot do uncertainty for %s model currently, skipping' %
+                print('cannot do uncertainty for %s model, skipping' %
                       self.modelrefs['shortref'])
                 self.uncert = None
                 std1 = None
         else:
             std1 = None
 
-        # P needs to be converted to areal coverage after dealing with uncertainty
+        # P needs to be converted to areal coverage AFTER dealing with uncert
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
             P = eval(eqn)
@@ -564,7 +564,8 @@ class LogisticModel(object):
             else:
                 units5 = 'Proportion of area affected'
         elif 'Zhu' in self.modelrefs['shortref']:
-            if 'coverage' not in self.config[self.model].keys() and '2017' in self.modelrefs['shortref']:
+            if 'coverage' not in self.config[self.model].keys() and \
+                    '2017' in self.modelrefs['shortref']:
                 units5 = 'Relative Hazard'
             else:
                 units5 = 'Proportion of area affected'
@@ -593,12 +594,12 @@ class LogisticModel(object):
         Pgrid = Grid2D(P, self.geodict)
         if self.trimfile is not None:
             # Turn all offshore cells to nan
-            Pgrid = trim_ocean(Pgrid, self.trimfile, nodata=float('nan'))
+            Pgrid = trim_ocean(Pgrid, self.trimfile)
         rdict = collections.OrderedDict()
         rdict['model'] = {
             'grid': Pgrid,
-            'label': ('%s estimate - %s') % (self.modeltype.capitalize(),
-                                    units5.title()),
+            'label': '%s estimate - %s' % (self.modeltype.capitalize(),
+                                           units5.title()),
             'type': 'output',
             'description': description
         }
@@ -606,7 +607,7 @@ class LogisticModel(object):
             Stdgrid = Grid2D(std1, self.geodict)
             if self.trimfile is not None:
                 Stdgrid = trim_ocean(
-                    Stdgrid, self.trimfile, nodata=float('nan'))
+                    Stdgrid, self.trimfile)
             rdict['std'] = {
                 'grid': Stdgrid,
                 'label': ('%s estimate - %s (std)'
@@ -776,6 +777,8 @@ def validateClips(cmodel, layers, gmused):
             .. code-block:: python
 
                 cmodel = config['test_model']
+        layers: dictionary of layer names
+        gmused (list): List of ground motion parameters used
 
     Returns:
         dict: a dictionary of clip values for each layer (if exists)
@@ -899,7 +902,7 @@ def validateTerms(cmodel, coeffs, layers):
             tpl = (term, rem)
             raise Exception(msg % tpl)
         terms[key] = term
-    return (terms, timeField)
+    return terms, timeField
 
 
 def validateInterpolations(cmodel, layers):
@@ -931,12 +934,11 @@ def validateInterpolations(cmodel, layers):
     return interpolations
 
 
-def validateUnits(cmodel, layers):
+def validateUnits(cmodel):
     """Validate model units.
 
     Args:
         cmodel (dict): Sub-dictionary from config for specific model.
-        layers (dict): Dictionary of file names for all input layers.
 
     Returns:
         dict: Model units.
@@ -954,8 +956,7 @@ def validateLogisticModels(config):
     """Validate model names.
 
     Args:
-        cmodel (dict): Sub-dictionary from config for specific model.
-        layers (dict): Dictionary of file names for all input layers.
+        config: Config file to validate
 
     Returns:
         bool: True if the model names are valid
@@ -1107,4 +1108,4 @@ def checkTerm(term, layers):
                 layer,
                 "self.layerdict['%s'].getSlice(rowstart, rowend, colstart, "
                 "colend, name='%s')" % (layer, layer))
-    return (term, tterm, timeField)
+    return term, tterm, timeField

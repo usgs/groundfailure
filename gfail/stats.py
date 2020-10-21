@@ -21,6 +21,7 @@ from configobj import ConfigObj
 # Turn off warnings that will pop up regarding nan's in greater than operations
 np.warnings.filterwarnings('ignore')
 
+
 def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                  shakethreshtype='pga', shakethresh=0.0,
                  probthresh=None, pop_file=None, stdtype='full',
@@ -45,8 +46,9 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
         stdtype (str): assumption of spatial correlation used to compute
             the stdev of the statistics, 'max', 'min' or 'mean' of max and min,
             or full (default) estimates std considering covariance
-        maxP = maximum possible value of P (1 default, but coverge models
-            have smaller values, 0.487 and 0.256 for LQ and LS)
+        maxP (float): maximum possible value of P (1 default, but coverage
+            models  have smaller values, 0.487 and 0.256 for LQ and LS)
+        proj (str): projection string to use when computing stats
 
     Returns:
         dict: Dictionary with all or some of the following keys
@@ -145,10 +147,10 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
             accounts for covariance. Will return 'mean' if
             ridge and sill cannot be estimated.
         maxP (float): the maximum possible probability of the model
-        sill1 (float): If known, the sill of the variogram of grid2D, will be
-            estimated if None and stdtype='full'
-        range1 (float): If known, the range of the variogram of grid2D, will
-            be estimated if None and stdtype='full'
+        sill1 (float, None): If known, the sill of the variogram of grid2D,
+            will be estimated if None and stdtype='full'
+        range1 (float, None): If known, the range of the variogram of grid2D,
+            will be estimated if None and stdtype='full'
 
     Returns:
         dict: Dictionary with keys:
@@ -209,7 +211,7 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
     Hagg['hlim_%1.2fg' % (shakethresh/100.,)] = hlim
 
     if stdgrid2D is not None:
-        stdgrid = GDALGrid.copyFromGrid(stdgrid2D) # Make a copy
+        stdgrid = GDALGrid.copyFromGrid(stdgrid2D)  # Make a copy
         stdgrid = stdgrid.project(projection=projs, method='bilinear')
         std = stdgrid.getData().copy()
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
@@ -217,15 +219,17 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
             totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
             if stdtype == 'full':
                 if sill1 is None or range1 is None:
-                    range1, sill1 = semivario(grid.getData().copy(), probthresh,
+                    range1, sill1 = semivario(grid.getData().copy(),
+                                              probthresh,
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat)
                 if range1 is None:
                     # Use mean
                     Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
                 else:
-                    # Zero out std at cells where the model probability was below
-                    # the threshold because we aren't including those cells in Hagg
+                    # Zero out std at cells where the model probability was
+                    # below the threshold because we aren't including those
+                    # cells in Hagg
                     stdz = std.copy()
                     stdz[model < probthresh] = 0.
                     svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
@@ -282,10 +286,10 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
             accounts for covariance. Will return 'mean' if
             ridge and sill cannot be estimated.
         maxP (float): the maximum possible probability of the model
-        sill1 (float): If known, the sill of the variogram of grid2D, will be
-            estimated if None and stdtype='full'
-        range1 (float): If known, the range of the variogram of grid2D, will
-            be estimated if None and stdtype='full'
+        sill1 (float, None): If known, the sill of the variogram of grid2D,
+            will be estimated if None and stdtype='full'
+        range1 (float, None): If known, the range of the variogram of grid2D,
+            will be estimated if None and stdtype='full'
 
     Returns:
         dict: Dictionary with keys named exp_pop_# where # is the shakethresh
@@ -304,7 +308,8 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
     factor = ptemp.dx/mdict.dx
 
     # Cut out area from population file
-    popcut1 = quickcut(pop_file, mdict, precise=False, extrasamp=2., method='nearest')
+    popcut1 = quickcut(pop_file, mdict, precise=False,
+                       extrasamp=2, method='nearest')
     #tot1 = np.sum(popcut1.getData())
     # Adjust for factor to prepare for upsampling to avoid creating new people
     popcut1.setData(popcut1.getData()/factor**2)
@@ -343,7 +348,7 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = np.sqrt(np.nansum((popdat[model >= probthresh]*std[model >= probthresh])**2.))
             totalmax = np.nansum(std[model >= probthresh] * popdat[model >= probthresh])
-            if stdtype=='full':
+            if stdtype == 'full':
                 if sill1 is None or range1 is None:
                     modelfresh = grid.getData().copy()
                     range1, sill1 = semivario(modelfresh, probthresh,
@@ -351,14 +356,17 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                                               shakegrid=shkdat)
                 if range1 is None:
                     # Use mean
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
+                        (totalmax+totalmin)/2.
                 else:
-                    # Zero out std at cells where the model probability was below
-                    # the threshold because we aren't including those cells in Hagg
+                    # Zero out std at cells where the model probability was
+                    # below the threshold because we aren't including those
+                    # cells in Hagg
                     stdz = std.copy()
                     stdz[model < probthresh] = 0.
                     svar1 = svar(stdz, range1, sill1, scale=popdat)
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
+                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
+                        np.sqrt(svar1)
                     #exp_pop['exp_range_%1.2fg' % (shakethresh/100.,)] = range1
                     #exp_pop['exp_sill_%1.2fg' % (shakethresh/100.,)] = sill1
 
@@ -367,11 +375,14 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
             elif stdtype == 'min':
                 exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmin
             else:
-                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
+                    (totalmax+totalmin)/2.
             # Beta distribution shape factors
             var = exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)]**2.
-            exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = (mu/elim)*((elim*mu-mu**2)/var-1)
-            exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = (1-mu/elim)*((elim*mu-mu**2)/var-1)
+            exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = \
+                (mu/elim)*((elim*mu-mu**2)/var-1)
+            exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = \
+                (1-mu/elim)*((elim*mu-mu**2)/var-1)
         else:
             print('no std values above zero, filling with zeros')
             exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
@@ -387,7 +398,7 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
 
 def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
               nvbins=20, makeplots=False, shakegrid=None, shakethresh=0.,
-              minpts=50.):
+              minpts=50):
     """
     Quickly estimate semivariogram with by selecting seed points and then
     computing semivariogram between each of those points and ndists random
@@ -395,13 +406,17 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     in npts x ndists total distance pairs. Uses spherical model.
 
     Args:
-        model: array of raster to estimate semivariogram for
+        model (array): array of raster to estimate semivariogram for
         threshold: 
-        maxlag: in pixels
-        npts: number of seed points to sample from
-        ndists: number of points to sample at random distances from each seed point
-        nvbins: number of semivariogram bins
-        minpts (float): minimum number of samples above threshold required to compute
+        maxlag (int): in pixels
+        npts (int): number of seed points to sample from
+        ndists (int): number of points to sample at random distances from each
+            seed point
+        nvbins (int): number of semivariogram bins
+        minpts (float): minimum number of samples above threshold required
+        makeplots (bool): create semivariogram plots
+        shakegrid (array): array of shaking that is the same size as model
+        shakethresh (float): Shaking threshold for seed point selection
 
     Returns:
         range, sill
@@ -429,7 +444,8 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     # Select npts seed points
     indx = np.where((values >= threshold) & (shkvals >= shakethresh))[0]
     if len(indx) < minpts:
-        print('Not enough values above thresholds in model. Returning empty results')
+        print('Not enough values above thresholds in model. '
+              'Returning empty results')
         return None, None
     
     np.random.seed(47)  # Always use same seed so results are repeatable
@@ -449,9 +465,11 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
         row1 = rowsf[seed] 
         col1 = colsf[seed]
         np.random.seed(seednum1)
-        addr = np.random.randint(np.max((-maxlag, -row1)), np.min((maxlag, nrows-row1)), size=ndists)
+        addr = np.random.randint(np.max((-maxlag, -row1)),
+                                 np.min((maxlag, nrows-row1)), size=ndists)
         np.random.seed(seednum2)
-        addc = np.random.randint(np.max((-maxlag, -col1)), np.min((maxlag, ncols-col1)), size=ndists)
+        addc = np.random.randint(np.max((-maxlag, -col1)),
+                                 np.min((maxlag, ncols-col1)), size=ndists)
         indr = row1 + addr
         indc = col1 + addc
         newvalues = model[indr, indc]
@@ -478,7 +496,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
         subs[b] = np.nansum(inrange)
         N[b] = len(inrange)
     semiv = 1./(2*N)*subs
-    # Fit model using weighting by 1/N to weigh bins with more samples more highly
+    # Fit model using weighting by 1/N to weigh bins with more samples higher
     popt, pcov = curve_fit(spherical, binmid[np.isfinite(semiv)],
                            semiv[np.isfinite(semiv)],
                            sigma=1./N[np.isfinite(semiv)],
@@ -495,7 +513,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     return range2, sill2
 
 
-def spherical(lag, range1, sill):#, nugget=0):
+def spherical(lag, range1, sill):  # , nugget=0):
     """
     Spherical variogram model assuming nugget = 0
     
@@ -510,7 +528,8 @@ def spherical(lag, range1, sill):#, nugget=0):
     nugget = 0.
     range1 = range1 / 1.
 
-    out = nugget + sill * ((1.5 * (lag / range1)) - (0.5 * ((lag / range1) ** 3.0)))
+    out = nugget + sill * ((1.5 * (lag / range1)) -
+                           (0.5 * ((lag / range1) ** 3.0)))
     if isinstance(out, float):
         if lag > range1:
             out = nugget + sill
@@ -529,8 +548,10 @@ def svar(stds, range1, sill1, scale=1.):
     
     Args:
         stds (array): grid of standard deviation of model
-        range1 (float): range of empirical variogram used to estimate correlation model
-        sill1 (float): sill of empirical variogram used to estimate correlation model
+        range1 (float): range of empirical variogram used to estimate
+            correlation model
+        sill1 (float): sill of empirical variogram used to estimate
+            correlation model
         scale: float or array same size as std, factor to multiply by
             (area or population) and include in convolution
     
@@ -543,13 +564,14 @@ def svar(stds, range1, sill1, scale=1.):
     nrows = 2*range5 + 1
     ncols = 2*range5 + 1
     # get distance in row and col from center point
-    rows = matlib.repmat(np.arange(nrows), ncols, 1).T - (range5)
-    cols = matlib.repmat(np.arange(ncols), nrows, 1) - (range5)
+    rows = matlib.repmat(np.arange(nrows), ncols, 1).T - range5
+    cols = matlib.repmat(np.arange(ncols), nrows, 1) - range5
     dists = np.sqrt(rows**2 + cols**2)
     # Convert from semivariance to correlation and build kernal
     kernal = (sill1-spherical(dists, range1, sill1))/sill1
     
-    # convolve with stds, equivalent to sum of corr * std at each pixel for within range1
+    # convolve with stds, equivalent to sum of corr * std at each pixel for
+    # within range1
     #out = convolve2d(stds, kernal, mode='same')
     # Replace all nans with zeros so can use fft convolve
     stdzeros = stds.copy()

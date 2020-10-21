@@ -29,7 +29,7 @@ def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False,
     if pdl_config is None:
         print('PDL directory prepared, no pdl_config '
               'provided so no files were sent')
-        return (True, None, None)
+        return True, None, None
     else:
         # Transfer
         if not dry_run:

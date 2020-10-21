@@ -64,9 +64,12 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False):
 
     if rc:
         with rasterio.open(tempfile1, 'r') as src_raster:
-            out_image, out_transform = rasterio.mask.mask(src_raster, features,
-                                                          all_touched=all_touched,
-                                                          crop=crop)
+            out_image, out_transform = rasterio.mask.mask(
+                src_raster,
+                features,
+                all_touched=all_touched,
+                crop=crop
+            )
             out_meta = src_raster.meta.copy()
             out_meta.update({"driver": "GTiff",
                              "height": out_image.shape[1],

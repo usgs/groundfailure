@@ -1210,7 +1210,6 @@ def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
             plotorder defining the bin edges to use for each model.
             Example:
             .. code-block:: python
-
                 [(0., 0.1, 0.2, 0.3), np.linspace(0., 1.5, 15)]
         colormaps (list): List of strings of matplotlib colormaps (e.g.
             cm.autumn_r) corresponding to plotorder
@@ -1218,6 +1217,7 @@ def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
             colormaps is not defined. default cm.CMRmap_r
         logscale (*): If not None, then a list of booleans corresponding to
             plotorder stating whether to use log scaling in determining colors
+        alpha (*): list of transparencies
 
     Returns:
         tuple: (sync, colorlist, lim1) where:

@@ -24,7 +24,8 @@ from mapio.multihaz import MultiHazardGrid
 import matplotlib.cm as cm  # DO NOT DELETE
 # DO NOT DELETE ABOVE LINE
 
-# Define bin edges (lower and upper are clipped here but are not clipped in reality)
+# Define bin edges (lower and upper are clipped here but
+# are not clipped in reality)
 lshbins = [0.1, 1., 10., 100., 1000.]
 lspbins = [10., 100., 1000., 10000., 1e5]
 lqhbins = [1., 10., 100., 1000., 10000.]
@@ -198,14 +199,13 @@ def parseConfigLayers(maplayers, config, keys=None):
         plotorder += [key]
         if limits is not None:
             found = False
-            for l in limits:
-                getlim = None
-                if l in key:
-                    if type(limits[l]) is list:
-                        getlim = np.array(limits[l]).astype(np.float)
+            for lim1 in limits:
+                if lim1 in key:
+                    if type(limits[lim1]) is list:
+                        getlim = np.array(limits[lim1]).astype(np.float)
                     else:
                         try:
-                            getlim = eval(limits[l])
+                            getlim = eval(limits[lim1])
                         except:
                             getlim = None
                     lims.append(getlim)
@@ -676,7 +676,7 @@ def view_database(database, starttime=None, endtime=None,
               justify='left', header=ccols2,
               formatters=formatters))
         # Remove currently running from list
-        df.drop(curt.index, inplace = True) 
+        df.drop(curt.index, inplace=True)
 
     else:
         print('No events currently running')
@@ -803,7 +803,8 @@ def view_database(database, starttime=None, endtime=None,
         df = df.iloc[(numevents*-1):]
 
     # Now that have requested dataframe, make outputs
-    success = df.loc[(df['note'] == '') | (df['note'].str.contains('adjusted to'))]
+    success = df.loc[(df['note'] == '') |
+                     (df['note'].str.contains('adjusted to'))]
     fail = df.loc[df['note'].str.contains('fail')]
     notmet = df.loc[(~df['note'].str.contains('fail')) & (df['note'] != '') &
                     (~df['note'].str.contains('adjusted to'))]
@@ -1096,7 +1097,7 @@ def alert_summary(database, starttime=None, endtime=None,
 
     """
 
-    out = view_database(database, starttime=endtime, endtime=endtime,
+    out = view_database(database, starttime=starttime, endtime=endtime,
                         minmag=minmag, maxmag=maxmag, realtime=realtime,
                         currentonly=currentonly, printsummary=False,
                         printsuccess=False, alertreport='color')
@@ -1266,24 +1267,24 @@ def plot_evolution(database, starttime=None, endtime=None,
             range1 = get_rangebeta(sel1['PH_LS'], sel1['QH_LS'],
                                    prob=percrange, maxlim=sel1['HlimLS'])
             temp1 = [hls-range1[0], range1[1]-hls]
-            temp1[0][temp1[0]<0.] = 0  # zero out any negative values
+            temp1[0][temp1[0] < 0.] = 0  # zero out any negative values
             rangeHLS.append(temp1)
             range2 = get_rangebeta(sel1['PH_LQ'], sel1['QH_LQ'],
                                    prob=percrange, maxlim=sel1['HlimLQ'])
             temp2 = [hlq-range2[0], range2[1]-hlq]
-            temp2[0][temp2[0]<0.] = 0  # zero out any negative values
+            temp2[0][temp2[0] < 0.] = 0  # zero out any negative values
             rangeHLQ.append(temp2)
             # range for E
             # range for H
             range3 = get_rangebeta(sel1['PE_LS'], sel1['QE_LS'],
                                    prob=percrange, maxlim=sel1['ElimLS'])
             temp3 = [pls-range3[0], range3[1]-pls]
-            temp3[0][temp3[0]<0.] = 0
+            temp3[0][temp3[0] < 0.] = 0
             rangeELS.append(temp3)
             range4 = get_rangebeta(sel1['PE_LQ'], sel1['QE_LQ'],
                                    prob=percrange, maxlim=sel1['ElimLQ'])
             temp4 = [plq-range4[0], range4[1]-plq]
-            temp4[0][temp4[0]<0.] = 0  # zero out any negative values
+            temp4[0][temp4[0] < 0.] = 0  # zero out any negative values
             rangeELQ.append(temp4)
 
     # Plot of changes over time to each alert level
@@ -1330,7 +1331,8 @@ def plot_evolution(database, starttime=None, endtime=None,
            (len(resL) > 1 or 'green' not in resL):
             if len(resS) > 1 or not changeonly:
                 if percrange is not None:
-                    ax1.errorbar(np.array(delays)/3600., hls, yerr=rangeHLS[i], label=des)
+                    ax1.errorbar(np.array(delays)/3600., hls,
+                                 yerr=rangeHLS[i], label=des)
                     ax2.errorbar(np.array(delays)/3600., pls, yerr=rangeELS[i])
                     ax1.set_xscale("log", nonposx='clip')
                     ax1.set_yscale("log", nonposy='clip')
@@ -1346,7 +1348,8 @@ def plot_evolution(database, starttime=None, endtime=None,
                 lsplot += 1
             if len(resL) > 1 or not changeonly:
                 if percrange is not None:
-                    ax3.errorbar(np.array(delays)/3600., hlq, yerr=rangeHLQ[i], label=des)
+                    ax3.errorbar(np.array(delays)/3600., hlq, yerr=rangeHLQ[i],
+                                 label=des)
                     ax4.errorbar(np.array(delays)/3600., plq, yerr=rangeELQ[i])
                     ax3.set_xscale("log", nonposx='clip')
                     ax3.set_yscale("log", nonposy='clip')
@@ -1624,104 +1627,122 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
 
     # Fill in plot
     i = 0
+    offset = 0
     for index, row in success.iterrows():
         xvalsHLS, yvalsHLS, probsHLS = get_pdfbeta(row['PH_LS'], row['QH_LS'],
-                                                   lshbins, maxlim=row['HlimLS'])
+                                                   lshbins,
+                                                   maxlim=row['HlimLS'])
         if bars:
             offset = i * 0.1
             valmin, valmax = get_rangebeta(row['PH_LS'], row['QH_LS'],
-                                           prob=percrange, maxlim=row['HlimLS'])
-            axes[0,0].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+                                           prob=percrange,
+                                           maxlim=row['HlimLS'])
+            axes[0, 0].hlines(offset+0.1, valmin, valmax,
+                              color=str(colors[i]), lw=2)
         else:
             offset = 0.
-            axes[0,0].plot(xvalsHLS, yvalsHLS/np.max(yvalsHLS), color=str(colors[i]))
-        axes[0,0].plot(np.max((lshbins[0], row['HaggLS'])), offset, marker=7, color=str(colors[i]),
-                       markersize=11)
+            axes[0, 0].plot(xvalsHLS, yvalsHLS/np.max(yvalsHLS),
+                            color=str(colors[i]))
+        axes[0, 0].plot(np.max((lshbins[0], row['HaggLS'])), offset, marker=7,
+                        color=str(colors[i]), markersize=11)
         #axes[0,0].text(row['HaggLS'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
         xvalsHLQ, yvalsHLQ, probsHLQ = get_pdfbeta(row['PH_LQ'], row['QH_LQ'],
-                                                   lqhbins, maxlim=row['HlimLQ'])
+                                                   lqhbins,
+                                                   maxlim=row['HlimLQ'])
         if bars:
             valmin, valmax = get_rangebeta(row['PH_LQ'], row['QH_LQ'],
-                                           prob=percrange, maxlim=row['HlimLQ'])
-            axes[0,1].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+                                           prob=percrange,
+                                           maxlim=row['HlimLQ'])
+            axes[0, 1].hlines(offset+0.1, valmin, valmax,
+                              color=str(colors[i]), lw=2)
         else:
-            axes[0,1].plot(xvalsHLQ, yvalsHLQ/np.max(yvalsHLQ), color=str(colors[i]))
-        axes[0,1].plot(np.max((lqhbins[0], row['HaggLQ'])), offset, marker=7, color=str(colors[i]),
-                       markersize=11)
+            axes[0, 1].plot(xvalsHLQ, yvalsHLQ/np.max(yvalsHLQ),
+                            color=str(colors[i]))
+        axes[0, 1].plot(np.max((lqhbins[0], row['HaggLQ'])), offset, marker=7,
+                        color=str(colors[i]), markersize=11)
         #axes[0,1].text(row['HaggLQ'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
         xvalsELS, yvalsELS, probsELS = get_pdfbeta(row['PE_LS'], row['QE_LS'],
-                                                   lspbins, maxlim=row['ElimLS'])
+                                                   lspbins,
+                                                   maxlim=row['ElimLS'])
         if bars:
             valmin, valmax = get_rangebeta(row['PE_LS'], row['QE_LS'],
-                                           prob=percrange, maxlim=row['ElimLS'])
-            axes[1,0].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+                                           prob=percrange,
+                                           maxlim=row['ElimLS'])
+            axes[1, 0].hlines(offset+0.1, valmin, valmax,
+                              color=str(colors[i]), lw=2)
         else:
-            axes[1,0].plot(xvalsELS, yvalsELS/np.max(yvalsELS), color=str(colors[i]))
-        axes[1,0].plot(np.max((lspbins[0], row['ExpPopLS'])), offset, marker=7, color=str(colors[i]),
-                       markersize=11)
+            axes[1, 0].plot(xvalsELS, yvalsELS/np.max(yvalsELS),
+                            color=str(colors[i]))
+        axes[1, 0].plot(np.max((lspbins[0], row['ExpPopLS'])), offset,
+                        marker=7, color=str(colors[i]), markersize=11)
         #axes[1,0].text(row['ExpPopLS'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
         xvalsELQ, yvalsELQ, probsELQ = get_pdfbeta(row['PE_LQ'], row['QE_LQ'],
-                                                   lqpbins, maxlim=row['ElimLQ'])
+                                                   lqpbins,
+                                                   maxlim=row['ElimLQ'])
         if bars:
             valmin, valmax = get_rangebeta(row['PE_LQ'], row['QE_LQ'],
-                                           prob=percrange, maxlim=row['ElimLQ'])
-            axes[1,1].hlines(offset+0.1, valmin, valmax, color=str(colors[i]), lw=2)
+                                           prob=percrange,
+                                           maxlim=row['ElimLQ'])
+            axes[1, 1].hlines(offset+0.1, valmin, valmax,
+                              color=str(colors[i]), lw=2)
         else:
-            axes[1,1].plot(xvalsELQ, yvalsELQ/np.max(yvalsELQ), color=str(colors[i]))
-        axes[1,1].plot(np.max((lqpbins[0], row['ExpPopLQ'])), offset, marker=7, color=str(colors[i]),
-                       markersize=11)
+            axes[1, 1].plot(xvalsELQ, yvalsELQ/np.max(yvalsELQ),
+                            color=str(colors[i]))
+        axes[1, 1].plot(np.max((lqpbins[0], row['ExpPopLQ'])), offset,
+                        marker=7, color=str(colors[i]), markersize=11)
         #axes[1,1].text(row['ExpPopLQ'], 0.13, '%1.0f' % row['version'],
         #               color=str(colors[i]), ha='center')
 
         i += 1
     
     if not bars:
-        offset=0.9
+        offset = 0.9
     elif offset < 0.7:
         offset = 0.7
     
     if nvers == 1:
         vals = [0.125, 0.375, 0.625, 0.875]
         for i in range(4):
-            axes[0,0].text(vals[i], 0.1, '%.2f' % probsHLS[i], ha='center',
-                           va='center', transform=axes[0,0].transAxes)
-            axes[0,1].text(vals[i], 0.1, '%.2f' % probsHLQ[i], ha='center',
-                           va='center', transform=axes[0,1].transAxes)
-            axes[1,0].text(vals[i], 0.1, '%.2f' % probsELS[i], ha='center',
-                           va='center', transform=axes[1,0].transAxes)
-            axes[1,1].text(vals[i], 0.1, '%.2f' % probsELQ[i], ha='center',
-                           va='center', transform=axes[1,1].transAxes)
+            axes[0, 0].text(vals[i], 0.1, '%.2f' % probsHLS[i], ha='center',
+                            va='center', transform=axes[0, 0].transAxes)
+            axes[0, 1].text(vals[i], 0.1, '%.2f' % probsHLQ[i], ha='center',
+                            va='center', transform=axes[0, 1].transAxes)
+            axes[1, 0].text(vals[i], 0.1, '%.2f' % probsELS[i], ha='center',
+                            va='center', transform=axes[1, 0].transAxes)
+            axes[1, 1].text(vals[i], 0.1, '%.2f' % probsELQ[i], ha='center',
+                            va='center', transform=axes[1, 1].transAxes)
 
     alertcolors = ['g', 'y', 'orange', 'r']
     for i in range(4):
-        axes[0,0].add_patch(patches.Rectangle((lshbins[i], -0.3),
-                            lshbins[i+1] - lshbins[i], 0.3,
-                            color=alertcolors[i], ec='k'))
-        axes[1,0].add_patch(patches.Rectangle((lspbins[i], -0.3),
-                            lspbins[i+1] - lspbins[i], 0.3,
-                            color=alertcolors[i], ec='k'))
-        axes[0,1].add_patch(patches.Rectangle((lqhbins[i], -0.3),
-                            lqhbins[i+1] - lqhbins[i], 0.3,
-                            color=alertcolors[i], ec='k'))
-        axes[1,1].add_patch(patches.Rectangle((lqpbins[i], -0.3),
-                            lqpbins[i+1] - lqpbins[i], 0.3,
-                            color=alertcolors[i], ec='k'))
+        axes[0, 0].add_patch(patches.Rectangle((lshbins[i], -0.3),
+                             lshbins[i+1] - lshbins[i], 0.3,
+                             color=alertcolors[i], ec='k'))
+        axes[1, 0].add_patch(patches.Rectangle((lspbins[i], -0.3),
+                             lspbins[i+1] - lspbins[i], 0.3,
+                             color=alertcolors[i], ec='k'))
+        axes[0, 1].add_patch(patches.Rectangle((lqhbins[i], -0.3),
+                             lqhbins[i+1] - lqhbins[i], 0.3,
+                             color=alertcolors[i], ec='k'))
+        axes[1, 1].add_patch(patches.Rectangle((lqpbins[i], -0.3),
+                             lqpbins[i+1] - lqpbins[i], 0.3,
+                             color=alertcolors[i], ec='k'))
     
-    axes[0,0].set_xlabel(r'Estimated Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
-    axes[1,0].set_xlabel('Estimated Population Exposure', fontsize=fontsize)
-    axes[0,1].set_xlabel(r'Estimated Area Exposed to Hazard ($km^2$)', fontsize=fontsize)
-    axes[1,1].set_xlabel('Estimated Population Exposure', fontsize=fontsize)
-    axes[0,0].set_title('Landslides', fontsize=fontsize+2)
-    axes[0,1].set_title('Liquefaction', fontsize=fontsize+2)
+    axes[0, 0].set_xlabel(r'Estimated Area Exposed to Hazard ($km^2$)',
+                          fontsize=fontsize)
+    axes[1, 0].set_xlabel('Estimated Population Exposure', fontsize=fontsize)
+    axes[0, 1].set_xlabel(r'Estimated Area Exposed to Hazard ($km^2$)',
+                          fontsize=fontsize)
+    axes[1, 1].set_xlabel('Estimated Population Exposure', fontsize=fontsize)
+    axes[0, 0].set_title('Landslides', fontsize=fontsize+2)
+    axes[0, 1].set_title('Liquefaction', fontsize=fontsize+2)
 
-
-    axes[0,0].set_xlim([lshbins[0],lshbins[-1]])
-    axes[1,0].set_xlim([lspbins[0],lspbins[-1]])
-    axes[0,1].set_xlim([lqhbins[0],lqhbins[-1]])
-    axes[1,1].set_xlim([lqpbins[0],lqpbins[-1]])
+    axes[0, 0].set_xlim([lshbins[0], lshbins[-1]])
+    axes[1, 0].set_xlim([lspbins[0], lspbins[-1]])
+    axes[0, 1].set_xlim([lqhbins[0], lqhbins[-1]])
+    axes[1, 1].set_xlim([lqpbins[0], lqpbins[-1]])
     fig.canvas.draw()
     for ax in axes:
         for ax1 in ax:

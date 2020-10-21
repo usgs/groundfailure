@@ -20,8 +20,7 @@ from gfail.godt import godt2008
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
-    text_to_json, write_floats,
-    savelayers)
+    text_to_json, savelayers)
 from libcomcat.search import get_event_by_id
 
 
@@ -74,7 +73,7 @@ def run_gfail(args):
         else:
             outdir = args.output_filepath
 
-        if (hdf5 or gis or kmz):
+        if hdf5 or gis or kmz:
             if not os.path.exists(outdir):
                 os.makedirs(outdir)
 
@@ -87,7 +86,7 @@ def run_gfail(args):
                 # cleanup = True  # Be sure to delete it after
             else:
                 raise NameError('Could not find "%s" as a file or a valid url'
-                                % (shakefile))
+                                % shakefile)
         eventid = getHeaderData(shakefile)[0]['event_id']
 
         # Get entire path so won't break if running gfail with relative path
@@ -128,12 +127,14 @@ def run_gfail(args):
         if args.set_bounds is None:
             sd = ShakeGrid.getFileGeoDict(shakefile)
             if sd.xmin > sd.xmax:
-                print('\nShakeMap crosses 180/-180 line, setting bounds so only '
-                      'side with more land area is run')
+                print('\nShakeMap crosses 180/-180 line, setting bounds so '
+                      'only side with more land area is run')
                 if sd.xmax + 180. > 180-sd.xmin:
-                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180., sd.xmax)
+                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180.,
+                                                     sd.xmax)
                 else:
-                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin, 180.)
+                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin,
+                                                     180.)
                 print('Bounds applied: %s' % set_bounds)
             else:
                 set_bounds = args.set_bounds
@@ -426,8 +427,6 @@ def getGridURL(gridurl, fname=None):
         file object corresponding to the url.
     """
 
-    f = None
-    fh = None
     with urllib.request.urlopen(gridurl) as fh:
         data = fh.read().decode('utf-8')
         if fname is None:
@@ -456,8 +455,8 @@ def getShakefiles(event, outdir, uncert=False, version=None,
     # If args.event is a url to a shakemap, download from that url
     if isURL(event):
         if version is not None or source != 'preferred':
-            raise Exception('Cannot set shakemap version or source when URL of '
-                            'gridfile is provided')
+            raise Exception('Cannot set shakemap version or source when URL '
+                            'of gridfile is provided')
         try:
             shakefile = getGridURL(event, shakefile)
         except Exception as e:
@@ -511,7 +510,7 @@ def getUncert(shakemap, fname=None):
     shakemap
 
     Args:
-        detail: libcomcat ShakeMap product class for the event and version
+        shakemap: libcomcat ShakeMap product class for the event and version
         fname (str): file location name, if None, will create a temporary file
 
     Returns:
@@ -559,13 +558,13 @@ def isURL(gridurl):
         bool: True if gridurl is a valid url, False otherwise.
     """
 
-    isURL = False
+    is_url = False
     try:
         urllib.request.urlopen(gridurl)
-        isURL = True
+        is_url = True
     except:
         pass
-    return isURL
+    return is_url
 
 
 def set_default_paths(args):

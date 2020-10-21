@@ -9,12 +9,12 @@ from validate import Validator, VdtTypeError
 
 
 def __getCustomValidator():
-    '''
+    """
     Return a Validator object with the custom types we have defined here.
 
     Returns:
         Validator object with custom types embedded.
-    '''
+    """
     fdict = {
         'file_type': __file_type,
         'path_type': __path_type,
@@ -25,7 +25,7 @@ def __getCustomValidator():
 
 
 def __file_type(value):
-    '''
+    """
     Describes a file_type from the ShakeMap config spec.
     A file_type object is simply a string that must be a valid file on the
     system.
@@ -35,14 +35,14 @@ def __file_type(value):
 
     Returns:
         str: Input string, if a valid file name.
-    '''
+    """
     if not os.path.isfile(value):
         raise VdtTypeError(value)
     return value
 
 
 def __path_type(value):
-    '''
+    """
     Describes a path_type from the groundfailure config spec.
     A path_type object is simply a string that must be a valid file OR
     directory on the system.
@@ -52,7 +52,7 @@ def __path_type(value):
 
     Returns:
         str: Input string, if a valid file/directory name.
-    '''
+    """
     if not os.path.isfile(value) and not os.path.isdir(value):
         raise VdtTypeError(value)
     return value
@@ -73,7 +73,7 @@ def __filterResults(result):
             else:
                 if not value:
                     errormsg += ("Parameter %s was not specified correctly.\n"
-                                 % (key))
+                                 % key)
 
     return errormsg
 
@@ -96,46 +96,47 @@ def correct_config_filepaths(input_path, config):
     """
 
     # Pull all other filepaths that need editing
-    for keys in config.keys():
-        outer_loop = keys
-        for keys in config[outer_loop].keys():
-            second_loop = keys
-            if hasattr(config[outer_loop][second_loop], 'keys') is False:
-                if second_loop == 'slopefile' or second_loop == 'file':
-                    path_to_correct = config[outer_loop][second_loop]
-                    config[outer_loop][second_loop] = \
+    for keys1 in config.keys():
+        outer = keys1
+        for keys2 in config[outer].keys():
+            second = keys2
+            if hasattr(config[outer][second], 'keys') is False:
+                if second == 'slopefile' or second == 'file':
+                    path_to_correct = config[outer][second]
+                    config[outer][second] = \
                         os.path.join(input_path, path_to_correct)
             else:
-                for keys in config[outer_loop][second_loop].keys():
-                    third_loop = keys
-                    if hasattr(config[outer_loop][second_loop][third_loop],
+                for keys3 in config[outer][second].keys():
+                    third = keys3
+                    if hasattr(config[outer][second][third],
                                'keys') is False:
-                        if third_loop == 'file' or third_loop == 'filepath':
+                        if third == 'file' or third == 'filepath':
                             path_to_correct = \
-                                config[outer_loop][second_loop][third_loop]
-                            config[outer_loop][second_loop][third_loop] = \
+                                config[outer][second][third]
+                            config[outer][second][third] = \
                                 os.path.join(input_path, path_to_correct)
                     else:
-                        for keys in config[outer_loop][second_loop][third_loop].keys():
-                            fourth_loop = keys
-                            if hasattr(config[outer_loop][second_loop][third_loop][fourth_loop], 'keys') is False:
-                                if fourth_loop == 'file' or fourth_loop == 'filepath':
-                                    path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop]
-                                    config[outer_loop][second_loop][third_loop][fourth_loop] = os.path.join(
+                        for keys4 in config[outer][second][third].keys():
+                            fourth = keys4
+                            if hasattr(config[outer][second][third][fourth],
+                                       'keys') is False:
+                                if fourth == 'file' or fourth == 'filepath':
+                                    path_to_correct = config[outer][second][third][fourth]
+                                    config[outer][second][third][fourth] = os.path.join(
                                         input_path, path_to_correct)
                             else:
-                                for keys in config[outer_loop][second_loop][third_loop][fourth_loop].keys():
-                                    fifth_loop = keys
-                                    if fifth_loop == 'file' or fifth_loop == 'filepath':
-                                        path_to_correct = config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop]
-                                        config[outer_loop][second_loop][third_loop][fourth_loop][fifth_loop] = os.path.join(
+                                for keys5 in config[outer][second][third][fourth].keys():
+                                    fifth = keys5
+                                    if fifth == 'file' or fifth == 'filepath':
+                                        path_to_correct = config[outer][second][third][fourth][fifth]
+                                        config[outer][second][third][fourth][fifth] = os.path.join(
                                             input_path, path_to_correct)
 
     return config
 
 
 def validate(configfile, inputfilepath=None):
-    '''
+    """
     Return a validated config object.
 
     Args:
@@ -145,7 +146,7 @@ def validate(configfile, inputfilepath=None):
     Returns:
         A validated ConfigObj object or a dictionary of which
         section/parameters failed validation.
-    '''
+    """
     thispath = os.path.dirname(os.path.abspath(__file__))
     configspec = os.path.join(thispath, 'configspec.ini')
     config = ConfigObj(configfile, configspec=configspec)
@@ -158,5 +159,3 @@ def validate(configfile, inputfilepath=None):
     else:
         errormsg = __filterResults(result)
         raise VdtTypeError(errormsg)
-
-    return config
