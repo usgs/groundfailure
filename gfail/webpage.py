@@ -11,6 +11,7 @@ import numpy as np
 import os
 from configobj import ConfigObj
 import tempfile
+from datetime import datetime, timedelta
 
 # third party imports
 import simplekml
@@ -49,11 +50,11 @@ DFBINS = [0.002, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5]
 
 def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
            shakethreshtype='pga', shakethresh=10.,
-           prefLS='Nowicki Jessee and others (2017)',
+           prefLS='Nowicki Jessee and others (2018)',
            prefLQ='Zhu and others (2017)',
            pop_file=None, defaultcolors=True, point=True,
            pager_alert='', eventsource='', eventsourcecode='',
-           createpngs=True):
+           createpngs=True, gf_version=1, pdlcall=False):
     """Create all files needed for product page creation
     Assumes gfail has been run already with -w flag
 
@@ -71,7 +72,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             for pgv, float for mmi. Used for Hagg and Exposure computation.
         prefLS (str): shortref of "preferred" landslide model.
         prefLQ (str): shortref of "preferred" liquefaction model.
-        pop_filt (str): file path to population file used to compute
+        pop_file (str): file path to population file used to compute
             population-based alert levels.
         defaultcolors (bool): If True, will use DFCOLORS for all layers instead
             of determining new ones. This will crash if any of the layers have
@@ -79,6 +80,12 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
         point (bool): if True, event is a point source and warning should be
             displayed
         pager_alert (str): PAGER alert level, e.g., 'green'. 'pending', ...
+        eventsource (str): net id (e.g., 'us')
+        eventsourcecode (str): event code (e.g. '123456pq')
+        createpngs (bool): if True, create pngs for web map
+        gf_version (int): ground failure version
+        pdlcall (bool): True if callgf was called by pdl automatically,
+            false if called manually (or otherwise).
 
     Returns:
         Files that need to be sent to comcat for hazdev to create the product
@@ -134,7 +141,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 # Since logistic models can't equal one, need to eliminate
                 # placeholder zeros before computing stats
                 if 'jessee' in maplayer['model']['description']['name'].lower():
-                    id1 = 'jessee_2017'
+                    id1 = 'jessee_2018'
                     probthresh = 0.002
                     maxP = 0.26
                 else:
@@ -199,7 +206,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             ls_pop_1std_range = None
             ls_pop_2std_range = None
             
-            if stdgrid2D is not None and title==prefLS:
+            if stdgrid2D is not None and title == prefLS:
                 ph = stats['p_hagg_0.10g']
                 qh = stats['q_hagg_0.10g']
                 pe = stats['p_exp_0.10g']
@@ -216,15 +223,17 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 ls_ep = float("%.4f" % pe)
                 ls_eq = float("%.4f" % qe)
 
-                #Add bar uncertainty extents here using p and q if applicable
-                if ph > 0. and qh > 0.:  # make sure not a non-event/placeholder
+                # Add bar uncertainty extents here using p and q if applicable
+                # make sure not a non-event/placeholder
+                if ph > 0. and qh > 0.:
                     h68 = get_rangebeta(ph, qh, prob=0.6827, minlim=0.,
                                         maxlim=hmax)
                     h95 = get_rangebeta(ph, qh, prob=0.9545, minlim=0.,
                                         maxlim=hmax)
                     ls_haz_1std_range = h68
                     ls_haz_2std_range = h95
-                if pe > 0. and qe > 0.:  # make sure not a non-event/placeholder
+                # make sure not a non-event/placeholder
+                if pe > 0. and qe > 0.:
                     e68 = get_rangebeta(pe, qe, prob=0.6827, minlim=0.,
                                         maxlim=emax)
                     e95 = get_rangebeta(pe, qe, prob=0.9545, minlim=0.,
@@ -277,7 +286,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'parameters': metadata['parameters'],
                 'zoomext': lsext
             }
-
+            # Replace any Nans with Nones so info.json is valid
+            for key in edict['probability']:
+                if np.isscalar(edict['probability'][key]):
+                    if np.isnan(edict['probability'][key]):
+                        edict['probability'][key] = None
             lsmodels.append(edict)
 
         elif 'liquefaction' in mdict['parameters']['modeltype'].lower():
@@ -297,6 +310,10 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 id1 = 'zhu_2017_general'
                 probthresh = 0.005
                 maxP = 0.487
+            else:
+                probthresh = None
+                maxP = 1.
+                id1 = None
 
             if 'std' in list(maplayer.keys()):
                 stdgrid2D = maplayer['std']['grid']
@@ -356,7 +373,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             lq_pop_1std_range = None
             lq_pop_2std_range = None
             
-            if stdgrid2D is not None and title==prefLQ:
+            if stdgrid2D is not None and title == prefLQ:
                 ph = stats['p_hagg_0.10g']
                 qh = stats['q_hagg_0.10g']
                 pe = stats['p_exp_0.10g']
@@ -373,15 +390,17 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 lq_ep = float("%.4f" % pe)
                 lq_eq = float("%.4f" % qe)
 
-                #Add bar uncertainty extents here using p and q if applicable
-                if ph > 0. and qh > 0.:  # make sure not a non-event/placeholder
+                # Add bar uncertainty extents here using p and q if applicable
+                # make sure not a non-event/placeholder
+                if ph > 0. and qh > 0.:
                     h68 = get_rangebeta(ph, qh, prob=0.6827, minlim=0.,
                                         maxlim=hmax)
                     h95 = get_rangebeta(ph, qh, prob=0.9545, minlim=0.,
                                         maxlim=hmax)
                     lq_haz_1std_range = h68
                     lq_haz_2std_range = h95
-                if pe > 0. and qe > 0.:  # make sure not a non-event/placeholder
+                # make sure not a non-event/placeholder
+                if pe > 0. and qe > 0.:
                     e68 = get_rangebeta(pe, qe, prob=0.6827, minlim=0.,
                                         maxlim=emax)
                     e95 = get_rangebeta(pe, qe, prob=0.9545, minlim=0.,
@@ -435,7 +454,11 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 'parameters': metadata['parameters'],
                 'zoomext': lqext
             }
-
+            # Replace any Nans with Nones so info.json is valid
+            for key in edict['probability']:
+                if np.isscalar(edict['probability'][key]):
+                    if np.isnan(edict['probability'][key]):
+                        edict['probability'][key] = None
             lqmodels.append(edict)
 
         else:
@@ -496,16 +519,15 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             lq['population_alert']['color'] = 'pending'
 
     # Create info.json
-    infojson = create_info(outfolder, lsmodels, lqmodels, eventsource,
-                           eventsourcecode, point)
+    infojson = create_info(outfolder, lsmodels, lqmodels, gf_version,
+                           eventsource, eventsourcecode, point, pdlcall)
     filenames.append(infojson)
 
     return filenames
 
 
 def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
-               lsmask=0.002, lqmask=0.005, legends=False,
-               eventsource='', eventsourcecode=''):
+               lsmask=0.002, lqmask=0.005, legends=False):
     """
     Creates transparent PNG file for website.
 
@@ -531,11 +553,11 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
     files = os.listdir(event_dir)
     if lsmodels is None:
         # Read in the "preferred" model for landslides
-        ls_mod_file = [f for f in files if 'jessee_2017.hdf5' in f]
+        ls_mod_file = [f for f in files if 'jessee_2018.hdf5' in f]
         if len(ls_mod_file) == 1:
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
-            filesnippet = 'jessee_2017'
+            filesnippet = 'jessee_2018'
             out = make_rgba(ls_mod['model']['grid'], mask=lsmask,
                             mercator=mercator, levels=DFBINS,
                             colorlist=DFCOLORS)
@@ -661,8 +683,9 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
     return filenames
 
 
-def create_info(event_dir, lsmodels, lqmodels,
-                eventsource='', eventsourcecode='', point=True):
+def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
+                eventsource='', eventsourcecode='', point=True,
+                pdlcall=False):
     """Create info.json for ground failure product.
 
     Args:
@@ -672,8 +695,12 @@ def create_info(event_dir, lsmodels, lqmodels,
             the hdf5 files for the preferred model and will create this
             dictionary and will apply default colorbars and bins.
         lqmodels (list): Same as above for liquefaction.
+        gf_version (int): ground failure version
+        eventsource (str): net id (e.g., 'us')
+        eventsourcecode (str): event code (e.g. '123456pq')
         point (bool): if True, event is a point source and warning should be
             displayed
+        pdlcall (bool): True if callgf was called by pdl automatically
 
     Returns:
         creates info.json for this event
@@ -687,6 +714,10 @@ def create_info(event_dir, lsmodels, lqmodels,
 
     # Get all info from dictionaries of preferred events, add in extent
     # and filename
+    ls_alert = None
+    lq_alert = None
+    lsext = None
+    lqext = None
     for lsm in lsmodels:
         # Add extent and filename for preferred model
         if lsm['preferred']:
@@ -709,6 +740,13 @@ def create_info(event_dir, lsmodels, lqmodels,
             # Remove any alert keys
             rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
                       'population_alert', 'alert', 'hazard_alert']
+            # Deal with extent
+            try:
+                with open(os.path.join(event_dir, lsm['extent'])) as ff:
+                    extent1 = json.load(ff)
+            except:
+                extent1 = None
+            lsm['extent'] = extent1
         for key in rmkeys:
             if key in lsm:
                 lsm.pop(key)
@@ -734,6 +772,13 @@ def create_info(event_dir, lsmodels, lqmodels,
             # Remove any alert keys
             rmkeys = ['bin_edges', 'bin_colors', 'zoomext',
                       'population_alert', 'alert', 'hazard_alert']
+            # Deal with extent
+            try:
+                with open(os.path.join(event_dir, lqm['extent'])) as ff:
+                    extent1 = json.load(ff)
+            except:
+                extent1 = None
+            lqm['extent'] = extent1
         for key in rmkeys:
             if key in lqm:
                 lqm.pop(key)
@@ -746,9 +791,6 @@ def create_info(event_dir, lsmodels, lqmodels,
 
     # Is this a point source?
     # point = is_grid_point_source(shake_grid)
-    # Temporarily hard code this until we can get a better solution via
-    # new grid.xml attributes.
-    #point = True
 
     net = eventsource
     code = eventsourcecode
@@ -778,6 +820,13 @@ def create_info(event_dir, lsmodels, lqmodels,
     if point and event_dict['magnitude'] > 6.5:
         rupture_warning = True
 
+    # Figure out if realtime (pdl run and same week as event)
+    if pdlcall and datetime.utcnow() - event_dict['event_timestamp'] < \
+            timedelta(days=7):
+        realtime = True
+    else:
+        realtime = False
+
     # Create info.json for website rendering and metadata purposes
     info_dict = {
         'Summary': {
@@ -789,14 +838,18 @@ def create_info(event_dir, lsmodels, lqmodels,
             'lat': event_dict['lat'],
             'lon': event_dict['lon'],
             'event_url': event_url,
+            'gf_version': gf_version,
+            'gf_time': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
             'shakemap_version': sm_dict['shakemap_version'],
+            'shakemap_source': sm_dict['shakemap_originator'],
+            'shakemap_time': sm_dict['process_timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ'),
             'rupture_warning': rupture_warning,
             'point_source': point,
-            'zoom_extent': [xmin, xmax, ymin, ymax]
+            'zoom_extent': [xmin, xmax, ymin, ymax],
+            'realtime': realtime
         },
         'Landslides': lsmodels,
         'Liquefaction': lqmodels
-
     }
 
     info_file = os.path.join(event_dir, 'info.json')
@@ -813,7 +866,7 @@ def make_legends(lqmin=0.005, lsmin=0.002, outfolder=None,
     Args:
         lqmin (float): minimum visible value of liquefaction probability
         lsmin (float): same as above for landslides
-        outfolder (float): folder to place pngs of legends
+        outfolder (str): folder to place pngs of legends
         orientation (str): orientation of colorbar, 'horizontal' or 'vertical'
         transparent (bool): if True, background will be transparent
 
@@ -833,11 +886,12 @@ def make_legends(lqmin=0.005, lsmin=0.002, outfolder=None,
 
     make_legend(binedges, DFCOLORS, filename=lqfilename,
                 orientation=orientation, title='Liquefaction probability',
-                mask=lqmin, transparent=transparent)
+                transparent=transparent)
 
     # --------------------------
     # Make landslide legend
-
+    binedges2 = DFBINS
+    binedges2[0] = lsmin
     if outfolder is None:
         lsfilename = 'legend_landslide.png'
     else:
@@ -845,7 +899,7 @@ def make_legends(lqmin=0.005, lsmin=0.002, outfolder=None,
 
     make_legend(DFBINS, DFCOLORS, filename=lqfilename,
                 orientation=orientation, title='Landslide probability',
-                mask=lsmin, transparent=transparent)
+                transparent=transparent)
 
     return lsfilename, lqfilename
 
@@ -868,7 +922,8 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
         outfile (str): File extension
         mask (float): make all cells below this value transparent
         levels (array): list of bin edges for each color, must be same length
-        colorlist (array): list of colors for each bin, should be length one less than levels
+        colorlist (array): list of colors for each bin, should be length one
+            less than levels
 
     Returns:
         kmz file
@@ -912,10 +967,12 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     doc.lookat.latitude = np.mean([boundaries1['ymin'], boundaries1['ymax']])
     doc.lookat.longitude = np.mean([boundaries1['xmax'], boundaries1['xmin']])
     doc.lookat.altitude = 0.
-    doc.lookat.range = (boundaries1['ymax']-boundaries1['ymin']) * 111. * 1000.  # dist in m from point
+    # dist in m from point
+    doc.lookat.range = (boundaries1['ymax']-boundaries1['ymin']) * 111. * 1000.
     doc.description = 'USGS near-real-time earthquake-triggered %s model for \
-                       event id %s' % (maplayer['description']['parameters'] \
-                       ['modeltype'], maplayer['description']['event_id'])
+                       event id %s' % (maplayer['description']['parameters']
+                                       ['modeltype'], maplayer['description']
+                                       ['event_id'])
 
     prob = L.newgroundoverlay(name=maplayer['label'])
     prob.icon.href = 'files/%s.tiff' % basename
@@ -932,14 +989,16 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     size1 = simplekml.Size(x=0.3, xunits=simplekml.Units.fraction)
     leg = L.newscreenoverlay(name='Legend', size=size1)
     leg.icon.href = 'files/%s' % legshort
-    leg.screenxy = simplekml.ScreenXY(x=0.2, y=0.05, xunits=simplekml.Units.fraction,
+    leg.screenxy = simplekml.ScreenXY(x=0.2, y=0.05,
+                                      xunits=simplekml.Units.fraction,
                                       yunits=simplekml.Units.fraction)
     L.addfile(legfile)
 
     size2 = simplekml.Size(x=0.15, xunits=simplekml.Units.fraction)
     icon = L.newscreenoverlay(name='USGS', size=size2)
     icon.icon.href = 'files/USGS_ID_white.png'
-    icon.screenxy = simplekml.ScreenXY(x=0.8, y=0.95, xunits=simplekml.Units.fraction,
+    icon.screenxy = simplekml.ScreenXY(x=0.8, y=0.95,
+                                       xunits=simplekml.Units.fraction,
                                        yunits=simplekml.Units.fraction)
     L.addfile(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            os.pardir, 'content', 'USGS_ID_white.png'))
@@ -948,6 +1007,7 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     return filename
 
 
+# noinspection PyArgumentList
 def get_zoomextent(grid, propofmax=0.3):
     """
     Get the extent that contains all values with probabilities exceeding
@@ -1018,8 +1078,8 @@ def make_rgba(grid2D, levels, colorlist, mask=None,
     
     Args:
         grid2D: Mapio Grid2D object of result to mape 
-        levels (array): list of bin edges for each color, must be same length
-        colorlist (array): list of colors for each bin, should be length one
+        levels (list): list of bin edges for each color, must be same length
+        colorlist (list): list of colors for each bin, should be length one
             less than levels
         mask (float): mask all values below this value
         mercator (bool): project to web mercator (needed for leaflet, not
@@ -1066,8 +1126,8 @@ def make_legend(levels, colorlist, filename=None, orientation='horizontal',
 
     Args:
 
-        levels (array): list of bin edges for each color, must be same length
-        colorlist (array): list of colors for each bin, should be length one
+        levels (list): list of bin edges for each color, must be same length
+        colorlist (list): list of colors for each bin, should be length one
             less than levels
         filename (str): File extension of legend file
         orientation (str): orientation of colorbar, 'horizontal' or 'vertical'
@@ -1151,13 +1211,13 @@ def make_legend(levels, colorlist, filename=None, orientation='horizontal',
         plt.show()
 
 
-def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, logscale=None,
-                alpha=None):
+def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
+                logscale=None, alpha=None):
     """Get colors that will be used for all colorbars from reference grid
 
     Args:
-        sync(str): If False, will exit program, else corresponds to the shortref
-            of the model which should serve as the template for
+        sync(str): If False, will exit program, else corresponds to the
+            shortref of the model which should serve as the template for
             the colorbars used by all other models. All other models must
             have the exact same number of bins
         plotorder (list): List of keys of shortrefs of the grids that will be
@@ -1165,17 +1225,15 @@ def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, l
         lims (*): Nx1 list of tuples or numpy arrays corresponding to
             plotorder defining the bin edges to use for each model.
             Example:
-
             .. code-block:: python
-
                 [(0., 0.1, 0.2, 0.3), np.linspace(0., 1.5, 15)]
-
         colormaps (list): List of strings of matplotlib colormaps (e.g.
             cm.autumn_r) corresponding to plotorder
         defaultcolormap (matplotlib colormap): Colormap to use if
             colormaps is not defined. default cm.CMRmap_r
         logscale (*): If not None, then a list of booleans corresponding to
             plotorder stating whether to use log scaling in determining colors
+        alpha (*): list of transparencies
 
     Returns:
         tuple: (sync, colorlist, lim1) where:
@@ -1208,7 +1266,8 @@ def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, l
                 sum1 += 1
                 continue
         if sum1 > 0:
-            print('Cannot sync colorbars, different number of bins or lims not specified')
+            print('Cannot sync colorbars, different number of bins or lims '
+                  'not specified')
             sync = False
             return sync, None, None
 
@@ -1219,7 +1278,8 @@ def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, l
         #palette1.set_bad(clear_color, alpha=0.0)
         if logs:
             cNorm = colors.LogNorm(vmin=lim1[0], vmax=lim1[-1])
-            midpts = np.sqrt(lim1[1:] * lim1[:-1])  # geometric mean for midpoints
+            # geometric mean for midpoints
+            midpts = np.sqrt(lim1[1:] * lim1[:-1])
         else:
             cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
             midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
@@ -1230,7 +1290,8 @@ def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r, l
         sync = True
 
     else:
-        print('Cannot sync colorbars, different number of bins or lims not specified')
+        print('Cannot sync colorbars, different number of bins or lims not '
+              'specified')
         sync = False
         colorlist = None
         lim1 = None

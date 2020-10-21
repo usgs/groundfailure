@@ -83,14 +83,14 @@ class TempHdf(object):
         Return specified slice of data.
 
         Args:
-            rowstart (int): Starting row index (inclusive), if None, will
+            rowstart (int, None): Starting row index (inclusive), if None, will
                 start at 0.
-            rowend (int): Ending row index (exclusive), if None, will end at
-                last row.
-            colstart (int): Starting column index (inclusive), if None, will
-                start at 0.
-            colend (int): Ending column index (exclusive), if None, will end
-                at last row.
+            rowend (int, None): Ending row index (exclusive), if None, will
+                end at last row.
+            colstart (int, None): Starting column index (inclusive), if None,
+                will start at 0.
+            colend (int, None): Ending column index (exclusive), if None, will
+                end at last row.
             name (str): Name of layer/child name to return.
 
         Returns:

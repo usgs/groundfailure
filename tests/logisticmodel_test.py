@@ -217,7 +217,7 @@ def test_validateUnits():
             'slope': 'degrees',
             'vs30': 'm/s'}
     layers = LM.validateLayers(cmodel)
-    interp = LM.validateUnits(cmodel, layers)
+    interp = LM.validateUnits(cmodel)
     assert data == interp
 
 

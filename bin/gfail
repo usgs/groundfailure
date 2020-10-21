@@ -5,7 +5,6 @@
 import argparse
 from configobj import ConfigObj
 import os
-import sys
 
 from mapio.shake import getHeaderData
 
@@ -111,18 +110,18 @@ if __name__ == '__main__':
     parser.add_argument(
         '-pdl', '--pdl-config', metavar='pdlconfig', nargs='?',
         default=pdl_config,
-        help=('Location of config file for pdl (optional)'))
+        help='Location of config file for pdl (optional)')
     parser.add_argument(
         '-log', '--log-filepath', metavar='logfilepath', nargs='?',
         default=log_filepath,
-        help=('Location of log filepath'))
+        help='Location of log filepath')
     parser.add_argument(
         '-db', '--dbfile', metavar='dbfile', nargs='?', default=dbfile,
-        help=('Location of database'))
+        help='Location of database')
 
     parser.add_argument(
         '-b', '--set-bounds', type=str,
-        metavar=('latmin, latmax, lonmin, lonmax'), nargs='?',
+        metavar='latmin, latmax, lonmin, lonmax', nargs='?',
         help=("Set bounds of model run using four floats in this format, "
               "including quotes: 'latmin, latmax, lonmin, lonmax', default "
               "uses shakemap bounds, 'zoom, parameter, threshold' in single "
@@ -137,6 +136,10 @@ if __name__ == '__main__':
         help='Number of ground motion standard deviations to use '
              '(only used if uncertainty file used)',
         default=1.)
+    parser.add_argument(
+        '-gv', '--gf_version', metavar='gf_version', nargs='?', type=int,
+        help='Ground failure run version, default 1', default=1
+    )
 
     # Binary
 
@@ -201,5 +204,6 @@ if __name__ == '__main__':
 
         pargs.eventsource = network
         pargs.eventsourcecode = eid
+    pargs.pdlcall = False  # Always manual when using gfail
 
     run_gfail(pargs)

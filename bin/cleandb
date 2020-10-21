@@ -10,7 +10,6 @@ import glob
 import shutil
 
 
-
 if __name__ == '__main__':
     """
     Manually remove any "Currently running..." entries from the database
@@ -33,14 +32,13 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         '-d', '--database', metavar='database', nargs='?', default=dbfile,
-        type=str, help=('Location of database'))
+        type=str, help='Location of database')
 
     pargs = parser.parse_args()
     db = pargs.database
     if db is None:
         raise Exception('No database file defined or found in defaults')
-    
-    connection = None
+
     connection = lite.connect(db)
     with connection:
         cursor = connection.cursor()
@@ -70,5 +68,3 @@ if __name__ == '__main__':
                 files = glob.glob(os.path.join(entry.path, '*'))
                 if len(files) == 0:
                     shutil.rmtree(entry.path)
-
-

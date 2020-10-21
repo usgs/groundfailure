@@ -63,10 +63,10 @@ if __name__ == '__main__':
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument(
         '-d', '--database', metavar='database', nargs='?', default=dbfile,
-        type=str, help=('Location of database'))
+        type=str, help='Location of database')
     parser.add_argument(
         '-n', '--numevents', metavar='database', nargs='?', default=None,
-        type=int, help=('Show only the n most recent ground failure runs'))
+        type=int, help='Show only the n most recent ground failure runs')
     parser.add_argument(
         '--starttime', metavar='starttime', nargs='?', default=None,
         help=('Start time of search as string in format recognizable'

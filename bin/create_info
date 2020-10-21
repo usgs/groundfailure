@@ -60,7 +60,7 @@ if __name__ == '__main__':
         configpath = defaults['config_filepath']
         datpath = defaults['data_path']
         lsconf = correct_config_filepaths(datpath,
-                  ConfigObj(os.path.join(configpath, 'jessee_2017.ini')))
+                  ConfigObj(os.path.join(configpath, 'jessee_2018.ini')))
         lqconf = correct_config_filepaths(datpath,
                   ConfigObj(os.path.join(configpath, 'zhu_2017_general.ini')))
         configs = [lsconf, lqconf]

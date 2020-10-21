@@ -118,9 +118,8 @@ def test_zhu2015_web(tmpdir):
         gfail --set-default-paths \
         -d %s/loma_prieta/model_inputs \
         -o [TMPOUT] \
-        -c %s/defaultconfigfiles/models \
-        -m %s/defaultconfigfiles/mapconfig.ini
-    """ % (datadir, upone, upone)
+        -c %s/defaultconfigfiles/models
+    """ % (datadir, upone)
 
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")

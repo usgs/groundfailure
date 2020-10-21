@@ -68,6 +68,8 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
     # PDL properties
     # Get preferred models to extract PDL properties
     lqs = info_dict['Liquefaction']
+    lq_pref = None
+    ls_pref = None
     for lq in lqs:
         if lq['preferred']:
             lq_pref = lq
@@ -109,21 +111,21 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
         ls_pop_alert_std = '"--property-landslide-population-std=%s" ' % \
             ls_pref['population_alert']['std']
         ls_haz_range1s = '"--property-landslide-hazard-1std=%s" ' % \
-            str(ls_pref['probability']['hagg_1std']).replace('[','').replace( ']','')
+            str(ls_pref['probability']['hagg_1std']).replace('[', '').replace(']', '')
         ls_haz_range2s = '"--property-landslide-hazard-2std=%s" ' % \
-            str(ls_pref['probability']['hagg_2std']).replace('[','').replace( ']','')
+            str(ls_pref['probability']['hagg_2std']).replace('[', '').replace(']', '')
         ls_pop_range1s = '"--property-landslide-population-1std=%s" ' % \
-            str(ls_pref['probability']['pop_1std']).replace('[','').replace( ']','')
+            str(ls_pref['probability']['pop_1std']).replace('[', '').replace(']', '')
         ls_pop_range2s = '"--property-landslide-population-2std=%s" ' % \
-            str(ls_pref['probability']['pop_2std']).replace('[','').replace( ']','')
+            str(ls_pref['probability']['pop_2std']).replace('[', '').replace(']', '')
         lq_haz_range1s = '"--property-liquefaction-hazard-1std=%s" ' % \
-            str(lq_pref['probability']['hagg_1std']).replace('[','').replace( ']','')
+            str(lq_pref['probability']['hagg_1std']).replace('[', '').replace(']', '')
         lq_haz_range2s = '"--property-liquefaction-hazard-2std=%s" ' % \
-            str(lq_pref['probability']['hagg_2std']).replace('[','').replace( ']','')
+            str(lq_pref['probability']['hagg_2std']).replace('[', '').replace(']', '')
         lq_pop_range1s = '"--property-liquefaction-population-1std=%s" ' % \
-            str(lq_pref['probability']['pop_1std']).replace('[','').replace( ']','')
+            str(lq_pref['probability']['pop_1std']).replace('[', '').replace(']', '')
         lq_pop_range2s = '"--property-liquefaction-population-2std=%s" ' % \
-            str(lq_pref['probability']['pop_2std']).replace('[','').replace( ']','')
+            str(lq_pref['probability']['pop_2std']).replace('[', '').replace(']', '')
 
         stdstr = lq_haz_alert_std + ls_haz_alert_std + lq_pop_alert_std \
             + ls_pop_alert_std + ls_haz_range1s + ls_haz_range2s \
@@ -159,10 +161,7 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
     ls_ymin = '"--property-landslide-minimum-latitude=%s" ' % ls_extent[2]
     ls_ymax = '"--property-landslide-maximum-latitude=%s" ' % ls_extent[3]
 
-    # Product extent --  note, for now I'm just setting this to the landslide
-    # extent, which seems a bit pointless. But by providing the property, it
-    # gives us the ability to update it later if we can come up with a more
-    # sensible product extent.
+    # Product extent -- default zoom extent for interactive map
     prod_xmin = '"--property-minimum-longitude=%s" ' % xmin
     prod_xmax = '"--property-maximum-longitude=%s" ' % xmax
     prod_ymin = '"--property-minimum-latitude=%s" ' % ymin
