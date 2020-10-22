@@ -405,7 +405,7 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
     }
     PROBgrid = GDALGrid(PROB, sampledict)
     if trimfile is not None:
-        PROBgrid = trim_ocean(PROBgrid, trimfile, nodata=float('nan'))
+        PROBgrid = trim_ocean(PROBgrid, trimfile)
 
     maplayers['model'] = {
         'grid': PROBgrid,
@@ -419,9 +419,9 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
         PROBmaxgrid = GDALGrid(PROBmax, sampledict)
         if trimfile is not None:
             PROBmingrid = trim_ocean(
-                PROBmingrid, trimfile, nodata=float('nan'))
+                PROBmingrid, trimfile)
             PROBmaxgrid = trim_ocean(
-                PROBmaxgrid, trimfile, nodata=float('nan'))
+                PROBmaxgrid, trimfile)
         maplayers['modelmin'] = {
             'grid': PROBmingrid,
             'label': 'Landslide Probability-%1.2fstd' % numstd,
