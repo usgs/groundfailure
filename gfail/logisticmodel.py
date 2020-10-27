@@ -23,6 +23,7 @@ from mapio.geodict import GeoDict
 
 from gfail.temphdf import TempHdf
 from gfail.spatial import quickcut, trim_ocean
+from gfail.utilities import getFileType
 
 # temporary until mapio is updated
 import warnings
@@ -208,6 +209,10 @@ class LogisticModel(object):
                     2. - sampledict.dy/(2.*divfactor)
                 newdx = sampledict.dx/divfactor
                 newdy = sampledict.dy/divfactor
+                if np.abs(newxmax) > 180.:
+                    newxmax = np.sign(newxmax) * 180.
+                if np.abs(newxmin) > 180.:
+                    newxmin = np.sign(newxmin) * 180.
 
                 sampledict = GeoDict.createDictFromBox(
                     newxmin, newxmax, newymin,
@@ -244,7 +249,7 @@ class LogisticModel(object):
             else:
                 intermeth = 'bilinear'
             junkgrid = quickcut(junkfile, sampledict, precise=True,
-                                method=intermeth)
+                                method=intermeth, override=True)
             if gm in self.clips:
                 junkgrid.setData(np.clip(junkgrid.getData(),
                                          self.clips[gm][0], self.clips[gm][1]))
@@ -691,33 +696,6 @@ def getLogisticModelNames(config):
     return names
 
 
-def getFileType(filename):
-    """
-    Determine whether input file is a shapefile or a grid (ESRI or GMT).
-
-    Args:
-        filename (str): Path to candidate filename.
-
-    Returns:
-        str: 'shapefile', 'grid', or 'unknown'.
-    """
-    # TODO MOVE TO MAPIO.
-    if os.path.isdir(filename):
-        return 'dir'
-    ftype = GMTGrid.getFileType(filename)
-    if ftype != 'unknown':
-        return 'gmt'
-    # Skip over ESRI header files
-    if filename.endswith('.hdr'):
-        return 'unknown'
-    try:
-        GDALGrid.getFileGeoDict(filename)
-        return 'esri'
-    except:
-        pass
-    return 'unknown'
-
-
 def getAllGridFiles(indir):
     """
     Get list of all gmt or esri (.grd, .bil) files in a directory.
@@ -800,7 +778,7 @@ def validateClips(cmodel, layers, gmused):
 def validateLayers(cmodel):
     """
     Ensures all input files required to run the model exist and are valid
-    file types.
+    file types. Make sure all layers are available for area of run
 
     Args:
         cmodel (dict): Sub-dictionary from config for specific model,
@@ -950,44 +928,6 @@ def validateUnits(cmodel):
         else:
             raise Exception('No unit string configured for layer %s' % key)
     return units
-
-
-def validateLogisticModels(config):
-    """Validate model names.
-
-    Args:
-        config: Config file to validate
-
-    Returns:
-        bool: True if the model names are valid
-    """
-    mnames = getLogisticModelNames(config)
-    if len(mnames) > 1:
-        raise Exception('Config file contains more than one model which is '
-                        'no longer allowed, update your config file to the '
-                        'newer format')
-    for cmodelname in mnames:
-        try:
-            cmodel = config[cmodelname]
-            coeffs = validateCoefficients(cmodel)
-            # key = layer name, value = file name
-            layers = validateLayers(cmodel)
-            terms, timeField = validateTerms(cmodel, coeffs, layers)
-            if timeField is not None:
-                for (layer, layerfile) in list(layers.items()):
-                    if isinstance(layerfile, list):
-                        for lfile in layerfile:
-                            if timeField == 'MONTH':
-                                pass
-            validateInterpolations(cmodel, layers)
-            if cmodel['baselayer'] not in layers:
-                raise Exception(
-                    'Model %s missing baselayer parameter.' % cmodelname)
-        except Exception as e:
-            raise Exception('Validation failed with error: "%s" on model %s'
-                            % (str(e), cmodelname))
-
-    return True
 
 
 def validateRefs(cmodel):

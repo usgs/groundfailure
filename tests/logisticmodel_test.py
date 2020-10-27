@@ -221,10 +221,6 @@ def test_validateUnits():
     assert data == interp
 
 
-def test_validateLogisticModels():
-    assert LM.validateLogisticModels(config)
-
-
 def test_validateRefs():
     fakemr = {'longref': 'full reference', 'shortref': 'Name et al. year'}
     fakelr = {'cti1': 'longref',
@@ -266,7 +262,6 @@ if __name__ == "__main__":
     test_validateTerms()
     test_validateInterpolations()
     test_validateUnits()
-    test_validateLogisticModels()
     test_validateRefs()
     test_checkTerm()
     print('logisticmodel.py tests passed')
