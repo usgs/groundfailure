@@ -17,6 +17,8 @@ from mapio.shake import getHeaderData
 from libcomcat.search import get_event_by_id, search
 from mapio.multihaz import MultiHazardGrid
 from gfail.stats import get_rangebeta, get_pdfbeta
+from mapio.gdal import GDALGrid
+from mapio.gmt import GMTGrid
 
 
 # Don't delete this, it's needed in an eval function
@@ -1793,3 +1795,30 @@ def alert_rectangles(ax, bins):
         rect = patches.Polygon(corners, closed=True, facecolor=col,
                                transform=ax.transData, alpha=0.2)
         ax.add_patch(rect)
+
+
+def getFileType(filename):
+    """
+    Determine whether input file is a shapefile or a grid (ESRI or GMT).
+
+    Args:
+        filename (str): Path to candidate filename.
+
+    Returns:
+        str: 'shapefile', 'grid', or 'unknown'.
+    """
+    # TODO MOVE TO MAPIO.
+    if os.path.isdir(filename):
+        return 'dir'
+    ftype = GMTGrid.getFileType(filename)
+    if ftype != 'unknown':
+        return 'gmt'
+    # Skip over ESRI header files
+    if filename.endswith('.hdr'):
+        return 'unknown'
+    try:
+        GDALGrid.getFileGeoDict(filename)
+        return 'esri'
+    except:
+        pass
+    return 'unknown'

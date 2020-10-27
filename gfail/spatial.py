@@ -89,7 +89,7 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False):
 
 
 def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
-             precise=True, cleanup=True, verbose=False):
+             precise=True, cleanup=True, verbose=False, override=False):
     """
     Use gdal to trim a large global file down quickly so mapio can read it
     efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)
@@ -107,6 +107,8 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             interest without changing resolution
         cleanup (bool): if True, delete tempname after reading it back in
         verbose (bool): if True, prints more details
+        override (bool): if True, if filename extent is not fully contained by
+            gdict, read in the entire file (only used for ShakeMaps)
 
     Returns: New grid2D layer
 
@@ -170,11 +172,16 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f \
             %1.8f %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2,
                                               filename, tempname)
-        except:  
-            # When ShakeMap is being loaded, sometimes they won't align right
-            # because it's already cut to the area, so just load the whole file
-            cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -r %s %s %s' % \
-                (method2, filename, tempname)
+        except Exception as e:
+            if override:
+                # When ShakeMap is being loaded, sometimes they won't align
+                # right because it's already cut to the area, so just load
+                # the whole file
+                cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -r %s %s %s' \
+                      % (method2, filename, tempname)
+            else:
+                raise Exception('Failed to cut layer: %s' % e)
+
         rc, so, se = get_command_output(cmd)
         if not rc:
             raise Exception(se.decode())

@@ -12,6 +12,8 @@ from zipfile import ZipFile
 # local imports
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
+from mapio.gmt import GMTGrid
+from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
 from mapio.shake import ShakeGrid
 from gfail.conf import correct_config_filepaths
@@ -20,7 +22,7 @@ from gfail.godt import godt2008
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
-    text_to_json, savelayers)
+    text_to_json, savelayers, getFileType)
 from libcomcat.search import get_event_by_id
 
 
@@ -286,12 +288,34 @@ def run_gfail(args):
         for conf in configs:
             modelname = conf.keys()[0]
             print('\nNow running %s:' % modelname)
+            notcov, newbnds = check_input_extents(
+                conf, shakefile=shakefile,
+                bounds=bounds
+            )
+            if len(notcov) > 0:
+                print('\nThe following input layers do not cover'
+                      ' the area of interest:\n\t%s' % '\n\t'.join(notcov))
+                if newbnds is None:
+                    print('\nCannnot make bounds that work. '
+                          'Skipping to next model\n')
+                    continue
+                else:
+                    pnt = '%s, %s, %s, %s' % (newbnds['xmin'],
+                                              newbnds['xmax'],
+                                              newbnds['ymin'],
+                                              newbnds['ymax'])
+                    print('Running model for new bounds that are fully covered'
+                          ' by input layer: %s' % pnt)
+                    bounds2 = newbnds
+            else:
+                bounds2 = bounds
+
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
                 lm = LM.LogisticModel(shakefile, conf,
                                       uncertfile=uncertfile,
                                       saveinputs=args.save_inputs,
-                                      bounds=bounds,
+                                      bounds=bounds2,
                                       trimfile=trimfile)
 
                 maplayers = lm.calculate()
@@ -299,7 +323,7 @@ def run_gfail(args):
                 maplayers = godt2008(shakefile, conf,
                                      uncertfile=uncertfile,
                                      saveinputs=args.save_inputs,
-                                     bounds=bounds,
+                                     bounds=bounds2,
                                      trimfile=trimfile)
             else:
                 print('Unknown model function specified in config for %s '
@@ -391,6 +415,8 @@ def run_gfail(args):
             args.eventsourcecode = eventid
 
         if args.make_webpage:
+            if len(results) == 0:
+                raise Exception('No models were run. Cannot make webpages.')
             outputs = hazdev(
                 results, configs,
                 shakefile, outfolder=outfolder,
@@ -763,3 +789,81 @@ def get_bounds(shakefile, parameter='pga', threshold=2.0):
         boundaries1['ymax'] = ymax
 
     return boundaries1
+
+
+def check_input_extents(config, shakefile=None, bounds=None):
+    """Make sure all input files exist and cover the extent desired
+
+    Args:
+        config: configObj of a single model
+        shakefile: path to ShakeMap grid.xml file (used for bounds). If not
+            provided, bounds must be provided
+        bounds: dictionary of bounds with keys: 'xmin', 'xmax', 'ymin', 'ymax'
+
+    Returns:
+        tuple containing:
+            notcovered: list of files that do not cover the entire area
+                defined by bounds or shakefile
+            newbounds: new dictionary of bounds of subarea of original
+                bounds or shakefile extent that is covered by all input files
+    """
+    if shakefile is None and bounds is None:
+        raise Exception('Must define either a shakemap file or bounds')
+    modelname = config.keys()[0]
+    # Make dummy geodict to use
+    if bounds is None:
+        evdict = ShakeGrid.getFileGeoDict(shakefile)
+    else:
+        evdict = GeoDict.createDictFromBox(
+            bounds['xmin'], bounds['xmax'],
+            bounds['ymin'], bounds['ymax'],
+            0.00001, 0.00001, inside=False)
+
+    # Check extents of all input layers
+    notcovered = []
+    notcovgdicts = []
+    for item, value in config[modelname]['layers'].items():
+        if 'file' in value.keys():
+            filelook = value['file']
+            if getFileType(filelook) == 'gmt':
+                tmpgd, _ = GMTGrid.getFileGeoDict(filelook)
+            else:
+                tmpgd, _ = GDALGrid.getFileGeoDict(filelook)
+            # See if tempgd contains evdict
+            contains = tmpgd.contains(evdict)
+            if not contains:
+                notcovered.append(filelook)
+                notcovgdicts.append(tmpgd)
+                #print(filelook)
+    if len(notcovered) > 0:
+        # Figure out what bounds COULD be run
+        xmins = [gd.xmin for gd in notcovgdicts]
+        xmaxs = [gd.xmax for gd in notcovgdicts]
+        ymins = [gd.ymin for gd in notcovgdicts]
+        ymaxs = [gd.ymax for gd in notcovgdicts]
+
+        # Which one is the problem?
+        newbounds = dict(xmin=evdict.xmin,
+                         xmax=evdict.xmax,
+                         ymin=evdict.ymin,
+                         ymax=evdict.ymax)
+        if evdict.xmin < np.max(xmins):
+            newbounds['xmin'] = np.max(xmins)
+        if evdict.xmax > np.min(xmaxs):
+            newbounds['xmax'] = np.min(xmaxs)
+        if evdict.ymin < np.max(ymins):
+            newbounds['ymin'] = np.max(ymins)
+        if evdict.ymax > np.min(ymaxs):
+            newbounds['ymax'] = np.min(ymaxs)
+
+    # See if this is a possible extent
+    try:
+        test = GeoDict.createDictFromBox(
+                newbounds['xmin'], newbounds['xmax'],
+                newbounds['ymin'], newbounds['ymax'],
+                0.00001, 0.00001, inside=False)
+    except:
+        print('Cannot make new bounds that will work')
+        newbounds = None
+
+    return notcovered, newbounds
