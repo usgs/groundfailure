@@ -111,21 +111,29 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
         ls_pop_alert_std = '"--property-landslide-population-std=%s" ' % \
             ls_pref['population_alert']['std']
         ls_haz_range1s = '"--property-landslide-hazard-1std=%s" ' % \
-            str(ls_pref['probability']['hagg_1std']).replace('[', '').replace(']', '')
+            str(ls_pref['probability']['hagg_1std']
+                ).replace('[', '').replace(']', '')
         ls_haz_range2s = '"--property-landslide-hazard-2std=%s" ' % \
-            str(ls_pref['probability']['hagg_2std']).replace('[', '').replace(']', '')
+            str(ls_pref['probability']['hagg_2std']
+                ).replace('[', '').replace(']', '')
         ls_pop_range1s = '"--property-landslide-population-1std=%s" ' % \
-            str(ls_pref['probability']['pop_1std']).replace('[', '').replace(']', '')
+            str(ls_pref['probability']['pop_1std']).replace(
+                '[', '').replace(']', '')
         ls_pop_range2s = '"--property-landslide-population-2std=%s" ' % \
-            str(ls_pref['probability']['pop_2std']).replace('[', '').replace(']', '')
+            str(ls_pref['probability']['pop_2std']).replace(
+                '[', '').replace(']', '')
         lq_haz_range1s = '"--property-liquefaction-hazard-1std=%s" ' % \
-            str(lq_pref['probability']['hagg_1std']).replace('[', '').replace(']', '')
+            str(lq_pref['probability']['hagg_1std']
+                ).replace('[', '').replace(']', '')
         lq_haz_range2s = '"--property-liquefaction-hazard-2std=%s" ' % \
-            str(lq_pref['probability']['hagg_2std']).replace('[', '').replace(']', '')
+            str(lq_pref['probability']['hagg_2std']
+                ).replace('[', '').replace(']', '')
         lq_pop_range1s = '"--property-liquefaction-population-1std=%s" ' % \
-            str(lq_pref['probability']['pop_1std']).replace('[', '').replace(']', '')
+            str(lq_pref['probability']['pop_1std']).replace(
+                '[', '').replace(']', '')
         lq_pop_range2s = '"--property-liquefaction-population-2std=%s" ' % \
-            str(lq_pref['probability']['pop_2std']).replace('[', '').replace(']', '')
+            str(lq_pref['probability']['pop_2std']).replace(
+                '[', '').replace(']', '')
 
         stdstr = lq_haz_alert_std + ls_haz_alert_std + lq_pop_alert_std \
             + ls_pop_alert_std + ls_haz_range1s + ls_haz_range2s \
@@ -254,7 +262,7 @@ def prepare_pdl_directory(event_dir):
     idx = an_hdf_file.find('_201')
     author = an_hdf_file[:idx].split('_')[-1]
     idx2 = an_hdf_file.find(author)
-    event_prefix = an_hdf_file[:idx2-1]
+    event_prefix = an_hdf_file[:idx2 - 1]
 
     # Put geotif files into pdl directory
     geotif_files = [os.path.join(event_dir, a)
@@ -263,7 +271,7 @@ def prepare_pdl_directory(event_dir):
         src = geotif_files[i]
         tfile = os.path.basename(src)
         if tfile.startswith(event_prefix):
-            tfile = tfile[len(event_prefix)+1:]
+            tfile = tfile[len(event_prefix) + 1:]
         dst = os.path.join(pdl_dir, tfile)
         shutil.copy(src, dst)
 
@@ -283,7 +291,7 @@ def prepare_pdl_directory(event_dir):
         src = kmz_files[i]
         tfile = os.path.basename(src)
         if tfile.startswith(event_prefix):
-            tfile = tfile[len(event_prefix)+1:]
+            tfile = tfile[len(event_prefix) + 1:]
         dst = os.path.join(pdl_dir, tfile)
         shutil.copy(src, dst)
 
@@ -311,7 +319,7 @@ def prepare_pdl_directory(event_dir):
         src = hdf_files[i]
         hfile = os.path.basename(src)
         if hfile.startswith(event_prefix):
-            hfile = hfile[len(event_prefix)+1:]
+            hfile = hfile[len(event_prefix) + 1:]
         dst = os.path.join(pdl_dir, hfile)
         # Strip off event id prefix
 
@@ -355,17 +363,17 @@ def prepare_pdl_directory(event_dir):
     # Jessee section
     jessee_tree = etree.SubElement(
         contents, "file", title="Preferred Landslide Model (displayed)",
-        id='nowicki_jessee_2017')
+        id='nowicki_jessee_2018')
     file_caps = etree.SubElement(jessee_tree, "caption")
-    file_caps.text = 'Nowicki Jessee and others (2017)'
+    file_caps.text = 'Nowicki Jessee and others (2018)'
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017_model.kmz', type=kmz_mime)
+                     href='jessee_2018_model.kmz', type=kmz_mime)
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017_model.tif', type=gtif_mime)
+                     href='jessee_2018_model.tif', type=gtif_mime)
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017.hdf5', type=hdf_mime)
+                     href='jessee_2018.hdf5', type=hdf_mime)
     etree.SubElement(jessee_tree, "format",
-                     href='jessee_2017.png', type=png_mime)
+                     href='jessee_2018.png', type=png_mime)
 
     # Zhu 2017 section
     zhu2017_tree = etree.SubElement(
