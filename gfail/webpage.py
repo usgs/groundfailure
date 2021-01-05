@@ -854,9 +854,30 @@ def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
 
     info_file = os.path.join(event_dir, 'info.json')
     with open(info_file, 'w') as f:
-        json.dump(info_dict, f)  # allow_nan=False)
+        json.dump(info_dict, f)
+    fixfile(info_file)
     filenames.append(info_file)
     return filenames
+
+
+def fixfile(filename):
+    """Replace any Nan or Infinity values with null in info.json
+
+    Args:
+        filename (str): full path to info.json file
+
+    Returns: same file with invalid entries replaced with valid
+
+    """
+    if os.path.exists(filename):
+        with open(filename, 'r') as file:
+            filedata = file.read()
+        if 'NaN' in filedata:
+            filedata = filedata.replace('NaN', 'null')
+        if 'Infinity' in filedata:
+            filedata = filedata.replace('Infinity', 'null')
+        with open(filename, 'w') as file:
+            file.write(filedata)
 
 
 def make_legends(lqmin=0.005, lsmin=0.002, outfolder=None,
