@@ -875,6 +875,7 @@ def fixfile(filename):
         if 'NaN' in filedata:
             filedata = filedata.replace('NaN', 'null')
         if 'Infinity' in filedata:
+            filedata = filedata.replace('-Infinity', 'null')
             filedata = filedata.replace('Infinity', 'null')
         with open(filename, 'w') as file:
             file.write(filedata)
