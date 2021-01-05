@@ -243,11 +243,13 @@ def godt2008(shakefile, config, uncertfile=None, saveinputs=False,
             temp = ShakeGrid.load(uncertfile)  # , adjust='res')
             GDALGrid.copyFromGrid(temp.getLayer('stdpga')).save(junkfile)
             uncertpga = quickcut(junkfile, sampledict,
-                                 precise=True, method='bilinear')
+                                 precise=True, method='bilinear',
+                                 override=True)
             os.remove(junkfile)
             GDALGrid.copyFromGrid(temp.getLayer('stdpgv')).save(junkfile)
             uncertpgv = quickcut(junkfile, sampledict,
-                                 precise=True, method='bilinear')
+                                 precise=True, method='bilinear',
+                                 override=True)
             os.remove(junkfile)
         except:
             print('Could not read uncertainty file, ignoring uncertainties')

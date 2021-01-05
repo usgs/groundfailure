@@ -822,6 +822,7 @@ def check_input_extents(config, shakefile=None, bounds=None):
     # Check extents of all input layers
     notcovered = []
     notcovgdicts = []
+    newbounds = None
     for item, value in config[modelname]['layers'].items():
         if 'file' in value.keys():
             filelook = value['file']
@@ -856,14 +857,14 @@ def check_input_extents(config, shakefile=None, bounds=None):
         if evdict.ymax > np.min(ymaxs):
             newbounds['ymax'] = np.min(ymaxs)
 
-    # See if this is a possible extent
-    try:
-        test = GeoDict.createDictFromBox(
-                newbounds['xmin'], newbounds['xmax'],
-                newbounds['ymin'], newbounds['ymax'],
-                0.00001, 0.00001, inside=False)
-    except:
-        print('Cannot make new bounds that will work')
-        newbounds = None
+        # See if this is a possible extent
+        try:
+            test = GeoDict.createDictFromBox(
+                    newbounds['xmin'], newbounds['xmax'],
+                    newbounds['ymin'], newbounds['ymax'],
+                    0.00001, 0.00001, inside=False)
+        except:
+            print('Cannot make new bounds that will work')
+            newbounds = None
 
     return notcovered, newbounds

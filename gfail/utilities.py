@@ -518,14 +518,20 @@ def get_alert(paramalertLS, paramalertLQ, parampopLS, parampopLQ,
     }
     col2num = dict((v, k) for k, v in num2color.items())
 
-    LSnum1 = col2num[hazLS]
-    LSnum2 = col2num[popLS]
-    LSnum = str(np.max([int(LSnum1), int(LSnum2)]))
-    LS = num2color[LSnum]
-    LQnum1 = col2num[hazLQ]
-    LQnum2 = col2num[popLQ]
-    LQnum = str(np.max([int(LQnum1), int(LQnum2)]))
-    LQ = num2color[LQnum]
+    if popLS is not None and hazLS is not None:
+        LSnum1 = col2num[hazLS]
+        LSnum2 = col2num[popLS]
+        LSnum = str(np.max([int(LSnum1), int(LSnum2)]))
+        LS = num2color[LSnum]
+    else:
+        LS = None
+    if popLQ is not None and hazLQ is not None:
+        LQnum1 = col2num[hazLQ]
+        LQnum2 = col2num[popLQ]
+        LQnum = str(np.max([int(LQnum1), int(LQnum2)]))
+        LQ = num2color[LQnum]
+    else:
+        LQ = None
 
     return hazLS, popLS, hazLQ, popLQ, LS, LQ
 
@@ -667,7 +673,7 @@ def view_database(database, starttime=None, endtime=None,
 
     # Print currently running info to screen
     print('-------------------------------------------------')
-    curt = df.loc[df['note'].str.contains('Currently running')]
+    curt = df.loc[df['note'].str.contains('Currently running', na=False)]
     if len(curt) > 0:
         ccols = ['eventcode', 'time', 'shakemap_version', 'note', 'starttime']
         ccols2 = ['eventcode', 'time', 'shake_v', 'note', 'startrun']
@@ -1094,7 +1100,8 @@ def alert_summary(database, starttime=None, endtime=None,
             just the one selected.
 
     Returns:
-        Figures showing alert level summaries
+        List of figure handles in order ['overall', 'hazard', 'population']
+        Figure files of alert level summaries
 
     """
 
@@ -1106,6 +1113,7 @@ def alert_summary(database, starttime=None, endtime=None,
     statsLS = []
     statsLQ = []
     types = []
+
     if summarytypes == 'overall' or summarytypes == 'all':
         statsLS.append([stats['aLSg'], stats['aLSy'], stats['aLSo'],
                         stats['aLSr']])
@@ -1124,7 +1132,7 @@ def alert_summary(database, starttime=None, endtime=None,
         statsLQ.append([stats['popLQg'], stats['popLQy'], stats['popLQo'],
                         stats['popLQr']])
         types.append('population')
-
+    figs = []
     for sLS, sLQ, typ in zip(statsLS, statsLQ, types):
         fig, ax = plt.subplots()
         index = np.arange(4)
@@ -1178,6 +1186,8 @@ def alert_summary(database, starttime=None, endtime=None,
             if ext == '':
                 ext = '.png'
             fig.savefig('%s_%s%s' % (name, typ, ext), bbox_inches='tight')
+        figs.append(fig)
+    return figs
 
 
 def plot_evolution(database, starttime=None, endtime=None,
@@ -1232,6 +1242,10 @@ def plot_evolution(database, starttime=None, endtime=None,
     alertLS = []
     alertLQ = []
     descrip = []
+    rangeHLS = []
+    rangeHLQ = []
+    rangeELS = []
+    rangeELQ = []
     for idx in elist:
         sel1 = success.loc[success['eventcode'] == idx]
         hls = sel1['HaggLS'].values
@@ -1260,10 +1274,6 @@ def plot_evolution(database, starttime=None, endtime=None,
             if percrange > 1 or percrange < 0.:
                 raise Exception('uncertrange must be between 0 and 1')
             # Get range for input percentile
-            rangeHLS = []
-            rangeHLQ = []
-            rangeELS = []
-            rangeELQ = []
             # range for H
             range1 = get_rangebeta(sel1['PH_LS'], sel1['QH_LS'],
                                    prob=percrange, maxlim=sel1['HlimLS'])
@@ -1287,6 +1297,13 @@ def plot_evolution(database, starttime=None, endtime=None,
             temp4 = [plq-range4[0], range4[1]-plq]
             temp4[0][temp4[0] < 0.] = 0  # zero out any negative values
             rangeELQ.append(temp4)
+        else:
+            nanmat = np.empty((2, len(sel1)))
+            nanmat[:] = np.NaN
+            rangeHLS.append(nanmat)
+            rangeHLQ.append(nanmat)
+            rangeELS.append(nanmat)
+            rangeELQ.append(nanmat)
 
     # Plot of changes over time to each alert level
     fig1, axes = plt.subplots(2, 1)  # , figsize=(10, 10))
@@ -1515,7 +1532,7 @@ def time_delays(database, starttime=None, endtime=None,
         ax2.hist(np.array(delstable)/3600., color='k', edgecolor='k',
                  alpha=0.5, bins=bins)
         ax2.set_xscale("log")
-        ax2.set_xlabel('Time delay till final alert value reached (hours)')
+        ax2.set_xlabel('Time delay till final alert color reached (hours)')
         ax2.set_ylabel('Number of events')
         vals = (np.nanmean(delstable)/3600., np.nanmedian(delstable)/3600.,
                 np.nanstd(delstable)/3600.)

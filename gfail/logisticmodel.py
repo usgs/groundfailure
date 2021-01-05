@@ -264,42 +264,42 @@ class LogisticModel(object):
         # take uncertainties into account, if available
         if uncertfile is not None:
             self.uncert = {}
-            try:
-                # Only read in the ones that will be needed
-                temp = ShakeGrid.load(uncertfile)
-                already = []
-                for gm in self.gmused:
-                    if 'pgv' in gm:
-                        gmsimp = 'pgv'
-                    elif 'pga' in gm:
-                        gmsimp = 'pga'
-                    elif 'mmi' in gm:
-                        gmsimp = 'mmi'
-                    if gmsimp in already:
-                        continue
-                    junkfile = os.path.join(self.tempdir, 'temp.bil')
-                    GDALGrid.copyFromGrid(temp.getLayer(
-                        'std%s' % gmsimp)).save(junkfile)
-                    if gmsimp in self.interpolations.keys():
-                        intermeth = self.interpolations[gmsimp]
-                    else:
-                        intermeth = 'bilinear'
-                    junkgrid = quickcut(junkfile, sampledict, precise=True,
-                                        method=intermeth)
-                    if gmsimp in self.clips:
-                        junkgrid.setData(
-                            np.clip(junkgrid.getData(), self.clips[gmsimp][0],
-                                    self.clips[gmsimp][1]))
-                    self.uncert['std' + gmsimp] = TempHdf(
-                        junkgrid, os.path.join(self.tempdir,
-                                               'std%s.hdf5' % gmsimp))
-                    already.append(gmsimp)
-                    os.remove(junkfile)
-                del(temp)
-            except:
-                print('Could not read uncertainty file, ignoring '
-                      'uncertainties')
-                self.uncert = None
+            #try:
+            # Only read in the ones that will be needed
+            temp = ShakeGrid.load(uncertfile)
+            already = []
+            for gm in self.gmused:
+                if 'pgv' in gm:
+                    gmsimp = 'pgv'
+                elif 'pga' in gm:
+                    gmsimp = 'pga'
+                elif 'mmi' in gm:
+                    gmsimp = 'mmi'
+                if gmsimp in already:
+                    continue
+                junkfile = os.path.join(self.tempdir, 'temp.bil')
+                GDALGrid.copyFromGrid(temp.getLayer(
+                    'std%s' % gmsimp)).save(junkfile)
+                if gmsimp in self.interpolations.keys():
+                    intermeth = self.interpolations[gmsimp]
+                else:
+                    intermeth = 'bilinear'
+                junkgrid = quickcut(junkfile, sampledict, precise=True,
+                                    method=intermeth, override=True)
+                if gmsimp in self.clips:
+                    junkgrid.setData(
+                        np.clip(junkgrid.getData(), self.clips[gmsimp][0],
+                                self.clips[gmsimp][1]))
+                self.uncert['std' + gmsimp] = TempHdf(
+                    junkgrid, os.path.join(self.tempdir,
+                                           'std%s.hdf5' % gmsimp))
+                already.append(gmsimp)
+                os.remove(junkfile)
+            del(temp)
+            #except:
+                # print('Could not read uncertainty file, ignoring '
+                #       'uncertainties')
+                # self.uncert = None
         else:
             self.uncert = None
 
@@ -348,9 +348,10 @@ class LogisticModel(object):
                     # Change to mixed sed rock coeff
                     sub1[sub1 <= -3.21] = -1.36
                     temp.setData(sub1)
-                    self.notes += 'unconsolidated sediment coefficient changed\
-                     to -1.36 (weaker) from -3.22 to better reflect that this \
-                    unit is not actually strong\n'
+                    self.notes += 'unconsolidated sediment coefficient ' \
+                                  'changed to -1.36 (weaker) from -3.22 to ' \
+                                  'better reflect that this ' \
+                                  'unit is not actually strong\n'
                 self.layerdict[layername] = TempHdf(
                     temp, os.path.join(self.tempdir, '%s.hdf5' % layername))
                 td = temp.getGeoDict()
