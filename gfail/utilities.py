@@ -4,7 +4,7 @@ import os
 import numpy as np
 import urllib
 import json
-from datetime import timedelta
+from datetime import timedelta, datetime
 import collections
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -82,7 +82,8 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
     header_dicts = getHeaderData(shakefile)
     grid_dict = header_dicts[0]
     event_dict = header_dicts[1]
-    version = grid_dict['shakemap_version']
+    #version = grid_dict['shakemap_version']
+    shaketime = grid_dict['process_timestamp']
     try:
         eid = event_dict['event_id']
         net = 'us'
@@ -117,11 +118,15 @@ def get_event_comcat(shakefile, timewindow=60, degwindow=0.3, magwindow=0.2):
         detail = events[0].getDetailEvent()
     allversions = detail.getProducts('shakemap', version='all')
     # Find the right version
-    vers = [allv.version for allv in allversions]
-    idx = np.where(np.array(vers) == version)[0][0]
+    dates1 = [allv.product_timestamp for allv in allversions]
+    dates = np.array([datetime.fromtimestamp(int(str(dat)[:10])) for dat in dates1])
+    idx = np.argmin(np.abs(dates-shaketime))
+    #vers = [allv.version for allv in allversions]
+    #idx = np.where(np.array(vers) == version)[0][0]
     shakemap = allversions[idx]
     infobytes, url = shakemap.getContentBytes('info.json')
     info = json.loads(infobytes.decode('utf-8'))
+
     return info, detail, shakemap
 
 
