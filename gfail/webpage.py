@@ -34,7 +34,7 @@ from gfail.utilities import loadlayers
 import warnings
 warnings.filterwarnings('ignore')
 
-#plt.switch_backend('agg')
+# plt.switch_backend('agg')
 
 DFCOLORS = [
     [0.94, 0.94, 0.70, 0.7],
@@ -140,7 +140,8 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             else:
                 # Since logistic models can't equal one, need to eliminate
                 # placeholder zeros before computing stats
-                if 'jessee' in maplayer['model']['description']['name'].lower():
+                if 'jessee' in maplayer['model']['description']['name'].lower(
+                ):
                     id1 = 'jessee_2018'
                     probthresh = 0.002
                     maxP = 0.26
@@ -148,7 +149,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     id1 = 'nowicki_2014_global'
                     probthresh = 0.0
                     maxP = 1.
-            
+
             if 'std' in list(maplayer.keys()):
                 stdgrid2D = maplayer['std']['grid']
             else:
@@ -205,7 +206,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             ls_haz_2std_range = None
             ls_pop_1std_range = None
             ls_pop_2std_range = None
-            
+
             if stdgrid2D is not None and title == prefLS:
                 ph = stats['p_hagg_0.10g']
                 qh = stats['q_hagg_0.10g']
@@ -213,7 +214,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 qe = stats['q_exp_0.10g']
                 hmax = stats['hlim_0.10g']
                 emax = stats['elim_0.10g']
-                
+
                 ls_haz_std = float("%.4f" % stats['hagg_std_0.10g'])
                 ls_pop_std = float("%.4f" % stats['exp_std_0.10g'])
                 ls_hlim = float("%.4f" % hmax)
@@ -372,7 +373,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
             lq_haz_2std_range = None
             lq_pop_1std_range = None
             lq_pop_2std_range = None
-            
+
             if stdgrid2D is not None and title == prefLQ:
                 ph = stats['p_hagg_0.10g']
                 qh = stats['q_hagg_0.10g']
@@ -448,7 +449,7 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                     'hagg_2std': lq_haz_2std_range,
                     'pop_1std': lq_pop_1std_range,
                     'pop_2std': lq_pop_2std_range,
-                    
+
                 },
                 'longref': metadata['longref'],
                 'parameters': metadata['parameters'],
@@ -621,7 +622,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
             out = make_rgba(lq_mod['model']['grid'], mask=lqmask,
                             mercator=mercator, levels=tempbins,
                             colorlist=DFCOLORS)
-            rgba_img, lq_extent, lmin, lmax, cmap = out            
+            rgba_img, lq_extent, lmin, lmax, cmap = out
 
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
             filenames.append(filen)
@@ -641,7 +642,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                           % lq_mod_file)
     else:
         for lqm in lqmodels:
-            #if lqm['preferred']:
+            # if lqm['preferred']:
             filesnippet = lqm['id']
             tempbins = DFBINS
             tempbins[0] = 0.005
@@ -659,7 +660,7 @@ def create_png(event_dir, lsmodels=None, lqmodels=None, mercator=True,
                             mercator=mercator, levels=tempbins,
                             colorlist=DFCOLORS)
             rgba_img, lq_extent, lmin, lmax, cmap = out
-            
+
             filen = os.path.join(event_dir, '%s_extent.json' % filesnippet)
             filenames.append(filen)
             with open(filen, 'w') as f:
@@ -744,7 +745,7 @@ def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
             try:
                 with open(os.path.join(event_dir, lsm['extent'])) as ff:
                     extent1 = json.load(ff)
-            except:
+            except BaseException:
                 extent1 = None
             lsm['extent'] = extent1
         for key in rmkeys:
@@ -776,7 +777,7 @@ def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
             try:
                 with open(os.path.join(event_dir, lqm['extent'])) as ff:
                     extent1 = json.load(ff)
-            except:
+            except BaseException:
                 extent1 = None
             lqm['extent'] = extent1
         for key in rmkeys:
@@ -821,8 +822,8 @@ def create_info(event_dir, lsmodels, lqmodels, gf_version=1,
         rupture_warning = True
 
     # Figure out if realtime (pdl run and same week as event)
-    if pdlcall and datetime.utcnow() - event_dict['event_timestamp'] < \
-            timedelta(days=7):
+    if (pdlcall and datetime.utcnow() - event_dict['event_timestamp'] <
+            timedelta(days=7)):
         realtime = True
     else:
         realtime = False
@@ -956,7 +957,7 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     if colorlist is None:
         colorlist = DFCOLORS
 
-    if len(levels)-1 != len(colorlist):
+    if len(levels) - 1 != len(colorlist):
         raise Exception('len(levels) must be one longer than len(colorlist)')
 
     # Make place to put temporary files
@@ -990,11 +991,13 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     doc.lookat.longitude = np.mean([boundaries1['xmax'], boundaries1['xmin']])
     doc.lookat.altitude = 0.
     # dist in m from point
-    doc.lookat.range = (boundaries1['ymax']-boundaries1['ymin']) * 111. * 1000.
-    doc.description = 'USGS near-real-time earthquake-triggered %s model for \
-                       event id %s' % (maplayer['description']['parameters']
-                                       ['modeltype'], maplayer['description']
-                                       ['event_id'])
+    doc.lookat.range = (boundaries1['ymax'] -
+                        boundaries1['ymin']) * 111. * 1000.
+    doc.description = (
+        'USGS near-real-time earthquake-triggered %s model for event id %s'
+        % (maplayer['description']['parameters']['modeltype'],
+           maplayer['description']['event_id'])
+    )
 
     prob = L.newgroundoverlay(name=maplayer['label'])
     prob.icon.href = 'files/%s.tiff' % basename
@@ -1049,7 +1052,7 @@ def get_zoomextent(grid, propofmax=0.3):
     maximum = np.nanmax(grid.getData())
 
     xmin, xmax, ymin, ymax = grid.getBounds()
-    
+
     if np.isnan(maximum):
         # If no finite values, use entire extent for zoom
         return dict(xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax)
@@ -1089,7 +1092,7 @@ def get_zoomextent(grid, propofmax=0.3):
     else:
         boundaries1['ymax'] = ymax
 
-    return boundaries1   
+    return boundaries1
 
 
 def make_rgba(grid2D, levels, colorlist, mask=None,
@@ -1097,9 +1100,9 @@ def make_rgba(grid2D, levels, colorlist, mask=None,
     """
     Make an rgba (red, green, blue, alpha) grid out of raw data values and
     provide extent and limits needed to save as an image file
-    
+
     Args:
-        grid2D: Mapio Grid2D object of result to mape 
+        grid2D: Mapio Grid2D object of result to mape
         levels (list): list of bin edges for each color, must be same length
         colorlist (list): list of colors for each bin, should be length one
             less than levels
@@ -1122,10 +1125,10 @@ def make_rgba(grid2D, levels, colorlist, mask=None,
         data1[data1 < mask] = float('nan')
     geodict = grid2D.getGeoDict()
     extent = [
-        geodict.xmin - 0.5*geodict.dx,
-        geodict.xmax + 0.5*geodict.dx,
-        geodict.ymin - 0.5*geodict.dy,
-        geodict.ymax + 0.5*geodict.dy,
+        geodict.xmin - 0.5 * geodict.dx,
+        geodict.xmax + 0.5 * geodict.dx,
+        geodict.ymin - 0.5 * geodict.dy,
+        geodict.ymax + 0.5 * geodict.dy,
     ]
 
     lmin = levels[0]
@@ -1173,8 +1176,8 @@ def make_legend(levels, colorlist, filename=None, orientation='horizontal',
         labels = labels[::-1]
         colors1 = colorlist[::-1]
         fig, axes = plt.subplots(len(colors1) + 1, 1,
-                                 figsize=(3., len(colors1)-1.7))
-        clearind = len(axes)-1
+                                 figsize=(3., len(colors1) - 1.7))
+        clearind = len(axes) - 1
         maxind = 0
     else:
         colors1 = colorlist
@@ -1183,7 +1186,7 @@ def make_legend(levels, colorlist, filename=None, orientation='horizontal',
         # DPI = fig.get_dpi()
         # fig.set_size_inches(440/DPI, 83/DPI)
         clearind = 0
-        maxind = len(axes)-1
+        maxind = len(axes) - 1
 
     for i, ax in enumerate(axes):
         ax.set_ylim((0., 1.))
@@ -1193,19 +1196,19 @@ def make_legend(levels, colorlist, filename=None, orientation='horizontal',
             color1 = colors1[0]
             color1[-1] = 0.  # make completely transparent
             if orientation == 'vertical':
-                label = labels[i+1]
+                label = labels[i + 1]
             else:
                 label = labels[0]
         else:
             if orientation == 'vertical':
-                label = '%s-%s%%' % (labels[i+1], labels[i])
+                label = '%s-%s%%' % (labels[i + 1], labels[i])
                 color1 = colors1[i]
             else:
-                label = '%s-%s%%' % (labels[i], labels[i+1])
-                color1 = colors1[i-1]
+                label = '%s-%s%%' % (labels[i], labels[i + 1])
+                color1 = colors1[i - 1]
             color1[-1] = 0.8  # make less transparent
             if i == maxind:
-                label = '> %1.0f%%' % (levels[-2]*100.)
+                label = '> %1.0f%%' % (levels[-2] * 100.)
         ax.set_facecolor(color1)
         if orientation == 'vertical':
             ax.text(1.1, 0.5, label, fontsize=fontsize,
@@ -1220,10 +1223,10 @@ def make_legend(levels, colorlist, filename=None, orientation='horizontal',
         plt.setp(ax.get_xticklabels(), visible=False)
 
     if orientation == 'vertical':
-        fig.suptitle(title.title(), weight='bold', fontsize=fontsize+2)
+        fig.suptitle(title.title(), weight='bold', fontsize=fontsize + 2)
         plt.subplots_adjust(hspace=0.01, right=0.4, top=0.82)
     else:
-        fig.suptitle(title.title(), weight='bold', fontsize=fontsize+2)
+        fig.suptitle(title.title(), weight='bold', fontsize=fontsize + 2)
         # , left=0.01, right=0.99, top=0.99, bottom=0.01)
         plt.subplots_adjust(wspace=0.1, top=0.6)
     # plt.tight_layout()
@@ -1304,7 +1307,7 @@ def setupcolors(sync, plotorder, lims, colormaps, defaultcolormap=cm.CMRmap_r,
             midpts = np.sqrt(lim1[1:] * lim1[:-1])
         else:
             cNorm = colors.Normalize(vmin=lim1[0], vmax=lim1[-1])
-            midpts = (lim1[1:] - lim1[:-1])/2 + lim1[:-1]
+            midpts = (lim1[1:] - lim1[:-1]) / 2 + lim1[:-1]
         scalarMap = cm.ScalarMappable(norm=cNorm, cmap=palette1)
         colorlist = []
         for value in midpts:

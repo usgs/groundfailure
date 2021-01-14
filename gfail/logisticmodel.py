@@ -24,6 +24,7 @@ from mapio.geodict import GeoDict
 from gfail.temphdf import TempHdf
 from gfail.spatial import quickcut, trim_ocean
 from gfail.utilities import getFileType
+from gfail.stats import get_rangebeta
 
 # temporary until mapio is updated
 import warnings
@@ -43,6 +44,7 @@ INTPAT = '[0-9]+'
 OPERATORPAT = r'[\+\-\*\/]*'
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
           'Nov', 'Dec']
+CI_PROBABILITIES = [0.68, 0.95]
 
 
 class LogisticModel(object):
@@ -102,7 +104,7 @@ class LogisticModel(object):
                        if 'pga' in value.lower() or 'pgv' in
                        value.lower() or 'mmi' in value.lower()]
         self.modelrefs, self.longrefs, self.shortrefs = validateRefs(cmodel)
-        #self.numstd = numstd
+        # self.numstd = numstd
         self.clips = validateClips(cmodel, self.layers, self.gmused)
         self.notes = ''
 
@@ -113,7 +115,7 @@ class LogisticModel(object):
         if slopefile is None:
             try:
                 self.slopefile = cmodel['slopefile']
-            except:
+            except BaseException:
                 # print('Slopefile not specified in config, no slope '
                 #      'thresholds will be applied\n')
                 self.slopefile = None
@@ -122,7 +124,7 @@ class LogisticModel(object):
         if slopemod is None:
             try:
                 self.slopemod = cmodel['slopemod']
-            except:
+            except BaseException:
                 self.slopemod = None
 
         # See if trimfile exists
@@ -200,15 +202,15 @@ class LogisticModel(object):
             if divfactor != 1.:
                 # adjust sampledict so everything will be resampled
                 newxmin = sampledict.xmin - sampledict.dx / \
-                    2. + sampledict.dx/(2.*divfactor)
+                    2. + sampledict.dx / (2. * divfactor)
                 newymin = sampledict.ymin - sampledict.dy / \
-                    2. + sampledict.dy/(2.*divfactor)
+                    2. + sampledict.dy / (2. * divfactor)
                 newxmax = sampledict.xmax + sampledict.dx / \
-                    2. - sampledict.dx/(2.*divfactor)
+                    2. - sampledict.dx / (2. * divfactor)
                 newymax = sampledict.ymax + sampledict.dy / \
-                    2. - sampledict.dy/(2.*divfactor)
-                newdx = sampledict.dx/divfactor
-                newdy = sampledict.dy/divfactor
+                    2. - sampledict.dy / (2. * divfactor)
+                newdx = sampledict.dx / divfactor
+                newdy = sampledict.dy / divfactor
                 if np.abs(newxmax) > 180.:
                     newxmax = np.sign(newxmax) * 180.
                 if np.abs(newxmin) > 180.:
@@ -225,7 +227,7 @@ class LogisticModel(object):
             try:
                 self.slopemin = float(config[self.model]['slopemin'])
                 self.slopemax = float(config[self.model]['slopemax'])
-            except:
+            except BaseException:
                 print('Could not find slopemin and/or slopemax in config, '
                       'limits. No slope thresholds will be applied.')
                 self.slopemin = 'none'
@@ -264,7 +266,7 @@ class LogisticModel(object):
         # take uncertainties into account, if available
         if uncertfile is not None:
             self.uncert = {}
-            #try:
+            # try:
             # Only read in the ones that will be needed
             temp = ShakeGrid.load(uncertfile)
             already = []
@@ -296,10 +298,10 @@ class LogisticModel(object):
                 already.append(gmsimp)
                 os.remove(junkfile)
             del(temp)
-            #except:
-                # print('Could not read uncertainty file, ignoring '
-                #       'uncertainties')
-                # self.uncert = None
+            # except:
+            # print('Could not read uncertainty file, ignoring '
+            #       'uncertainties')
+            # self.uncert = None
         else:
             self.uncert = None
 
@@ -370,7 +372,7 @@ class LogisticModel(object):
                         try:
                             slope = temp.getData().astype(float)
                             slope1 = eval(self.slopemod)
-                        except:
+                        except BaseException:
                             print('slopemod provided not valid, continuing '
                                   'without slope thresholds.')
                             flag = 1
@@ -407,7 +409,7 @@ class LogisticModel(object):
                 try:
                     slope = temp.getData().astype(float)
                     slope1 = eval(self.slopemod)
-                except:
+                except BaseException:
                     print('slopemod provided not valid, continuing without '
                           'slope thresholds')
                     flag = 1
@@ -426,8 +428,7 @@ class LogisticModel(object):
 
         self.nuggets = [str(self.coeffs['b0'])]
 
-        ckeys = list(self.terms.keys())
-        ckeys.sort()
+        ckeys = sorted(self.terms.keys())
         for key in ckeys:
             term = self.terms[key]
             coeff = self.coeffs[key]
@@ -486,7 +487,7 @@ class LogisticModel(object):
                 zip(rowstarts, rowends, colstarts, colends):
             X[rowstart:rowend, colstart:colend] = eval(self.equation)
 
-        P = 1/(1 + np.exp(-X))
+        P = 1 / (1 + np.exp(-X))
 
         if 'vs30max' in self.config[self.model].keys():
             vs30 = self.layerdict['vs30'].getSlice(
@@ -512,14 +513,14 @@ class LogisticModel(object):
                 varX = stdX**2. + \
                     (self.coeffs['b1']**2. *
                      self.uncert['stdpgv'].getSlice()**2.)
-                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
+                varP = (np.exp(-X) / (np.exp(-X) + 1)**2.)**2. * varX
                 if 'coverage' in self.config[self.model].keys():
                     a = 0.4915
                     b = 42.4
                     c = 9.165
                     # ((2*a*b*c*np.exp(2*c*P))/(b+np.exp(c*P))**3.)**2.*varP
-                    varL = ((2*a*b*c*np.exp(-c*P)) /
-                            ((1+b*np.exp(-c*P))**3.))**2.*varP
+                    varL = ((2 * a * b * c * np.exp(-c * P)) /
+                            ((1 + b * np.exp(-c * P))**3.))**2. * varP
                     std1 = np.sqrt(varL)
                 else:
                     std1 = np.sqrt(varP)
@@ -528,17 +529,21 @@ class LogisticModel(object):
                     stdX = self.layerdict['stddev'].getSlice()
                 else:
                     stdX = float(self.config[self.model]['default_stddev'])
-                varX = stdX**2. + ((self.coeffs['b1']+self.coeffs['b6']*(np.arctan(
-                    self.layerdict['slope'].getSlice()) * 180 / np.pi))**2.
-                    * self.uncert['stdpgv'].getSlice()**2.)
-                varP = (np.exp(-X)/(np.exp(-X) + 1)**2.)**2. * varX
+                cfs = self.coeffs
+                slp = self.layerdict['slope']
+                std = self.uncert['stdpgv']
+                varX = stdX**2. + ((
+                    cfs['b1'] + cfs['b6'] *
+                    (np.arctan(slp.getSlice()) * 180 / np.pi))**2.
+                    * std.getSlice()**2.)
+                varP = (np.exp(-X) / (np.exp(-X) + 1)**2.)**2. * varX
                 if 'coverage' in self.config[self.model].keys():
                     a = -7.592
                     b = 5.237
                     c = -3.042
                     d = 4.035
-                    varL = (np.exp(a+b*P+c*P**2.+d*P**3.) *
-                            (b+2.*P*c+3.*d*P**2.))**2. * varP
+                    varL = (np.exp(a + b * P + c * P**2. + d * P**3.) *
+                            (b + 2. * P * c + 3. * d * P**2.))**2. * varP
                     std1 = np.sqrt(varL)
                 else:
                     std1 = np.sqrt(varP)
@@ -554,6 +559,20 @@ class LogisticModel(object):
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
             P = eval(eqn)
+
+        # Compute quantiles
+        if std1 is not None:
+            quantile_dict = {}
+            pmax = self.config[self.model]['maxprob']
+            beta_p = P / pmax * (((pmax * P - P**2) / std1**2) - 1)
+            beta_q = (1 - P / pmax) * (((pmax * P - P**2) / std1**2) - 1)
+            for ci_prob in CI_PROBABILITIES:
+                min_quantile = (1.0 - ci_prob) / 2.0
+                max_quantile = 1.0 - min_quantile
+                min_prob, max_prob = get_rangebeta(
+                    beta_p, beta_q, ci_prob, minlim=0, maxlim=pmax)
+                quantile_dict[str(min_quantile)] = min_prob
+                quantile_dict[str(max_quantile)] = max_prob
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
@@ -622,6 +641,9 @@ class LogisticModel(object):
                 'type': 'output',
                 'description': description
             }
+            for quantile, qgrid in quantile_dict.items():
+                qname = "quantile_%s" % quantile
+                rdict[qname] = qgrid
 
         # This step might swamp memory for higher resolution runs
         if self.saveinputs is True:
@@ -963,12 +985,12 @@ def validateRefs(cmodel):
             shortrefs[key] = 'unknown'
     try:
         modelrefs['longref'] = cmodel['longref']
-    except:
+    except BaseException:
         print('No model longref provided')
         modelrefs['longref'] = 'unknown'
     try:
         modelrefs['shortref'] = cmodel['shortref']
-    except:
+    except BaseException:
         print('No model shortref provided')
         modelrefs['shortref'] = 'unknown'
     return modelrefs, longrefs, shortrefs
@@ -1019,7 +1041,7 @@ def checkTerm(term, layers):
     # anything left *might* cause an error
     for op in OPERATORS:
         if term.find(op) > -1:
-            term = term.replace(op, 'np.'+op)
+            term = term.replace(op, 'np.' + op)
 
     for sm_term in SM_GRID_TERMS:
         term = term.replace(

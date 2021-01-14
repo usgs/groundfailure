@@ -133,9 +133,9 @@ def run_gfail(args):
             if sd.xmin > sd.xmax:
                 print('\nShakeMap crosses 180/-180 line, setting bounds so '
                       'only side with more land area is run')
-                if sd.xmax + 180. > 180-sd.xmin:
-                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, -180.,
-                                                     sd.xmax)
+                if sd.xmax + 180. > 180 - sd.xmin:
+                    set_bounds = '%s, %s, %s, %s' % (
+                        sd.ymin, sd.ymax, -180., sd.xmax)
                 else:
                     set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin,
                                                      180.)
@@ -183,7 +183,7 @@ def run_gfail(args):
                         configs.append(temp)
                     else:
                         conffail.append(conf)
-                except:
+                except BaseException:
                     conffail.append(conf)
 
         print('\nRunning the following models:')
@@ -251,7 +251,7 @@ def run_gfail(args):
                     print('Could not read in finite fault, will '
                           'try to download from comcat')
                     ffault = None
-            except:
+            except BaseException:
                 print('Could not read in finite fault, will try to '
                       'download from comcat')
                 ffault = None
@@ -262,11 +262,13 @@ def run_gfail(args):
                 returned_ev = get_event_comcat(shakefile)
                 if returned_ev is not None:
                     testjd, detail, temp = returned_ev
-                    if 'faultfiles' in testjd['input']['event_information']:
-                        ffilename = testjd['input']['event_information']['faultfiles']
+                    evinfo = testjd['input']['event_information']
+                    if 'faultfiles' in evinfo:
+                        ffilename = evinfo['faultfiles']
                         if len(ffilename) > 0:
                             # Download the file
-                            with tempfile.NamedTemporaryFile(delete=False, mode='w') as f:
+                            with tempfile.NamedTemporaryFile(
+                                    delete=False, mode='w') as f:
                                 temp.getContent(ffilename, filename=f.name)
                                 ffault = text_to_json(f.name)
                                 os.remove(f.name)
@@ -302,10 +304,9 @@ def run_gfail(args):
                           'Skipping to next model\n')
                     continue
                 else:
-                    pnt = '%s, %s, %s, %s' % (newbnds['xmin'],
-                                              newbnds['xmax'],
-                                              newbnds['ymin'],
-                                              newbnds['ymax'])
+                    pnt = '%s, %s, %s, %s' % (
+                        newbnds['xmin'], newbnds['xmax'],
+                        newbnds['ymin'], newbnds['ymax'])
                     print('Running model for new bounds that are fully covered'
                           ' by input layer: %s' % pnt)
                     bounds2 = newbnds
@@ -481,9 +482,9 @@ def getShakefiles(event, outdir, uncert=False, version=None,
     else:
         uncertfile = None
     if version is not None:
-        includeSuperseded=True
+        includeSuperseded = True
     else:
-        includeSuperseded=False
+        includeSuperseded = False
     # If args.event is a url to a shakemap, download from that url
     if isURL(event):
         if version is not None or source != 'preferred':
@@ -499,13 +500,17 @@ def getShakefiles(event, outdir, uncert=False, version=None,
         version = getHeaderData(shakefile)[0]['shakemap_version']
         source = getHeaderData(shakefile)[0]['shakemap_originator']
         try:
-            detail = get_event_by_id(event, includesuperseded=includeSuperseded)
-        except:  # Maybe originator is missing from event id, try another way
+            detail = get_event_by_id(
+                event, includesuperseded=includeSuperseded)
+        except BaseException:
+            # Maybe originator is missing from event id, try another way
+
             try:
                 temp = getHeaderData(shakefile)[0]
                 temp2 = '%s%s' % (
                     temp['shakemap_originator'], temp['shakemap_id'])
-                detail = get_event_by_id(temp2, includesuperseded=includeSuperseded)
+                detail = get_event_by_id(
+                    temp2, includesuperseded=includeSuperseded)
                 event = temp2
             except Exception as e:
                 msg = 'Could not get event detail for shakemap at provided URL: %s'
@@ -530,13 +535,14 @@ def getShakefiles(event, outdir, uncert=False, version=None,
             else:
                 vers.append(-999)
         idx = np.where(np.array(vers) == version)[0]
-        if len(idx)<1:
+        if len(idx) < 1:
             # Try using libcomcat version, less reliable...
             vers = [allv.version for allv in allversions]
             idx = np.where(np.array(vers) == version)[0]
             if len(idx) == 1:
                 # Check info.json to make sure it's right version
-                infobytes, url = allversions[idx[0]].getContentBytes('info.json')
+                infobytes, url = allversions[idx[0]
+                                             ].getContentBytes('info.json')
                 info = json.loads(infobytes.decode('utf-8'))
                 if info['processing']['shakemap_versions']['map_version'] != version:
                     idx = []
@@ -548,8 +554,8 @@ def getShakefiles(event, outdir, uncert=False, version=None,
 Choosing first one.'
             warnings.warn(msg)
             print(msg)
-            
-        shakemap = allversions[idx[0]]           
+
+        shakemap = allversions[idx[0]]
         shakemap.getContent('grid.xml', shakefile)
 
     if uncert:
@@ -586,13 +592,14 @@ def getUncert(shakemap, fname=None):
         if ext == 'zip':
             fname = os.path.join(basedir, 'uncertainty.xml.zip')
             shakemap.getContent('uncertainty.xml.zip', fname)
-            #urllib.request.urlretrieve(grid_url, fname)
+            # urllib.request.urlretrieve(grid_url, fname)
             with ZipFile(fname, 'r') as zip1:
                 # See if it's inside a file structure
                 out = zip1.filelist[0]
                 # Extract all the contents of zip file in different directory
                 zip1.extractall(basedir)
-                # move file uncertainty.xml file to base dir if it was in a weird subdir
+                # move file uncertainty.xml file to base dir if it was in a
+                # weird subdir
                 if os.path.isdir(os.path.dirname(out.filename)):
                     os.replace(os.path.join(basedir, out.filename), uncertfile)
     except Exception as e:
@@ -616,7 +623,7 @@ def isURL(gridurl):
     try:
         urllib.request.urlopen(gridurl)
         is_url = True
-    except:
+    except BaseException:
         pass
     return is_url
 
@@ -863,7 +870,7 @@ def check_input_extents(config, shakefile=None, bounds=None):
             if not contains:
                 notcovered.append(filelook)
                 notcovgdicts.append(tmpgd)
-                #print(filelook)
+                # print(filelook)
     if len(notcovered) > 0:
         # Figure out what bounds COULD be run
         xmins = [gd.xmin for gd in notcovgdicts]
@@ -888,10 +895,10 @@ def check_input_extents(config, shakefile=None, bounds=None):
         # See if this is a possible extent
         try:
             test = GeoDict.createDictFromBox(
-                    newbounds['xmin'], newbounds['xmax'],
-                    newbounds['ymin'], newbounds['ymax'],
-                    0.00001, 0.00001, inside=False)
-        except:
+                newbounds['xmin'], newbounds['xmax'],
+                newbounds['ymin'], newbounds['ymax'],
+                0.00001, 0.00001, inside=False)
+        except BaseException:
             print('Cannot make new bounds that will work')
             newbounds = None
 
