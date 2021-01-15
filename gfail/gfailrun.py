@@ -349,24 +349,13 @@ def run_gfail(args):
 
             if gis or kmz:
                 for key in maplayers:
-                    # Get simplified name of key for file naming
-                    RIDOF = r'[+-]?(?=\d*[.eE])(?=\.?\d)'\
-                            r'\d*\.?\d*(?:[eE][+-]?\d+)?'
-                    OPERATORPAT = r'[\+\-\*\/]*'
-                    keyS = re.sub(OPERATORPAT, '', key)
-                    # remove floating point numbers
-                    keyS = re.sub(RIDOF, '', keyS)
-                    # remove parentheses
-                    keyS = re.sub('[()]*', '', keyS)
-                    # remove any blank spaces
-                    keyS = keyS.replace(' ', '')
                     if gis:
                         filen = os.path.join(outfolder, '%s_%s.bil'
-                                             % (filename, keyS))
+                                             % (filename, key))
                         fileh = os.path.join(outfolder, '%s_%s.hdr'
-                                             % (filename, keyS))
+                                             % (filename, key))
                         fileg = os.path.join(outfolder, '%s_%s.tif'
-                                             % (filename, keyS))
+                                             % (filename, key))
 
                         GDALGrid.copyFromGrid(
                             maplayers[key]['grid']).save(filen)
@@ -379,18 +368,26 @@ def run_gfail(args):
                         os.remove(filen)
                         os.remove(fileh)
                         filenames.append(fileg)
-                    if kmz:
+                    if kmz and not key.startswith('quantile'):
                         plotorder, logscale, lims, colormaps, maskthresh = \
                             parseConfigLayers(maplayers, conf, keys=['model'])
                         maxprob = np.nanmax(maplayers[key]['grid'].getData())
+                        if key == 'model':
+                            qdict = {
+                                k: maplayers[k] for k in maplayers.keys()
+                                if k.startswith('quantile')
+                            }
+                        else:
+                            qdict = None
                         if maskthresh is None:
                             maskthresh = [0.]
                         if maxprob >= maskthresh[0]:
                             filen = os.path.join(outfolder, '%s_%s.kmz'
-                                                 % (filename, keyS))
+                                                 % (filename, key))
                             filek = create_kmz(maplayers[key], filen,
                                                mask=maskthresh[0],
-                                               levels=lims[0])
+                                               levels=lims[0],
+                                               qdict=qdict)
                             filenames.append(filek)
                         else:
                             print('No unmasked pixels present, skipping kmz '

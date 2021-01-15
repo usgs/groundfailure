@@ -927,12 +927,14 @@ def make_legends(lqmin=0.005, lsmin=0.002, outfolder=None,
     return lsfilename, lqfilename
 
 
-def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
+def create_kmz(maplayer, outfile, mask=None, levels=None,
+               colorlist=None, qdict=None):
     """
     Create kmz files of models
 
     Args:
-        maplayer (dict): Dictionary of one model result formatted like:
+        maplayer (dict):
+            Dictionary of one model result formatted like:
 
             .. code-block:: python
 
@@ -942,11 +944,16 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
                     'type': 'output or input to model',
                     'description': 'description for subtitle'
                 }
-        outfile (str): File extension
-        mask (float): make all cells below this value transparent
-        levels (array): list of bin edges for each color, must be same length
-        colorlist (array): list of colors for each bin, should be length one
-            less than levels
+        outfile (str):
+            File extension
+        mask (float):
+            make all cells below this value transparent
+        levels (array):
+            list of bin edges for each color, must be same length
+        colorlist (array):
+            list of colors for each bin, should be length one less than levels
+        qdict (dict):
+            dictionary of quantile grids
 
     Returns:
         kmz file
@@ -979,6 +986,14 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     rgba_img, extent, lmin, lmax, cmap = out
     # Save as a tiff
     plt.imsave(mapfile, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
+    if qdict is not None:
+        for quant, quantdict in qdict.items():
+            out = make_rgba(quantdict['grid'], mask=mask,
+                            levels=levels, colorlist=colorlist)
+            rgba_img, extent, lmin, lmax, cmap = out
+            qfile = os.path.join(
+                temploc.name, '%s_%s.tiff' % (basename, quant))
+            plt.imsave(qfile, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
 
     # Start creating kmz
     L = simplekml.Kml()
@@ -1006,6 +1021,18 @@ def create_kmz(maplayer, outfile, mask=None, levels=None, colorlist=None):
     prob.latlonbox.east = extent[1]
     prob.latlonbox.west = extent[0]
     L.addfile(mapfile)
+    if qdict is not None:
+        for quant, quantdict in qdict.items():
+            qfile = os.path.join(
+                temploc.name, '%s_%s.tiff' % (basename, quant))
+            qlayer = L.newgroundoverlay(
+                name=quantdict['label'], visibility=0)
+            qlayer.icon.href = 'files/%s_%s.tiff' % (basename, quant)
+            qlayer.latlonbox.north = extent[3]
+            qlayer.latlonbox.south = extent[2]
+            qlayer.latlonbox.east = extent[1]
+            qlayer.latlonbox.west = extent[0]
+            L.addfile(qfile)
 
     # Add legend and USGS icon as screen overlays
     # Make legend

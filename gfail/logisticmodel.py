@@ -45,6 +45,7 @@ OPERATORPAT = r'[\+\-\*\/]*'
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
           'Nov', 'Dec']
 CI_PROBABILITIES = [0.68, 0.95]
+# CI_PROBABILITIES = [0.68]
 
 
 class LogisticModel(object):
@@ -563,16 +564,17 @@ class LogisticModel(object):
         # Compute quantiles
         if std1 is not None:
             quantile_dict = {}
-            pmax = self.config[self.model]['maxprob']
+            pmax = float(self.config[self.model]['maxprob'])
             beta_p = P / pmax * (((pmax * P - P**2) / std1**2) - 1)
             beta_q = (1 - P / pmax) * (((pmax * P - P**2) / std1**2) - 1)
             for ci_prob in CI_PROBABILITIES:
-                min_quantile = (1.0 - ci_prob) / 2.0
-                max_quantile = 1.0 - min_quantile
+                min_quantile = str(np.round(100 * (1.0 - ci_prob) / 2.0, 1))
+                max_quantile = str(np.round(
+                    100 * (1 - ((1.0 - ci_prob)) / 2.0), 1))
                 min_prob, max_prob = get_rangebeta(
                     beta_p, beta_q, ci_prob, minlim=0, maxlim=pmax)
-                quantile_dict[str(min_quantile)] = min_prob
-                quantile_dict[str(max_quantile)] = max_prob
+                quantile_dict[min_quantile] = min_prob
+                quantile_dict[max_quantile] = max_prob
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
@@ -642,8 +644,17 @@ class LogisticModel(object):
                 'description': description
             }
             for quantile, qgrid in quantile_dict.items():
-                qname = "quantile_%s" % quantile
-                rdict[qname] = qgrid
+                Qgrid = Grid2D(qgrid, self.geodict)
+                qname = "quantile%s" % quantile
+                rdict[qname] = {
+                    'grid': Qgrid,
+                    'label': (
+                        '%s %sth percentile - %s'
+                        % (self.modeltype.capitalize(), quantile,
+                           units5.title())),
+                    'type': 'output',
+                    'description': description
+                }
 
         # This step might swamp memory for higher resolution runs
         if self.saveinputs is True:
