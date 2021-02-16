@@ -331,7 +331,6 @@ def get_event_dir(args, connection):
     # database to see if we have processed this event before.
     eventdir = None
     shakemap_version = 0
-
     eventids = args.eventids.split(',')
 
     for eventid in eventids:
@@ -506,10 +505,11 @@ def stop_unstop(args, config):
 
     try:  # Get all event ids for this event
         detail = get_event_by_id(args.eventids)
-        eventids = ','.join(detail['ids'][1:].split(','))
+        eventids = detail['ids'][1:].split(',')
 
         # Remove any empty strings in list
         eventids = [e for e in eventids if len(e) > 0]
+        eventids = ','.join(eventids)
         args.eventids = eventids
     except Exception:
         logging.info(
