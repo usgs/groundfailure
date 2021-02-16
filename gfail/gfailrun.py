@@ -478,6 +478,10 @@ def getShakefiles(event, outdir, uncert=False, version=None,
         uncertfile = os.path.join(outdir, 'uncertainty.xml')
     else:
         uncertfile = None
+    if version is not None:
+        includeSuperseded=True
+    else:
+        includeSuperseded=False
     # If args.event is a url to a shakemap, download from that url
     if isURL(event):
         if version is not None or source != 'preferred':
@@ -493,20 +497,20 @@ def getShakefiles(event, outdir, uncert=False, version=None,
         version = getHeaderData(shakefile)[0]['shakemap_version']
         source = getHeaderData(shakefile)[0]['shakemap_originator']
         try:
-            detail = get_event_by_id(event, includesuperseded=True)
+            detail = get_event_by_id(event, includesuperseded=includeSuperseded)
         except:  # Maybe originator is missing from event id, try another way
             try:
                 temp = getHeaderData(shakefile)[0]
                 temp2 = '%s%s' % (
                     temp['shakemap_originator'], temp['shakemap_id'])
-                detail = get_event_by_id(temp2, includesuperseded=True)
+                detail = get_event_by_id(temp2, includesuperseded=includeSuperseded)
                 event = temp2
             except Exception as e:
                 msg = 'Could not get event detail for shakemap at provided URL: %s'
                 print(msg % e)
 
     else:
-        detail = get_event_by_id(event, includesuperseded=True)
+        detail = get_event_by_id(event, includesuperseded=includeSuperseded)
 
     # Get most recent version
     if version is None:  # Get current preferred
@@ -518,6 +522,14 @@ def getShakefiles(event, outdir, uncert=False, version=None,
                                          source=source)
         vers = [allv.version for allv in allversions]
         idx = np.where(np.array(vers) == version)[0]
+        # Verify have the right version, libcomcat doesnt always behave as expected
+        
+        #TODO add info.json check that its the right version
+        
+        
+        
+        
+        
         if len(idx) != 1:
             msg = 'Could not find version %d of Shakemap from source %s'
             raise Exception(msg % (version, source))
