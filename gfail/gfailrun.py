@@ -6,8 +6,10 @@ import numpy as np
 import tempfile
 import urllib
 import re
+import json
 from argparse import Namespace
 from zipfile import ZipFile
+import warnings
 
 # local imports
 from mapio.shake import getHeaderData
@@ -520,20 +522,34 @@ def getShakefiles(event, outdir, uncert=False, version=None,
     else:
         allversions = detail.getProducts('shakemap', version='all',
                                          source=source)
-        vers = [allv.version for allv in allversions]
+        # First try with properties, more reliable
+        vers = []
+        for allv in allversions:
+            if 'version' in allv.properties:
+                vers.append(int(allv['version']))
+            else:
+                vers.append(-999)
         idx = np.where(np.array(vers) == version)[0]
-        # Verify have the right version, libcomcat doesnt always behave as expected
-        
-        #TODO add info.json check that its the right version
-        
-        
-        
-        
-        
-        if len(idx) != 1:
+        if len(idx)<1:
+            # Try using libcomcat version, less reliable...
+            vers = [allv.version for allv in allversions]
+            idx = np.where(np.array(vers) == version)[0]
+            if len(idx) == 1:
+                # Check info.json to make sure it's right version
+                infobytes, url = allversions[idx[0]].getContentBytes('info.json')
+                info = json.loads(infobytes.decode('utf-8'))
+                if info['processing']['shakemap_versions']['map_version'] != version:
+                    idx = []
+        if len(idx) < 1:
             msg = 'Could not find version %d of Shakemap from source %s'
             raise Exception(msg % (version, source))
-        shakemap = allversions[idx[0]]
+        if len(idx) > 1:
+            msg = 'Found more than one ShakeMap with matching source and version. \
+Choosing first one.'
+            warnings.warn(msg)
+            print(msg)
+            
+        shakemap = allversions[idx[0]]           
         shakemap.getContent('grid.xml', shakefile)
 
     if uncert:

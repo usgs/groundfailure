@@ -73,6 +73,19 @@ def test_callgf(tmpdir):
                                 'Completed gfail run of ci39473968' in str(so5),
                                 se5.decode())
 
+        # Add and then remove stopfile
+        runcmd = "callgf --stop ci39473968" 
+        rc6, so6, se6 = get_command_output(runcmd)
+        np.testing.assert_equal(True,
+                                'Stopfile added' in str(so6),
+                                se6.decode())
+        # Add and then remove stopfile
+        runcmd = "callgf --unstop ci39473968" 
+        rc7, so7, se7 = get_command_output(runcmd)
+        np.testing.assert_equal(True,
+                                'Stopfile removed' in str(so7),
+                                se7.decode())
+
         # Run model with url
         url = 'https://earthquake.usgs.gov/archive/product/shakemap/ci39473968/ci/1591852561898/download/grid.xml'
         runcmd = "callgf -e %s --dry-run" % url
