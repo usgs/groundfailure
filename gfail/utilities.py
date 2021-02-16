@@ -550,7 +550,7 @@ def view_database(database, starttime=None, endtime=None,
                   printcols=None, csvfile=None, printsummary=True,
                   printsuccess=False, printfailed=False,
                   printnotmet=False, maxcolwidth=100,
-                  alertreport='value', realtime_maxsec=86400.):
+                  alertreport='value', realtime_maxsec=259200.):
     """
     Prints out information from the ground failure database based on
     search criteria and other options. If nothing is defined except the
@@ -778,12 +778,15 @@ def view_database(database, starttime=None, endtime=None,
             rejects.append(idx)
             delays.append(float('nan'))
             continue
-        vermin = np.nanmin(vers)
-        sel1 = df.loc[(df['eventcode'] == idx) &
-                      (df['shakemap_version'] == vermin)]
+        sel1 = df.loc[df['eventcode'] == idx]
+        # vermin = np.nanmin(vers)
+        # sel1 = df.loc[(df['eventcode'] == idx) &
+        #               (df['shakemap_version'] == vermin)]
         if len(sel1) > 0:
-            delay = np.timedelta64(sel1['endtime'].values[0] -
-                                   sel1['time'].values[0], 's').astype(int)
+            dels = []
+            for index, se in sel1.iterrows():
+                dels.append(np.timedelta64(se['endtime'] - se['time'], 's').astype(int))
+            delay = np.nanmin(dels)
             if delay <= realtime_maxsec:
                 keep.append(idx)
                 delays.append(delay)
@@ -792,7 +795,6 @@ def view_database(database, starttime=None, endtime=None,
         else:
             rejects.append(idx)
             delays.append(float('nan'))
-
     if realtime:  # Keep just realtime events
         df = df.loc[df['eventcode'].isin(keep)]
 
@@ -806,9 +808,13 @@ def view_database(database, starttime=None, endtime=None,
         for id1 in ids:
             # Get most recent one for each
             temp = df.loc[df['eventcode'] == id1].copy()
-            temp.sort_values('endtime')
-            df.loc[df['id'] == temp.iloc[-1]['id'], 'Current'] = 1
+            dels2 = []
+            for index, te in temp.iterrows():
+                dels2.append(np.timedelta64(te['endtime'] - te['time'], 's').astype(int))
+            idx = np.argmax(dels2)
+            df.loc[df['endtime'] == temp.iloc[idx]['endtime'], 'Current'] = 1
         df = df.loc[df['Current'] == 1]
+        df.drop_duplicates(inplace=True)
 
     # Keep just the most recent number requested
     if numevents is not None and numevents < len(df):
@@ -867,7 +873,9 @@ def view_database(database, starttime=None, endtime=None,
     for idx in elist2:
         vers = np.nanmax(success.loc[success['eventcode'] == idx]
                          ['shakemap_version'].values)
-        sel1 = success.loc[(df['eventcode'] == idx) &
+        # endt5 = np.nanmax(success.loc[success['eventcode'] == idx]
+        #                   ['endtime'].values)
+        sel1 = success.loc[(success['eventcode'] == idx) &
                            (success['shakemap_version'] == vers)]
         out = get_alert(sel1['HaggLS'].values[-1],
                         sel1['HaggLQ'].values[-1],
@@ -1236,7 +1244,7 @@ def plot_evolution(database, starttime=None, endtime=None,
         raise Exception('No events found that meet criteria')
     if eventids is not None:
         changeonly = False
-    success = out[0]
+    success = out[0].sort_values('starttime')
     elist = np.unique(success['eventcode'].values)
     HaggLS = []
     HaggLQ = []
@@ -1527,8 +1535,10 @@ def time_delays(database, starttime=None, endtime=None,
         ax1.set_ylabel('Number of events')
         vals = (np.nanmean(mindel)/3600., np.nanmedian(mindel)/3600.,
                 np.nanstd(mindel)/3600.)
-        ax1.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' %
-                 vals, transform=ax1.transAxes, ha='center', va='center')
+        # ax1.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' %
+        #          vals, transform=ax1.transAxes, ha='center', va='center')
+        ax1.text(0.8, 0.8, 'median: %1.1f hr' %
+                 vals[1], transform=ax1.transAxes, ha='center', va='center')
         delstableLS = np.array(delstableLS)
         delstableLQ = np.array(delstableLQ)
         delstable = np.max([delstableLS, delstableLQ], axis=0)
@@ -1541,8 +1551,10 @@ def time_delays(database, starttime=None, endtime=None,
         ax2.set_ylabel('Number of events')
         vals = (np.nanmean(delstable)/3600., np.nanmedian(delstable)/3600.,
                 np.nanstd(delstable)/3600.)
-        ax2.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' %
-                 vals, transform=ax2.transAxes, ha='center', va='center')
+        # ax2.text(0.8, 0.8, 'mean: %1.1f hr\nmedian: %1.1f hr\nstd: %1.1f hr' %
+        #          vals, transform=ax2.transAxes, ha='center', va='center')
+        ax2.text(0.8, 0.8, 'median: %1.1f hr' %
+                 vals[1], transform=ax2.transAxes, ha='center', va='center')
 
         print('Liquefaction overall alerts that changed stablized after a '
               'median of %1.2f hours' %
@@ -1562,7 +1574,8 @@ def time_delays(database, starttime=None, endtime=None,
                  alpha=0.5, fill=False, label='Liquefaction',
                  bins=bins)
         ax3.set_xscale("log")
-        ax3.set_xlabel(r'$H_{agg}$ final/$H_{agg}$ initial')
+        # ax3.set_xlabel(r'$H_{agg}$ final/$H_{agg}$ initial')
+        ax3.set_xlabel(r'Area Exposed to Hazard $H_{final}/H_{initial}$')
         ax3.set_ylabel('Number of events')
         ax3.axvline(1., lw=2, color='k')
         arrowprops = dict(facecolor='black', width=1., headwidth=7.,
@@ -1585,7 +1598,7 @@ def time_delays(database, starttime=None, endtime=None,
         ax4.hist(ratPopLQ[ratPopLQ != 1.], bins=bins,
                  hatch='/', edgecolor='k', alpha=0.5, fill=False)
         ax4.set_xscale("log")
-        ax4.set_xlabel(r'$Pop_{exp}$ final/$Pop_{exp}$ initial')
+        ax4.set_xlabel(r'Population Exposure $E_{final}/E_{initial}$')
         ax4.set_ylabel('Number of events')
         ax4.axvline(1., lw=2, color='k')
         ax4.annotate('No change:\nLS=%d\nLQ=%d' %
@@ -1647,6 +1660,9 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
     fig, axes = plt.subplots(2, 2, sharey=True, figsize=(14, 5))
     
     colors = np.flipud(np.linspace(0., 0.7, nvers))
+    widths = np.ones(len(colors))
+    # make last one thicker
+    widths[-1] = 2.
 
     # Fill in plot
     i = 0
@@ -1665,7 +1681,7 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
         else:
             offset = 0.
             axes[0, 0].plot(xvalsHLS, yvalsHLS/np.max(yvalsHLS),
-                            color=str(colors[i]))
+                            color=str(colors[i]), lw=widths[i])
         axes[0, 0].plot(np.max((lshbins[0], row['HaggLS'])), offset, marker=7,
                         color=str(colors[i]), markersize=11)
         #axes[0,0].text(row['HaggLS'], 0.13, '%1.0f' % row['version'],
@@ -1681,7 +1697,7 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
                               color=str(colors[i]), lw=2)
         else:
             axes[0, 1].plot(xvalsHLQ, yvalsHLQ/np.max(yvalsHLQ),
-                            color=str(colors[i]))
+                            color=str(colors[i]), lw=widths[i])
         axes[0, 1].plot(np.max((lqhbins[0], row['HaggLQ'])), offset, marker=7,
                         color=str(colors[i]), markersize=11)
         #axes[0,1].text(row['HaggLQ'], 0.13, '%1.0f' % row['version'],
@@ -1697,7 +1713,7 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
                               color=str(colors[i]), lw=2)
         else:
             axes[1, 0].plot(xvalsELS, yvalsELS/np.max(yvalsELS),
-                            color=str(colors[i]))
+                            color=str(colors[i]), lw=widths[i])
         axes[1, 0].plot(np.max((lspbins[0], row['ExpPopLS'])), offset,
                         marker=7, color=str(colors[i]), markersize=11)
         #axes[1,0].text(row['ExpPopLS'], 0.13, '%1.0f' % row['version'],
@@ -1713,7 +1729,7 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
                               color=str(colors[i]), lw=2)
         else:
             axes[1, 1].plot(xvalsELQ, yvalsELQ/np.max(yvalsELQ),
-                            color=str(colors[i]))
+                            color=str(colors[i]), lw=widths[i])
         axes[1, 1].plot(np.max((lqpbins[0], row['ExpPopLQ'])), offset,
                         marker=7, color=str(colors[i]), markersize=11)
         #axes[1,1].text(row['ExpPopLQ'], 0.13, '%1.0f' % row['version'],
@@ -1792,6 +1808,7 @@ def plot_uncertainty(database, eventid, currentonly=True, filebasename=None,
         name, ext = os.path.splitext(filebasename)
         fig.savefig('%s_uncertainty%s' % (name, ext),
                     bbox_inches='tight')
+    return fig
 
 
 def alert_rectangles(ax, bins):
