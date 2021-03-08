@@ -44,8 +44,6 @@ INTPAT = '[0-9]+'
 OPERATORPAT = r'[\+\-\*\/]*'
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct',
           'Nov', 'Dec']
-CI_PROBABILITIES = [0.68, 0.95]
-# CI_PROBABILITIES = [0.68]
 
 
 class LogisticModel(object):
@@ -562,12 +560,20 @@ class LogisticModel(object):
             P = eval(eqn)
 
         # Compute quantiles
-        if std1 is not None:
+        compute_quantiles = False
+        mconf = self.config[self.model]
+        if(('conf_int_probabilities' in mconf) and
+                (std1 is not None)):
+            compute_quantiles = True
+            ci_probabilities = [
+                float(cip) for cip in mconf['conf_int_probabilities']]
+
+        if compute_quantiles:
             quantile_dict = {}
-            pmax = float(self.config[self.model]['maxprob'])
+            pmax = float(mconf['maxprob'])
             beta_p = P / pmax * (((pmax * P - P**2) / std1**2) - 1)
             beta_q = (1 - P / pmax) * (((pmax * P - P**2) / std1**2) - 1)
-            for ci_prob in CI_PROBABILITIES:
+            for ci_prob in ci_probabilities:
                 min_quantile = str(np.round(100 * (1.0 - ci_prob) / 2.0, 1))
                 max_quantile = str(np.round(
                     100 * (1 - ((1.0 - ci_prob)) / 2.0), 1))
@@ -583,6 +589,9 @@ class LogisticModel(object):
             if std1 is not None:
                 # No uncert for masked values
                 std1[P == 0] = 0.
+                if compute_quantiles:
+                    for q in quantile_dict.values():
+                        q[P == 0] = 0.
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:
@@ -643,18 +652,19 @@ class LogisticModel(object):
                 'type': 'output',
                 'description': description
             }
-            for quantile, qgrid in quantile_dict.items():
-                Qgrid = Grid2D(qgrid, self.geodict)
-                qname = "quantile%s" % quantile
-                rdict[qname] = {
-                    'grid': Qgrid,
-                    'label': (
-                        '%s %sth percentile - %s'
-                        % (self.modeltype.capitalize(), quantile,
-                           units5.title())),
-                    'type': 'output',
-                    'description': description
-                }
+            if compute_quantiles:
+                for quantile, qgrid in quantile_dict.items():
+                    Qgrid = Grid2D(qgrid, self.geodict)
+                    qname = "quantile%s" % quantile
+                    rdict[qname] = {
+                        'grid': Qgrid,
+                        'label': (
+                            '%s %sth percentile - %s'
+                            % (self.modeltype.capitalize(), quantile,
+                               units5.title())),
+                        'type': 'output',
+                        'description': description
+                    }
 
         # This step might swamp memory for higher resolution runs
         if self.saveinputs is True:

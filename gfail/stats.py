@@ -101,7 +101,7 @@ def computeStats(grid2D, stdgrid2D=None, shakefile=None,
                 os.path.expanduser('~'), '.gfail_defaults')
             defaults = ConfigObj(default_file)
             pop_file = defaults['popfile']
-        except:
+        except BaseException:
             print('No population file specified nor found in .gfail_defaults, '
                   'skipping exp_pop')
 
@@ -202,19 +202,20 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
         shkdat = None
 
     mu = np.nansum(model[model >= probthresh] * cell_area_km2)
-    Hagg['hagg_%1.2fg' % (shakethresh/100.,)] = mu
+    Hagg['hagg_%1.2fg' % (shakethresh / 100.,)] = mu
     Hagg['cell_area_km2'] = cell_area_km2
     N = np.nansum([model >= probthresh])
     #Hagg['N_%1.2fg' % (shakethresh/100.,)] = N
-    hlim = cell_area_km2*N*maxP
-    Hagg['hlim_%1.2fg' % (shakethresh/100.,)] = hlim
+    hlim = cell_area_km2 * N * maxP
+    Hagg['hlim_%1.2fg' % (shakethresh / 100.,)] = hlim
 
     if stdgrid2D is not None:
         stdgrid = GDALGrid.copyFromGrid(stdgrid2D)  # Make a copy
         stdgrid = stdgrid.project(projection=projs, method='bilinear')
         std = stdgrid.getData().copy()
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
-            totalmin = cell_area_km2 * np.sqrt(np.nansum((std[model >= probthresh])**2.))
+            totalmin = cell_area_km2 * \
+                np.sqrt(np.nansum((std[model >= probthresh])**2.))
             totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
             if stdtype == 'full':
                 if sill1 is None or range1 is None:
@@ -224,7 +225,8 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                                               shakegrid=shkdat)
                 if range1 is None:
                     # Use mean
-                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+                    Hagg['hagg_std_%1.2fg' %
+                         (shakethresh / 100.,)] = (totalmax + totalmin) / 2.
                 else:
                     # Zero out std at cells where the model probability was
                     # below the threshold because we aren't including those
@@ -232,31 +234,35 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                     stdz = std.copy()
                     stdz[model < probthresh] = 0.
                     svar1 = svar(stdz, range1, sill1, scale=cell_area_km2)
-                    Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = np.sqrt(svar1)
+                    Hagg['hagg_std_%1.2fg' %
+                         (shakethresh / 100.,)] = np.sqrt(svar1)
                     #Hagg['hagg_range_%1.2fg' % (shakethresh/100.,)] = range1
                     #Hagg['hagg_sill_%1.2fg' % (shakethresh/100.,)] = sill1
             elif stdtype == 'max':
-                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+                Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)] = totalmax
             elif stdtype == 'min':
-                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+                Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)] = totalmin
             else:
-                Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = (totalmax+totalmin)/2.
+                Hagg['hagg_std_%1.2fg' %
+                     (shakethresh / 100.,)] = (totalmax + totalmin) / 2.
 
-            var = Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)]**2.
+            var = Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)]**2.
             # Beta distribution shape factors
-            Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = (mu/hlim)*((hlim*mu-mu**2)/var-1)
-            Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = (1-mu/hlim)*((hlim*mu-mu**2)/var-1)
+            Hagg['p_hagg_%1.2fg' % (
+                shakethresh / 100.,)] = (mu / hlim) * ((hlim * mu - mu**2) / var - 1)
+            Hagg['q_hagg_%1.2fg' % (
+                shakethresh / 100.,)] = (1 - mu / hlim) * ((hlim * mu - mu**2) / var - 1)
         else:
             print('No model values above threshold, skipping uncertainty '
                   'and filling with zeros')
-            Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
-            Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
-            Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+            Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)] = 0.
+            Hagg['p_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
+            Hagg['q_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
     else:
         print('No uncertainty provided, filling with zeros')
-        Hagg['hagg_std_%1.2fg' % (shakethresh/100.,)] = 0.
-        Hagg['p_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
-        Hagg['q_hagg_%1.2fg' % (shakethresh/100.,)] = 0.
+        Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)] = 0.
+        Hagg['p_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
+        Hagg['q_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
 
     return Hagg
 
@@ -304,14 +310,14 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
 
     # Figure out difference in resolution of popfile to shakefile
     ptemp, J = GDALGrid.getFileGeoDict(pop_file)
-    factor = ptemp.dx/mdict.dx
+    factor = ptemp.dx / mdict.dx
 
     # Cut out area from population file
     popcut1 = quickcut(pop_file, mdict, precise=False,
                        extrasamp=2, method='nearest')
     #tot1 = np.sum(popcut1.getData())
     # Adjust for factor to prepare for upsampling to avoid creating new people
-    popcut1.setData(popcut1.getData()/factor**2)
+    popcut1.setData(popcut1.getData() / factor**2)
 
     # Upsample to mdict
     popcut = popcut1.interpolate2(mdict, method='nearest')
@@ -336,17 +342,19 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
         shkdat = None
 
     mu = np.nansum(model[model >= probthresh] * popdat[model >= probthresh])
-    exp_pop['exp_pop_%1.2fg' % (shakethresh/100.,)] = mu
+    exp_pop['exp_pop_%1.2fg' % (shakethresh / 100.,)] = mu
     #N = np.nansum([model >= probthresh])
     #exp_pop['N_%1.2fg' % (shakethresh/100.,)] = N
-    elim = np.nansum(popdat[model >= probthresh])*maxP
-    exp_pop['elim_%1.2fg' % (shakethresh/100.,)] = elim
+    elim = np.nansum(popdat[model >= probthresh]) * maxP
+    exp_pop['elim_%1.2fg' % (shakethresh / 100.,)] = elim
 
     if stdgrid2D is not None:
         std = stdgrid2D.getData().copy()
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
-            totalmin = np.sqrt(np.nansum((popdat[model >= probthresh]*std[model >= probthresh])**2.))
-            totalmax = np.nansum(std[model >= probthresh] * popdat[model >= probthresh])
+            totalmin = np.sqrt(
+                np.nansum((popdat[model >= probthresh] * std[model >= probthresh])**2.))
+            totalmax = np.nansum(
+                std[model >= probthresh] * popdat[model >= probthresh])
             if stdtype == 'full':
                 if sill1 is None or range1 is None:
                     modelfresh = grid.getData().copy()
@@ -355,8 +363,8 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                                               shakegrid=shkdat)
                 if range1 is None:
                     # Use mean
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
-                        (totalmax+totalmin)/2.
+                    exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = \
+                        (totalmax + totalmin) / 2.
                 else:
                     # Zero out std at cells where the model probability was
                     # below the threshold because we aren't including those
@@ -364,33 +372,33 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                     stdz = std.copy()
                     stdz[model < probthresh] = 0.
                     svar1 = svar(stdz, range1, sill1, scale=popdat)
-                    exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
+                    exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = \
                         np.sqrt(svar1)
                     #exp_pop['exp_range_%1.2fg' % (shakethresh/100.,)] = range1
                     #exp_pop['exp_sill_%1.2fg' % (shakethresh/100.,)] = sill1
 
             elif stdtype == 'max':
-                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmax
+                exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = totalmax
             elif stdtype == 'min':
-                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = totalmin
+                exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = totalmin
             else:
-                exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = \
-                    (totalmax+totalmin)/2.
+                exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = \
+                    (totalmax + totalmin) / 2.
             # Beta distribution shape factors
-            var = exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)]**2.
-            exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = \
-                (mu/elim)*((elim*mu-mu**2)/var-1)
-            exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = \
-                (1-mu/elim)*((elim*mu-mu**2)/var-1)
+            var = exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)]**2.
+            exp_pop['p_exp_%1.2fg' % (shakethresh / 100.,)] = \
+                (mu / elim) * ((elim * mu - mu**2) / var - 1)
+            exp_pop['q_exp_%1.2fg' % (shakethresh / 100.,)] = \
+                (1 - mu / elim) * ((elim * mu - mu**2) / var - 1)
         else:
             print('no std values above zero, filling with zeros')
-            exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
-            exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = 0.
-            exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+            exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = 0.
+            exp_pop['p_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
+            exp_pop['q_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
     else:
-        exp_pop['exp_std_%1.2fg' % (shakethresh/100.,)] = 0.
-        exp_pop['p_exp_%1.2fg' % (shakethresh/100.,)] = 0.
-        exp_pop['q_exp_%1.2fg' % (shakethresh/100.,)] = 0.
+        exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = 0.
+        exp_pop['p_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
+        exp_pop['q_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
 
     return exp_pop
 
@@ -454,7 +462,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     seedpts = indx[picks]
 
     # Get lags and differences for seed point vs. ndists other points around it
-    #TODO vectorize this to remove loop
+    # TODO vectorize this to remove loop
     lags = np.array([])
     diffs = np.array([])
     #vals = np.array([])
@@ -465,10 +473,10 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
         col1 = colsf[seed]
         np.random.seed(seednum1)
         addr = np.random.randint(np.max((-maxlag, -row1)),
-                                 np.min((maxlag, nrows-row1)), size=ndists)
+                                 np.min((maxlag, nrows - row1)), size=ndists)
         np.random.seed(seednum2)
         addc = np.random.randint(np.max((-maxlag, -col1)),
-                                 np.min((maxlag, ncols-col1)), size=ndists)
+                                 np.min((maxlag, ncols - col1)), size=ndists)
         indr = row1 + addr
         indc = col1 + addc
         newvalues = model[indr, indc]
@@ -485,20 +493,20 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     diffs2 = diffs**2
 
     # % Make variogram out of these samples
-    binedges = np.linspace(0, maxlag, num=nvbins+1, endpoint=True)
-    binmid = (binedges[:-1] + binedges[1:])/2
+    binedges = np.linspace(0, maxlag, num=nvbins + 1, endpoint=True)
+    binmid = (binedges[:-1] + binedges[1:]) / 2
 
     subs = np.zeros(nvbins)
     N = np.zeros(nvbins)
     for b in range(nvbins):
-        inrange = diffs2[(lags > binedges[b]) & (lags <= binedges[b+1])]
+        inrange = diffs2[(lags > binedges[b]) & (lags <= binedges[b + 1])]
         subs[b] = np.nansum(inrange)
         N[b] = len(inrange)
-    semiv = 1./(2*N)*subs
+    semiv = 1. / (2 * N) * subs
     # Fit model using weighting by 1/N to weigh bins with more samples higher
     popt, pcov = curve_fit(spherical, binmid[np.isfinite(semiv)],
                            semiv[np.isfinite(semiv)],
-                           sigma=1./N[np.isfinite(semiv)],
+                           sigma=1. / N[np.isfinite(semiv)],
                            absolute_sigma=False, bounds=(0, [maxlag, 1.]))
     if makeplots:
         plt.figure()
@@ -560,14 +568,14 @@ def svar(stds, range1, sill1, scale=1.):
     """
     range5 = int(range1)
     # Prepare kernal that is size of range of spherical equation
-    nrows = 2*range5 + 1
-    ncols = 2*range5 + 1
+    nrows = 2 * range5 + 1
+    ncols = 2 * range5 + 1
     # get distance in row and col from center point
     rows = matlib.repmat(np.arange(nrows), ncols, 1).T - range5
     cols = matlib.repmat(np.arange(ncols), nrows, 1) - range5
     dists = np.sqrt(rows**2 + cols**2)
     # Convert from semivariance to correlation and build kernal
-    kernal = (sill1-spherical(dists, range1, sill1))/sill1
+    kernal = (sill1 - spherical(dists, range1, sill1)) / sill1
 
     # convolve with stds, equivalent to sum of corr * std at each pixel for
     # within range1
@@ -592,12 +600,17 @@ def get_rangebeta(p, q, prob=0.95, minlim=0, maxlim=1):
     prob percent of the distribution
 
     Args:
-        p (float): p shape factor of beta distribution (a in scipy)
-        q (float): q shape factor of beta distribution (b in scipy)
-        prob (float): central probability of distribution to return the range
+        p (float):
+            p shape factor of beta distribution (a in scipy)
+        q (float):
+            q shape factor of beta distribution (b in scipy)
+        prob (float):
+            central probability of distribution to return the range
             of. Value from 0 to 1
-        minlim (float): minimum possible value of distribution
-        maxlim (float): maximum possible value of distribution
+        minlim (float):
+            minimum possible value of distribution
+        maxlim (float):
+            maximum possible value of distribution
 
     Returns: tuple (valmin, valmax) where:
         * valmin (float): lower edge of range containing prob
