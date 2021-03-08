@@ -349,13 +349,18 @@ def run_gfail(args):
 
             if gis or kmz:
                 for key in maplayers:
+                    # Rename 'std' key to 'beta_sigma'
+                    if key == 'std':
+                        key_label = 'beta_sigma'
+                    else:
+                        key_label = key
                     if gis:
                         filen = os.path.join(outfolder, '%s_%s.bil'
-                                             % (filename, key))
+                                             % (filename, key_label))
                         fileh = os.path.join(outfolder, '%s_%s.hdr'
-                                             % (filename, key))
+                                             % (filename, key_label))
                         fileg = os.path.join(outfolder, '%s_%s.tif'
-                                             % (filename, key))
+                                             % (filename, key_label))
 
                         GDALGrid.copyFromGrid(
                             maplayers[key]['grid']).save(filen)
@@ -383,7 +388,7 @@ def run_gfail(args):
                             maskthresh = [0.]
                         if maxprob >= maskthresh[0]:
                             filen = os.path.join(outfolder, '%s_%s.kmz'
-                                                 % (filename, key))
+                                                 % (filename, key_label))
                             filek = create_kmz(maplayers[key], filen,
                                                mask=maskthresh[0],
                                                levels=lims[0],
