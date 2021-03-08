@@ -5,6 +5,7 @@ TODO:
     - Potentially add more files (e.g., png, pdf)
 """
 import os
+import glob
 import json
 import shutil
 from lxml import etree
@@ -375,6 +376,23 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(jessee_tree, "format",
                      href='jessee_2018.png', type=png_mime)
 
+    # Does an uncertainty file exist?
+    file_base = 'jessee_2018_beta_sigma'
+    if len(glob.glob(os.path.join(pdl_dir, '%s*' % file_base))):
+        jessee_uncertainty_tree = etree.SubElement(
+            contents, "file",
+            title="Preferred Landslide Model Uncertainty (not displayed)",
+            id='nowicki_jessee_2018uncertainty')
+        file_caps = etree.SubElement(jessee_uncertainty_tree, "caption")
+        file_caps.text = 'Nowicki Jessee and others (2018) uncertainty'
+        extensions = ['.kmz', '.tif']
+        for extension in extensions:
+            mime_type = kmz_mime if 'kmz' in extension else gtif_mime
+            std_file = file_base + extension
+            if os.path.exists(os.path.join(pdl_dir, std_file)):
+                etree.SubElement(jessee_uncertainty_tree, "format",
+                                 href=std_file, type=mime_type)
+
     # Zhu 2017 section
     zhu2017_tree = etree.SubElement(
         contents, "file", title="Preferred Liquefaction Model (displayed)",
@@ -390,10 +408,27 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(zhu2017_tree, "format",
                      href='zhu_2017_general.png', type=png_mime)
 
+    # Does an uncertainty file exist?
+    file_base = 'zhu_2017_general_beta_sigma'
+    if len(glob.glob(os.path.join(pdl_dir, '%s*' % file_base))):
+        zhu2017_uncertainty_tree = etree.SubElement(
+            contents, "file",
+            title="Preferred Liquefaction Model Uncertainty (not displayed)",
+            id='zhu_2017uncertainty')
+        file_caps = etree.SubElement(zhu2017_uncertainty_tree, "caption")
+        file_caps.text = 'Zhu and others (2017) uncertainty'
+        extensions = ['.kmz', '.tif']
+        for extension in extensions:
+            mime_type = kmz_mime if 'kmz' in extension else gtif_mime
+            std_file = file_base + extension
+            if os.path.exists(os.path.join(pdl_dir, std_file)):
+                etree.SubElement(zhu2017_uncertainty_tree, "format",
+                                 href=std_file, type=mime_type)
+
     # Godt section
-    godt_tree = etree.SubElement(contents, "file",
-                                 title='Alternative Landslide Model 1 \
-                                 (not displayed)')
+    godt_tree = etree.SubElement(
+        contents, "file",
+        title='Alternative Landslide Model 1 (not displayed)')
     file_caps = etree.SubElement(godt_tree, "caption")
     file_caps.text = 'Godt and others (2008)'
     etree.SubElement(godt_tree, "format",
@@ -403,8 +438,8 @@ def prepare_pdl_directory(event_dir):
 
     # Nowicki section
     now_tree = etree.SubElement(
-        contents, "file", title='Alternative Landslide Model 2 \
-        (not displayed)')
+        contents, "file",
+        title='Alternative Landslide Model 2 (not displayed)')
     file_caps = etree.SubElement(now_tree, "caption")
     file_caps.text = 'Nowicki and others (2014)'
     etree.SubElement(now_tree, "format",
@@ -414,8 +449,8 @@ def prepare_pdl_directory(event_dir):
 
     # zhu 2015 section
     zhu2015_tree = etree.SubElement(
-        contents, "file", title="Alternative Liquefaction Model \
-        (not displayed)", id='zhu_2015')
+        contents, "file",
+        title="Alternative Liquefaction Model (not displayed)", id='zhu_2015')
     file_caps = etree.SubElement(zhu2015_tree, "caption")
     file_caps.text = 'Zhu and others (2015)'
     etree.SubElement(zhu2015_tree, "format",
