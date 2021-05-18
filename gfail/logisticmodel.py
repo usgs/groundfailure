@@ -12,6 +12,8 @@ import collections
 import shutil
 import tempfile
 from timeit import default_timer as timer
+import time
+import textwrap
 
 # third party imports
 from mapio.shake import ShakeGrid
@@ -21,6 +23,11 @@ from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
 
+import matplotlib.pyplot as plt
+import matplotlib.patheffects as path_effects
+
+
+# local imports
 from gfail.temphdf import TempHdf
 from gfail.spatial import quickcut, trim_ocean
 from gfail.utilities import getFileType
@@ -389,6 +396,8 @@ class LogisticModel(object):
                         self.nonzero = nonzero[0, :, :]
                         del(slope1)
                     didslope = True
+                    plt.imshow(self.nonzero)
+                    plt.savefig('/Users/mhearne/logistic_nonzero.png')
                 del(temp)
 
             print('Loading %s layer: %1.1f sec'
@@ -457,7 +466,7 @@ class LogisticModel(object):
         """
         return self.geodict
 
-    def calculate(self, cleanup=True, rowmax=300, colmax=None):
+    def calculate(self, cleanup=True, rowmax=2000, colmax=2000):
         """
         Calculate the model.
 
@@ -481,12 +490,42 @@ class LogisticModel(object):
         # Make empty matrix to fill
         X = np.empty([self.geodict.ny, self.geodict.nx])
 
+        ranges = {'b1': (-2, 5),
+                  'b2': (0, 2.5),
+                  'b3': (-2, -0.6),
+                  'b4': (0.05, 0.45),
+                  'b5': (-1.2, 2.2),
+                  'b6': (-0.6, 1.2)
+                  }
+
         # Loop through slices, appending output each time
+        tmpdir = '/Users/mhearne/tmp/petrolia'
         for rowstart, rowend, colstart, colend in \
                 zip(rowstarts, rowends, colstarts, colends):
             X[rowstart:rowend, colstart:colend] = eval(self.equation)
+            for key, term in self.terms.items():
+                coeff = self.coeffs[key]
+                vmin, vmax = ranges[key]
+                layer = eval(term) * coeff
+                termfile = os.path.join(tmpdir, f'{key}_logistic.png')
+                plt.imshow(layer, vmin=vmin, vmax=vmax)
+                plt.title(f'{key} logistic')
+                xmin, xmax, ymin, ymax = plt.axis()
+                termtext = textwrap.fill(term, 40)
+                text = plt.text(50, ymin * .8, termtext, color='w', size=10)
+                text.set_path_effects([path_effects.Stroke(linewidth=3, foreground='black'),
+                                       path_effects.Normal()])
+                plt.colorbar()
+                plt.savefig(termfile)
+                plt.close()
 
         P = 1 / (1 + np.exp(-X))
+        probfile = os.path.join(tmpdir, f'probability_logistic.png')
+        plt.imshow(P, vmin=0.0, vmax=0.9)
+        plt.title(f'logistic probability')
+        plt.colorbar()
+        plt.savefig(probfile)
+        plt.close()
 
         if 'vs30max' in self.config[self.model].keys():
             vs30 = self.layerdict['vs30'].getSlice(
@@ -554,10 +593,24 @@ class LogisticModel(object):
         else:
             std1 = None
 
+        probfile = os.path.join(tmpdir, f'precoverage_logistic.png')
+        plt.imshow(P, vmin=0.0, vmax=0.9)
+        plt.title(f'logistics pre-coverage')
+        plt.colorbar()
+        plt.savefig(probfile)
+        plt.close()
+
         # P needs to be converted to areal coverage AFTER dealing with uncert
         if 'coverage' in self.config[self.model].keys():
             eqn = self.config[self.model]['coverage']['eqn']
             P = eval(eqn)
+
+        probfile = os.path.join(tmpdir, f'postcoverage_logistic.png')
+        plt.imshow(P, vmin=0.0, vmax=0.9)
+        plt.title(f'logistic post-coverage')
+        plt.colorbar()
+        plt.savefig(probfile)
+        plt.close()
 
         # Compute quantiles
         compute_quantiles = False
@@ -592,6 +645,13 @@ class LogisticModel(object):
                 if compute_quantiles:
                     for q in quantile_dict.values():
                         q[P == 0] = 0.
+
+        probfile = os.path.join(tmpdir, f'coverage_logistic.png')
+        plt.imshow(P, vmin=0.0, vmax=0.9)
+        plt.title(f'logistic coverage')
+        plt.colorbar()
+        plt.savefig(probfile)
+        plt.close()
 
         # Stuff into Grid2D object
         if 'Jessee' in self.modelrefs['shortref']:

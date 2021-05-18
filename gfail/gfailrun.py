@@ -10,22 +10,44 @@ import json
 from argparse import Namespace
 from zipfile import ZipFile
 import warnings
+import time
+import pathlib
 
-# local imports
+# third party imports
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
 from mapio.gmt import GMTGrid
+from mapio.writer import write
 from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
 from mapio.shake import ShakeGrid
+from libcomcat.search import get_event_by_id
+
+# local imports
+
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
+from gfail.godt2 import godt2008_2
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat, parseConfigLayers,
     text_to_json, savelayers, getFileType)
-from libcomcat.search import get_event_by_id
+
+from gfail.zhu_2015 import Zhu2015Model
+from gfail.nowicki_2014 import Nowicki2014Model
+from gfail.zhu_2017 import Zhu2017Model
+from gfail.jessee_2018 import Jessee2018Model
+
+
+MODEL_FACTORY = {'zhu_2015': Zhu2015Model,
+                 'zhu_2017_general': Zhu2017Model,
+                 'nowicki_2014_global': Nowicki2014Model,
+                 'jessee_2018': Jessee2018Model
+                 }
 
 
 def run_gfail(args):
@@ -127,23 +149,26 @@ def run_gfail(args):
         filenames.append(shakename)
 
         # Check that shakemap bounds do not cross 180/-180 line
-
-        if args.set_bounds is None:
-            sd = ShakeGrid.getFileGeoDict(shakefile)
-            if sd.xmin > sd.xmax:
-                print('\nShakeMap crosses 180/-180 line, setting bounds so '
-                      'only side with more land area is run')
-                if sd.xmax + 180. > 180 - sd.xmin:
-                    set_bounds = '%s, %s, %s, %s' % (
-                        sd.ymin, sd.ymax, -180., sd.xmax)
+        sd = ShakeGrid.getFileGeoDict(shakefile)
+        if not args.keep_shakemap_bounds:
+            if args.set_bounds is None:
+                if sd.xmin > sd.xmax:
+                    print('\nShakeMap crosses 180/-180 line, setting bounds so '
+                          'only side with more land area is run')
+                    if sd.xmax + 180. > 180 - sd.xmin:
+                        set_bounds = '%s, %s, %s, %s' % (
+                            sd.ymin, sd.ymax, -180., sd.xmax)
+                    else:
+                        set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin,
+                                                         180.)
+                    print('Bounds applied: %s' % set_bounds)
                 else:
-                    set_bounds = '%s, %s, %s, %s' % (sd.ymin, sd.ymax, sd.xmin,
-                                                     180.)
-                print('Bounds applied: %s' % set_bounds)
+                    set_bounds = args.set_bounds
             else:
                 set_bounds = args.set_bounds
-        else:
-            set_bounds = args.set_bounds
+        else:  # we're using a logbase model version
+            set_bounds = '%s, %s, %s, %s' % (
+                sd.ymin, sd.ymax, sd.xmin, sd.xmax)
 
         config = args.config
 
@@ -315,6 +340,7 @@ def run_gfail(args):
 
             modelfunc = conf[modelname]['funcname']
             if modelfunc == 'LogisticModel':
+                t1 = time.time()
                 lm = LM.LogisticModel(shakefile, conf,
                                       uncertfile=uncertfile,
                                       saveinputs=args.save_inputs,
@@ -322,19 +348,54 @@ def run_gfail(args):
                                       trimfile=trimfile)
 
                 maplayers = lm.calculate()
+                t2 = time.time()
+                print(f'Elapsed: {t2-t1:.1f} seconds')
+
+            elif modelfunc == 'LogBase':
+                # newer object oriented approach to logistic models
+                model_class = MODEL_FACTORY[modelname]
+                t1 = time.time()
+                samplebounds = bounds2
+                if args.keep_shakemap_bounds:
+                    samplebounds = None
+
+                model = model_class(shakefile,
+                                    conf[modelname],
+                                    uncertfile=uncertfile,
+                                    bounds=samplebounds,
+                                    trimfile=trimfile
+                                    )
+                maplayers = model.calculate()
+                t2 = time.time()
+                print(f'Elapsed: {t2-t1:.1f} seconds')
             elif modelfunc == 'godt2008':
                 maplayers = godt2008(shakefile, conf,
                                      uncertfile=uncertfile,
                                      saveinputs=args.save_inputs,
                                      bounds=bounds2,
                                      trimfile=trimfile)
+            elif modelfunc == 'godt2008_2':
+                maplayers = godt2008_2(shakefile, conf,
+                                       uncertfile=uncertfile,
+                                       saveinputs=args.save_inputs,
+                                       bounds=bounds2,
+                                       trimfile=trimfile)
             else:
                 print('Unknown model function specified in config for %s '
                       'model, skipping to next config' % modelfunc)
                 continue
 
-            # time1 = datetime.datetime.utcnow().strftime('%d%b%Y_%H%M')
-            # filename = ('%s_%s_%s' % (eventid, modelname, time1))
+            #####REMOVE THIS#####
+            eventdir = pathlib.Path(shakefile).parent.name
+            tmpdir = pathlib.Path(f'/Users/mhearne/tmp/{eventdir}')
+            p_grid = maplayers['model']['grid']
+            probfile = tmpdir / f'{modelfunc}_{modelname}_probability.cdf'
+            write(p_grid, probfile, 'netcdf')
+            if 'std' in maplayers:
+                u_grid = maplayers['std']['grid']
+                sigmafile = tmpdir / f'{modelfunc}_{modelname}_sigma.cdf'
+                write(u_grid, sigmafile, 'netcdf')
+            ##########
 
             if args.appendname is not None:
                 filename = ('%s_%s_%s' % (eventid, modelname, args.appendname))

@@ -185,6 +185,16 @@ if __name__ == '__main__':
         help='Comcat eventsourcecode.',
         default="")
 
+    # adding this option in since new model implementations
+    # don't crash on the 180 meridian
+    bhelp = ('Preserve the bounds dictated by the ShakeMap. This is only '
+             'to used with the "logbase" versions of the models. In cases '
+             'where the ShakeMap crosses the 180 meridian, and a '
+             'non "logbase" version of the model is being run, this will '
+             'cause an error.')
+    parser.add_argument('--keep-shakemap-bounds', help=bhelp,
+                        action='store_true', default=False)
+
     pargs = parser.parse_args()
 
     codes_set = (pargs.eventsource == "") or (pargs.eventsourcecode == "")
