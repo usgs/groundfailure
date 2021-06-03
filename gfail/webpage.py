@@ -330,7 +330,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 shakethreshtype=shakethreshtype,
                 probthresh=probthresh,
                 maxP=maxP)
-
             metadata = maplayer['model']['description']
             if len(maplayer) > 1:
                 inputs = {}
