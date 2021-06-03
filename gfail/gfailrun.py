@@ -373,7 +373,7 @@ def run_gfail(args):
                         os.remove(filen)
                         os.remove(fileh)
                         filenames.append(fileg)
-                    if kmz and (not key.startswith('quantile') and not key.startswith('beta')) :
+                    if kmz and (not key.startswith('quantile') and not key.startswith('std')) :
                         plotorder, logscale, lims, colormaps, maskthresh = \
                             parseConfigLayers(maplayers, conf, keys=['model'])
                         maxprob = np.nanmax(maplayers[key]['grid'].getData())

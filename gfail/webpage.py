@@ -320,7 +320,6 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 stdgrid2D = maplayer['std']['grid']
             else:
                 stdgrid2D = None
-
             stats = computeStats(
                 maplayer['model']['grid'],
                 stdgrid2D=stdgrid2D,
@@ -1147,7 +1146,7 @@ def make_rgba(grid2D, levels, colorlist, mask=None,
             * cmap: colormap corresponding to image
     """
 
-    data1 = grid2D.getData()
+    data1 = grid2D.getData().copy()  # Copy because values are edited in place
     if mask is not None:
         data1[data1 < mask] = float('nan')
     geodict = grid2D.getGeoDict()
