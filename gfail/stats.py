@@ -213,6 +213,8 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
         stdgrid = GDALGrid.copyFromGrid(stdgrid2D)  # Make a copy
         stdgrid = stdgrid.project(projection=projs, method='bilinear')
         std = stdgrid.getData().copy()
+        Hagg['hagg_range'] = None
+        Hagg['hagg_sill'] = None
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = cell_area_km2 * \
                 np.sqrt(np.nansum((std[model >= probthresh])**2.))
@@ -223,6 +225,8 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                                               probthresh,
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat)
+                    Hagg['hagg_range'] = range1
+                    Hagg['hagg_sill'] = sill1
                 if range1 is None:
                     # Use mean
                     Hagg['hagg_std_%1.2fg' %
@@ -248,21 +252,37 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
 
             var = Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)]**2.
             # Beta distribution shape factors
+            ph = (mu / hlim) * ((hlim * mu - mu**2) / var - 1)
+            qh = (1 - mu / hlim) * ((hlim * mu - mu**2) / var - 1)
             Hagg['p_hagg_%1.2fg' % (
-                shakethresh / 100.,)] = (mu / hlim) * ((hlim * mu - mu**2) / var - 1)
+                shakethresh / 100.,)] = ph
             Hagg['q_hagg_%1.2fg' % (
-                shakethresh / 100.,)] = (1 - mu / hlim) * ((hlim * mu - mu**2) / var - 1)
+                shakethresh / 100.,)] = qh
+            # Compute 1 and 2 std ranges
+            if ph > 0. and qh > 0.:
+                Hagg['hagg_1std_range_%1.2g' % (
+                    shakethresh / 100.,)] = get_rangebeta(ph, qh, prob=0.6827, minlim=0.,
+                                    maxlim=hlim)
+                Hagg['hagg_2std_range_%1.2g' % (
+                    shakethresh / 100.,)] = get_rangebeta(ph, qh, prob=0.9545, minlim=0., maxlim=hlim)
+            else:
+                Hagg['hagg_1std_range_%1.2fg' % (shakethresh / 100.,)] = None
+                Hagg['hagg_2std_range_%1.2fg' % (shakethresh / 100.,)] = None
         else:
             print('No model values above threshold, skipping uncertainty '
                   'and filling with zeros')
             Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)] = 0.
             Hagg['p_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
             Hagg['q_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
+            Hagg['hagg_1std_range_%1.2fg' % (shakethresh / 100.,)] = None
+            Hagg['hagg_2std_range_%1.2fg' % (shakethresh / 100.,)] = None
     else:
         print('No uncertainty provided, filling with zeros')
         Hagg['hagg_std_%1.2fg' % (shakethresh / 100.,)] = 0.
         Hagg['p_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
         Hagg['q_hagg_%1.2fg' % (shakethresh / 100.,)] = 0.
+        Hagg['hagg_1std_range_%1.2fg' % (shakethresh / 100.,)] = None
+        Hagg['hagg_2std_range_%1.2fg' % (shakethresh / 100.,)] = None
 
     return Hagg
 
@@ -347,7 +367,8 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
     #exp_pop['N_%1.2fg' % (shakethresh/100.,)] = N
     elim = np.nansum(popdat[model >= probthresh]) * maxP
     exp_pop['elim_%1.2fg' % (shakethresh / 100.,)] = elim
-
+    exp_pop['exp_range'] = None
+    exp_pop['exp_sill'] = None
     if stdgrid2D is not None:
         std = stdgrid2D.getData().copy()
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
@@ -361,6 +382,8 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                     range1, sill1 = semivario(modelfresh, probthresh,
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat)
+                    exp_pop['exp_range'] = range1
+                    exp_pop['exp_sill'] = sill1
                 if range1 is None:
                     # Use mean
                     exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = \
@@ -386,19 +409,34 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                     (totalmax + totalmin) / 2.
             # Beta distribution shape factors
             var = exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)]**2.
-            exp_pop['p_exp_%1.2fg' % (shakethresh / 100.,)] = \
-                (mu / elim) * ((elim * mu - mu**2) / var - 1)
-            exp_pop['q_exp_%1.2fg' % (shakethresh / 100.,)] = \
-                (1 - mu / elim) * ((elim * mu - mu**2) / var - 1)
+            pe = (mu / elim) * ((elim * mu - mu**2) / var - 1)
+            qe = (1 - mu / elim) * ((elim * mu - mu**2) / var - 1)
+            exp_pop['p_exp_%1.2fg' % (shakethresh / 100.,)] = pe
+            exp_pop['q_exp_%1.2fg' % (shakethresh / 100.,)] = qe
+            # Compute 1 and 2 std ranges
+            if pe > 0. and qe > 0.:
+                exp_pop['pop_1std_range_%1.2fg' % (
+                    shakethresh / 100.,)] = get_rangebeta(pe, qe, prob=0.6827, minlim=0.,
+                                    maxlim=elim)
+                exp_pop['pop_2std_range_%1.2fg' % (
+                    shakethresh / 100.,)] = get_rangebeta(pe, qe, prob=0.9545, minlim=0.,
+                                                          maxlim=elim)
+            else:
+                exp_pop['pop_1std_range_%1.2fg' % (shakethresh / 100.,)] = None
+                exp_pop['pop_2std_range_%1.2fg' % (shakethresh / 100.,)] = None
         else:
             print('no std values above zero, filling with zeros')
             exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = 0.
             exp_pop['p_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
             exp_pop['q_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
+            exp_pop['pop_1std_range_%1.2fg' % (shakethresh / 100.,)] = None
+            exp_pop['pop_2std_range_%1.2fg' % (shakethresh / 100.,)] = None
     else:
         exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = 0.
         exp_pop['p_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
         exp_pop['q_exp_%1.2fg' % (shakethresh / 100.,)] = 0.
+        exp_pop['pop_1std_range_%1.2fg' % (shakethresh / 100.,)] = None
+        exp_pop['pop_2std_range_%1.2fg' % (shakethresh / 100.,)] = None
 
     return exp_pop
 
