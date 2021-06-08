@@ -260,10 +260,10 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                 shakethresh / 100.,)] = qh
             # Compute 1 and 2 std ranges
             if ph > 0. and qh > 0.:
-                Hagg['hagg_1std_range_%1.2g' % (
+                Hagg['hagg_1std_range_%1.2fg' % (
                     shakethresh / 100.,)] = get_rangebeta(ph, qh, prob=0.6827, minlim=0.,
                                     maxlim=hlim)
-                Hagg['hagg_2std_range_%1.2g' % (
+                Hagg['hagg_2std_range_%1.2fg' % (
                     shakethresh / 100.,)] = get_rangebeta(ph, qh, prob=0.9545, minlim=0., maxlim=hlim)
             else:
                 Hagg['hagg_1std_range_%1.2fg' % (shakethresh / 100.,)] = None
