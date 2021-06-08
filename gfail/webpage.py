@@ -374,24 +374,10 @@ def hazdev(maplayerlist, configs, shakemap, outfolder=None, alpha=0.7,
                 lq_hq = float("%.4f" % qh)
                 lq_ep = float("%.4f" % pe)
                 lq_eq = float("%.4f" % qe)
-
-                # Add bar uncertainty extents here using p and q if applicable
-                # make sure not a non-event/placeholder
-                if ph > 0. and qh > 0.:
-                    h68 = get_rangebeta(ph, qh, prob=0.6827, minlim=0.,
-                                        maxlim=hmax)
-                    h95 = get_rangebeta(ph, qh, prob=0.9545, minlim=0.,
-                                        maxlim=hmax)
-                    lq_haz_1std_range = h68
-                    lq_haz_2std_range = h95
-                # make sure not a non-event/placeholder
-                if pe > 0. and qe > 0.:
-                    e68 = get_rangebeta(pe, qe, prob=0.6827, minlim=0.,
-                                        maxlim=emax)
-                    e95 = get_rangebeta(pe, qe, prob=0.9545, minlim=0.,
-                                        maxlim=emax)
-                    lq_pop_1std_range = e68
-                    lq_pop_2std_range = e95
+                lq_haz_1std_range = stats['hagg_1std_range_0.10g']
+                lq_haz_2std_range = stats['hagg_2std_range_0.10g']
+                lq_pop_1std_range = stats['pop_1std_range_0.10g']
+                lq_pop_2std_range = stats['pop_2std_range_0.10g']
 
             edict = {
                 'id': id1,
