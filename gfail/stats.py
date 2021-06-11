@@ -200,11 +200,12 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
     else:
         shakethresh = 0.
         shkdat = None
-
+    
     mu = np.nansum(model[model >= probthresh] * cell_area_km2)
     Hagg['hagg_%1.2fg' % (shakethresh / 100.,)] = mu
     Hagg['cell_area_km2'] = cell_area_km2
     N = np.nansum([model >= probthresh])
+    #N = np.nansum([model >= 0.])
     #Hagg['N_%1.2fg' % (shakethresh/100.,)] = N
     hlim = cell_area_km2 * N * maxP
     Hagg['hlim_%1.2fg' % (shakethresh / 100.,)] = hlim
@@ -213,24 +214,51 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
         stdgrid = GDALGrid.copyFromGrid(stdgrid2D)  # Make a copy
         stdgrid = stdgrid.project(projection=projs, method='bilinear')
         std = stdgrid.getData().copy()
+        if shakefile is not None:  # Nan out areas where shaking is too low also
+            std[shkdat < shakethresh] = float('nan')
         Hagg['hagg_range'] = None
         Hagg['hagg_sill'] = None
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = cell_area_km2 * \
-                np.sqrt(np.nansum((std[model >= probthresh])**2.))
+-                np.sqrt(np.nansum((std[model >= probthresh])**2.))
             totalmax = np.nansum(std[model >= probthresh] * cell_area_km2)
             if stdtype == 'full':
                 if sill1 is None or range1 is None:
+                    # Determine correct range to search by width of area that has non_nan values
+                    cols = np.where(np.sum(~np.isnan(model), axis=0)>0.)
+                    rows = np.where(np.sum(~np.isnan(model), axis=1)>0.)
+                    maxlag = int(np.min([(np.max(cols) - np.min(cols)), (np.max(rows) - np.min(rows))])/2.)
+                    try2 = int(np.max([(np.max(cols) - np.min(cols)), (np.max(rows) - np.min(rows))])) + 100
+                    if maxlag < 100:
+                        maxlag = 100
+                    if maxlag > 800:
+                        maxlag = 800
+                    #print('maxlag %d' % maxlag)
                     range1, sill1 = semivario(grid.getData().copy(),
                                               probthresh,
                                               shakethresh=shakethresh,
-                                              shakegrid=shkdat)
+                                              shakegrid=shkdat,
+                                              maxlag=maxlag)
+                    # If sill not found, expand maxlag
+                    if maxlag - range1 < 1.:
+                        print('no sill found, expanding maxlag to %d' % try2)
+                        range1, sill1 = semivario(grid.getData().copy(),
+                                                  probthresh,
+                                                  shakethresh=shakethresh,
+                                                  shakegrid=shkdat,
+                                                  maxlag=try2)
+                    if try2 - range1 < 1.:
+                        print('No sill found in semivariogram even after expanding maxlag,'
+                              'Assuming max uncertainty')
+                        range1 = None
+                        sill1 = None
+                    
                     Hagg['hagg_range'] = range1
                     Hagg['hagg_sill'] = sill1
                 if range1 is None:
-                    # Use mean
+                    # Use max because no sill found or probs are super low
                     Hagg['hagg_std_%1.2fg' %
-                         (shakethresh / 100.,)] = (totalmax + totalmin) / 2.
+                         (shakethresh / 100.,)] = totalmax # (totalmax + totalmin) / 2.
                 else:
                     # Zero out std at cells where the model probability was
                     # below the threshold because we aren't including those
@@ -366,11 +394,15 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
     #N = np.nansum([model >= probthresh])
     #exp_pop['N_%1.2fg' % (shakethresh/100.,)] = N
     elim = np.nansum(popdat[model >= probthresh]) * maxP
+    #elim = np.nansum(popdat[model >= 0.]) * maxP
     exp_pop['elim_%1.2fg' % (shakethresh / 100.,)] = elim
-    exp_pop['exp_range'] = None
-    exp_pop['exp_sill'] = None
+
     if stdgrid2D is not None:
         std = stdgrid2D.getData().copy()
+        if shakefile is not None:  # Nan out areas where shaking is too low also
+            std[shkdat < shakethresh] = float('nan')
+        exp_pop['exp_range'] = None
+        exp_pop['exp_sill'] = None
         if np.nanmax(std) > 0. and np.nanmax(model) >= probthresh:
             totalmin = np.sqrt(
                 np.nansum((popdat[model >= probthresh] * std[model >= probthresh])**2.))
@@ -378,16 +410,38 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                 std[model >= probthresh] * popdat[model >= probthresh])
             if stdtype == 'full':
                 if sill1 is None or range1 is None:
-                    modelfresh = grid.getData().copy()
-                    range1, sill1 = semivario(modelfresh, probthresh,
+                    # Determine correct range to search by width of area that has non_nan values
+                    cols = np.where(np.sum(~np.isnan(model), axis=0)>0.)
+                    rows = np.where(np.sum(~np.isnan(model), axis=1)>0.)
+                    maxlag = int(np.min([(np.max(cols) - np.min(cols)), (np.max(rows) - np.min(rows))])/2.)
+                    try2 = int(np.max([(np.max(cols) - np.min(cols)), (np.max(rows) - np.min(rows))])) + 100
+                    if maxlag < 100:
+                        maxlag = 100
+                    #print('maxlag %d' % maxlag)
+                    range1, sill1 = semivario(grid.getData().copy(), probthresh,
                                               shakethresh=shakethresh,
-                                              shakegrid=shkdat)
+                                              shakegrid=shkdat,
+                                              maxlag=maxlag)
+                    # If sill not found, expand maxlag
+                    if maxlag - range1 < 1.:
+                        print('no sill found, expanding maxlag to %d' % try2)
+                        range1, sill1 = semivario(grid.getData().copy(),
+                                                  probthresh,
+                                                  shakethresh=shakethresh,
+                                                  shakegrid=shkdat,
+                                                  maxlag=try2)
+                    if try2 - range1 < 1.:
+                        print('No sill found in semivariogram even after expanding maxlag,'
+                              'Assuming max uncertainty')
+                        range1 = None
+                        sill1 = None
+
                     exp_pop['exp_range'] = range1
                     exp_pop['exp_sill'] = sill1
                 if range1 is None:
-                    # Use mean
-                    exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = \
-                        (totalmax + totalmin) / 2.
+                    # Use max because no sill was found
+                    exp_pop['exp_std_%1.2fg' % (shakethresh / 100.,)] = totalmax #\
+                        #(totalmax + totalmin) / 2.
                 else:
                     # Zero out std at cells where the model probability was
                     # below the threshold because we aren't including those
@@ -531,7 +585,8 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     diffs2 = diffs**2
 
     # % Make variogram out of these samples
-    binedges = np.linspace(0, maxlag, num=nvbins + 1, endpoint=True)
+    #binedges = np.linspace(0, maxlag, num=nvbins + 1, endpoint=True)
+    binedges = np.logspace(0, np.log10(maxlag), num=nvbins+1, endpoint=True)
     binmid = (binedges[:-1] + binedges[1:]) / 2
 
     subs = np.zeros(nvbins)
@@ -546,14 +601,21 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
                            semiv[np.isfinite(semiv)],
                            sigma=1. / N[np.isfinite(semiv)],
                            absolute_sigma=False, bounds=(0, [maxlag, 1.]))
+    range2, sill2 = popt
+    
+    #makeplots = True
     if makeplots:
         plt.figure()
         plt.plot(binmid, semiv, 'ob')
         plt.xlabel('Lags (pixels)')
         plt.ylabel('Semivariance')
         plt.plot(binmid, spherical(binmid, *popt), '-b')
-
-    range2, sill2 = popt
+        
+        # plt.figure()
+        # corr = (sill2 - spherical(binmid, range2, sill2)) / sill2
+        # plt.plot(binmid, corr, 'ob')
+        # plt.xlabel('Lags (pixels)')
+        # plt.ylabel('Correlation')
 
     return range2, sill2
 
