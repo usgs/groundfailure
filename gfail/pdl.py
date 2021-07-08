@@ -215,7 +215,8 @@ def transfer(event_dir, version, pdl_conf, pdl_bin=None, source="us",
         ls_xmin + ls_xmax + ls_ymin + ls_ymax +
         prod_xmin + prod_xmax + prod_ymin + prod_ymax +
         rupt_warn +
-        '"--property-shakemap-version=%s" ' % shake_version
+        '"--property-shakemap-version=%s" ' % shake_version +
+        '--signatureVersion=v2'
     )
 
     if pdl_key is not None:
