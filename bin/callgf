@@ -1232,7 +1232,7 @@ def cleanup(args, config):
                     args.event = uevent[0]
                     args.force = True
                     main(args, config, exitafter=False)
-    
+
     # Check if any didn't transfer and need to be resent
     with conn:
         cursor.execute("SELECT id, time, eventcode, note, eventdir, version, \
@@ -1268,6 +1268,13 @@ def cleanup(args, config):
                             (msg, id1))
                     else:
                         logging.info('gf_transfer failed again.')
+                        msg = 'gf_transfer failed after one retry at %s' % \
+                            datetime.now().strftime(TIMEFMT)
+                        logging.info(msg)
+                        logging.info('Updating database')
+                        cursor.execute(
+                            "UPDATE shakemap SET note = ? WHERE id = ?",
+                            (msg, id1))
 
     logging.info('Finished running cleanup')
     logging.info('---------------------------------------------------------')
