@@ -881,18 +881,18 @@ def check_input_extents(config, shakefile=None, bounds=None):
         ymaxs = [gd.ymax for gd in notcovgdicts]
 
         # Which one is the problem?
-        newbounds = dict(xmin=evdict.xmin,
-                         xmax=evdict.xmax,
-                         ymin=evdict.ymin,
-                         ymax=evdict.ymax)
+        newbounds = dict(xmin=evdict.xmin + 0.1,
+                         xmax=evdict.xmax - 0.1,
+                         ymin=evdict.ymin + 0.1,
+                         ymax=evdict.ymax - 0.1)
         if evdict.xmin < np.max(xmins):
-            newbounds['xmin'] = np.max(xmins)
+            newbounds['xmin'] = np.max(xmins) + 1.
         if evdict.xmax > np.min(xmaxs):
-            newbounds['xmax'] = np.min(xmaxs)
+            newbounds['xmax'] = np.min(xmaxs) - 1.
         if evdict.ymin < np.max(ymins):
-            newbounds['ymin'] = np.max(ymins)
+            newbounds['ymin'] = np.max(ymins) + 1.
         if evdict.ymax > np.min(ymaxs):
-            newbounds['ymax'] = np.min(ymaxs)
+            newbounds['ymax'] = np.min(ymaxs) - 1.
 
         # See if this is a possible extent
         try:
