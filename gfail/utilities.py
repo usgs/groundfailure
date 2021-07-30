@@ -709,7 +709,7 @@ def view_database(database, starttime=None, endtime=None,
     # Narrow down the database based on input criteria
 
     # set default values for start and end
-    endt = pd.to_datetime('today', utc=True)
+    endt = pd.to_datetime('now', utc=True)
     stt = pd.to_datetime('1700-01-01', utc=True)
     if starttime is not None:
         stt = pd.to_datetime(starttime, utc=True)
