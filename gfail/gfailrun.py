@@ -880,19 +880,21 @@ def check_input_extents(config, shakefile=None, bounds=None):
         ymins = [gd.ymin for gd in notcovgdicts]
         ymaxs = [gd.ymax for gd in notcovgdicts]
 
+        # Set in by a buffer of 0.05 degrees because mapio doesn't like 
+        # when bounds are exactly the same for getboundswithin
+        newbounds = dict(xmin=evdict.xmin + 0.05,
+                         xmax=evdict.xmax - 0.05,
+                         ymin=evdict.ymin + 0.05,
+                         ymax=evdict.ymax - 0.05)
         # Which one is the problem?
-        newbounds = dict(xmin=evdict.xmin,
-                         xmax=evdict.xmax,
-                         ymin=evdict.ymin,
-                         ymax=evdict.ymax)
         if evdict.xmin < np.max(xmins):
-            newbounds['xmin'] = np.max(xmins)
+            newbounds['xmin'] = np.max(xmins) + 0.05
         if evdict.xmax > np.min(xmaxs):
-            newbounds['xmax'] = np.min(xmaxs)
+            newbounds['xmax'] = np.min(xmaxs) - 0.05
         if evdict.ymin < np.max(ymins):
-            newbounds['ymin'] = np.max(ymins)
+            newbounds['ymin'] = np.max(ymins) + 0.05
         if evdict.ymax > np.min(ymaxs):
-            newbounds['ymax'] = np.min(ymaxs)
+            newbounds['ymax'] = np.min(ymaxs) - 0.05
 
         # See if this is a possible extent
         try:
