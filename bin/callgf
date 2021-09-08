@@ -349,7 +349,7 @@ def get_event_dir(args, connection):
             indx = np.argmax([datetime.strptime(row[2], TIMEFMT)
                               for row in rows])
             id1, eventdir, date = rows[indx]
-        except:  # Take any entries where eventdir is not empty
+        except BaseException:  # Take any entries where eventdir is not empty
             for row in rows:
                 id1, eventdir, date = row
                 if eventdir is not None and eventdir != '':
@@ -996,7 +996,7 @@ def process_shakemap(args, config):
             info = json.load(info_io)
             mur = float(info['output']['uncertainty']
                         ['mean_uncertainty_ratio'])
-        except:
+        except BaseException:
             # It is given as '-' when not computed. If it is not computed,
             # then the value shouldn't matter because it means that MMI 6
             # was never exceeded for the event. Probably safest to set it
@@ -1187,7 +1187,7 @@ def cleanup(args, config):
             # See if currently running, if started a long time ago, cleanup
             if 'Currently running...' in notelist:
                 idx = notelist.index('Currently running...')
-                # If has been currently running for more than 40 mins, 
+                # If has been currently running for more than 40 mins,
                 # probably failed and needs to be cleaned up
                 if datetime.now() - start_time_list[idx] > \
                         timedelta(minutes=40):
@@ -1199,8 +1199,9 @@ def cleanup(args, config):
             last_start_time = start_time_list[idx2]
             try:
                 origin_time = datetime.strptime(timeev, TIMEFMT)
-            except:
-                origin_time = datetime.strptime(timeev, '%Y-%m-%dT%H:%M:%S.%fZ')
+            except BaseException:
+                origin_time = datetime.strptime(
+                    timeev, '%Y-%m-%dT%H:%M:%S.%fZ')
             delta_run = last_start_time - origin_time
             delta_now = datetime.utcnow() - origin_time
             A = 'Failed to download shakemap files' in notelist[idx2]
@@ -1223,7 +1224,8 @@ def cleanup(args, config):
                     logging.info('Event id of %s has been replaced with %s'
                                  % (uevent[0], detail.id))
                     logging.info('Updating preferred event id in database')
-                    nt = notelist[-1] + ' Previously had event id: %s' % uevent[0]
+                    nt = notelist[-1] + \
+                        ' Previously had event id: %s' % uevent[0]
                     cursor.execute(
                         'UPDATE shakemap SET eventcode = ?, note = ? WHERE eventcode = ?',
                         (detail.id, nt, uevent[0]))
@@ -1310,7 +1312,8 @@ def main(args, config, exitafter=True):
         logger.addHandler(ch)
     logging.info('---------------------------------------------------------')
 
-    # Check if this is just a stop or unstop (won't pass beyond these lines if so)
+    # Check if this is just a stop or unstop (won't pass beyond these lines if
+    # so)
     if args.stop or args.unstop:
         stop_unstop(args, config)
 
@@ -1368,7 +1371,10 @@ def main(args, config, exitafter=True):
         finally:
             shutil.rmtree(tdir)
     else:
-        # Called by pdl
+        # Called by pdl, do not process if pending
+        if args.property_alertlevel == 'pending':
+            logging.info('PAGER alert is pending, exiting.')
+            sys.exit(0)
         if args.type == 'losspager':
             # Check if stopfile exists before proceeding
             isstopped(args, config)
@@ -1477,7 +1483,7 @@ the data_path directory.
     argparser.add_argument(
         "-c", "--cleanup",
         action='store_true', default=False,
-        help="Clean stalled runs from database, check database for events that" 
+        help="Clean stalled runs from database, check database for events that"
              " need to be rerun to remove the warning banner or if the"
              "ShakeMap wasn't downloaded successfully. If set, nothing else "
              "happens and no other "
