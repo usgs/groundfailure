@@ -47,17 +47,17 @@ def test_stats_models():
     maplayers2['model']['description']['shakemap'] = '19891018000415_ver2'
 
     hagg = stats.computeHagg(maplayers2['model']['grid'])
-    np.testing.assert_allclose(hagg['hagg_0.00g'], 66.721082, atol=0.001)
+    np.testing.assert_allclose(hagg['hagg_0.00g'], 5.12723506006, atol=0.001)
 
     stats2 = stats.computeStats(maplayers2['model']['grid'], shakefile=shakefile,
                                 shakethreshtype='pga', shakethresh=20.,
                                 probthresh=0.0)
-    np.testing.assert_allclose(stats2['Max'], 0.41278, atol=0.001)
+    np.testing.assert_allclose(stats2['Max'], 0.4105819792026343, atol=0.001)
     np.testing.assert_allclose(
-        stats2['Median'], 0.00032317817, rtol=0.01)
-    np.testing.assert_allclose(stats2['Std'], 0.049292, atol=0.001)
+        stats2['Median'], 0.34855563636356035, rtol=0.01)
+    np.testing.assert_allclose(stats2['Std'], 0.04494649549605273, atol=0.001)
     np.testing.assert_allclose(
-        stats2['hagg_0.20g'], 54.857248, atol=0.001)
+        stats2['hagg_0.20g'], 2.845917180389227, atol=0.001)
 
 
 if __name__ == "__main__":
