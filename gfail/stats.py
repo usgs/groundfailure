@@ -240,18 +240,20 @@ def computeHagg(grid2D, proj='moll', probthresh=0., shakefile=None,
                                               shakegrid=shkdat,
                                               maxlag=maxlag)
                     # If sill not found, expand maxlag
-                    if maxlag - range1 < 1.:
-                        print('no sill found, expanding maxlag to %d' % try2)
-                        range1, sill1 = semivario(grid.getData().copy(),
-                                                  probthresh,
-                                                  shakethresh=shakethresh,
-                                                  shakegrid=shkdat,
-                                                  maxlag=try2)
-                    if try2 - range1 < 1.:
-                        print('No sill found in semivariogram even after expanding maxlag,'
-                              'Assuming max uncertainty')
-                        range1 = None
-                        sill1 = None
+                    if range1 is not None: # If None, not enough points, skip ahead
+                        if maxlag - range1 < 1.:
+                            print('no sill found, expanding maxlag to %d' % try2)
+                            range1, sill1 = semivario(grid.getData().copy(),
+                                                      probthresh,
+                                                      shakethresh=shakethresh,
+                                                      shakegrid=shkdat,
+                                                      maxlag=try2)
+                            if range1 is not None:
+                                if try2 - range1 < 1.:
+                                    print('No sill found in semivariogram even after expanding maxlag,'
+                                          'Assuming max uncertainty')
+                                    range1 = None
+                                    sill1 = None
                     
                     Hagg['hagg_range'] = range1
                     Hagg['hagg_sill'] = sill1
@@ -422,19 +424,21 @@ def computePexp(grid, pop_file, shakefile=None, shakethreshtype='pga',
                                               shakethresh=shakethresh,
                                               shakegrid=shkdat,
                                               maxlag=maxlag)
-                    # If sill not found, expand maxlag
-                    if maxlag - range1 < 1.:
-                        print('no sill found, expanding maxlag to %d' % try2)
-                        range1, sill1 = semivario(grid.getData().copy(),
-                                                  probthresh,
-                                                  shakethresh=shakethresh,
-                                                  shakegrid=shkdat,
-                                                  maxlag=try2)
-                    if try2 - range1 < 1.:
-                        print('No sill found in semivariogram even after expanding maxlag,'
-                              'Assuming max uncertainty')
-                        range1 = None
-                        sill1 = None
+                    if range1 is not None: # If None, not enough points, skip ahead
+                        # If sill not found, expand maxlag
+                        if maxlag - range1 < 1.:
+                            print('no sill found, expanding maxlag to %d' % try2)
+                            range1, sill1 = semivario(grid.getData().copy(),
+                                                      probthresh,
+                                                      shakethresh=shakethresh,
+                                                      shakegrid=shkdat,
+                                                      maxlag=try2)
+                            if range1 is not None:
+                                if try2 - range1 < 1.:
+                                    print('No sill found in semivariogram even after expanding maxlag,'
+                                          'Assuming max uncertainty')
+                                    range1 = None
+                                    sill1 = None
 
                     exp_pop['exp_range'] = range1
                     exp_pop['exp_sill'] = sill1
@@ -544,7 +548,7 @@ def semivario(model, threshold=0., maxlag=100, npts=1000, ndists=200,
     indx = np.where((values >= threshold) & (shkvals >= shakethresh))[0]
     if len(indx) < minpts:
         print('Not enough values above thresholds in model. '
-              'Returning empty results')
+              'Returning empty range and sill results')
         return None, None
 
     np.random.seed(47)  # Always use same seed so results are repeatable
