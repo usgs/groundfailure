@@ -9,7 +9,6 @@ import fiona
 import configobj
 from mapio.shake import ShakeGrid
 from mapio.shake import getHeaderData
-from impactutils.comcat.query import GeoServe
 from libcomcat.search import get_event_by_id
 from io import StringIO
 import tempfile
@@ -45,13 +44,6 @@ import time
 REQUIRED_CONFIG = ['log_filepath', 'output_filepath',
                    'trimfile', 'dbfile', 'pdl_config',
                    'popfile']
-
-# what are the networks from which we will accept ShakeMap products?
-WHITELIST = ['us', 'ci', 'nc', 'nn', 'hv', 'uw', 'nn', 'uu', 'ak']
-
-# what are the networks that have origins but not ShakeMaps
-NO_SHAKEMAPS = ['mb', 'ecx', 'tul', 'ismp',
-                'nm', 'se', 'ogso', 'pr', 'neic', 'ld', 'wy', 'hv']
 
 # minimum magnitude to be processed globally
 MAG_THRESHOLD = 6.0
@@ -830,57 +822,7 @@ def process_shakemap(args, config):
         note = msg
 
     logging.info('Shakemap bounds check passed.')
-
-    logging.info('Checking source...')
-    if args.preferred_eventsource not in WHITELIST:
-        msg = ('Input ShakeMaps must be from an approved list of sources: %s. '
-               % str(WHITELIST))
-        logging.info(msg)
-        if not args.force:
-            update_event_fail(conn, db_id, msg)
-            sys.exit(1)
-        else:
-            fmt2 = 'Continuing because force flag was set.'
-            logging.info(fmt2)
-    else:
-        logging.info('Shakemap from approved source list. Check passed.')
-
-    # Use lat,lon and source to exclude ShakeMap providers who are playing
-    # outside their sandbox
-    logging.info('Checking for authoritativeness...')
-
-    # we'll default to letting the event run if we can't figure out who's
-    # authoritative
-    authtype = 'anss'
-    authsrc = args.preferred_eventsource
-    try:
-        if hasattr(args, 'preferred_latitude'):
-            lat = args.preferred_latitude
-            lon = args.preferred_longitude
-        else:
-            lat = args.latitude
-            lon = args.longitude
-        gs = GeoServe(lat, lon)
-        authsrc, authtype = gs.getAuthoritative()
-    except Exception as e:
-        fmt2 = ('Unable to connect to GeoServe, assuming "%s" is '
-                'authoritative. Error "%s"')
-        logging.info(fmt2 % (args.preferred_eventsource, str(e)))
-    if authtype != 'anss':
-        authsrc = 'us'
-    is_authoritative = authsrc.lower() == args.preferred_eventsource.lower()
-    if not is_authoritative and authsrc.lower() not in NO_SHAKEMAPS:
-        msg = ('Source %s is not authoritative for this region (%s is).'
-               % (args.preferred_eventsource, authsrc))
-        logging.info(msg)
-        if not args.force:
-            update_event_fail(conn, db_id, msg)
-            sys.exit(1)
-        else:
-            fmt2 = 'Continuing because force flag was set.'
-            logging.info(fmt2)
-    else:
-        logging.info('Source is authoritative. Check passed.')
+    
 
     logging.info('Checking to see if ShakeMap is over any land...')
     landfile = config['trimfile']
