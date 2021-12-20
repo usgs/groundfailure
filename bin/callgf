@@ -985,10 +985,20 @@ def process_shakemap(args, config):
     else:
         pdl_sender = pdl_conf_file
 
-    success = gf_transfer(
-        vdir, version, pdl_sender, dry_run=args.dry_run,
-        status=status
-    )
+    transcall = 'gf_transfer inputs: vdir: %s, version: %s, pdl_sender: %s, \
+                dry_run: %s, status: %s' % (vdir, version, pdl_sender,
+                args.dry_run, status)
+    logging.info(transcall)
+
+    try:
+        success, msg = gf_transfer(
+            vdir, version, pdl_sender, dry_run=args.dry_run,
+            status=status
+        )
+    except Exception as e:
+        logging.critical(e)
+
+    logging.info('gf_transfer message: %s' % msg)
 
     if not success:
         msg = "gf_transfer failed."
@@ -1197,11 +1207,13 @@ def cleanup(args, config):
 
                 if eventdir is not None:
                     fulldir = os.path.join(eventdir, 'version.%03i' % version)
-                    success = gf_transfer(fulldir, version=version,
-                                          pdl_config=pdl_conf,
-                                          dry_run=args.dry_run)
                     logging.info('Attempting to resend %s. gfail_transfer '
                                  'failed previously' % eid)
+                    success, msg = gf_transfer(fulldir, version=version,
+                                               pdl_config=pdl_conf,
+                                               dry_run=args.dry_run)
+                    logging.info('gf_transfer message: %s' % msg)
+
                     if success:  # Update database entry
                         msg = 'gf_transfer completed after retry at %s' % \
                             datetime.now().strftime(TIMEFMT)
