@@ -997,6 +997,8 @@ def process_shakemap(args, config):
         )
     except Exception as e:
         logging.critical(e)
+        success = False
+        msg = e
 
     logging.info('gf_transfer message: %s' % msg)
 
