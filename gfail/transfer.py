@@ -27,9 +27,9 @@ def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False,
     pdl.prepare_pdl_directory(event_dir)
 
     if pdl_config is None:
-        print('PDL directory prepared, no pdl_config '
-              'provided so no files were sent')
-        return True, None, None
+        msg = 'PDL directory prepared, no pdl_config provided so no files were sent'
+        print(msg)
+        return True, msg
     else:
         # Transfer
         if not dry_run:
@@ -42,14 +42,16 @@ def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False,
             dryrun=dry_run, status=status)
 
         if log['rc'] is True and dry_run is False:
-            print('Successful PDL transfer.')
+            msg = 'Successful PDL transfer.'
+            print(msg)
             success = True
         elif log['rc'] is True and dry_run is True:
-            print("Dry run complete, no transfer attempted.")
+            msg = "Dry run complete, no transfer attempted."
+            print(msg)
             success = True
         else:
-            print('PDL transfer failed.')
-            print(log['so'].decode())
+            msg = 'PDL transfer failed. %s' % log['so'].decode()
+            print(msg)
             success = False
 
-        return success
+        return success, msg
