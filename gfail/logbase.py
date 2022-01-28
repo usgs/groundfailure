@@ -17,14 +17,11 @@ from mapio.grid2d import Grid2D
 # local imports
 from gfail.spatial import trim_ocean2
 
-COEFFS = {
-}
+COEFFS = {}
 
-TERMS = {
-}
+TERMS = {}
 
-TERMLAYERS = {
-}
+TERMLAYERS = {}
 
 SHAKE_LAYERS = []
 
@@ -36,15 +33,22 @@ class LogisticModelBase(object):
     SHAKELAYERS = []
     do_coverage = False
     prob_units = None
-    notes = ''
+    notes = ""
     slopefile = None
     nonzero = None
-    slopemin = 'none'
-    slopemax = 'none'
+    slopemin = "none"
+    slopemax = "none"
 
-    def __init__(self, shakefile, config,
-                 bounds=None, uncertfile=None, trimfile=None, slopefile=None):
-        '''Initialize LogisticModelBase object.
+    def __init__(
+        self,
+        shakefile,
+        config,
+        bounds=None,
+        uncertfile=None,
+        trimfile=None,
+        slopefile=None,
+    ):
+        """Initialize LogisticModelBase object.
 
         Args:
             shakefile (str): Path to ShakeMap grid.xml file.
@@ -60,72 +64,88 @@ class LogisticModelBase(object):
         a temporary folder that is deleted when the object is deleted. The
         file names loaded are stored in the self.layers dictionary.
 
-        '''
+        """
+        logging.info("Initializing model...")
         self.tempdir = tempfile.mkdtemp()
         self.config = config
         self.bounds = bounds
         self.uncertfile = uncertfile
         self.trimfile = trimfile
-        self.modeltype = config['gfetype']
-        self.shake_grid = ShakeGrid.load(shakefile)
+        self.modeltype = config["gfetype"]
+        logging.info("Loading raw ShakeMap...")
+        self.raw_shake_grid = ShakeGrid.load(shakefile, adjust="res")
         self.get_sample_dict()  # sets self.sampledict
+        logging.info(f"Loading resampled ShakeMap with geodict: {self.sampledict}")
+        self.shake_grid = ShakeGrid.load(
+            shakefile,
+            samplegeodict=self.sampledict,
+            resample=True,
+            doPadding=True,
+            method="linear",
+            adjust="res",
+        )
+        logging.info("Loaded resampled ShakeMap.")
         self.shakedict = self.shake_grid.getShakeDict()
         self.eventdict = self.shake_grid.getEventDict()
 
         # make sure that if this model requires slope parameters, a slope file
         # has either been passed in or configured as a layer
+        logging.info("Checking slope parameters...")
         if slopefile is not None:
             self.slopefile = slopefile
-        elif 'slopefile' in config:
-            self.slopefile = config['slopefile']
-        elif 'slope' in config['layers']:
-            self.slopefile = config['layers']['slope']['file']
+        elif "slopefile" in config:
+            self.slopefile = config["slopefile"]
+        elif "slope" in config["layers"]:
+            self.slopefile = config["layers"]["slope"]["file"]
         else:
             self.slopefile = None
 
         if self.slopefile is not None:
             self.set_slope_params(config)
 
-        (self.modelrefs,
-         self.longrefs,
-         self.shortrefs) = self.validate_refs(config)
+        logging.info("Checking references, units, interpolations...")
+        (self.modelrefs, self.longrefs, self.shortrefs) = self.validate_refs(config)
         self.units = self.validate_units(config)
         if self.prob_units is None:
             # this normally will be defined in a subclass
-            self.prob_units = 'Probability of any occurrence'
-        self.interpolations = config['interpolations']
+            self.prob_units = "Probability of any occurrence"
+        self.interpolations = config["interpolations"]
 
+        logging.info("Looping over layers...")
         self.layers = {}
-        for key, layer in config['layers'].items():
-            layerfile = pathlib.Path(layer['file'])
+        for key, layer in config["layers"].items():
+            layerfile = pathlib.Path(layer["file"])
             logging.info(f'Reading {layer["file"]}...')
             interp = self.interpolations[key]
             fdict = get_file_geodict(layerfile)
             if fdict.isAligned(self.sampledict):
                 grid = read(layerfile, samplegeodict=self.sampledict)
             else:
-                grid = read(layerfile, samplegeodict=self.sampledict,
-                            method=interp, resample=True,
-                            doPadding=True,
-                            interp_approach='rasterio')
+                grid = read(
+                    layerfile,
+                    samplegeodict=self.sampledict,
+                    method=interp,
+                    resample=True,
+                    doPadding=True,
+                    interp_approach="rasterio",
+                )
             self.pre_process(key, grid)
-            outfile = pathlib.Path(self.tempdir, f'{key}.cdf')
-            logging.info(f'Writing sampled layer {key}...')
-            write(grid, outfile, 'netcdf')
+            outfile = pathlib.Path(self.tempdir, f"{key}.cdf")
+            logging.info(f"Writing sampled layer {key}...")
+            write(grid, outfile, "netcdf")
             self.layers[key] = outfile
         for key in self.SHAKELAYERS:
-            raw_shake_grid = self.shake_grid.getLayer(key)
-            shake_grid = raw_shake_grid.interpolate2(self.sampledict,
-                                                     method='linear')
-            outfile = pathlib.Path(self.tempdir, f'{key}.cdf')
-            logging.info(f'Writing sampled layer {key}...')
-            write(shake_grid, outfile, 'netcdf')
+            shake_grid = self.shake_grid.getLayer(key)
+            # shake_grid = raw_shake_grid.interpolate2(self.sampledict, method="linear")
+            outfile = pathlib.Path(self.tempdir, f"{key}.cdf")
+            logging.info(f"Writing sampled layer {key}...")
+            write(shake_grid, outfile, "netcdf")
 
             self.layers[key] = outfile
         if uncertfile is not None:
             self.save_uncertainty_layers()
 
-        if 'slope' not in config['layers'] and self.slopefile is not None:
+        if "slope" not in config["layers"] and self.slopefile is not None:
             self.read_slope()
         if self.slopefile is not None:
             # establish the indices of the slope grid
@@ -133,59 +153,62 @@ class LogisticModelBase(object):
             self.get_slope_non_zero()
 
     def read_slope(self):
-        interp = 'linear'
-        if 'slope' in self.interpolations:
-            interp = self.interpolations['slope']
+        interp = "linear"
+        if "slope" in self.interpolations:
+            interp = self.interpolations["slope"]
         fdict = get_file_geodict(self.slopefile)
         if fdict.isAligned(self.sampledict):
             grid = read(self.slopefile, samplegeodict=self.sampledict)
         else:
-            grid = read(self.slopefile, samplegeodict=self.sampledict,
-                        method=interp, resample=True,
-                        doPadding=True,
-                        interp_approach='rasterio')
-        outfile = pathlib.Path(self.tempdir, 'slope.cdf')
-        logging.info('Writing sampled layer slope...')
-        write(grid, outfile, 'netcdf')
-        self.layers['slope'] = outfile
+            grid = read(
+                self.slopefile,
+                samplegeodict=self.sampledict,
+                method=interp,
+                resample=True,
+                doPadding=True,
+                interp_approach="rasterio",
+            )
+        outfile = pathlib.Path(self.tempdir, "slope.cdf")
+        logging.info("Writing sampled layer slope...")
+        write(grid, outfile, "netcdf")
+        self.layers["slope"] = outfile
 
     def get_slope_non_zero(self):
         slopemin = self.slopemin
         slopemax = self.slopemax
-        if self.slopemin == 'none':
+        if self.slopemin == "none":
             nx = self.sampledict.nx
             ny = self.sampledict.ny
             self.nonzero = np.ones((ny, nx), dtype=bool)
             return
-        slopefile = self.layers['slope']
+        slopefile = self.layers["slope"]
         slope = read(slopefile)._data
         # do whatever conversions are necessary to get slope in degrees.
         # this method is implemented in the child class.
         slope = self.modify_slope(slope)
-        self.nonzero = np.array(
-            [(slope > slopemin) &
-             (slope <= slopemax)])
+        self.nonzero = np.array([(slope > slopemin) & (slope <= slopemax)])
         self.nonzero = self.nonzero[0, :, :]
         del slope
 
     def modify_slope(self, slope):
-        '''This method should be implemented by child classes.
-        '''
+        """This method should be implemented by child classes."""
         pass
 
     def set_slope_params(self, config):
         # Find slope thresholds, if applicable
-        self.slopemin = 'none'
-        self.slopemax = 'none'
-        if 'slopefile' in config:
+        self.slopemin = "none"
+        self.slopemax = "none"
+        if "slopefile" in config:
             try:
-                self.slopemin = float(config['slopemin'])
-                self.slopemax = float(config['slopemax'])
+                self.slopemin = float(config["slopemin"])
+                self.slopemax = float(config["slopemax"])
             except BaseException:
-                print('Could not find slopemin and/or slopemax in config, '
-                      'limits. No slope thresholds will be applied.')
-                self.slopemin = 'none'
-                self.slopemax = 'none'
+                print(
+                    "Could not find slopemin and/or slopemax in config, "
+                    "limits. No slope thresholds will be applied."
+                )
+                self.slopemin = "none"
+                self.slopemax = "none"
 
     def validate_units(self, cmodel):
         """Validate model units.
@@ -197,11 +220,11 @@ class LogisticModelBase(object):
             dict: Model units.
         """
         units = {}
-        for key in cmodel['layers'].keys():
-            if 'units' in cmodel['layers'][key]:
-                units[key] = cmodel['layers'][key]['units']
+        for key in cmodel["layers"].keys():
+            if "units" in cmodel["layers"][key]:
+                units[key] = cmodel["layers"][key]["units"]
             else:
-                raise Exception('No unit string configured for layer %s' % key)
+                raise Exception("No unit string configured for layer %s" % key)
         return units
 
     def validate_refs(self, cmodel):
@@ -223,76 +246,84 @@ class LogisticModelBase(object):
         longrefs = {}
         shortrefs = {}
         modelrefs = {}
-        for key in cmodel['layers'].keys():
-            if 'longref' in cmodel['layers'][key]:
-                longrefs[key] = cmodel['layers'][key]['longref']
+        for key in cmodel["layers"].keys():
+            if "longref" in cmodel["layers"][key]:
+                longrefs[key] = cmodel["layers"][key]["longref"]
             else:
-                print('No longref provided for layer %s' % key)
-                longrefs[key] = 'unknown'
-            if 'shortref' in cmodel['layers'][key]:
-                shortrefs[key] = cmodel['layers'][key]['shortref']
+                print("No longref provided for layer %s" % key)
+                longrefs[key] = "unknown"
+            if "shortref" in cmodel["layers"][key]:
+                shortrefs[key] = cmodel["layers"][key]["shortref"]
             else:
-                print('No shortref provided for layer %s' % key)
-                shortrefs[key] = 'unknown'
+                print("No shortref provided for layer %s" % key)
+                shortrefs[key] = "unknown"
         try:
-            modelrefs['longref'] = cmodel['longref']
+            modelrefs["longref"] = cmodel["longref"]
         except BaseException:
-            print('No model longref provided')
-            modelrefs['longref'] = 'unknown'
+            print("No model longref provided")
+            modelrefs["longref"] = "unknown"
         try:
-            modelrefs['shortref'] = cmodel['shortref']
+            modelrefs["shortref"] = cmodel["shortref"]
         except BaseException:
-            print('No model shortref provided')
-            modelrefs['shortref'] = 'unknown'
+            print("No model shortref provided")
+            modelrefs["shortref"] = "unknown"
         return modelrefs, longrefs, shortrefs
 
     def save_uncertainty_layers(self):
         error_grid = ShakeGrid.load(self.uncertfile)
         for shakelayer in self.SHAKELAYERS:
-            key = f'std{shakelayer}'
-            method = 'linear'
-            if key in self.config['interpolations'].keys():
+            key = f"std{shakelayer}"
+            method = "linear"
+            if key in self.config["interpolations"].keys():
                 method = self.interpolations[key]
             gm_grid = error_grid.getLayer(key)
-            gm_grid = gm_grid.interpolate2(self.sampledict,
-                                           method=method)
+            gm_grid = gm_grid.interpolate2(self.sampledict, method=method)
 
-            filename = pathlib.Path(self.tempdir) / f'{key}.cdf'
+            filename = pathlib.Path(self.tempdir) / f"{key}.cdf"
             self.layers[key] = filename
-            write(gm_grid, filename, 'netcdf')
+            write(gm_grid, filename, "netcdf")
 
     def pre_process(self, key, grid):
-        '''This method should be implemented by child classes.
-        '''
+        """This method should be implemented by child classes."""
         pass
 
     def get_sample_dict(self):
-        self.sampledict = None
-        shake_geodict = self.shake_grid.getGeoDict()
-        if 'baselayer' in self.config:
-            baselayer = self.config['baselayer']
-            fname = self.config['layers'][baselayer]['file']
-            basefile = pathlib.Path(fname)
-            base_geodict = get_file_geodict(basefile)
-            if self.bounds is None:
-                self.sampledict = base_geodict.getBoundsWithin(shake_geodict)
-            else:
-                mod_geodict = GeoDict.createDictFromBox(self.bounds['xmin'],
-                                                        self.bounds['xmax'],
-                                                        self.bounds['ymin'],
-                                                        self.bounds['ymax'],
-                                                        base_geodict.dx,
-                                                        base_geodict.dy
-                                                        )
-                if not shake_geodict.contains(mod_geodict):
-                    msg = ('Desired sample bounds must be within the bounds '
-                           'of the ShakeMap.')
-                    raise Exception(msg)
-                # intersection should have the resolution of the base geodict
-                intersection = shake_geodict.getIntersection(mod_geodict)
-                self.sampledict = mod_geodict.getBoundsWithin(intersection)
-        else:
-            self.sampledict = shake_geodict.copy()
+        baselayer = self.config["baselayer"]
+        basefile = self.config["layers"][baselayer]["file"]
+        basedict = get_file_geodict(basefile)
+        shake_dict = self.raw_shake_grid.getGeoDict()
+        intersection = shake_dict.getIntersection(basedict)
+        for layername, layer in self.config["layers"].items():
+            layerfile = layer["file"]
+            layerdict = get_file_geodict(layerfile)
+            intersection = layerdict.getIntersection(intersection)
+        self.sampledict = intersection
+        # self.sampledict = None
+        # shake_geodict = self.shake_grid.getGeoDict()
+        # if 'baselayer' in self.config:
+        #     baselayer = self.config['baselayer']
+        #     fname = self.config['layers'][baselayer]['file']
+        #     basefile = pathlib.Path(fname)
+        #     base_geodict = get_file_geodict(basefile)
+        #     if self.bounds is None:
+        #         self.sampledict = base_geodict.getBoundsWithin(shake_geodict)
+        #     else:
+        #         mod_geodict = GeoDict.createDictFromBox(self.bounds['xmin'],
+        #                                                 self.bounds['xmax'],
+        #                                                 self.bounds['ymin'],
+        #                                                 self.bounds['ymax'],
+        #                                                 base_geodict.dx,
+        #                                                 base_geodict.dy
+        #                                                 )
+        #         if not shake_geodict.contains(mod_geodict):
+        #             msg = ('Desired sample bounds must be within the bounds '
+        #                    'of the ShakeMap.')
+        #             raise Exception(msg)
+        #         # intersection should have the resolution of the base geodict
+        #         intersection = shake_geodict.getIntersection(mod_geodict)
+        #         self.sampledict = mod_geodict.getBoundsWithin(intersection)
+        # else:
+        #     self.sampledict = shake_geodict.copy()
 
         # we may have some config that tells us to resample even the base layer
         # by some factor of resolution.
@@ -300,31 +331,43 @@ class LogisticModelBase(object):
 
     def subdivide(self):
         # Do we need to subdivide baselayer?
-        if 'divfactor' in self.config.keys():
-            divfactor = float(self.config['divfactor'])
-            if divfactor != 1.:
+        if "divfactor" in self.config.keys():
+            divfactor = float(self.config["divfactor"])
+            if divfactor != 1.0:
                 # adjust sampledict so everything will be resampled
-                newxmin = self.sampledict.xmin - self.sampledict.dx / \
-                    2. + self.sampledict.dx / (2. * divfactor)
-                newymin = self.sampledict.ymin - self.sampledict.dy / \
-                    2. + self.sampledict.dy / (2. * divfactor)
-                newxmax = self.sampledict.xmax + self.sampledict.dx / \
-                    2. - self.sampledict.dx / (2. * divfactor)
-                newymax = self.sampledict.ymax + self.sampledict.dy / \
-                    2. - self.sampledict.dy / (2. * divfactor)
+                newxmin = (
+                    self.sampledict.xmin
+                    - self.sampledict.dx / 2.0
+                    + self.sampledict.dx / (2.0 * divfactor)
+                )
+                newymin = (
+                    self.sampledict.ymin
+                    - self.sampledict.dy / 2.0
+                    + self.sampledict.dy / (2.0 * divfactor)
+                )
+                newxmax = (
+                    self.sampledict.xmax
+                    + self.sampledict.dx / 2.0
+                    - self.sampledict.dx / (2.0 * divfactor)
+                )
+                newymax = (
+                    self.sampledict.ymax
+                    + self.sampledict.dy / 2.0
+                    - self.sampledict.dy / (2.0 * divfactor)
+                )
                 newdx = self.sampledict.dx / divfactor
                 newdy = self.sampledict.dy / divfactor
-                if np.abs(newxmax) > 180.:
-                    newxmax = np.sign(newxmax) * 180.
-                if np.abs(newxmin) > 180.:
-                    newxmin = np.sign(newxmin) * 180.
+                if np.abs(newxmax) > 180.0:
+                    newxmax = np.sign(newxmax) * 180.0
+                if np.abs(newxmin) > 180.0:
+                    newxmin = np.sign(newxmin) * 180.0
 
                 self.sampledict = GeoDict.createDictFromBox(
-                    newxmin, newxmax, newymin,
-                    newymax, newdx, newdy, inside=True)
+                    newxmin, newxmax, newymin, newymax, newdx, newdy, inside=True
+                )
 
     def calculate(self):
-        '''Calculate the probability, and sigma (if possible).
+        """Calculate the probability, and sigma (if possible).
 
          Returns:
             dict: Must contain at least one sub dictionary with
@@ -343,57 +386,59 @@ class LogisticModelBase(object):
         accumulator array.
 
 
-        '''
+        """
         nx = self.sampledict.nx
         ny = self.sampledict.ny
 
-        X = np.ones((ny, nx)) * self.COEFFS['b0']
+        X = np.ones((ny, nx)) * self.COEFFS["b0"]
         for term, operation in self.TERMS.items():
             coeff = self.COEFFS[term]
-            layers = self.TERMLAYERS[term].split(',')
+            layers = self.TERMLAYERS[term].split(",")
             layers = [layer.strip() for layer in layers]
             for layer in layers:
                 layerfile = self.layers[layer]
                 loadstr = f'{layer} = read("{layerfile}",apply_nan=True)'
-                globaldict = {f'{layer}': layer, 'read': read}
-                logging.info(f'Reading sampled layer {layer}...')
+                globaldict = {f"{layer}": layer, "read": read}
+                logging.info(f"Reading sampled layer {layer}...")
                 exec(loadstr, globaldict)
                 # this should be a reference...
                 globals()[layer] = globaldict[layer]
             try:
-                msg = (f'Executing layer operation {operation} * {coeff}...')
+                msg = f"Executing layer operation {operation} * {coeff}..."
                 logging.info(msg)
                 # replace the macro MW with the magnitude value from
                 # the shakemap
                 magstr = f'{self.eventdict["magnitude"]:.1f}'
-                operation = operation.replace('MW', magstr)
+                operation = operation.replace("MW", magstr)
                 X += eval(operation) * coeff
             except Exception as e:
-                msg = (f'{str(e)}: Unable to calculate term {term}: '
-                       f'operation {operation}*{coeff}.')
+                msg = (
+                    f"{str(e)}: Unable to calculate term {term}: "
+                    f"operation {operation}*{coeff}."
+                )
                 raise Exception(msg)
             for layer in layers:
-                del(globals()[layer])
+                del globals()[layer]
 
-        logging.info('Calculating probability...')
+        logging.info("Calculating probability...")
         # save off the X grid for potential use by
         # uncertainty calculations
-        outfile = pathlib.Path(self.tempdir, 'X.cdf')
-        logging.info('Writing intermediate layer X...')
+        outfile = pathlib.Path(self.tempdir, "X.cdf")
+        logging.info("Writing intermediate layer X...")
         grid = Grid2D(data=X, geodict=self.sampledict)
-        write(grid, outfile, 'netcdf')
-        self.layers['X'] = outfile
+        write(grid, outfile, "netcdf")
+        self.layers["X"] = outfile
         P = 1 / (1 + np.exp(-X))
         del X
 
         P = self.modify_probability(P)
         # save off the intermediate P grid for potential use by
         # uncertainty calculations
-        outfile = pathlib.Path(self.tempdir, 'P.cdf')
-        logging.info('Writing intermediate layer P...')
+        outfile = pathlib.Path(self.tempdir, "P.cdf")
+        logging.info("Writing intermediate layer P...")
         grid = Grid2D(data=P, geodict=self.sampledict)
-        write(grid, outfile, 'netcdf')
-        self.layers['P'] = outfile
+        write(grid, outfile, "netcdf")
+        self.layers["P"] = outfile
 
         sigma_grid = None
         if self.uncertfile is not None:
@@ -416,69 +461,67 @@ class LogisticModelBase(object):
 
         description = self.get_description()
 
-        outfile = '/Users/mhearne/tmp/fiji_untrimmed.cdf'
-        write(p_grid, outfile, 'netcdf')
-
         # trim off ocean pixels if user wanted that
         if self.trimfile is not None:
             # Turn all offshore cells to nan
             p_grid = trim_ocean2(p_grid, self.trimfile)
             if sigma_grid is not None:
                 sigma_grid = trim_ocean2(sigma_grid, self.trimfile)
-                rdict['std'] = {
-                    'grid': sigma_grid,
-                    'label': ('%s estimate - %s (std)'
-                              % (self.modeltype.capitalize(),
-                                 self.prob_units.title())),
-                    'type': 'output',
-                    'description': description
+                rdict["std"] = {
+                    "grid": sigma_grid,
+                    "label": (
+                        "%s estimate - %s (std)"
+                        % (self.modeltype.capitalize(), self.prob_units.title())
+                    ),
+                    "type": "output",
+                    "description": description,
                 }
 
-        rdict['model'] = {
-            'grid': p_grid,
-            'label': '%s estimate - %s' % (self.modeltype.capitalize(),
-                                           self.prob_units.title()),
-            'type': 'output',
-            'description': description
+        rdict["model"] = {
+            "grid": p_grid,
+            "label": "%s estimate - %s"
+            % (self.modeltype.capitalize(), self.prob_units.title()),
+            "type": "output",
+            "description": description,
         }
 
         return rdict
 
     def get_description(self):
-        shakedetail = (
-            '%s_ver%s'
-            % (self.shakedict['shakemap_id'],
-               self.shakedict['shakemap_version']))
+        shakedetail = "%s_ver%s" % (
+            self.shakedict["shakemap_id"],
+            self.shakedict["shakemap_version"],
+        )
         description = {
-            'name': self.modelrefs['shortref'],
-            'longref': self.modelrefs['longref'],
-            'units': self.units,
-            'shakemap': shakedetail,
-            'event_id': self.eventdict['event_id'],
-            'parameters': {'slopemin': self.slopemin,
-                           'slopemax': self.slopemax,
-                           'modeltype': self.modeltype,
-                           'notes': self.notes}}
-        if 'vs30max' in self.config.keys():
-            description['vs30max'] = float(self.config['vs30max'])
-        if 'minpgv' in self.config.keys():
-            description['minpgv'] = float(self.config['minpgv'])
+            "name": self.modelrefs["shortref"],
+            "longref": self.modelrefs["longref"],
+            "units": self.units,
+            "shakemap": shakedetail,
+            "event_id": self.eventdict["event_id"],
+            "parameters": {
+                "slopemin": self.slopemin,
+                "slopemax": self.slopemax,
+                "modeltype": self.modeltype,
+                "notes": self.notes,
+            },
+        }
+        if "vs30max" in self.config.keys():
+            description["vs30max"] = float(self.config["vs30max"])
+        if "minpgv" in self.config.keys():
+            description["minpgv"] = float(self.config["minpgv"])
 
         return description
 
     def calculate_coverage(self, P):
-        '''This method should be implemented by child classes.
-        '''
+        """This method should be implemented by child classes."""
         pass
 
     def calculate_uncertainty(self):
-        '''This method should be implemented by child classes.
-        '''
+        """This method should be implemented by child classes."""
         pass
 
     def modify_probability(self, P):
-        '''This method should be implemented by child classes.
-        '''
+        """This method should be implemented by child classes."""
         pass
 
     def __del__(self):
