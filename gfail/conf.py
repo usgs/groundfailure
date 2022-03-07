@@ -16,8 +16,8 @@ def __getCustomValidator():
         Validator object with custom types embedded.
     """
     fdict = {
-        'file_type': __file_type,
-        'path_type': __path_type,
+        "file_type": __file_type,
+        "path_type": __path_type,
     }
 
     validator = Validator(fdict)
@@ -61,19 +61,17 @@ def __path_type(value):
 def __filterResults(result):
     # TODO: this function has a problem where some error messages are
     # duplicated...?
-    errormsg = ''
+    errormsg = ""
     for key, value in result.items():
         if isinstance(value, dict):
             tmpmsg = __filterResults(value)
             errormsg += tmpmsg
         else:
             if not isinstance(value, bool):
-                errormsg += ("Parameter %s failed with error '%s'\n"
-                             % (key, value.args))
+                errormsg += "Parameter %s failed with error '%s'\n" % (key, value.args)
             else:
                 if not value:
-                    errormsg += ("Parameter %s was not specified correctly.\n"
-                                 % key)
+                    errormsg += "Parameter %s was not specified correctly.\n" % key
 
     return errormsg
 
@@ -100,37 +98,45 @@ def correct_config_filepaths(input_path, config):
         outer = keys1
         for keys2 in config[outer].keys():
             second = keys2
-            if hasattr(config[outer][second], 'keys') is False:
-                if second == 'slopefile' or second == 'file':
+            if hasattr(config[outer][second], "keys") is False:
+                if second == "slopefile" or second == "file":
                     path_to_correct = config[outer][second]
-                    config[outer][second] = \
-                        os.path.join(input_path, path_to_correct)
+                    config[outer][second] = os.path.join(input_path, path_to_correct)
             else:
                 for keys3 in config[outer][second].keys():
                     third = keys3
-                    if hasattr(config[outer][second][third],
-                               'keys') is False:
-                        if third == 'file' or third == 'filepath':
-                            path_to_correct = \
-                                config[outer][second][third]
-                            config[outer][second][third] = \
-                                os.path.join(input_path, path_to_correct)
+                    if hasattr(config[outer][second][third], "keys") is False:
+                        if third == "file" or third == "filepath":
+                            path_to_correct = config[outer][second][third]
+                            config[outer][second][third] = os.path.join(
+                                input_path, path_to_correct
+                            )
                     else:
                         for keys4 in config[outer][second][third].keys():
                             fourth = keys4
-                            if hasattr(config[outer][second][third][fourth],
-                                       'keys') is False:
-                                if fourth == 'file' or fourth == 'filepath':
-                                    path_to_correct = config[outer][second][third][fourth]
+                            if (
+                                hasattr(config[outer][second][third][fourth], "keys")
+                                is False
+                            ):
+                                if fourth == "file" or fourth == "filepath":
+                                    path_to_correct = config[outer][second][third][
+                                        fourth
+                                    ]
                                     config[outer][second][third][fourth] = os.path.join(
-                                        input_path, path_to_correct)
+                                        input_path, path_to_correct
+                                    )
                             else:
-                                for keys5 in config[outer][second][third][fourth].keys():
+                                for keys5 in config[outer][second][third][
+                                    fourth
+                                ].keys():
                                     fifth = keys5
-                                    if fifth == 'file' or fifth == 'filepath':
-                                        path_to_correct = config[outer][second][third][fourth][fifth]
-                                        config[outer][second][third][fourth][fifth] = os.path.join(
-                                            input_path, path_to_correct)
+                                    if fifth == "file" or fifth == "filepath":
+                                        path_to_correct = config[outer][second][third][
+                                            fourth
+                                        ][fifth]
+                                        config[outer][second][third][fourth][
+                                            fifth
+                                        ] = os.path.join(input_path, path_to_correct)
 
     return config
 
@@ -148,7 +154,7 @@ def validate(configfile, inputfilepath=None):
         section/parameters failed validation.
     """
     thispath = os.path.dirname(os.path.abspath(__file__))
-    configspec = os.path.join(thispath, 'configspec.ini')
+    configspec = os.path.join(thispath, "configspec.ini")
     config = ConfigObj(configfile, configspec=configspec)
     if inputfilepath is not None:
         config = correct_config_filepaths(config)

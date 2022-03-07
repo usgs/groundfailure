@@ -8,7 +8,6 @@ import os
 import tempfile
 import fiona
 import shutil
-from matplotlib.pyplot import grid
 import rasterio
 import rasterio.mask
 
@@ -24,36 +23,42 @@ import numpy as np
 
 def split_grid(grid):
     # split grid that sits on 180 meridian
-    xmin, xmax, ymin, ymax = (grid._geodict.xmin, grid._geodict.xmax,
-                              grid._geodict.ymin, grid._geodict.ymax)
+    xmin, xmax, ymin, ymax = (
+        grid._geodict.xmin,
+        grid._geodict.xmax,
+        grid._geodict.ymin,
+        grid._geodict.ymax,
+    )
     dx, dy = grid._geodict.dx, grid._geodict.dy
 
     toprow, topcol = grid._geodict.getRowCol(ymax, 180.0)
     leftdata = grid._data[:, 0:topcol]
     leftny, leftnx = leftdata.shape
-    leftdict = {'xmin': xmin,
-                'xmax': 180.0,
-                'ymin': ymin,
-                'ymax': ymax,
-                'dx': dx,
-                'dy': dy,
-                'nx': leftnx,
-                'ny': leftny
-                }
+    leftdict = {
+        "xmin": xmin,
+        "xmax": 180.0,
+        "ymin": ymin,
+        "ymax": ymax,
+        "dx": dx,
+        "dy": dy,
+        "nx": leftnx,
+        "ny": leftny,
+    }
     leftgeodict = GeoDict(leftdict)
     leftgrid = Grid2D(data=leftdata, geodict=leftgeodict)
 
     rightdata = grid._data[:, topcol:]
     rightny, rightnx = rightdata.shape
-    rightdict = {'xmin': -180.0,
-                 'xmax': xmax,
-                 'ymin': ymin,
-                 'ymax': ymax,
-                 'dx': dx,
-                 'dy': dy,
-                 'nx': rightnx,
-                 'ny': rightny
-                 }
+    rightdict = {
+        "xmin": -180.0,
+        "xmax": xmax,
+        "ymin": ymin,
+        "ymax": ymax,
+        "dx": dx,
+        "dy": dy,
+        "nx": rightnx,
+        "ny": rightny,
+    }
     rightgeodict = GeoDict(rightdict)
     rightgrid = Grid2D(data=rightdata, geodict=rightgeodict)
 
@@ -65,15 +70,16 @@ def join_grids(leftgrid, rightgrid):
     rightdict = rightgrid.getGeoDict()
     newdata = np.concatenate((leftgrid._data, rightgrid._data), axis=1)
     ny, nx = newdata.shape
-    newdict = {'xmin': leftdict.xmin,
-               'xmax': rightdict.xmax,
-               'ymin': leftdict.ymin,
-               'ymax': leftdict.ymax,
-               'dx': leftdict.dx,
-               'dy': leftdict.dy,
-               'nx': nx,
-               'ny': ny
-               }
+    newdict = {
+        "xmin": leftdict.xmin,
+        "xmax": rightdict.xmax,
+        "ymin": leftdict.ymin,
+        "ymax": leftdict.ymax,
+        "dx": leftdict.dx,
+        "dy": leftdict.dy,
+        "nx": nx,
+        "ny": ny,
+    }
     geodict = GeoDict(newdict)
     newgrid = Grid2D(data=newdata, geodict=geodict)
     return newgrid
@@ -97,7 +103,7 @@ def trim_ocean2(grid2D, mask, all_touched=True, crop=False):
 
     # Get shapes ready
     if type(mask) == str:
-        with fiona.open(mask, 'r') as shapefile:
+        with fiona.open(mask, "r") as shapefile:
             if gdict.xmin < gdict.xmax:
                 bbox = (gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax)
                 hits = list(shapefile.items(bbox=bbox))
@@ -115,11 +121,13 @@ def trim_ocean2(grid2D, mask, all_touched=True, crop=False):
     elif type(mask) == list:
         features = mask
     else:
-        raise Exception('mask is neither a link to a shapefile or a list of \
-                        shapely shapes, cannot proceed')
+        raise Exception(
+            "mask is neither a link to a shapefile or a list of \
+                        shapely shapes, cannot proceed"
+        )
 
     if len(features) == 0:
-        print('No coastlines in ShakeMap area')
+        print("No coastlines in ShakeMap area")
         return grid2D
 
     # now make a dataset from our Grid2D object.
@@ -127,15 +135,14 @@ def trim_ocean2(grid2D, mask, all_touched=True, crop=False):
     # and then open it. Stupid.
     try:
         tempdir = tempfile.mkdtemp()
-        tmpfile = os.path.join(tempdir, 'tmp.tif')
+        tmpfile = os.path.join(tempdir, "tmp.tif")
         # TODO: Create a temp dir, write a file in it
         if gdict.xmin < gdict.xmax:
-            write(grid2D, tmpfile, 'tiff')
-            dataset = rasterio.open(tmpfile, 'r')
-            out_image, out_transform = rasterio.mask.mask(dataset, features,
-                                                          all_touched=all_touched,
-                                                          nodata=np.nan,
-                                                          crop=crop)
+            write(grid2D, tmpfile, "tiff")
+            dataset = rasterio.open(tmpfile, "r")
+            out_image, out_transform = rasterio.mask.mask(
+                dataset, features, all_touched=all_touched, nodata=np.nan, crop=crop
+            )
             dataset.close()
             out_image = np.squeeze(out_image)
             ny, nx = out_image.shape
@@ -143,24 +150,22 @@ def trim_ocean2(grid2D, mask, all_touched=True, crop=False):
             newgrid = Grid2D(data=out_image, geodict=geodict)
         else:
             leftgrid, rightgrid = split_grid(grid2D)
-            write(leftgrid, tmpfile, 'tiff')
-            dataset = rasterio.open(tmpfile, 'r')
-            out_image, out_transform = rasterio.mask.mask(dataset, features,
-                                                          all_touched=all_touched,
-                                                          nodata=np.nan,
-                                                          crop=crop)
+            write(leftgrid, tmpfile, "tiff")
+            dataset = rasterio.open(tmpfile, "r")
+            out_image, out_transform = rasterio.mask.mask(
+                dataset, features, all_touched=all_touched, nodata=np.nan, crop=crop
+            )
             dataset.close()
             out_image = np.squeeze(out_image)
             ny, nx = out_image.shape
             geodict = geodict_from_affine(out_transform, ny, nx)
             newleftgrid = Grid2D(data=out_image, geodict=geodict)
 
-            write(rightgrid, tmpfile, 'tiff')
-            dataset = rasterio.open(tmpfile, 'r')
-            out_image, out_transform = rasterio.mask.mask(dataset, features,
-                                                          all_touched=all_touched,
-                                                          nodata=np.nan,
-                                                          crop=crop)
+            write(rightgrid, tmpfile, "tiff")
+            dataset = rasterio.open(tmpfile, "r")
+            out_image, out_transform = rasterio.mask.mask(
+                dataset, features, all_touched=all_touched, nodata=np.nan, crop=crop
+            )
             dataset.close()
             out_image = np.squeeze(out_image)
             ny, nx = out_image.shape
@@ -198,7 +203,7 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False):
 
     # Get shapes ready
     if type(mask) == str:
-        with fiona.open(mask, 'r') as shapefile:
+        with fiona.open(mask, "r") as shapefile:
             bbox = (gdict.xmin, gdict.ymin, gdict.xmax, gdict.ymax)
             hits = list(shapefile.items(bbox=bbox))
             features = [feature[1]["geometry"] for feature in hits]
@@ -207,34 +212,36 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False):
     elif type(mask) == list:
         features = mask
     else:
-        raise Exception('mask is neither a link to a shapefile or a list of \
-                        shapely shapes, cannot proceed')
+        raise Exception(
+            "mask is neither a link to a shapefile or a list of \
+                        shapely shapes, cannot proceed"
+        )
 
     if len(features) == 0:
-        print('No coastlines in ShakeMap area')
+        print("No coastlines in ShakeMap area")
         return grid2D
 
-    tempfilen = os.path.join(tempdir, 'temp.bil')
-    tempfile1 = os.path.join(tempdir, 'temp.tif')
-    tempfile2 = os.path.join(tempdir, 'temp2.tif')
+    tempfilen = os.path.join(tempdir, "temp.bil")
+    tempfile1 = os.path.join(tempdir, "temp.tif")
+    tempfile2 = os.path.join(tempdir, "temp2.tif")
     GDALGrid.copyFromGrid(grid2D).save(tempfilen)
-    cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff %s %s' % \
-        (tempfilen, tempfile1)
+    cmd = "gdal_translate -a_srs EPSG:4326 -of GTiff %s %s" % (tempfilen, tempfile1)
     rc, so, se = get_command_output(cmd)
 
     if rc:
-        with rasterio.open(tempfile1, 'r') as src_raster:
+        with rasterio.open(tempfile1, "r") as src_raster:
             out_image, out_transform = rasterio.mask.mask(
-                src_raster,
-                features,
-                all_touched=all_touched,
-                crop=crop
+                src_raster, features, all_touched=all_touched, crop=crop
             )
             out_meta = src_raster.meta.copy()
-            out_meta.update({"driver": "GTiff",
-                             "height": out_image.shape[1],
-                             "width": out_image.shape[2],
-                             "transform": out_transform})
+            out_meta.update(
+                {
+                    "driver": "GTiff",
+                    "height": out_image.shape[1],
+                    "width": out_image.shape[2],
+                    "transform": out_transform,
+                }
+            )
             with rasterio.open(tempfile2, "w", **out_meta) as dest:
                 dest.write(out_image)
 
@@ -242,14 +249,23 @@ def trim_ocean(grid2D, mask, all_touched=True, crop=False):
 
     else:
         print(se)
-        raise Exception('ocean trimming failed')
+        raise Exception("ocean trimming failed")
 
     shutil.rmtree(tempdir)
     return newgrid
 
 
-def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
-             precise=True, cleanup=True, verbose=False, override=False):
+def quickcut(
+    filename,
+    gdict,
+    tempname=None,
+    extrasamp=5.0,
+    method="bilinear",
+    precise=True,
+    cleanup=True,
+    verbose=False,
+    override=False,
+):
     """
     Use gdal to trim a large global file down quickly so mapio can read it
     efficiently. (Cannot read Shakemap.xml files, must save as .bil filrst)
@@ -277,19 +293,19 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
         problems in the next steps.
     """
     if gdict.xmax < gdict.xmin:
-        raise Exception('quickcut: your geodict xmax is smaller than xmin')
+        raise Exception("quickcut: your geodict xmax is smaller than xmin")
 
     try:
         filegdict = GDALGrid.getFileGeoDict(filename)
-    except:
+    except BaseException:
         try:
             filegdict = GMTGrid.getFileGeoDict(filename)
-        except:
-            raise Exception('Cannot get geodict for %s' % filename)
+        except BaseException:
+            raise Exception("Cannot get geodict for %s" % filename)
 
     if tempname is None:
         tempdir = tempfile.mkdtemp()
-        tempname = os.path.join(tempdir, 'junk.tif')
+        tempname = os.path.join(tempdir, "junk.tif")
         deltemp = True
     else:
         tempdir = None
@@ -302,24 +318,30 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
     filegdict = filegdict[0]
 
     # Get the right methods for mapio (method) and gdal (method2)
-    if method == 'linear':
-        method2 = 'bilinear'
-    if method == 'nearest':
-        method2 = 'near'
-    if method == 'bilinear':
-        method = 'linear'
-        method2 = 'bilinear'
-    if method == 'near':
-        method = 'nearest'
-        method2 = 'near'
+    if method == "linear":
+        method2 = "bilinear"
+    if method == "nearest":
+        method2 = "near"
+    if method == "bilinear":
+        method = "linear"
+        method2 = "bilinear"
+    if method == "near":
+        method = "nearest"
+        method2 = "near"
     else:
         method2 = method
 
     if filegdict != gdict:
         # First cut without resampling
         tempgdict = GeoDict.createDictFromBox(
-            gdict.xmin, gdict.xmax, gdict.ymin, gdict.ymax,
-            filegdict.dx, filegdict.dy, inside=True)
+            gdict.xmin,
+            gdict.xmax,
+            gdict.ymin,
+            gdict.ymax,
+            filegdict.dx,
+            filegdict.dy,
+            inside=True,
+        )
 
         try:
             egdict = filegdict.getBoundsWithin(tempgdict)
@@ -329,18 +351,23 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
             lrx = egdict.xmax + (extrasamp + 1) * egdict.dx
             lry = egdict.ymin - (extrasamp + 1) * egdict.dy
 
-            cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f \
-            %1.8f %1.8f %1.8f -r %s %s %s' % (ulx, uly, lrx, lry, method2,
-                                              filename, tempname)
+            cmd = (
+                "gdal_translate -a_srs EPSG:4326 -of GTiff -projwin %1.8f \
+            %1.8f %1.8f %1.8f -r %s %s %s"
+                % (ulx, uly, lrx, lry, method2, filename, tempname)
+            )
         except Exception as e:
             if override:
                 # When ShakeMap is being loaded, sometimes they won't align
                 # right because it's already cut to the area, so just load
                 # the whole file
-                cmd = 'gdal_translate -a_srs EPSG:4326 -of GTiff -r %s %s %s' \
-                      % (method2, filename, tempname)
+                cmd = "gdal_translate -a_srs EPSG:4326 -of GTiff -r %s %s %s" % (
+                    method2,
+                    filename,
+                    tempname,
+                )
             else:
-                raise Exception('Failed to cut layer: %s' % e)
+                raise Exception("Failed to cut layer: %s" % e)
 
         rc, so, se = get_command_output(cmd)
         if not rc:
@@ -361,9 +388,9 @@ def quickcut(filename, gdict, tempname=None, extrasamp=5., method='bilinear',
 
     else:
         ftype = GMTGrid.getFileType(filename)
-        if ftype != 'unknown':
+        if ftype != "unknown":
             newgrid2d = GMTGrid.load(filename)
-        elif filename.endswith('.xml'):
+        elif filename.endswith(".xml"):
             newgrid2d = ShakeGrid.load(filename)
         else:
             newgrid2d = GDALGrid.load(filename)

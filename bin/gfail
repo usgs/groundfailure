@@ -5,7 +5,6 @@
 import argparse
 from configobj import ConfigObj
 import os
-import logging
 
 from mapio.shake import getHeaderData
 

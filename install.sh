@@ -19,7 +19,7 @@ source $prof
 # Name of new environment (must also change this in .yml files)
 VENV=gf
 # Python version
-py_ver=3.6
+py_ver=3.8
 
 # Set to 1 if you are a developer and want ipython etc. installed
 developer=0
@@ -76,6 +76,8 @@ conda activate base
 # Remove existing gf environment if it exists
 conda remove -y -n $VENV --all
 
+conda install mamba -y -n base -c conda-forge
+
 dev_list=(
     "ipython"
     "spyder"
@@ -91,7 +93,7 @@ package_list=(
       "descartes"
       "fiona"
       "folium"
-      "gdal=2.2.4"
+      "gdal=3.0"
       "impactutils"
       "libcomcat"
       "mapio"
@@ -114,7 +116,7 @@ fi
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment"
 # conda env create -f $env_file --force
-conda create -y -n $VENV -c defaults -c conda-forge \
+mamba create -y -n $VENV -c defaults -c conda-forge \
       --strict-channel-priority ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.

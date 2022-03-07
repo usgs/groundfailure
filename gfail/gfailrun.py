@@ -5,7 +5,6 @@ import shutil
 import numpy as np
 import tempfile
 import urllib
-import re
 import json
 from argparse import Namespace
 from zipfile import ZipFile
@@ -15,13 +14,10 @@ import pathlib
 import logging
 
 # third party imports
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid
 from mapio.gmt import GMTGrid
-from mapio.writer import write
 from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
 from mapio.shake import ShakeGrid
@@ -277,7 +273,7 @@ def run_gfail(args):
                 )
                 trimfile = None
             elif os.path.splitext(args.trimfile)[1] != ".shp":
-                print("trimfile must be a shapefile, " "ocean will not be trimmed")
+                print("trimfile must be a shapefile, ocean will not be trimmed")
                 trimfile = None
             else:
                 trimfile = args.trimfile
@@ -358,9 +354,7 @@ def run_gfail(args):
                     " the area of interest:\n\t%s" % "\n\t".join(notcov)
                 )
                 if newbnds is None:
-                    print(
-                        "\nCannnot make bounds that work. " "Skipping to next model\n"
-                    )
+                    print("\nCannnot make bounds that work. Skipping to next model\n")
                     continue
                 else:
                     pnt = "%s, %s, %s, %s" % (
@@ -635,7 +629,7 @@ def getShakefiles(event, outdir, uncert=False, version=None, source="preferred")
             shakefile = getGridURL(event, shakefile)
         except Exception as e:
             raise Exception(
-                "Could not download shakemap file from provided " "URL: %s" % e
+                "Could not download shakemap file from provided URL: %s" % e
             )
         # Now get corresponding event detail
         event = getHeaderData(shakefile)[0]["event_id"]
@@ -1045,7 +1039,7 @@ def check_input_extents(config, shakefile=None, bounds=None):
 
         # See if this is a possible extent
         try:
-            test = GeoDict.createDictFromBox(
+            GeoDict.createDictFromBox(
                 newbounds["xmin"],
                 newbounds["xmax"],
                 newbounds["ymin"],

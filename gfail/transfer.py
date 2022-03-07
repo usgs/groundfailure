@@ -1,8 +1,7 @@
 import gfail.pdl as pdl
 
 
-def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False,
-                status='UPDATE'):
+def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False, status="UPDATE"):
     """
     Transfer ground failure results to dev server.
 
@@ -22,35 +21,34 @@ def gf_transfer(event_dir, version=1, pdl_config=None, dry_run=False,
         - feed: link to json feed for product.
     """
 
-    print('Preparing directory to transfer %s...'
-          % event_dir)
+    print("Preparing directory to transfer %s..." % event_dir)
     pdl.prepare_pdl_directory(event_dir)
 
     if pdl_config is None:
-        msg = 'PDL directory prepared, no pdl_config provided so no files were sent'
+        msg = "PDL directory prepared, no pdl_config provided so no files were sent"
         print(msg)
         return True, msg
     else:
         # Transfer
         if not dry_run:
-            print('Transferring...')
+            print("Transferring...")
         else:
-            print('Constructing PDL command...')
+            print("Constructing PDL command...")
 
         log = pdl.transfer(
-            event_dir, version, pdl_config,
-            dryrun=dry_run, status=status)
+            event_dir, version, pdl_config, dryrun=dry_run, status=status
+        )
 
-        if log['rc'] is True and dry_run is False:
-            msg = 'Successful PDL transfer.'
+        if log["rc"] is True and dry_run is False:
+            msg = "Successful PDL transfer."
             print(msg)
             success = True
-        elif log['rc'] is True and dry_run is True:
+        elif log["rc"] is True and dry_run is True:
             msg = "Dry run complete, no transfer attempted."
             print(msg)
             success = True
         else:
-            msg = 'PDL transfer failed. %s' % log['so'].decode()
+            msg = "PDL transfer failed. %s" % log["so"].decode()
             print(msg)
             success = False
 

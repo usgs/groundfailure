@@ -84,6 +84,15 @@ class LogisticModelBase(object):
             method="linear",
             adjust="res",
         )
+        self.error_grid = ShakeGrid.load(
+            self.uncertfile,
+            samplegeodict=self.sampledict,
+            resample=True,
+            doPadding=True,
+            method="linear",
+            adjust="res",
+        )
+
         logging.info("Loaded resampled ShakeMap.")
         self.shakedict = self.shake_grid.getShakeDict()
         self.eventdict = self.shake_grid.getEventDict()
@@ -270,13 +279,12 @@ class LogisticModelBase(object):
         return modelrefs, longrefs, shortrefs
 
     def save_uncertainty_layers(self):
-        error_grid = ShakeGrid.load(self.uncertfile)
         for shakelayer in self.SHAKELAYERS:
             key = f"std{shakelayer}"
             method = "linear"
             if key in self.config["interpolations"].keys():
                 method = self.interpolations[key]
-            gm_grid = error_grid.getLayer(key)
+            gm_grid = self.error_grid.getLayer(key)
             gm_grid = gm_grid.interpolate2(self.sampledict, method=method)
 
             filename = pathlib.Path(self.tempdir) / f"{key}.cdf"
