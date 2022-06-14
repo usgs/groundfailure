@@ -15,7 +15,7 @@ from configobj import ConfigObj
 # local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
-from gfail.spatial import quickcut
+from mapio.reader import read
 
 # Turn off warnings that will pop up regarding nan's in greater than operations
 np.warnings.filterwarnings("ignore")
@@ -443,14 +443,22 @@ def computePexp(
     factor = ptemp.dx / mdict.dx
 
     # Cut out area from population file
-    popcut1 = quickcut(pop_file, mdict, precise=False, extrasamp=2, method="nearest")
+    popcut1 = read(
+        pop_file,
+        samplegeodict=mdict,
+        method="nearest",
+        resample=True,
+        doPadding=True,
+        interp_approach="rasterio",
+    )
+    # popcut1 = quickcut(pop_file, mdict, precise=False, extrasamp=2, method="nearest")
     # tot1 = np.sum(popcut1.getData())
-    # Adjust for factor to prepare for upsampling to avoid creating new people
+    # Adjust for upsampling factor to avoid creating new people
     popcut1.setData(popcut1.getData() / factor ** 2)
 
     # Upsample to mdict
-    popcut = popcut1.interpolate2(mdict, method="nearest")
-    popdat = popcut.getData()
+    # popcut = popcut1.interpolate2(mdict, method="nearest")
+    popdat = popcut1.getData()
     exp_pop = {}
 
     if shakefile is not None:

@@ -39,7 +39,15 @@ CLIPS = {
 
 
 class Nowicki2014Model(LogisticModelBase):
-    def __init__(self, shakefile, config, bounds=None, uncertfile=None, trimfile=None):
+    def __init__(
+        self,
+        shakefile,
+        config,
+        bounds=None,
+        uncertfile=None,
+        trimfile=None,
+        saveinputs=False,
+    ):
         self.COEFFS = COEFFS
         self.TERMS = TERMS
         self.TERMLAYERS = TERMLAYERS
@@ -49,7 +57,12 @@ class Nowicki2014Model(LogisticModelBase):
         self.prob_units = "Proportion of area affected"
 
         super().__init__(
-            shakefile, config, bounds=bounds, uncertfile=uncertfile, trimfile=trimfile
+            shakefile,
+            config,
+            bounds=bounds,
+            uncertfile=uncertfile,
+            trimfile=trimfile,
+            saveinputs=saveinputs,
         )
 
     def pre_process(self, key, grid):

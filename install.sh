@@ -76,8 +76,6 @@ conda activate base
 # Remove existing gf environment if it exists
 conda remove -y -n $VENV --all
 
-conda install mamba -y -n base -c conda-forge
-
 dev_list=(
     "ipython"
     "spyder"
@@ -89,24 +87,48 @@ dev_list=(
 # Package list:
 package_list=(
       "python=$py_ver"
-      "configobj"
-      "descartes"
-      "fiona"
-      "folium"
-      "gdal=3.0"
-      "impactutils"
-      "libcomcat"
-      "mapio"
-      "matplotlib-base"
-      "numpy"
-      "pytables"
-      "pytest"
-      "pytest-cov"
-      "pytest-faulthandler"
-      "rasterio"
-      "scipy"
-      "simplekml"
+      "configobj>=5.0"
+      "descartes>=1.1"
+      "fiona>=1.8"
+      "folium>=0.12"
+      "gdal>=3.4"
+      "hdf5>=1.10"
+      "impactutils>=0.8"
+      "libcomcat>=2.0"
+      "libgdal>=3.4"
+      "mapio>=0.7"
+      "matplotlib-base>=3.5"
+      "numpy>=1.20"
+      "pytables>=3.6"
+      "pytest>=6.2"
+      "pytest-cov>=3.0"
+      "pytest-faulthandler>=2.0"
+      "rasterio>=1.1"
+      "scipy>=1.8"
+      "simplekml>=1.3"
 )
+# package_list=(
+#       "python=$py_ver"
+#       "configobj=5.0.6"
+#       "descartes=1.1.0"
+#       "fiona=1.8.13"
+#       "folium=0.12.1"
+#       "gdal=3.0.2"
+#       "hdf5=1.10.6"
+#       "impactutils=0.8.32"
+#       "libcomcat=2.0.16"
+#       "libgdal=3.0.2"
+#       "mapio=0.7.31"
+#       "matplotlib-base=3.5.1"
+#       "numpy=1.20.3"
+#       "pytables=3.6.1"
+#       "pytest=6.2.5"
+#       "pytest-cov=3.0.0"
+#       "pytest-faulthandler=2.0.1"
+#       "rasterio=1.1.2"
+#       "scipy=1.7.3"
+#       "simplekml=1.3.6"
+# )
 
 if [ $developer == 1 ]; then
     package_list=( "${package_list[@]}" "${dev_list[@]}" )
@@ -115,9 +137,11 @@ fi
 
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment"
+conda config --add channels 'defaults'
+conda config --add channels 'conda-forge'
+conda config --set channel_priority flexible
 # conda env create -f $env_file --force
-mamba create -y -n $VENV -c defaults -c conda-forge \
-      --strict-channel-priority ${package_list[*]}
+conda create -y -n $VENV ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
 # Clean up zip files we've downloaded

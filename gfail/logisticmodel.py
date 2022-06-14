@@ -12,7 +12,7 @@ import collections
 import shutil
 import tempfile
 from timeit import default_timer as timer
-import textwrap
+import logging
 
 # third party imports
 from mapio.shake import ShakeGrid
@@ -21,9 +21,6 @@ from mapio.gmt import GMTGrid
 from mapio.gdal import GDALGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict
-
-import matplotlib.pyplot as plt
-import matplotlib.patheffects as path_effects
 
 
 # local imports
@@ -109,9 +106,7 @@ class LogisticModel(object):
         """
         mnames = getLogisticModelNames(config)
         if len(mnames) == 0:
-            raise Exception(
-                "No config file found or problem with config file format"
-            )
+            raise Exception("No config file found or problem with config file format")
         if len(mnames) > 1:
             raise Exception(
                 "Config file contains more than one model which "
@@ -463,11 +458,9 @@ class LogisticModel(object):
                         self.nonzero = nonzero[0, :, :]
                         del slope1
                     didslope = True
-                    plt.imshow(self.nonzero)
-                    plt.savefig("/Users/mhearne/logistic_nonzero.png")
                 del temp
 
-            print("Loading %s layer: %1.1f sec" % (layername, timer() - start))
+            logging.info(f"Loading {layername} layer: {timer() - start:1.2f} sec")
 
         if didslope is False and self.slopefile is not None:
             # Slope didn't get read in yet
@@ -548,6 +541,7 @@ class LogisticModel(object):
             `the description <https://github.com/usgs/groundfailure#api-for-model-output>`_
             of the structure.
         """
+        start_calculate = timer()
         tk = list(self.shakemap.keys())[0]
         # Figure out what slices to do
         rowstarts, rowends, colstarts, colends = self.shakemap[tk].getSliceDiv(
@@ -567,7 +561,6 @@ class LogisticModel(object):
         }
 
         # Loop through slices, appending output each time
-        tmpdir = "/Users/mhearne/tmp/petrolia"
         for rowstart, rowend, colstart, colend in zip(
             rowstarts, rowends, colstarts, colends
         ):
@@ -576,29 +569,8 @@ class LogisticModel(object):
                 coeff = self.coeffs[key]
                 vmin, vmax = ranges[key]
                 layer = eval(term) * coeff
-                termfile = os.path.join(tmpdir, f"{key}_logistic.png")
-                plt.imshow(layer, vmin=vmin, vmax=vmax)
-                plt.title(f"{key} logistic")
-                xmin, xmax, ymin, ymax = plt.axis()
-                termtext = textwrap.fill(term, 40)
-                text = plt.text(50, ymin * 0.8, termtext, color="w", size=10)
-                text.set_path_effects(
-                    [
-                        path_effects.Stroke(linewidth=3, foreground="black"),
-                        path_effects.Normal(),
-                    ]
-                )
-                plt.colorbar()
-                plt.savefig(termfile)
-                plt.close()
 
         P = 1 / (1 + np.exp(-X))
-        probfile = os.path.join(tmpdir, "probability_logistic.png")
-        plt.imshow(P, vmin=0.0, vmax=0.9)
-        plt.title("logistic probability")
-        plt.colorbar()
-        plt.savefig(probfile)
-        plt.close()
 
         if "vs30max" in self.config[self.model].keys():
             vs30 = self.layerdict["vs30"].getSlice(None, None, None, None, name="vs30")
@@ -670,24 +642,10 @@ class LogisticModel(object):
         else:
             std1 = None
 
-        probfile = os.path.join(tmpdir, "precoverage_logistic.png")
-        plt.imshow(P, vmin=0.0, vmax=0.9)
-        plt.title("logistics pre-coverage")
-        plt.colorbar()
-        plt.savefig(probfile)
-        plt.close()
-
         # P needs to be converted to areal coverage AFTER dealing with uncert
         if "coverage" in self.config[self.model].keys():
             eqn = self.config[self.model]["coverage"]["eqn"]
             P = eval(eqn)
-
-        probfile = os.path.join(tmpdir, "postcoverage_logistic.png")
-        plt.imshow(P, vmin=0.0, vmax=0.9)
-        plt.title("logistic post-coverage")
-        plt.colorbar()
-        plt.savefig(probfile)
-        plt.close()
 
         # Compute quantiles
         compute_quantiles = False
@@ -712,7 +670,7 @@ class LogisticModel(object):
 
         if self.slopefile is not None and self.nonzero is not None:
             # Apply slope min/max limits
-            print("applying slope thresholds")
+            logging.info("applying slope thresholds")
             P = P * self.nonzero
             if std1 is not None:
                 # No uncert for masked values
@@ -720,13 +678,6 @@ class LogisticModel(object):
                 if compute_quantiles:
                     for q in quantile_dict.values():
                         q[P == 0] = 0.0
-
-        probfile = os.path.join(tmpdir, "coverage_logistic.png")
-        plt.imshow(P, vmin=0.0, vmax=0.9)
-        plt.title("logistic coverage")
-        plt.colorbar()
-        plt.savefig(probfile)
-        plt.close()
 
         # Stuff into Grid2D object
         if "Jessee" in self.modelrefs["shortref"]:
@@ -792,6 +743,8 @@ class LogisticModel(object):
                 "description": description,
             }
             if compute_quantiles:
+                logging.info("Computing quantiles")
+                start_quantiles = timer()
                 for quantile, qgrid in quantile_dict.items():
                     Qgrid = Grid2D(qgrid, self.geodict)
                     qname = "quantile%s" % quantile
@@ -804,9 +757,12 @@ class LogisticModel(object):
                         "type": "output",
                         "description": description,
                     }
+                logging.info(f"Quantiles elapsed: {timer() - start_quantiles:1.2f}")
 
         # This step might swamp memory for higher resolution runs
         if self.saveinputs is True:
+            logging.info("Saving inputs.")
+            start_saveinputs = timer()
             for layername, layergrid in list(self.layerdict.items()):
                 units = self.units[layername]
                 if units is None:
@@ -851,6 +807,11 @@ class LogisticModel(object):
                     "type": "input",
                     "description": {"units": units, "shakemap": shakedetail},
                 }
+            logging.info(f"Save inputs elapsed: {timer() - start_saveinputs:1.2f}")
+
+        logging.info(
+            f"LogisticModel.calculate elapsed: {timer() - start_calculate:1.2f}"
+        )
         if cleanup:
             shutil.rmtree(self.tempdir)
         return rdict
@@ -918,9 +879,7 @@ def validateCoefficients(cmodel):
             raise Exception("coefficients must be named b0, b1, ...")
         coeffs[key] = float(value)
     if "b0" not in list(coeffs.keys()):
-        raise Exception(
-            "coefficients must include an intercept coefficient named b0."
-        )
+        raise Exception("coefficients must include an intercept coefficient named b0.")
     return coeffs
 
 

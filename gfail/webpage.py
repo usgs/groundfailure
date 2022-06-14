@@ -1392,9 +1392,7 @@ def setupcolors(
         sync = True
 
     else:
-        print(
-            "Cannot sync colorbars, different number of bins or lims not specified"
-        )
+        print("Cannot sync colorbars, different number of bins or lims not specified")
         sync = False
         colorlist = None
         lim1 = None

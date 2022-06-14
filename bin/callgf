@@ -51,7 +51,7 @@ REQUIRED_CONFIG = [
 ]
 
 # minimum magnitude to be processed globally
-MAG_THRESHOLD = 0.0
+MAG_THRESHOLD = 6.0
 
 # Set min mags and polygons for USA
 USA = {
@@ -650,6 +650,7 @@ def process_shakemap(args, config):
     logging.info("Checking magnitude...")
 
     # Is the magnitude greater than or equal to the global magnitude threshold?
+    breakpoint()
     if args.magnitude >= MAG_THRESHOLD:
         logging.info("Magnitude check passed")
     else:

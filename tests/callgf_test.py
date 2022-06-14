@@ -60,7 +60,7 @@ def test_callgf(tmpdir):
         runcmd = "callgf -e ci39473968 --dry-run"
         rc3, so3, se3 = get_command_output(runcmd)
         np.testing.assert_equal(
-            True, "Magnitude check failed" in str(so3), se3.decode()
+            True, "Magnitude below thresholds" in str(so3), se3.decode()
         )
 
         # Run event that should fail because of magnitude, force to run

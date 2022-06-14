@@ -44,6 +44,7 @@ class Zhu2015Model(LogisticModelBase):
         uncertfile=None,
         trimfile=None,
         slopefile=None,
+        saveinputs=False,
     ):
         self.COEFFS = COEFFS
         self.TERMS = TERMS
@@ -60,6 +61,7 @@ class Zhu2015Model(LogisticModelBase):
             uncertfile=uncertfile,
             trimfile=trimfile,
             slopefile=slopefile,
+            saveinputs=saveinputs,
         )
 
     def pre_process(self, key, grid):

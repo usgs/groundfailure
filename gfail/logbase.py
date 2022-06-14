@@ -4,6 +4,7 @@ import tempfile
 import shutil
 import logging
 import collections
+from timeit import default_timer as timer
 
 # third party imports
 import numpy as np
@@ -47,6 +48,7 @@ class LogisticModelBase(object):
         uncertfile=None,
         trimfile=None,
         slopefile=None,
+        saveinputs=False,
     ):
         """Initialize LogisticModelBase object.
 
@@ -59,6 +61,7 @@ class LogisticModelBase(object):
             trimfile (str): Path to shapefile to use for masking ocean pixels.
             slopefile (str): File containing slope data to be used for slope
                              masking.
+            saveinputs (bool): Save input layer grids with model output.
 
         Notes: All input data grids are loaded in one at a time, and saved to
         a temporary folder that is deleted when the object is deleted. The
@@ -71,8 +74,10 @@ class LogisticModelBase(object):
         self.bounds = bounds
         self.uncertfile = uncertfile
         self.trimfile = trimfile
+        self.saveinputs = saveinputs
         self.modeltype = config["gfetype"]
         logging.info("Loading raw ShakeMap...")
+        start_shake = timer()
         self.raw_shake_grid = ShakeGrid.load(shakefile, adjust="res")
         self.get_sample_dict()  # sets self.sampledict
         logging.info(f"Loading resampled ShakeMap with geodict: {self.sampledict}")
@@ -84,6 +89,8 @@ class LogisticModelBase(object):
             method="linear",
             adjust="res",
         )
+        logging.info(f"Load shake elapsed: {timer() - start_shake:1.2f}")
+        start_error = timer()
         self.error_grid = ShakeGrid.load(
             self.uncertfile,
             samplegeodict=self.sampledict,
@@ -92,6 +99,7 @@ class LogisticModelBase(object):
             method="linear",
             adjust="res",
         )
+        logging.info(f"Load uncertainty elapsed: {timer() - start_error:1.2f}")
 
         logging.info("Loaded resampled ShakeMap.")
         self.shakedict = self.shake_grid.getShakeDict()
@@ -126,33 +134,36 @@ class LogisticModelBase(object):
             layerfile = pathlib.Path(layer["file"])
             logging.info(f'Reading {layer["file"]}...')
             interp = self.interpolations[key]
-            fdict = get_file_geodict(layerfile)
-            if fdict.isAligned(self.sampledict):
-                grid = read(layerfile, samplegeodict=self.sampledict)
-            else:
-                grid = read(
-                    layerfile,
-                    samplegeodict=self.sampledict,
-                    method=interp,
-                    resample=True,
-                    doPadding=True,
-                    interp_approach="rasterio",
-                )
+            grid = read(
+                layerfile,
+                samplegeodict=self.sampledict,
+                method=interp,
+                resample=True,
+                doPadding=True,
+                interp_approach="rasterio",
+            )
             self.pre_process(key, grid)
             outfile = pathlib.Path(self.tempdir, f"{key}.cdf")
             logging.info(f"Writing sampled layer {key}...")
+            start_write = timer()
             write(grid, outfile, "netcdf")
+            logging.info(f"write {key} elapsed: {timer() - start_write:1.2f}")
             self.layers[key] = outfile
+
         for key in self.SHAKELAYERS:
             shake_grid = self.shake_grid.getLayer(key)
             # shake_grid = raw_shake_grid.interpolate2(self.sampledict, method="linear")
             outfile = pathlib.Path(self.tempdir, f"{key}.cdf")
             logging.info(f"Writing sampled layer {key}...")
+            start_write = timer()
             write(shake_grid, outfile, "netcdf")
+            logging.info(f"write {key} elapsed: {timer() - start_write:1.2f}")
 
             self.layers[key] = outfile
         if uncertfile is not None:
+            start_write = timer()
             self.save_uncertainty_layers()
+            logging.info(f"write uncertainty elapsed: {timer() - start_write:1.2f}")
 
         if "slope" not in config["layers"] and self.slopefile is not None:
             self.read_slope()
@@ -218,6 +229,29 @@ class LogisticModelBase(object):
                 )
                 self.slopemin = "none"
                 self.slopemax = "none"
+
+    def get_units(self, layer):
+        """Get units for an input layer.
+
+        Args:
+            layer (str): name of layer.
+
+        Returns:
+            str: units.
+        """
+        try:
+            # should work for everything except ground motion layers
+            units = self.units[layer]
+        except BaseException:
+            if "pga" in layer.lower():
+                units = "%g"
+            elif "pgv" in layer.lower():
+                units = "cm/s"
+            elif "mmi" in layer.lower():
+                units = "intensity"
+            else:
+                units = ""
+        return units
 
     def validate_units(self, cmodel):
         """Validate model units.
@@ -398,8 +432,13 @@ class LogisticModelBase(object):
         nx = self.sampledict.nx
         ny = self.sampledict.ny
 
+        # dictionary to hold output
+        rdict = collections.OrderedDict()
+
         X = np.ones((ny, nx)) * self.COEFFS["b0"]
         for term, operation in self.TERMS.items():
+            logging.info(f"Reading layer {term}")
+            start_term = timer()
             coeff = self.COEFFS[term]
             layers = self.TERMLAYERS[term].split(",")
             layers = [layer.strip() for layer in layers]
@@ -411,6 +450,18 @@ class LogisticModelBase(object):
                 exec(loadstr, globaldict)
                 # this should be a reference...
                 globals()[layer] = globaldict[layer]
+                if self.saveinputs:
+                    units = self.get_units(layer)
+                    rdict[layer] = {
+                        "grid": globaldict[layer],
+                        "label": f"{layer} ({units})",
+                        "type": "input",
+                        "description": {"units": units},
+                    }
+                    if layer in self.shortrefs:
+                        rdict[layer]["description"]["name"] = self.shortrefs[layer]
+                    if layer in self.longrefs:
+                        rdict[layer]["description"]["longref"] = self.longrefs[layer]
             try:
                 msg = f"Executing layer operation {operation} * {coeff}..."
                 logging.info(msg)
@@ -427,6 +478,7 @@ class LogisticModelBase(object):
                 raise Exception(msg)
             for layer in layers:
                 del globals()[layer]
+            logging.info(f"Read term elapsed: {timer() - start_term:1.2f}")
 
         logging.info("Calculating probability...")
         # save off the X grid for potential use by
@@ -434,28 +486,38 @@ class LogisticModelBase(object):
         outfile = pathlib.Path(self.tempdir, "X.cdf")
         logging.info("Writing intermediate layer X...")
         grid = Grid2D(data=X, geodict=self.sampledict)
+        start_writex = timer()
         write(grid, outfile, "netcdf")
+        logging.info(f"wite X elapsed: {timer() - start_writex:1.2f}")
         self.layers["X"] = outfile
         P = 1 / (1 + np.exp(-X))
         del X
 
+        start_modify = timer()
         P = self.modify_probability(P)
+        logging.info(f"modify prob elapsed: {timer() - start_modify:1.2f}")
         # save off the intermediate P grid for potential use by
         # uncertainty calculations
         outfile = pathlib.Path(self.tempdir, "P.cdf")
         logging.info("Writing intermediate layer P...")
         grid = Grid2D(data=P, geodict=self.sampledict)
+        start_writep = timer()
         write(grid, outfile, "netcdf")
+        logging.info(f"wite P elapsed: {timer() - start_writep:1.2f}")
         self.layers["P"] = outfile
 
         sigma_grid = None
         if self.uncertfile is not None:
+            start_uncertainty = timer()
             sigma_grid = self.calculate_uncertainty()
+            logging.info(f"uncertainty elapsed: {timer() - start_uncertainty:1.2f}")
 
         # because non-coverage P grid is used for uncertainty,
         # we cannot convert to areal coverage until that is complete.
         if self.do_coverage:
+            start_coverage = timer()
             P = self.calculate_coverage(P)
+            logging.info(f"coverage elapsed: {timer() - start_coverage:1.2f}")
 
         # apply slope cutoffs
         if self.nonzero is not None:
@@ -464,13 +526,11 @@ class LogisticModelBase(object):
         # create Grid2D object for P
         p_grid = Grid2D(data=P, geodict=self.sampledict)
 
-        # dictionary to hold output
-        rdict = collections.OrderedDict()
-
         description = self.get_description()
 
         # trim off ocean pixels if user wanted that
         if self.trimfile is not None:
+            start_trim = timer()
             # Turn all offshore cells to nan
             p_grid = trim_ocean2(p_grid, self.trimfile)
             if sigma_grid is not None:
@@ -484,6 +544,7 @@ class LogisticModelBase(object):
                     "type": "output",
                     "description": description,
                 }
+            logging.info(f"trim elapsed: {timer() - start_trim:1.2f}")
 
         rdict["model"] = {
             "grid": p_grid,

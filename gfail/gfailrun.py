@@ -385,7 +385,7 @@ def run_gfail(args):
 
                 maplayers = lm.calculate()
                 t2 = time.time()
-                print(f"Elapsed: {t2-t1:.1f} seconds")
+                logging.info(f"{modelname} Elapsed: {t2-t1:.1f} seconds")
 
             elif modelfunc == "LogBase":
                 # newer object oriented approach to logistic models
@@ -402,6 +402,7 @@ def run_gfail(args):
                         uncertfile=uncertfile,
                         bounds=samplebounds,
                         trimfile=trimfile,
+                        saveinputs=args.save_inputs
                     )
                 except Exception as e:
                     if str(e).find("Input geodict has no overlap"):
@@ -418,7 +419,7 @@ def run_gfail(args):
                 logging.info(f"Calling {modelname} calculate...")
                 maplayers = model.calculate()
                 t2 = time.time()
-                print(f"Elapsed: {t2-t1:.1f} seconds")
+                logging.info(f"{modelname} Elapsed: {t2-t1:.1f} seconds")
             elif modelfunc == "godt2008":
                 maplayers = godt2008(
                     shakefile,

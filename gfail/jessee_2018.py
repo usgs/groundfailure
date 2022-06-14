@@ -47,7 +47,15 @@ ERROR_COEFFS = {"a": -7.592, "b": 5.237, "c": -3.042, "d": 4.035}
 
 
 class Jessee2018Model(LogisticModelBase):
-    def __init__(self, shakefile, config, bounds=None, uncertfile=None, trimfile=None):
+    def __init__(
+        self,
+        shakefile,
+        config,
+        bounds=None,
+        uncertfile=None,
+        trimfile=None,
+        saveinputs=False,
+    ):
         self.COEFFS = COEFFS
         self.TERMS = TERMS
         self.TERMLAYERS = TERMLAYERS
@@ -57,7 +65,12 @@ class Jessee2018Model(LogisticModelBase):
         self.prob_units = "Proportion of area affected"
 
         super().__init__(
-            shakefile, config, bounds=bounds, uncertfile=uncertfile, trimfile=trimfile
+            shakefile,
+            config,
+            bounds=bounds,
+            uncertfile=uncertfile,
+            trimfile=trimfile,
+            saveinputs=saveinputs,
         )
 
     def pre_process(self, key, grid):
