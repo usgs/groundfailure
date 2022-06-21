@@ -91,14 +91,17 @@ class LogisticModelBase(object):
         )
         logging.info(f"Load shake elapsed: {timer() - start_shake:1.2f}")
         start_error = timer()
-        self.error_grid = ShakeGrid.load(
-            self.uncertfile,
-            samplegeodict=self.sampledict,
-            resample=True,
-            doPadding=True,
-            method="linear",
-            adjust="res",
-        )
+        if self.uncertfile is not None:
+            self.error_grid = ShakeGrid.load(
+                self.uncertfile,
+                samplegeodict=self.sampledict,
+                resample=True,
+                doPadding=True,
+                method="linear",
+                adjust="res",
+            )
+        else:
+            self.error_grid = None
         logging.info(f"Load uncertainty elapsed: {timer() - start_error:1.2f}")
 
         logging.info("Loaded resampled ShakeMap.")
@@ -318,12 +321,13 @@ class LogisticModelBase(object):
             method = "linear"
             if key in self.config["interpolations"].keys():
                 method = self.interpolations[key]
-            gm_grid = self.error_grid.getLayer(key)
-            gm_grid = gm_grid.interpolate2(self.sampledict, method=method)
+            if self.error_grid is not None:
+                gm_grid = self.error_grid.getLayer(key)
+                gm_grid = gm_grid.interpolate2(self.sampledict, method=method)
 
-            filename = pathlib.Path(self.tempdir) / f"{key}.cdf"
-            self.layers[key] = filename
-            write(gm_grid, filename, "netcdf")
+                filename = pathlib.Path(self.tempdir) / f"{key}.cdf"
+                self.layers[key] = filename
+                write(gm_grid, filename, "netcdf")
 
     def pre_process(self, key, grid):
         """This method should be implemented by child classes."""

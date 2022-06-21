@@ -60,7 +60,7 @@ def test_callgf(tmpdir):
         runcmd = "callgf -e ci39473968 --dry-run"
         rc3, so3, se3 = get_command_output(runcmd)
         np.testing.assert_equal(
-            True, "Magnitude below thresholds" in str(so3), se3.decode()
+            True, "Magnitude does not exceed global threshold" in str(so3), se3.decode()
         )
 
         # Run event that should fail because of magnitude, force to run
@@ -87,7 +87,7 @@ def test_callgf(tmpdir):
         np.testing.assert_equal(True, "Stopfile removed" in str(so7), se7.decode())
 
         # Run model with url
-        url = "https://earthquake.usgs.gov/archive/product/shakemap/ci39473968/ci/1591852561898/download/grid.xml"
+        url = "https://earthquake.usgs.gov/product/shakemap/ci39473968/ci/1591935370845/download/grid.xml"
         runcmd = "callgf -e %s --dry-run" % url
         rc4, so4, se4 = get_command_output(runcmd)
         np.testing.assert_equal(

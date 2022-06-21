@@ -6,31 +6,6 @@ from mapio.grid2d import Grid2D
 # local imports
 from gfail.logbase import LogisticModelBase
 
-TERMS = {
-    "b1": "np.log(pgv._data*(1/(1+np.power(2.71828,-2*(MW-6)))))",
-    "b2": "np.log(vs30._data)",
-    "b3": "precip._data",
-    "b4": "np.minimum(dc._data, dr._data)",
-    "b5": "wtd._data",
-}
-
-COEFFS = {
-    "b0": 8.801,
-    "b1": 0.334,
-    "b2": -1.918,
-    "b3": 0.0005408,
-    "b4": -0.2054,
-    "b5": -0.0333,
-}
-
-
-TERMLAYERS = {
-    "b1": "pgv",
-    "b2": "vs30",
-    "b3": "precip",
-    "b4": "dc, dr",
-    "b5": "wtd",
-}
 
 SHAKELAYERS = ["pgv", "pga"]
 
@@ -43,6 +18,31 @@ ERROR_COEFFS = {"a": 0.4915, "b": 42.4, "c": 9.165}
 
 
 class Zhu2017Model(LogisticModelBase):
+    TERMS = {
+        "b1": "np.log(pgv._data*(1/(1+np.power(2.71828,-2*(MW-6)))))",
+        "b2": "np.log(vs30._data)",
+        "b3": "precip._data",
+        "b4": "np.minimum(dc._data, dr._data)",
+        "b5": "wtd._data",
+    }
+
+    COEFFS = {
+        "b0": 8.801,
+        "b1": 0.334,
+        "b2": -1.918,
+        "b3": 0.0005408,
+        "b4": -0.2054,
+        "b5": -0.0333,
+    }
+
+    TERMLAYERS = {
+        "b1": "pgv",
+        "b2": "vs30",
+        "b3": "precip",
+        "b4": "dc, dr",
+        "b5": "wtd",
+    }
+
     def __init__(
         self,
         shakefile,
@@ -53,9 +53,9 @@ class Zhu2017Model(LogisticModelBase):
         slopefile=None,
         saveinputs=False,
     ):
-        self.COEFFS = COEFFS
-        self.TERMS = TERMS
-        self.TERMLAYERS = TERMLAYERS
+        self.COEFFS = self.COEFFS
+        self.TERMS = self.TERMS
+        self.TERMLAYERS = self.TERMLAYERS
         self.SHAKELAYERS = SHAKELAYERS
         self.do_coverage = True
 
@@ -93,7 +93,7 @@ class Zhu2017Model(LogisticModelBase):
             varP = float(self.config["default_stddev"])
 
         stdpgv = read(self.layers["stdpgv"])._data
-        varP += varP ** 2 + (self.COEFFS["b1"] ** 2 * stdpgv ** 2)
+        varP += varP**2 + (self.COEFFS["b1"] ** 2 * stdpgv**2)
         del stdpgv
         X = read(self.layers["X"])._data
         varP = (np.exp(-X) / (np.exp(-X) + 1) ** 2.0) ** 2.0 * varP

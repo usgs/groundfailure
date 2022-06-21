@@ -10,7 +10,6 @@ from argparse import Namespace
 from zipfile import ZipFile
 import warnings
 import time
-import pathlib
 import logging
 
 # third party imports
@@ -41,12 +40,14 @@ from gfail.utilities import (
 from gfail.zhu_2015 import Zhu2015Model
 from gfail.nowicki_2014 import Nowicki2014Model
 from gfail.zhu_2017 import Zhu2017Model
+from gfail.zhu_2017_coastal import Zhu2017ModelCoastal
 from gfail.jessee_2018 import Jessee2018Model
 
 
 MODEL_FACTORY = {
     "zhu_2015": Zhu2015Model,
     "zhu_2017_general": Zhu2017Model,
+    "zhu_2017_coastal": Zhu2017ModelCoastal,
     "nowicki_2014_global": Nowicki2014Model,
     "jessee_2018": Jessee2018Model,
 }
@@ -395,27 +396,27 @@ def run_gfail(args):
                 if args.keep_shakemap_bounds:
                     samplebounds = None
                 logging.info(f"Constructing model {modelname}...")
-                try:
-                    model = model_class(
-                        shakefile,
-                        conf[modelname],
-                        uncertfile=uncertfile,
-                        bounds=samplebounds,
-                        trimfile=trimfile,
-                        saveinputs=args.save_inputs
-                    )
-                except Exception as e:
-                    if str(e).find("Input geodict has no overlap"):
-                        msg = (
-                            "One or more of the input layers "
-                            f"for {modelname} has NO overlap with "
-                            "input ShakeMap. Skipping."
-                        )
-                        logging.info(msg)
-                    else:
-                        msg = f"Unhandled exception for {modelname}: '{str(e)}'."
-                        logging.warning(msg)
-                    continue
+                # try:
+                model = model_class(
+                    shakefile,
+                    conf[modelname],
+                    uncertfile=uncertfile,
+                    bounds=samplebounds,
+                    trimfile=trimfile,
+                    saveinputs=args.save_inputs,
+                )
+                # except Exception as e:
+                #     if str(e).find("Input geodict has no overlap"):
+                #         msg = (
+                #             "One or more of the input layers "
+                #             f"for {modelname} has NO overlap with "
+                #             "input ShakeMap. Skipping."
+                #         )
+                #         logging.info(msg)
+                #     else:
+                #         msg = f"Unhandled exception for {modelname}: '{str(e)}'."
+                #         logging.warning(msg)
+                #     continue
                 logging.info(f"Calling {modelname} calculate...")
                 maplayers = model.calculate()
                 t2 = time.time()

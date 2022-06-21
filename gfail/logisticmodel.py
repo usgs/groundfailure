@@ -435,8 +435,10 @@ class LogisticModel(object):
                         flag = 1
                     if self.slopemod is None:
                         slope1 = temp.getData().astype(float)
+                        slope = 0
                     else:
                         try:
+                            slope = temp.getData().astype(float)
                             slope1 = eval(self.slopemod)
                         except BaseException:
                             print(
@@ -470,8 +472,10 @@ class LogisticModel(object):
                 flag = 1
             if self.slopemod is None:
                 slope1 = temp.getData().astype(float)
+                slope = 0
             else:
                 try:
+                    slope = temp.getData().astype(float)
                     slope1 = eval(self.slopemod)
                 except BaseException:
                     print(
@@ -590,7 +594,7 @@ class LogisticModel(object):
                     stdX = self.layerdict["stddev"].getSlice()
                 else:
                     stdX = float(self.config[self.model]["default_stddev"])
-                varX = stdX ** 2.0 + (
+                varX = stdX**2.0 + (
                     self.coeffs["b1"] ** 2.0 * self.uncert["stdpgv"].getSlice() ** 2.0
                 )
                 varP = (np.exp(-X) / (np.exp(-X) + 1) ** 2.0) ** 2.0 * varX
@@ -614,7 +618,7 @@ class LogisticModel(object):
                 cfs = self.coeffs
                 slp = self.layerdict["slope"]
                 std = self.uncert["stdpgv"]
-                varX = stdX ** 2.0 + (
+                varX = stdX**2.0 + (
                     (cfs["b1"] + cfs["b6"] * (np.arctan(slp.getSlice()) * 180 / np.pi))
                     ** 2.0
                     * std.getSlice() ** 2.0
@@ -626,8 +630,8 @@ class LogisticModel(object):
                     c = -3.042
                     d = 4.035
                     varL = (
-                        np.exp(a + b * P + c * P ** 2.0 + d * P ** 3.0)
-                        * (b + 2.0 * P * c + 3.0 * d * P ** 2.0)
+                        np.exp(a + b * P + c * P**2.0 + d * P**3.0)
+                        * (b + 2.0 * P * c + 3.0 * d * P**2.0)
                     ) ** 2.0 * varP
                     std1 = np.sqrt(varL)
                 else:
@@ -657,8 +661,8 @@ class LogisticModel(object):
         if compute_quantiles:
             quantile_dict = {}
             pmax = float(mconf["maxprob"])
-            beta_p = P / pmax * (((pmax * P - P ** 2) / std1 ** 2) - 1)
-            beta_q = (1 - P / pmax) * (((pmax * P - P ** 2) / std1 ** 2) - 1)
+            beta_p = P / pmax * (((pmax * P - P**2) / std1**2) - 1)
+            beta_q = (1 - P / pmax) * (((pmax * P - P**2) / std1**2) - 1)
             for ci_prob in ci_probabilities:
                 min_quantile = str(np.round(100 * (1.0 - ci_prob) / 2.0, 1))
                 max_quantile = str(np.round(100 * (1 - ((1.0 - ci_prob)) / 2.0), 1))

@@ -650,7 +650,6 @@ def process_shakemap(args, config):
     logging.info("Checking magnitude...")
 
     # Is the magnitude greater than or equal to the global magnitude threshold?
-    breakpoint()
     if args.magnitude >= MAG_THRESHOLD:
         logging.info("Magnitude check passed")
     else:
