@@ -26,7 +26,7 @@ developer=0
 
 
 py_ver=3.8
-while getopts p:d:q FLAG; do
+while getopts p:d FLAG; do
   case $FLAG in
     p)
         py_ver=$OPTARG
@@ -37,6 +37,8 @@ while getopts p:d:q FLAG; do
       ;;
   esac
 done
+
+echo "Using python version $py_ver"
 
 # Is conda installed?
 conda --version
@@ -65,6 +67,10 @@ if [ $? -ne 0 ]; then
 else
     echo "conda detected, installing $VENV environment..."
 fi
+
+. $HOME/miniconda/etc/profile.d/conda.sh
+
+conda init bash
 
 # # make defaults higher priority, set that priority to strict
 # conda config --add channels 'conda-forge'
