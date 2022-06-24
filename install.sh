@@ -22,7 +22,21 @@ VENV=gf
 py_ver=3.8
 
 # Set to 1 if you are a developer and want ipython etc. installed
-developer=1
+developer=0
+
+
+py_ver=3.8
+while getopts p:d:q FLAG; do
+  case $FLAG in
+    p)
+        py_ver=$OPTARG
+      ;;
+    d)
+        echo "Installing developer packages."
+        developer=1
+      ;;
+  esac
+done
 
 # Is conda installed?
 conda --version

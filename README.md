@@ -1,4 +1,3 @@
-[![Build Status](https://travis-ci.org/usgs/groundfailure.svg?branch=master)](https://travis-ci.org/usgs/groundfailure)
 [![codecov](https://codecov.io/gh/usgs/groundfailure/branch/master/graph/badge.svg)](https://codecov.io/gh/usgs/groundfailure)
 
 # groundfailure
