@@ -15,14 +15,15 @@ import shutil
 # local imports
 from mapio.shake import ShakeGrid
 from mapio.gdal import GDALGrid
+from mapio.reader import read, get_file_geodict
 from mapio.geodict import GeoDict
-from gfail.spatial import quickcut, trim_ocean
+from gfail.spatial import trim_ocean2
 
 # third party imports
 import numpy as np
 
 
-def godt2008(
+def godt2008_2(
     shakefile,
     config,
     uncertfile=None,
@@ -141,18 +142,16 @@ def godt2008(
         acthresh = float(config["godt_2008"]["parameters"]["acthresh"])
         try:
             slopemin = float(config["godt_2008"]["parameters"]["slopemin"])
-        except BaseException:
+        except Exception:
             slopemin = 0.01
-            print(
-                "No slopemin found in config file, using 0.01 deg " "for slope minimum"
-            )
+            print("No slopemin found in config file, using 0.01 deg for slope minimum")
     except Exception as e:
         raise NameError("Could not parse configfile, %s" % e)
 
     if displmodel is None:
         try:
             displmodel = config["godt_2008"]["parameters"]["displmodel"]
-        except BaseException:
+        except Exception:
             print("No regression model specified, using default of J_PGA_M")
             displmodel = "J_PGA_M"
 
@@ -168,8 +167,8 @@ def godt2008(
         cohesionlref = config["godt_2008"]["layers"]["cohesion"]["longref"]
         frictionsref = config["godt_2008"]["layers"]["friction"]["shortref"]
         frictionlref = config["godt_2008"]["layers"]["friction"]["longref"]
-    except BaseException:
-        print("Was not able to retrieve all references from config file. " "Continuing")
+    except Exception:
+        print("Was not able to retrieve all references from config file. Continuing")
 
     # Figure out how/if need to cut anything
     geodict = ShakeGrid.getFileGeoDict(shakefile)  # , adjust='res')
@@ -197,7 +196,8 @@ def godt2008(
             geodict.dy,
             inside=False,
         )
-        # If Shakemap geodict crosses 180/-180 line, fix geodict so things don't break
+        # If Shakemap geodict crosses 180/-180 line, fix geodict so things
+        # don't break
         if geodict.xmin > geodict.xmax:
             if tempgdict.xmin < 0:
                 geodict._xmin -= 360.0
@@ -205,9 +205,8 @@ def godt2008(
                 geodict._xmax += 360.0
         geodict = geodict.getBoundsWithin(tempgdict)
 
-    basegeodict, firstcol = GDALGrid.getFileGeoDict(
-        os.path.join(slopefilepath, "slope_min.bil")
-    )
+    slpfile = os.path.join(slopefilepath, "slope_min.bil")
+    basegeodict = get_file_geodict(slpfile)
     if basegeodict == geodict:
         sampledict = geodict
     else:
@@ -254,15 +253,11 @@ def godt2008(
 
     # Load in ShakeMap and get new geodictionary
     temp = ShakeGrid.load(shakefile)  # , adjust='res')
-    junkfile = os.path.join(tmpdir, "temp.bil")
-    GDALGrid.copyFromGrid(temp.getLayer("pga")).save(junkfile)
-    pga = quickcut(junkfile, sampledict, precise=True, method="bilinear")
-    os.remove(junkfile)
-    GDALGrid.copyFromGrid(temp.getLayer("pgv")).save(junkfile)
-    pgv = quickcut(junkfile, sampledict, precise=True, method="bilinear")
-    os.remove(junkfile)
-    # Update geodictionary
-    sampledict = pga.getGeoDict()
+    pga = temp.getLayer("pga")
+    pga = pga.interpolate2(sampledict, method="linear")
+    pgv = temp.getLayer("pgv")
+    pgv = pgv.interpolate2(sampledict, method="linear")
+    # sampledict = pga.getGeoDict()
 
     t2 = temp.getEventDict()
     M = t2["magnitude"]
@@ -274,19 +269,14 @@ def godt2008(
     if uncertfile is not None:
         try:
             temp = ShakeGrid.load(uncertfile)  # , adjust='res')
-            GDALGrid.copyFromGrid(temp.getLayer("stdpga")).save(junkfile)
-            uncertpga = quickcut(
-                junkfile, sampledict, precise=True, method="bilinear", override=True
-            )
-            os.remove(junkfile)
-            GDALGrid.copyFromGrid(temp.getLayer("stdpgv")).save(junkfile)
-            uncertpgv = quickcut(
-                junkfile, sampledict, precise=True, method="bilinear", override=True
-            )
-            os.remove(junkfile)
-        except BaseException:
+            uncertpga = temp.getLayer("stdpga")
+            uncertpga = uncertpga.interpolate2(sampledict, method="linear")
+            uncertpgv = uncertpgv = temp.getLayer("stdpgv")
+            uncertpgv.interpolate2(sampledict, method="linear")
+        except Exception:
             print("Could not read uncertainty file, ignoring uncertainties")
             uncertfile = None
+
         if numstd is None:
             numstd = 1.0
 
@@ -303,7 +293,7 @@ def godt2008(
         "slope_max.bil",
     ]
     for quant in quantiles:
-        tmpslp = quickcut(os.path.join(slopefilepath, quant), sampledict)
+        tmpslp = read(os.path.join(slopefilepath, quant), samplegeodict=sampledict)
         tgd = tmpslp.getGeoDict()
         if tgd != sampledict:
             raise Exception("Input layers are not aligned to same geodict")
@@ -319,14 +309,28 @@ def godt2008(
     # Read in the cohesion and friction files and duplicate layers so they
     # are same shape as slope structure
 
-    tempco = quickcut(cohesionfile, sampledict, method="near")
+    tempco = read(
+        cohesionfile,
+        samplegeodict=sampledict,
+        resample=True,
+        method="nearest",
+        doPadding=True,
+        padValue=np.nan,
+    )
     tempco = tempco.getData()[:, :, np.newaxis] / codiv
     cohesion = np.repeat(tempco, 7, axis=2)
     cohesion[cohesion == -999.9] = nodata_cohesion
     cohesion = np.nan_to_num(cohesion)
     cohesion[cohesion == 0] = nodata_cohesion
 
-    tempfric = quickcut(frictionfile, sampledict, method="near")
+    tempfric = read(
+        frictionfile,
+        samplegeodict=sampledict,
+        resample=True,
+        method="nearest",
+        doPadding=True,
+        padValue=np.nan,
+    )
     tempfric = tempfric.getData().astype(float)[:, :, np.newaxis]
     friction = np.repeat(tempfric, 7, axis=2)
     friction[friction == -9999] = nodata_friction
@@ -449,7 +453,7 @@ def godt2008(
     }
     PROBgrid = GDALGrid(PROB, sampledict)
     if trimfile is not None:
-        PROBgrid = trim_ocean(PROBgrid, trimfile)
+        PROBgrid = trim_ocean2(PROBgrid, trimfile)
 
     maplayers["model"] = {
         "grid": PROBgrid,
@@ -462,8 +466,8 @@ def godt2008(
         PROBmingrid = GDALGrid(PROBmin, sampledict)
         PROBmaxgrid = GDALGrid(PROBmax, sampledict)
         if trimfile is not None:
-            PROBmingrid = trim_ocean(PROBmingrid, trimfile)
-            PROBmaxgrid = trim_ocean(PROBmaxgrid, trimfile)
+            PROBmingrid = trim_ocean2(PROBmingrid, trimfile)
+            PROBmaxgrid = trim_ocean2(PROBmaxgrid, trimfile)
         maplayers["modelmin"] = {
             "grid": PROBmingrid,
             "label": "Landslide Probability-%1.2fstd" % numstd,
@@ -614,7 +618,7 @@ def NMdisp(Ac, PGA, model="J_PGA", M=None, PGV=None):
 
     elif model == "J_PGA_M":
         if M is None:
-            raise Exception("M (magnitude) not found, cannot use RS_PGA_M " "model")
+            raise Exception("M (magnitude) not found, cannot use RS_PGA_M model")
         else:
             C1 = -2.71  # additive constant in newmark displacement calculation
             C2 = 2.335  # first exponential constant
@@ -630,7 +634,7 @@ def NMdisp(Ac, PGA, model="J_PGA", M=None, PGV=None):
 
     elif model == "RS_PGA_M":
         if M is None:
-            raise Exception("You must enter a value for M to use the " "RS_PGA_M model")
+            raise Exception("You must enter a value for M to use the RS_PGA_M model")
         C1 = 4.89
         C2 = -4.85
         C3 = -19.64
@@ -656,9 +660,7 @@ def NMdisp(Ac, PGA, model="J_PGA", M=None, PGV=None):
 
     elif model == "RS_PGA_PGV":
         if PGV is None:
-            raise Exception(
-                "You must enter a value for M to use the " "RS_PGA_PGV model"
-            )
+            raise Exception("You must enter a value for M to use the RS_PGA_PGV model")
         C1 = -1.56
         C2 = -4.58
         C3 = -20.84
@@ -684,7 +686,7 @@ def NMdisp(Ac, PGA, model="J_PGA", M=None, PGV=None):
 
     elif model == "BT_PGA_M":
         if M is None:
-            raise Exception("You must enter a value for M to use the " "BT_PGA_M model")
+            raise Exception("You must enter a value for M to use the BT_PGA_M model")
         Dn = np.array(
             np.exp(
                 -0.22

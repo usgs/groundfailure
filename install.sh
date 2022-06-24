@@ -19,10 +19,10 @@ source $prof
 # Name of new environment (must also change this in .yml files)
 VENV=gf
 # Python version
-py_ver=3.6
+py_ver=3.8
 
 # Set to 1 if you are a developer and want ipython etc. installed
-developer=0
+developer=1
 
 # Is conda installed?
 conda --version
@@ -61,6 +61,8 @@ fi
 # echo $PATH
 # echo ""
 
+conda install "mamba<=0.23.3" -y -n base -c conda-forge
+
 # add source command to profile file if it isn't already there
 grep "/etc/profile.d/conda.sh" $prof
 if [ $? -ne 0 ]; then
@@ -78,7 +80,8 @@ conda remove -y -n $VENV --all
 
 dev_list=(
     "ipython"
-    "spyder"
+    "black"
+    "flake8"
     "sphinx"
     "sphinx-argparse"
     "jupyterlab"
@@ -87,24 +90,47 @@ dev_list=(
 # Package list:
 package_list=(
       "python=$py_ver"
-      "configobj"
-      "descartes"
-      "fiona"
-      "folium"
-      "gdal=2.2.4"
-      "impactutils"
-      "libcomcat"
-      "mapio"
-      "matplotlib-base"
-      "numpy"
-      "pytables"
-      "pytest"
-      "pytest-cov"
-      "pytest-faulthandler"
-      "rasterio"
-      "scipy"
-      "simplekml"
+      "configobj>=5.0"
+      "descartes>=1.1"
+      "fiona>=1.8"
+      "folium>=0.12"
+      "gdal>=3.1"
+      "hdf5>=1.10"
+      "impactutils>=0.8"
+      "libcomcat>=2.0"
+      "mapio>=0.7"
+      "matplotlib-base>=3.5"
+      "numpy>=1.20"
+      "pytables>=3.6"
+      "pytest>=6.2"
+      "pytest-cov>=3.0"
+      "pytest-faulthandler>=2.0"
+      "rasterio>=1.2"
+      "scipy>=1.8"
+      "simplekml>=1.3"
 )
+# package_list=(
+#       "python=$py_ver"
+#       "configobj=5.0.6"
+#       "descartes=1.1.0"
+#       "fiona=1.8.13"
+#       "folium=0.12.1"
+#       "gdal=3.0.2"
+#       "hdf5=1.10.6"
+#       "impactutils=0.8.32"
+#       "libcomcat=2.0.16"
+#       "libgdal=3.0.2"
+#       "mapio=0.7.31"
+#       "matplotlib-base=3.5.1"
+#       "numpy=1.20.3"
+#       "pytables=3.6.1"
+#       "pytest=6.2.5"
+#       "pytest-cov=3.0.0"
+#       "pytest-faulthandler=2.0.1"
+#       "rasterio=1.1.2"
+#       "scipy=1.7.3"
+#       "simplekml=1.3.6"
+# )
 
 if [ $developer == 1 ]; then
     package_list=( "${package_list[@]}" "${dev_list[@]}" )
@@ -113,9 +139,11 @@ fi
 
 # Create a conda virtual environment
 echo "Creating the $VENV virtual environment"
+conda config --add channels 'defaults'
+conda config --add channels 'conda-forge'
+conda config --set channel_priority flexible
 # conda env create -f $env_file --force
-conda create -y -n $VENV -c defaults -c conda-forge \
-      --strict-channel-priority ${package_list[*]}
+mamba create -y -n $VENV ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
 # Clean up zip files we've downloaded

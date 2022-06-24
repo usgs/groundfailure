@@ -12,22 +12,22 @@ from mapio.shake import getHeaderData
 from gfail.gfailrun import run_gfail
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     """
     Main command line program for running the groundfailure models.
     """
 
     # See if there is a default path file, load in if there is and
     # replace any nones
-    defaults = os.path.join(os.path.expanduser('~'), '.gfail_defaults')
+    defaults = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
     data_path = None
     output_filepath = None
     config_filepath = None
     mapconfig = None
     popfile = None
     web_template = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        'pelican', 'theme')
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pelican", "theme"
+    )
     trimfile = None
     pdl_config = None
     log_filepath = None
@@ -36,171 +36,288 @@ if __name__ == '__main__':
     if os.path.exists(defaults):
         D = ConfigObj(defaults)
         for key in D:
-            if key == 'data_path':
+            if key == "data_path":
                 data_path = D[key]
-            elif key == 'output_filepath':
+            elif key == "output_filepath":
                 output_filepath = D[key]
-            elif key == 'config_filepath':
+            elif key == "config_filepath":
                 config_filepath = D[key]
-            elif key == 'mapconfig':
+            elif key == "mapconfig":
                 mapconfig = D[key]
-            elif key == 'web_template':
+            elif key == "web_template":
                 web_template = D[key]
-            elif key == 'trimfile':
+            elif key == "trimfile":
                 trimfile = D[key]
-            elif key == 'popfile':
+            elif key == "popfile":
                 popfile = D[key]
-            elif key == 'pdl_config':
+            elif key == "pdl_config":
                 pdl_config = D[key]
-            elif key == 'log_filepath':
+            elif key == "log_filepath":
                 pdl_config = D[key]
-            elif key == 'dbfile':
+            elif key == "dbfile":
                 pdl_config = D[key]
 
     parser = argparse.ArgumentParser(
-        description='Run ground failure models on input ShakeMap grid.',
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        description="Run ground failure models on input ShakeMap grid.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
-        'config', metavar='config', nargs='?',
-        help='single config file of model to run (.ini extension), or text '
-             'file listing config files (do not use .ini extension)')
+        "config",
+        metavar="config",
+        nargs="?",
+        help="single config file of model to run (.ini extension), or text "
+        "file listing config files (do not use .ini extension)",
+    )
     parser.add_argument(
-        'shakefile', nargs='?',
-        help='single ShakeMap grid.xml file or url')
+        "shakefile", nargs="?", help="single ShakeMap grid.xml file or url"
+    )
     parser.add_argument(
-        '-a', '--appendname', metavar='appendname', nargs='?',
-        help='append word to file names to describe current run',
-        default=None)
+        "-a",
+        "--appendname",
+        metavar="appendname",
+        nargs="?",
+        help="append word to file names to describe current run",
+        default=None,
+    )
     parser.add_argument(
-        '-c', '--config-filepath', metavar='configfilepath', nargs='?',
+        "-c",
+        "--config-filepath",
+        metavar="configfilepath",
+        nargs="?",
         default=config_filepath,
-        help='Filepath where config files are located, default is '
-             'defaultconfigfiles folder of groundfailure repository')
+        help="Filepath where config files are located, default is "
+        "defaultconfigfiles folder of groundfailure repository",
+    )
     parser.add_argument(
-        '-d', '--data-path', metavar='datafilepath', nargs='?',
+        "-d",
+        "--data-path",
+        metavar="datafilepath",
+        nargs="?",
         default=data_path,
-        help='Set file path to model input data (only needed if file paths '
-        'in config are relative)')
+        help="Set file path to model input data (only needed if file paths "
+        "in config are relative)",
+    )
     parser.add_argument(
-        '-m', '--mapconfig', metavar='mapconfig', nargs='?',
-        help='full file path to config file containing mapping options',
-        default=mapconfig)
+        "-m",
+        "--mapconfig",
+        metavar="mapconfig",
+        nargs="?",
+        help="full file path to config file containing mapping options",
+        default=mapconfig,
+    )
     parser.add_argument(
-        '-pf', '--popfile', metavar='popfile', nargs='?',
-        help='Set file path to population file used to '
-             'compute model statistics',
-        default=popfile)
+        "-pf",
+        "--popfile",
+        metavar="popfile",
+        nargs="?",
+        help="Set file path to population file used to " "compute model statistics",
+        default=popfile,
+    )
     parser.add_argument(
-        '-o', '--output-filepath', metavar='outfilepath', nargs='?',
+        "-o",
+        "--output-filepath",
+        metavar="outfilepath",
+        nargs="?",
         default=output_filepath,
-        help='Filepath for output files, uses current directory if '
-             'not specified')
+        help="Filepath for output files, uses current directory if " "not specified",
+    )
     parser.add_argument(
-        '-t', '--web-template', metavar='template', nargs='?',
+        "-t",
+        "--web-template",
+        metavar="template",
+        nargs="?",
         default=web_template,
-        help='location of directory containing pelican files and templates')
+        help="location of directory containing pelican files and templates",
+    )
     parser.add_argument(
-        '-u', '--uncertfile', metavar='uncertfile', nargs='?',
-        help='single ShakeMap uncertainty.xml file', default=None)
+        "-u",
+        "--uncertfile",
+        metavar="uncertfile",
+        nargs="?",
+        help="single ShakeMap uncertainty.xml file",
+        default=None,
+    )
     parser.add_argument(
-        '-tr', '--trimfile', metavar='trimocean', nargs='?',
+        "-tr",
+        "--trimfile",
+        metavar="trimocean",
+        nargs="?",
         default=trimfile,
-        help=('Location of shapefile of land masses to use to trim areas '
-              'over water'))
+        help=(
+            "Location of shapefile of land masses to use to trim areas " "over water"
+        ),
+    )
     parser.add_argument(
-        '-pdl', '--pdl-config', metavar='pdlconfig', nargs='?',
+        "-pdl",
+        "--pdl-config",
+        metavar="pdlconfig",
+        nargs="?",
         default=pdl_config,
-        help='Location of config file for pdl (optional)')
+        help="Location of config file for pdl (optional)",
+    )
     parser.add_argument(
-        '-log', '--log-filepath', metavar='logfilepath', nargs='?',
+        "-log",
+        "--log-filepath",
+        metavar="logfilepath",
+        nargs="?",
         default=log_filepath,
-        help='Location of log filepath')
+        help="Location of log filepath",
+    )
     parser.add_argument(
-        '-db', '--dbfile', metavar='dbfile', nargs='?', default=dbfile,
-        help='Location of database')
+        "--debug",
+        default=False,
+        action="store_true",
+        help="Print logging to stdout",
+    )
+    parser.add_argument(
+        "-db",
+        "--dbfile",
+        metavar="dbfile",
+        nargs="?",
+        default=dbfile,
+        help="Location of database",
+    )
 
     parser.add_argument(
-        '-b', '--set-bounds', type=str,
-        metavar='latmin, latmax, lonmin, lonmax', nargs='?',
-        help=("Set bounds of model run using four floats in this format, "
-              "including quotes: 'latmin, latmax, lonmin, lonmax', default "
-              "uses shakemap bounds, 'zoom, parameter, threshold' in single "
-              "quotes uses a shakemap threshold value, e.g. 'zoom, pga, 2' "
-              "where 2 is in percent g"),
-        default=None)
+        "-b",
+        "--set-bounds",
+        type=str,
+        metavar="latmin, latmax, lonmin, lonmax",
+        nargs="?",
+        help=(
+            "Set bounds of model run using four floats in this format, "
+            "including quotes: 'latmin, latmax, lonmin, lonmax', default "
+            "uses shakemap bounds, 'zoom, parameter, threshold' in single "
+            "quotes uses a shakemap threshold value, e.g. 'zoom, pga, 2' "
+            "where 2 is in percent g"
+        ),
+        default=None,
+    )
     parser.add_argument(
-        '-f', '--finite-fault', metavar='finitefault', nargs='?',
-        default=None, help='geojson file to show on interactive maps')
+        "-f",
+        "--finite-fault",
+        metavar="finitefault",
+        nargs="?",
+        default=None,
+        help="geojson file to show on interactive maps",
+    )
     parser.add_argument(
-        '-s', '--std', metavar='numstd', nargs='?',
-        help='Number of ground motion standard deviations to use '
-             '(only used if uncertainty file used)',
-        default=1.)
+        "-s",
+        "--std",
+        metavar="numstd",
+        nargs="?",
+        help="Number of ground motion standard deviations to use "
+        "(only used if uncertainty file used)",
+        default=1.0,
+    )
     parser.add_argument(
-        '-gv', '--gf_version', metavar='gf_version', nargs='?', type=int,
-        help='Ground failure run version, default 1', default=1
+        "-gv",
+        "--gf_version",
+        metavar="gf_version",
+        nargs="?",
+        type=int,
+        help="Ground failure run version, default 1",
+        default=1,
     )
 
     # Binary
 
     parser.add_argument(
-        '--gis', action='store_true', default=False,
-        help='Save GIS file (ESRI .bil format) of model result')
+        "--gis",
+        action="store_true",
+        default=False,
+        help="Save GIS file (ESRI .bil format) of model result",
+    )
     parser.add_argument(
-        '--kmz', action='store_true', default=False,
-        help='Save kmz file (Google Earth) of model result (will only make '
-        'if there are unmasked pixels)')
+        "--kmz",
+        action="store_true",
+        default=False,
+        help="Save kmz file (Google Earth) of model result (will only make "
+        "if there are unmasked pixels)",
+    )
     parser.add_argument(
-        '--hdf5', action='store_true', default=False,
-        help='Save model results as MultiHazard HDF file (MapIO)')
+        "--hdf5",
+        action="store_true",
+        default=False,
+        help="Save model results as MultiHazard HDF file (MapIO)",
+    )
     parser.add_argument(
-        '-i', '--save-inputs', action='store_true', default=False,
-        help='Save input layer grids with model output')
+        "-i",
+        "--save-inputs",
+        action="store_true",
+        default=False,
+        help="Save input layer grids with model output",
+    )
 
     parser.add_argument(
-        '-l', '--list-default-paths', action='store_true', default=False,
-        help='See listing of currently set default paths')
+        "-l",
+        "--list-default-paths",
+        action="store_true",
+        default=False,
+        help="See listing of currently set default paths",
+    )
     parser.add_argument(
-        '-set', '--set-default-paths', action='store_true', default=False,
-        help='Sets paths given as inputs as defaults '
-             '(overwrites existing values)')
+        "-set",
+        "--set-default-paths",
+        action="store_true",
+        default=False,
+        help="Sets paths given as inputs as defaults " "(overwrites existing values)",
+    )
     parser.add_argument(
-        '-reset', '--reset-default-paths', action='store_true', default=False,
-        help='Clears all existing default paths')
+        "-reset",
+        "--reset-default-paths",
+        action="store_true",
+        default=False,
+        help="Clears all existing default paths",
+    )
     parser.add_argument(
-        '-w', '--make-webpage', action='store_true', default=False,
-        help='Create all files needed for product page creation and compute '
-             'alerts')
+        "-w",
+        "--make-webpage",
+        action="store_true",
+        default=False,
+        help="Create all files needed for product page creation and compute " "alerts",
+    )
     parser.add_argument(
-        '-ext', '--extract-contents', action='store_true', default=False,
-        help='All files will be placed directly in output folder, will not be '
-             'nested in a subfolder named by eventid')
-    parser.add_argument("--property-alertlevel", default='unset')
+        "-ext",
+        "--extract-contents",
+        action="store_true",
+        default=False,
+        help="All files will be placed directly in output folder, will not be "
+        "nested in a subfolder named by eventid",
+    )
+    parser.add_argument("--property-alertlevel", default="unset")
+    parser.add_argument("--eventsource", help="Comcat eventsource.", default="")
+    parser.add_argument("--eventsourcecode", help="Comcat eventsourcecode.", default="")
+
+    # adding this option in since new model implementations
+    # don't crash on the 180 meridian
+    bhelp = (
+        "Preserve the bounds dictated by the ShakeMap. This is only "
+        'to used with the "logbase" versions of the models. In cases '
+        "where the ShakeMap crosses the 180 meridian, and a "
+        'non "logbase" version of the model is being run, this will '
+        "cause an error."
+    )
     parser.add_argument(
-        "--eventsource",
-        help='Comcat eventsource.',
-        default="")
-    parser.add_argument(
-        "--eventsourcecode",
-        help='Comcat eventsourcecode.',
-        default="")
+        "--keep-shakemap-bounds", help=bhelp, action="store_true", default=False
+    )
 
     pargs = parser.parse_args()
 
     codes_set = (pargs.eventsource == "") or (pargs.eventsourcecode == "")
     if codes_set and pargs.shakefile:
         shake_tuple = getHeaderData(pargs.shakefile)
-        eid = shake_tuple[1]['event_id']
+        eid = shake_tuple[1]["event_id"]
 
         if not len(eid):
-            eid = shake_tuple[0]['event_id']
-        network = shake_tuple[1]['event_network']
+            eid = shake_tuple[0]["event_id"]
+        network = shake_tuple[1]["event_network"]
 
-        if network == '':
-            network = 'us'
+        if network == "":
+            network = "us"
 
         if eid.startswith(network):
-            eid = eid[len(network):]
+            eid = eid[len(network) :]
 
         pargs.eventsource = network
         pargs.eventsourcecode = eid
