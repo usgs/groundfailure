@@ -68,10 +68,6 @@ else
     echo "conda detected, installing $VENV environment..."
 fi
 
-. $HOME/miniconda/etc/profile.d/conda.sh
-
-conda init bash
-
 # # make defaults higher priority, set that priority to strict
 # conda config --add channels 'conda-forge'
 # conda config --add channels 'defaults'
@@ -175,6 +171,8 @@ fi
 
 # Activate the new environment
 echo "Activating the $VENV virtual environment"
+. $HOME/miniconda/etc/profile.d/conda.sh
+conda init bash
 conda activate $VENV
 
 # if conda activate fails, bow out gracefully
