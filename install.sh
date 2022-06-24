@@ -68,15 +68,6 @@ else
     echo "conda detected, installing $VENV environment..."
 fi
 
-# # make defaults higher priority, set that priority to strict
-# conda config --add channels 'conda-forge'
-# conda config --add channels 'defaults'
-# conda config --set channel_priority strict
-
-# echo "PATH:"
-# echo $PATH
-# echo ""
-
 conda install "mamba<=0.23.3" -y -n base -c conda-forge
 
 # add source command to profile file if it isn't already there
@@ -84,8 +75,6 @@ grep "/etc/profile.d/conda.sh" $prof
 if [ $? -ne 0 ]; then
     echo ". $_CONDA_ROOT/etc/profile.d/conda.sh" >> $prof
 fi
-
-#env_file=environment.yml
 
 # Start in conda base environment
 echo "Activate base virtual environment"
@@ -153,12 +142,11 @@ if [ $developer == 1 ]; then
     echo ${package_list[*]}
 fi
 
-# Create a conda virtual environment
-echo "Creating the $VENV virtual environment"
 conda config --add channels 'defaults'
 conda config --add channels 'conda-forge'
 conda config --set channel_priority flexible
-# conda env create -f $env_file --force
+
+echo "*** Creating the $VENV virtual environment ***"
 mamba create -y -n $VENV ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
@@ -170,9 +158,7 @@ fi
 
 
 # Activate the new environment
-echo "Activating the $VENV virtual environment"
-. $HOME/miniconda/etc/profile.d/conda.sh
-conda init bash
+echo "*** Activating the $VENV virtual environment ***"
 conda activate $VENV
 
 # if conda activate fails, bow out gracefully
