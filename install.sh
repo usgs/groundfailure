@@ -22,7 +22,7 @@ VENV=gf
 py_ver=3.8
 
 # Set to 1 if you are a developer and want ipython etc. installed
-developer=0
+developer=1
 
 # Is conda installed?
 conda --version
@@ -61,6 +61,8 @@ fi
 # echo $PATH
 # echo ""
 
+conda install "mamba<=0.23.3" -y -n base -c conda-forge
+
 # add source command to profile file if it isn't already there
 grep "/etc/profile.d/conda.sh" $prof
 if [ $? -ne 0 ]; then
@@ -78,7 +80,8 @@ conda remove -y -n $VENV --all
 
 dev_list=(
     "ipython"
-    "spyder"
+    "black"
+    "flake8"
     "sphinx"
     "sphinx-argparse"
     "jupyterlab"
@@ -91,11 +94,10 @@ package_list=(
       "descartes>=1.1"
       "fiona>=1.8"
       "folium>=0.12"
-      "gdal>=3.4"
+      "gdal>=3.1"
       "hdf5>=1.10"
       "impactutils>=0.8"
       "libcomcat>=2.0"
-      "libgdal>=3.4"
       "mapio>=0.7"
       "matplotlib-base>=3.5"
       "numpy>=1.20"
@@ -103,7 +105,7 @@ package_list=(
       "pytest>=6.2"
       "pytest-cov>=3.0"
       "pytest-faulthandler>=2.0"
-      "rasterio>=1.1"
+      "rasterio>=1.2"
       "scipy>=1.8"
       "simplekml>=1.3"
 )
@@ -141,7 +143,7 @@ conda config --add channels 'defaults'
 conda config --add channels 'conda-forge'
 conda config --set channel_priority flexible
 # conda env create -f $env_file --force
-conda create -y -n $VENV ${package_list[*]}
+mamba create -y -n $VENV ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
 # Clean up zip files we've downloaded
