@@ -1,4 +1,12 @@
-[![codecov](https://codecov.io/gh/usgs/groundfailure/branch/master/graph/badge.svg)](https://codecov.io/gh/usgs/groundfailure)
+
+[![codecov](https://codecov.io/gh/usgs/groundfailure/branch/main/graph/badge.svg)](https://codecov.io/gh/usgs/groundfailure)
+
+| OS   | Python | Status |
+| :--- | :----   | :--- |
+| macOS-latest | 3.8  | [![Build Status](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_apis/build/status/usgs.groundfailure?branchName=main&jobName=groundfailure&configuration=groundfailure%20MacOS_py38)](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_build/latest?definitionId=7&branchName=main) |
+| macOS-latest | 3.9  | [![Build Status](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_apis/build/status/usgs.groundfailure?branchName=main&jobName=groundfailure&configuration=groundfailure%20MacOS_py39)](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_build/latest?definitionId=7&branchName=main) |
+| ubuntu-latest | 3.8  | [![Build Status](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_apis/build/status/usgs.groundfailure?branchName=main&jobName=groundfailure&configuration=groundfailure%20Linux_py38)](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_build/latest?definitionId=7&branchName=main) |
+| ubuntu-latest | 3.9  | [![Build Status](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_apis/build/status/usgs.groundfailure?branchName=main&jobName=groundfailure&configuration=groundfailure%20Linux_py39)](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_build/latest?definitionId=7&branchName=main) |
 
 # groundfailure
 
