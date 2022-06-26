@@ -88,8 +88,8 @@ This will take a while and will show numerous dependencies being installed.
 To ensure all of your dependencies are up to date, reinstall completely starting
 at Step 3 above.
 
-To update groundfailure to the current master branch without altering dependencies
-(if you have altered the master branch, you will first need to stash your changes):
+To update groundfailure to the current main branch without altering dependencies
+(if you have altered the main branch, you will first need to stash your changes):
 ```sh
 cd Users/YourName/groundfailure
 git pull
@@ -125,8 +125,7 @@ And remove the groundfailure folder that was cloned in step 3.
 ## Dependencies
 
 The install.sh script installs this package and dependencies. It is
-regularly tested on OSX and Ubuntu. For a full list of dependencies, refer to
-[environment.yml](https://github.com/usgs/groundfailure/blob/master/environment.yml).
+regularly tested on OSX and Ubuntu. 
 
 Some functions of this program require the use of the USGS Product Distribution
 Layer (PDL). This must be installed separately. See the [PDL User Guide](https://usgs.github.io/pdl)
@@ -138,7 +137,7 @@ For each model, there is a configuration file that describes the model
 parameters, default values, metadata/source details, input file locations,
 and display preferences. Default versions with relative file paths are found
 in the defaultconfigfiles folder of the
-[repository](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles).
+[repository](https://github.com/usgs/groundfailure/tree/main/defaultconfigfiles).
 These can be edited but to avoid overwriting your changes each time you update
 the groundfailure codes, you should edit copies outside of the repository.
 
@@ -442,21 +441,21 @@ def failure_model():
 
 ### Datasets for example notebooks
 
-We have extracted the input datasets required to run the models demonstrated in the [example notebooks](https://github.com/usgs/groundfailure/tree/master/notebooks) for the 
+We have extracted the input datasets required to run the models demonstrated in the [example notebooks](https://github.com/usgs/groundfailure/tree/main/notebooks) for the 
 1994 Northridge, CA, earthquake, including the [USGS ShakeMap, from the ShakeMap Atlas (v1)](https://earthquake.usgs.gov/earthquakes/eventpage/ci3144585#shakemap).
-The sources of the input files are listed in the [default config file](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/models) for each model.
-The reference for each filename is listed as a  "longref" ([example:](https://github.com/usgs/groundfailure/blob/master/defaultconfigfiles/models/jessee_2017.ini#L27)) in the section of the
-config file below the corresponding filename, defined as "file: ([example](https://github.com/usgs/groundfailure/blob/master/defaultconfigfiles/models/jessee_2017.ini#L25)).
+The sources of the input files are listed in the [default config file](https://github.com/usgs/groundfailure/tree/main/defaultconfigfiles/models) for each model.
+The reference for each filename is listed as a  "longref" ([example:](https://github.com/usgs/groundfailure/blob/main/defaultconfigfiles/models/jessee_2017.ini#L27)) in the section of the
+config file below the corresponding filename, defined as "file: ([example](https://github.com/usgs/groundfailure/blob/main/defaultconfigfiles/models/jessee_2017.ini#L25)).
 A digital terrain model is also provided for mapping purposes. It is extracted from the [GMTED2010 Terrain Elevation model](https://topotools.cr.usgs.gov/gmted_viewer).
-The extracted input data files are located with the notebooks in the [data folder](https://github.com/usgs/groundfailure/tree/master/notebooks/data).
+The extracted input data files are located with the notebooks in the [data folder](https://github.com/usgs/groundfailure/tree/main/notebooks/data).
 
 ### Datasets for testing
 
-Test input datasets are included with the repository in order to run the [tests](https://github.com/usgs/groundfailure/tree/master/tests).
+Test input datasets are included with the repository in order to run the [tests](https://github.com/usgs/groundfailure/tree/main/tests).
 Some tests used artificial datasets, but others use input datasets for a subsection
 of the area affected by the 1989 Loma Prieta, CA, earthquake. These extracted
-sections of the input datasets are located with the tests in the [data folder](https://github.com/usgs/groundfailure/tree/master/tests/data/loma_prieta).
-The input layers for each model can be found in the [default config file](https://github.com/usgs/groundfailure/tree/master/defaultconfigfiles/models) for each model,
+sections of the input datasets are located with the tests in the [data folder](https://github.com/usgs/groundfailure/tree/main/tests/data/loma_prieta).
+The input layers for each model can be found in the [default config file](https://github.com/usgs/groundfailure/tree/main/defaultconfigfiles/models) for each model,
 as described above. Additional layers used in the tests were extracted from the global input layers defined below:
 
 * ne_10m_ocean: [Natural Earth (2016) Ocean polygon](http://www.naturalearthdata.com/downloads/10m-physical-vectors/10m-ocean) last accessed 17 Nov 2017
