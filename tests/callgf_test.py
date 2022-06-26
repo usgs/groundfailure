@@ -74,7 +74,7 @@ def test_callgf(tmpdir):
         runcmd = "callgf -e ci39473968 --dry-run -v 4 -s cgs -f"
         rc2, so2, se2 = get_command_output(runcmd)
         np.testing.assert_equal(
-            True, "Completed gfail run of ci39473968" in str(so5), se5.decode()
+            True, "Completed gfail run of ci39473968" in str(so2), se2.decode()
         )
 
         # Add and then remove stopfile
