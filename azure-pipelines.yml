@@ -47,7 +47,7 @@ jobs:
       rm /usr/share/miniconda/pkgs/cache/*.json
       echo $(Agent.NAME)
       echo $(python.version)
-      bash install.sh -p $(python.version)
+      ./install.sh -p $(python.version)
     displayName: Create conda environment and install
 
   - bash: |
