@@ -14,18 +14,11 @@ else
     exit
 fi
 
-source $prof
-
-# Name of new environment (must also change this in .yml files)
+# Name of new environment
 VENV=gf
-# Python version
-py_ver=3.8
 
-# Set to 1 if you are a developer and want ipython etc. installed
+py_ver=3.8
 developer=0
-
-
-py_ver=3.8
 while getopts p:d FLAG; do
   case $FLAG in
     p)
@@ -44,6 +37,8 @@ echo "Using python version $py_ver"
 conda --version
 if [ $? -ne 0 ]; then
     echo "No conda detected, installing miniconda..."
+
+    command -v curl >/dev/null 2>&1 || { echo >&2 "Script requires curl but it's not installed. Aborting."; exit 1; }
 
     curl -L $mini_conda_url -o miniconda.sh;
 
@@ -68,6 +63,8 @@ else
     echo "conda detected, installing $VENV environment..."
 fi
 
+echo "Installing mamba from conda-forge"
+
 conda install "mamba<=0.23.3" -y -n base -c conda-forge
 
 # add source command to profile file if it isn't already there
@@ -78,6 +75,7 @@ fi
 
 # Start in conda base environment
 echo "Activate base virtual environment"
+eval "$(conda shell.bash hook)" 
 conda activate base
 
 # Remove existing gf environment if it exists
@@ -114,28 +112,6 @@ package_list=(
       "scipy>=1.8"
       "simplekml>=1.3"
 )
-# package_list=(
-#       "python=$py_ver"
-#       "configobj=5.0.6"
-#       "descartes=1.1.0"
-#       "fiona=1.8.13"
-#       "folium=0.12.1"
-#       "gdal=3.0.2"
-#       "hdf5=1.10.6"
-#       "impactutils=0.8.32"
-#       "libcomcat=2.0.16"
-#       "libgdal=3.0.2"
-#       "mapio=0.7.31"
-#       "matplotlib-base=3.5.1"
-#       "numpy=1.20.3"
-#       "pytables=3.6.1"
-#       "pytest=6.2.5"
-#       "pytest-cov=3.0.0"
-#       "pytest-faulthandler=2.0.1"
-#       "rasterio=1.1.2"
-#       "scipy=1.7.3"
-#       "simplekml=1.3.6"
-# )
 
 if [ $developer == 1 ]; then
     package_list=( "${package_list[@]}" "${dev_list[@]}" )
