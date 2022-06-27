@@ -27,7 +27,6 @@ from libcomcat.search import get_event_by_id
 from gfail.conf import correct_config_filepaths
 import gfail.logisticmodel as LM
 from gfail.godt import godt2008
-from gfail.godt2 import godt2008_2
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat,
@@ -157,6 +156,7 @@ def run_gfail(args):
 
         # Check that shakemap bounds do not cross 180/-180 line
         sd = ShakeGrid.getFileGeoDict(shakefile)
+
         if not args.keep_shakemap_bounds:
             if args.set_bounds is None:
                 if sd.xmin > sd.xmax:
@@ -421,17 +421,9 @@ def run_gfail(args):
                 maplayers = model.calculate()
                 t2 = time.time()
                 logging.info(f"{modelname} Elapsed: {t2-t1:.1f} seconds")
+
             elif modelfunc == "godt2008":
                 maplayers = godt2008(
-                    shakefile,
-                    conf,
-                    uncertfile=uncertfile,
-                    saveinputs=args.save_inputs,
-                    bounds=bounds2,
-                    trimfile=trimfile,
-                )
-            elif modelfunc == "godt2008_2":
-                maplayers = godt2008_2(
                     shakefile,
                     conf,
                     uncertfile=uncertfile,

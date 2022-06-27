@@ -809,7 +809,7 @@ def process_shakemap(args, config):
     set_bounds = None
     sd = ShakeGrid.getFileGeoDict(gridfile, adjust="res")
     if (sd.ymin < -56.0000) or (sd.ymax > 84.0000):
-        msg = "Shakemap extends outside of latitude range of slope data. " "Exiting."
+        msg = "Shakemap extends outside of latitude range of slope data. "
         logging.info(msg)
         # Run just part of area if remaining area is larger than 1 deg
         if (sd.ymax + 56.0 > 1.0) and (84.0 - sd.ymin > 1.0):
