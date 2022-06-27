@@ -451,13 +451,10 @@ def computePexp(
         doPadding=True,
         interp_approach="rasterio",
     )
-    # popcut1 = quickcut(pop_file, mdict, precise=False, extrasamp=2, method="nearest")
-    # tot1 = np.sum(popcut1.getData())
     # Adjust for upsampling factor to avoid creating new people
     popcut1.setData(popcut1.getData() / factor ** 2)
 
     # Upsample to mdict
-    # popcut = popcut1.interpolate2(mdict, method="nearest")
     popdat = popcut1.getData()
     exp_pop = {}
 

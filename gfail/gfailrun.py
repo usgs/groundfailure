@@ -25,7 +25,6 @@ from libcomcat.search import get_event_by_id
 # local imports
 
 from gfail.conf import correct_config_filepaths
-import gfail.logisticmodel as LM
 from gfail.godt import godt2008
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
@@ -373,22 +372,8 @@ def run_gfail(args):
                 bounds2 = bounds
 
             modelfunc = conf[modelname]["funcname"]
-            if modelfunc == "LogisticModel":
-                t1 = time.time()
-                lm = LM.LogisticModel(
-                    shakefile,
-                    conf,
-                    uncertfile=uncertfile,
-                    saveinputs=args.save_inputs,
-                    bounds=bounds2,
-                    trimfile=trimfile,
-                )
 
-                maplayers = lm.calculate()
-                t2 = time.time()
-                logging.info(f"{modelname} Elapsed: {t2-t1:.1f} seconds")
-
-            elif modelfunc == "LogBase":
+            if modelfunc == "LogBase":
                 # newer object oriented approach to logistic models
                 model_class = MODEL_FACTORY[modelname]
                 t1 = time.time()
