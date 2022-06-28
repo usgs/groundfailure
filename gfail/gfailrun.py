@@ -15,7 +15,7 @@ import logging
 # third party imports
 
 from mapio.shake import getHeaderData
-from mapio.gdal import GDALGrid  # TODO replace these with read
+from mapio.gdal import GDALGrid  #TODO replace these with read
 from mapio.gmt import GMTGrid
 from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
@@ -25,7 +25,7 @@ from libcomcat.search import get_event_by_id
 # local imports
 
 from gfail.conf import correct_config_filepaths
-from gfail import godt2008
+
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat,
@@ -35,13 +35,9 @@ from gfail.utilities import (
     getFileType,
 )
 
-from gfail import (
-    Zhu2015Model,
-    Nowicki2014Model,
-    Zhu2017Model,
-    Zhu2017ModelCoastal,
-    Jessee2018Model,
-)
+from gfail import (Zhu2015Model, Nowicki2014Model,
+                   Zhu2017Model, Zhu2017ModelCoastal,
+                   Jessee2018Model, godt2008)
 
 
 MODEL_FACTORY = {
