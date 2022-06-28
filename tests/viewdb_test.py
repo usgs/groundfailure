@@ -48,7 +48,7 @@ def test_viewdb(tmpdir):
 
         runcmd4 = "viewdb -p -c --minmag 7.5 --color"
         rc4, so4, se4 = get_command_output(runcmd4)
-        breakpoint()
+
         runcmd5 = "viewdb -s --summaryplotfile %s" % \
             os.path.join(tmpdir.name, 'test.png')
         rc5, so5, se5 = get_command_output(runcmd5)

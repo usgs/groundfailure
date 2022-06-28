@@ -4,7 +4,7 @@ import os.path
 import os
 from configobj import ConfigObj
 import numpy as np
-from gfail.godt import godt2008
+from gfail import godt2008
 from mapio.geodict import GeoDict
 from gfail.conf import correct_config_filepaths
 

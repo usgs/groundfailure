@@ -7,8 +7,8 @@ would take just way to long to do with real data.
 import os.path
 import os
 from configobj import ConfigObj
-from gfail.zhu_2015 import Zhu2015Model
-from mapio.geodict import GeoDict
+from gfail import Zhu2015Model
+from mapio.geodict import GeoDict #TODO replace with read
 import tempfile
 from gfail.webpage import create_kmz
 #import shutil

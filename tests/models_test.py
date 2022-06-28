@@ -9,11 +9,9 @@ from configobj import ConfigObj
 from mapio.gmt import GMTGrid  #REPLACE THIS
 
 from gfail.conf import correct_config_filepaths
-from gfail import Zhu2015Model
-from gfail import Nowicki2014Model
-from gfail import Zhu2017Model
-from gfail import Zhu2017ModelCoastal
-from gfail import Jessee2018Model
+from gfail import (Zhu2015Model, Nowicki2014Model,
+                   Zhu2017Model, Zhu2017ModelCoastal,
+                   Jessee2018Model)
 from gfail import godt2008
 
 

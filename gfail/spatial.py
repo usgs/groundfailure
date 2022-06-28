@@ -11,13 +11,9 @@ import shutil
 import rasterio
 import rasterio.mask
 
-from mapio.gdal import GDALGrid
-from mapio.shake import ShakeGrid
-from mapio.gmt import GMTGrid
 from mapio.grid2d import Grid2D
 from mapio.geodict import GeoDict, geodict_from_affine
 from mapio.writer import write
-from impactutils.io.cmd import get_command_output
 import numpy as np
 
 
