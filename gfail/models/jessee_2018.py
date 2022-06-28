@@ -90,7 +90,7 @@ class Jessee2018Model(LogisticModelBase):
         return
 
     def calculate_coverage(self, P):
-        P = np.exp(-7.592 + 5.237 * P - 3.042 * P ** 2 + 4.035 * P ** 3)
+        P = np.exp(-7.592 + 5.237 * P - 3.042 * P**2 + 4.035 * P**3)
         return P
 
     def modify_slope(self, slope):
@@ -113,13 +113,13 @@ class Jessee2018Model(LogisticModelBase):
         varP **= 2
         del slope
         std_pgv = read(self.layers["stdpgv"])._data
-        varP *= std_pgv ** 2
+        varP *= std_pgv**2
         del std_pgv
         if "stddev" in self.layers:
             stddev = read(self.layers["stddev"])._data
         else:
             stddev = float(self.config["default_stddev"])
-        varP += stddev ** 2
+        varP += stddev**2
         del stddev
         X = read(self.layers["X"])._data
         varP *= (np.exp(-X) / (np.exp(-X) + 1) ** 2) ** 2
@@ -133,8 +133,8 @@ class Jessee2018Model(LogisticModelBase):
             d = ERROR_COEFFS["d"]
 
             std1 = (
-                np.exp(a + b * P + c * P ** 2.0 + d * P ** 3.0)
-                * (b + 2.0 * P * c + 3.0 * d * P ** 2.0)
+                np.exp(a + b * P + c * P**2.0 + d * P**3.0)
+                * (b + 2.0 * P * c + 3.0 * d * P**2.0)
             ) ** 2.0 * varP
             std1 = np.sqrt(std1)
             del P

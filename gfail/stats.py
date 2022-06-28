@@ -351,8 +351,8 @@ def computeHagg(
 
             var = Hagg["hagg_std_%1.2fg" % (shakethresh / 100.0,)] ** 2.0
             # Beta distribution shape factors
-            ph = (mu / hlim) * ((hlim * mu - mu ** 2) / var - 1)
-            qh = (1 - mu / hlim) * ((hlim * mu - mu ** 2) / var - 1)
+            ph = (mu / hlim) * ((hlim * mu - mu**2) / var - 1)
+            qh = (1 - mu / hlim) * ((hlim * mu - mu**2) / var - 1)
             Hagg["p_hagg_%1.2fg" % (shakethresh / 100.0,)] = ph
             Hagg["q_hagg_%1.2fg" % (shakethresh / 100.0,)] = qh
             # Compute 1 and 2 std ranges
@@ -452,7 +452,7 @@ def computePexp(
         interp_approach="rasterio",
     )
     # Adjust for upsampling factor to avoid creating new people
-    popcut1.setData(popcut1.getData() / factor ** 2)
+    popcut1.setData(popcut1.getData() / factor**2)
 
     # Upsample to mdict
     popdat = popcut1.getData()
@@ -586,8 +586,8 @@ def computePexp(
                 ) / 2.0
             # Beta distribution shape factors
             var = exp_pop["exp_std_%1.2fg" % (shakethresh / 100.0,)] ** 2.0
-            pe = (mu / elim) * ((elim * mu - mu ** 2) / var - 1)
-            qe = (1 - mu / elim) * ((elim * mu - mu ** 2) / var - 1)
+            pe = (mu / elim) * ((elim * mu - mu**2) / var - 1)
+            qe = (1 - mu / elim) * ((elim * mu - mu**2) / var - 1)
             exp_pop["p_exp_%1.2fg" % (shakethresh / 100.0,)] = pe
             exp_pop["q_exp_%1.2fg" % (shakethresh / 100.0,)] = qe
             # Compute 1 and 2 std ranges
@@ -708,7 +708,7 @@ def semivario(
         indc = col1 + addc
         newvalues = model[indr, indc]
         ptval = model[row1, col1]
-        dists = np.sqrt(addr ** 2 + addc ** 2)  # distance in pixels
+        dists = np.sqrt(addr**2 + addc**2)  # distance in pixels
         # Remove any invalid samples
         dists = dists[np.isfinite(newvalues)]
         newvalues = newvalues[np.isfinite(newvalues)]
@@ -717,7 +717,7 @@ def semivario(
         lags = np.hstack((lags, dists))
         # vals = np.hstack((vals, newvalues, ptval))
 
-    diffs2 = diffs ** 2
+    diffs2 = diffs**2
 
     # % Make variogram out of these samples
     # binedges = np.linspace(0, maxlag, num=nvbins + 1, endpoint=True)
@@ -811,7 +811,7 @@ def svar(stds, range1, sill1, scale=1.0):
     # get distance in row and col from center point
     rows = matlib.repmat(np.arange(nrows), ncols, 1).T - range5
     cols = matlib.repmat(np.arange(ncols), nrows, 1) - range5
-    dists = np.sqrt(rows ** 2 + cols ** 2)
+    dists = np.sqrt(rows**2 + cols**2)
     # Convert from semivariance to correlation and build kernal
     kernal = (sill1 - spherical(dists, range1, sill1)) / sill1
 

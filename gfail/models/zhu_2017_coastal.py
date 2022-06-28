@@ -35,7 +35,6 @@ class Zhu2017ModelCoastal(Zhu2017Model):
         "b6": "dc, dr",
     }
 
-
     def __init__(
         self,
         shakefile,
@@ -49,7 +48,6 @@ class Zhu2017ModelCoastal(Zhu2017Model):
         self.COEFFS = self.COEFFS
         self.TERMS = self.TERMS
         self.TERMLAYERS = self.TERMLAYERS
-
 
         super().__init__(
             shakefile,

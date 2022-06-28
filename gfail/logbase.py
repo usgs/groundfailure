@@ -40,6 +40,7 @@ class LogisticModelBase(object):
     Returns:
         _type_: _description_
     """
+
     COEFFS = {}
     TERMS = {}
     TERMLAYERS = {}

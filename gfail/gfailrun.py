@@ -15,7 +15,7 @@ import logging
 # third party imports
 
 from mapio.shake import getHeaderData
-from mapio.gdal import GDALGrid  #TODO replace these with read
+from mapio.gdal import GDALGrid  # TODO replace these with read
 from mapio.gmt import GMTGrid
 from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
@@ -35,9 +35,13 @@ from gfail.utilities import (
     getFileType,
 )
 
-from gfail import (Zhu2015Model, Nowicki2014Model,
-                   Zhu2017Model, Zhu2017ModelCoastal,
-                   Jessee2018Model)
+from gfail import (
+    Zhu2015Model,
+    Nowicki2014Model,
+    Zhu2017Model,
+    Zhu2017ModelCoastal,
+    Jessee2018Model,
+)
 
 
 MODEL_FACTORY = {

@@ -31,16 +31,18 @@ def test_stats_models():
 
     shakefile = os.path.join(datadir, "loma_prieta", "grid.xml")
     lm = Zhu2015Model(
-            shakefile,
-            conf['zhu_2015'],
-            uncertfile=None,
-            bounds=None,
-            trimfile=None,
-            saveinputs=True,
-        )
+        shakefile,
+        conf["zhu_2015"],
+        uncertfile=None,
+        bounds=None,
+        trimfile=None,
+        saveinputs=True,
+    )
     # maplayers1 = lm.calculate()
-    
-    conf_file = os.path.join(upone, "defaultconfigfiles", "models", "zhu_2017_coastal.ini")
+
+    conf_file = os.path.join(
+        upone, "defaultconfigfiles", "models", "zhu_2017_coastal.ini"
+    )
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, "loma_prieta", "model_inputs")
     conf["zhu_2017_coastal"]["slopefile"] = "global_gted_maxslope_30c.flt"
@@ -49,20 +51,22 @@ def test_stats_models():
     conf["zhu_2017_coastal"]["divfactor"] = "1."
     shakefile = os.path.join(datadir, "loma_prieta", "grid.xml")
     lm = Zhu2017ModelCoastal(
-            shakefile,
-            conf['zhu_2017_coastal'],
-            uncertfile=None,
-            bounds=None,
-            trimfile=None,
-            saveinputs=True,
-        )
+        shakefile,
+        conf["zhu_2017_coastal"],
+        uncertfile=None,
+        bounds=None,
+        trimfile=None,
+        saveinputs=True,
+    )
 
     maplayers2 = lm.calculate()
     # Change shakemap name so that it doesn't stomp on the other
     maplayers2["model"]["description"]["shakemap"] = "19891018000415_ver2"
 
     hagg = stats.computeHagg(maplayers2["model"]["grid"])
-    np.testing.assert_allclose(hagg["hagg_0.00g"], 2.372004, atol=0.001)  # old value 5.155065
+    np.testing.assert_allclose(
+        hagg["hagg_0.00g"], 2.372004, atol=0.001
+    )  # old value 5.155065
 
     stats2 = stats.computeStats(
         maplayers2["model"]["grid"],
@@ -74,7 +78,9 @@ def test_stats_models():
     np.testing.assert_allclose(stats2["Max"], 0.40613279, atol=0.001)
     np.testing.assert_allclose(stats2["Median"], 0.3531303, rtol=0.01)
     np.testing.assert_allclose(stats2["Std"], 0.045730, atol=0.001)
-    np.testing.assert_allclose(stats2["hagg_0.20g"], 1.0420758, atol=0.001)  #old value 2.854704
+    np.testing.assert_allclose(
+        stats2["hagg_0.20g"], 1.0420758, atol=0.001
+    )  # old value 2.854704
 
 
 if __name__ == "__main__":

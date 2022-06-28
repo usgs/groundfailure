@@ -22,25 +22,27 @@ class TempHdf(object):
                 have its own name.
         """
         filename1, file_ext = os.path.splitext(filename)
-        if file_ext != '.hdf5':
-            filename = filename1 + '.hdf5'
-            print('Changed extension from %s to .hdf5' % (file_ext,))
-        filters = tables.Filters(complevel=5, complib='blosc')
-        with tables.open_file(filename, mode='w') as self.tempfile:
+        if file_ext != ".hdf5":
+            filename = filename1 + ".hdf5"
+            print("Changed extension from %s to .hdf5" % (file_ext,))
+        filters = tables.Filters(complevel=5, complib="blosc")
+        with tables.open_file(filename, mode="w") as self.tempfile:
             self.gdict = grid2dfile.getGeoDict()
             if type(grid2dfile) == ShakeGrid:
                 for layer in grid2dfile.getLayerNames():
                     filldat = grid2dfile.getLayer(layer).getData()
-                    self.tempfile.create_carray(self.tempfile.root, name=layer,
-                                                obj=filldat, filters=filters)
+                    self.tempfile.create_carray(
+                        self.tempfile.root, name=layer, obj=filldat, filters=filters
+                    )
                 self.shakedict = grid2dfile.getShakeDict()
                 self.edict = grid2dfile.getEventDict()
             else:
                 if name is None:
                     name = os.path.basename(filename1)
                 filldat = grid2dfile.getData()
-                self.tempfile.create_carray(self.tempfile.root, name=name,
-                                            obj=filldat, filters=filters)
+                self.tempfile.create_carray(
+                    self.tempfile.root, name=name, obj=filldat, filters=filters
+                )
             self.filename = os.path.abspath(filename)
 
     def getFilepath(self):
@@ -63,7 +65,7 @@ class TempHdf(object):
             return self.shakedict
         except Exception as e:
             print(e)
-            print('no shake dictionary found')
+            print("no shake dictionary found")
             return None
 
     def getEventDict(self):
@@ -74,11 +76,12 @@ class TempHdf(object):
             return self.edict
         except Exception as e:
             print(e)
-            print('no event dictionary found')
+            print("no event dictionary found")
             return None
 
-    def getSlice(self, rowstart=None, rowend=None, colstart=None, colend=None,
-                 name=None):
+    def getSlice(
+        self, rowstart=None, rowend=None, colstart=None, colend=None, name=None
+    ):
         """
         Return specified slice of data.
 
@@ -99,28 +102,28 @@ class TempHdf(object):
         if name is None:
             name, ext = os.path.splitext(os.path.basename(self.getFilepath()))
         if rowstart is None:
-            rowstart = ''
+            rowstart = ""
         else:
             rowstart = int(rowstart)
         if rowend is None:
-            rowend = ''
+            rowend = ""
         else:
             rowend = int(rowend)
         if colstart is None:
-            colstart = ''
+            colstart = ""
         else:
             colstart = int(colstart)
         if colend is None:
-            colend = ''
+            colend = ""
         else:
             colend = int(colend)
 
-        indstr = '%s:%s, %s:%s' % (rowstart, rowend, colstart, colend)
+        indstr = "%s:%s, %s:%s" % (rowstart, rowend, colstart, colend)
         # So end index will actually be captured:
-        indstr = indstr.replace('-1', '')
-        with tables.open_file(self.filename, mode='r') as file1:
+        indstr = indstr.replace("-1", "")
+        with tables.open_file(self.filename, mode="r") as file1:
             try:
-                dataslice = eval('file1.root.%s[%s]' % (name, indstr))
+                dataslice = eval("file1.root.%s[%s]" % (name, indstr))
                 return dataslice
             except Exception as e:
                 raise Exception(e)
