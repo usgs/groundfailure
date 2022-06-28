@@ -6,7 +6,7 @@ import numpy as np
 from configobj import ConfigObj
 
 # third party
-from gfail.conf import correct_config_filepaths
+from gfail.utilities import correct_config_filepaths
 from gfail import Zhu2017ModelCoastal, Zhu2015Model
 from gfail import stats
 import matplotlib

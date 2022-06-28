@@ -8,7 +8,7 @@ from configobj import ConfigObj
 # third party
 from mapio.gmt import GMTGrid  # REPLACE THIS
 
-from gfail.conf import correct_config_filepaths
+from gfail.utilities import correct_config_filepaths
 from gfail import (
     Zhu2015Model,
     Nowicki2014Model,

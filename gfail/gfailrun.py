@@ -24,8 +24,6 @@ from libcomcat.search import get_event_by_id
 
 # local imports
 
-from gfail.conf import correct_config_filepaths
-
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat,
@@ -33,6 +31,7 @@ from gfail.utilities import (
     text_to_json,
     savelayers,
     getFileType,
+    correct_config_filepaths
 )
 
 from gfail import (Zhu2015Model, Nowicki2014Model,

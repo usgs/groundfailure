@@ -6,7 +6,7 @@ from configobj import ConfigObj
 import numpy as np
 from gfail import godt2008
 from mapio.geodict import GeoDict
-from gfail.conf import correct_config_filepaths
+from gfail.utilities import correct_config_filepaths
 
 homedir = os.path.dirname(os.path.abspath(__file__))  # where is this script?
 datadir = os.path.abspath(os.path.join(homedir, "data"))

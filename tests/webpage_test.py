@@ -23,9 +23,6 @@ upone = os.path.join(homedir, os.pardir)
 configfile = os.path.join(upone, "defaultconfigfiles", "models", "zhu_2015.ini")
 config = ConfigObj(configfile)
 
-# # Test path correction (from conf.py)
-# config = correct_config_filepaths(datadir, config)
-
 shakefile = os.path.join(datadir, "test_shakegrid.xml")
 uncertfile = os.path.join(datadir, "test_uncert.xml")
 cofile = os.path.join(datadir, "test_cohesion.bil")
