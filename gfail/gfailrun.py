@@ -16,7 +16,7 @@ import logging
 
 from mapio.shake import getHeaderData
 from mapio.gdal import GDALGrid  #TODO replace these with read
-from mapio.gmt import GMTGrid
+from mapio.reader import read, get_file_geodict
 from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
 from mapio.shake import ShakeGrid
@@ -30,7 +30,6 @@ from gfail.utilities import (
     parseConfigLayers,
     text_to_json,
     savelayers,
-    getFileType,
     correct_config_filepaths
 )
 
@@ -978,11 +977,7 @@ def check_input_extents(config, shakefile=None, bounds=None):
     for item, value in config[modelname]["layers"].items():
         if "file" in value.keys():
             filelook = value["file"]
-            if getFileType(filelook) == "gmt":
-                tmpgd, _ = GMTGrid.getFileGeoDict(filelook)
-            else:
-                tmpgd, _ = GDALGrid.getFileGeoDict(filelook)
-            # See if tempgd contains evdict
+            tmpgd = get_file_geodict(filelook)
             contains = tmpgd.contains(evdict)
             if not contains:
                 notcovered.append(filelook)

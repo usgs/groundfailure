@@ -2191,33 +2191,6 @@ def alert_rectangles(ax, bins):
         ax.add_patch(rect)
 
 
-def getFileType(filename):
-    """
-    Determine whether input file is a shapefile or a grid (ESRI or GMT).
-
-    Args:
-        filename (str): Path to candidate filename.
-
-    Returns:
-        str: 'shapefile', 'grid', or 'unknown'.
-    """
-    # TODO MOVE TO MAPIO.
-    if os.path.isdir(filename):
-        return "dir"
-    ftype = GMTGrid.getFileType(filename)
-    if ftype != "unknown":
-        return "gmt"
-    # Skip over ESRI header files
-    if filename.endswith(".hdr"):
-        return "unknown"
-    try:
-        GDALGrid.getFileGeoDict(filename)
-        return "esri"
-    except BaseException:
-        pass
-    return "unknown"
-
-
 def correct_config_filepaths(input_path, config):
     """
     Takes an input filepath name and pre-pends it to all file locations within
