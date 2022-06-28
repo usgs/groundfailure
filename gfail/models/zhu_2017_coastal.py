@@ -2,7 +2,7 @@
 import numpy as np
 
 # local imports
-from gfail.zhu_2017 import Zhu2017Model
+from gfail import Zhu2017Model
 
 
 class Zhu2017ModelCoastal(Zhu2017Model):

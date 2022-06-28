@@ -551,15 +551,6 @@ class LogisticModelBase(object):
             p_grid = trim_ocean2(p_grid, self.trimfile)
             if sigma_grid is not None:
                 sigma_grid = trim_ocean2(sigma_grid, self.trimfile)
-                rdict["std"] = {
-                    "grid": sigma_grid,
-                    "label": (
-                        "%s estimate - %s (std)"
-                        % (self.modeltype.capitalize(), self.prob_units.title())
-                    ),
-                    "type": "output",
-                    "description": description,
-                }
             logging.info(f"trim elapsed: {timer() - start_trim:1.2f}")
 
         rdict["model"] = {
@@ -569,6 +560,16 @@ class LogisticModelBase(object):
             "type": "output",
             "description": description,
         }
+        if sigma_grid is not None:
+            rdict["std"] = {
+                "grid": sigma_grid,
+                "label": (
+                    "%s estimate - %s (std)"
+                    % (self.modeltype.capitalize(), self.prob_units.title())
+                ),
+                "type": "output",
+                "description": description,
+            }
 
         return rdict
 

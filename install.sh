@@ -18,7 +18,7 @@ fi
 VENV=gf
 
 py_ver=3.8
-developer=1
+developer=0
 while getopts p:d FLAG; do
   case $FLAG in
     p)
@@ -97,7 +97,7 @@ package_list=(
       "descartes>=1.1"
       "fiona>=1.8"
       "folium>=0.12"
-      "gdal==3.4.3"
+      "gdal>=3.1,<3.5"
       "hdf5>=1.10"
       "impactutils>=0.8"
       "libcomcat>=2.0"

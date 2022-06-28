@@ -12,9 +12,11 @@ import os
 import shutil
 import numpy as np
 import tempfile
+import matplotlib.pyplot as plt
 
 # third party
 from impactutils.io.cmd import get_command_output
+
 
 # where is this script?
 homedir = os.path.dirname(os.path.abspath(__file__))
@@ -46,7 +48,7 @@ def test_viewdb(tmpdir):
 
         runcmd4 = "viewdb -p -c --minmag 7.5 --color"
         rc4, so4, se4 = get_command_output(runcmd4)
-
+        breakpoint()
         runcmd5 = "viewdb -s --summaryplotfile %s" % \
             os.path.join(tmpdir.name, 'test.png')
         rc5, so5, se5 = get_command_output(runcmd5)
@@ -89,4 +91,4 @@ def test_viewdb(tmpdir):
 if __name__ == "__main__":
     td1 = tempfile.TemporaryDirectory()
     test_viewdb(td1)
-    print('viewdb tests passed')
+    # print('viewdb tests passed')

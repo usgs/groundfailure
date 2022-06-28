@@ -20,7 +20,7 @@ datadir = os.path.abspath(os.path.join(homedir, "data"))
 
 
 def test_stats_models():
-    conf_file = os.path.join(upone, "oldconfigfiles", "models", "zhu_2015.ini")
+    conf_file = os.path.join(upone, "defaultconfigfiles", "models", "zhu_2015.ini")
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, "loma_prieta", "model_inputs")
     # Check slopefile trimming
@@ -32,7 +32,7 @@ def test_stats_models():
     shakefile = os.path.join(datadir, "loma_prieta", "grid.xml")
     lm = LM.LogisticModel(shakefile, conf, saveinputs=True)
     # maplayers1 = lm.calculate()
-    conf_file = os.path.join(upone, "oldconfigfiles", "models", "zhu_2017_coastal.ini")
+    conf_file = os.path.join(upone, "defaultconfigfiles", "models", "zhu_2017_coastal.ini")
     conf = ConfigObj(conf_file)
     data_path = os.path.join(datadir, "loma_prieta", "model_inputs")
     conf["zhu_2017_coastal"]["slopefile"] = "global_gted_maxslope_30c.flt"

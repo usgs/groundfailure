@@ -264,12 +264,15 @@ def parseConfigLayers(maplayers, config, keys=None):
             indx = indx[0]
             firstpo = plotorder.pop(indx)
             plotorder = [firstpo] + plotorder
-            firstlog = logscale.pop(indx)
-            logscale = [firstlog] + logscale
-            firstlim = lims.pop(indx)
-            lims = [firstlim] + lims
-            firstcol = colormaps.pop(indx)
-            colormaps = [firstcol] + colormaps
+            if logscale is not None and not isinstance(logscale, bool):
+                firstlog = logscale.pop(indx)
+                logscale = [firstlog] + logscale
+            if lims is not None:
+                firstlim = lims.pop(indx)
+                lims = [firstlim] + lims
+            if colormaps is not None:
+                firstcol = colormaps.pop(indx)
+                colormaps = [firstcol] + colormaps
 
     return plotorder, logscale, lims, colormaps, maskthreshes
 

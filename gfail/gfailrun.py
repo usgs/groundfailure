@@ -25,7 +25,7 @@ from libcomcat.search import get_event_by_id
 # local imports
 
 from gfail.conf import correct_config_filepaths
-from gfail.godt import godt2008
+from gfail.models.godt import godt2008
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat,
@@ -35,11 +35,11 @@ from gfail.utilities import (
     getFileType,
 )
 
-from gfail.zhu_2015 import Zhu2015Model
-from gfail.nowicki_2014 import Nowicki2014Model
-from gfail.zhu_2017 import Zhu2017Model
-from gfail.zhu_2017_coastal import Zhu2017ModelCoastal
-from gfail.jessee_2018 import Jessee2018Model
+from gfail.models.zhu_2015 import Zhu2015Model
+from gfail.models.nowicki_2014 import Nowicki2014Model
+from gfail.models.zhu_2017 import Zhu2017Model
+from gfail.models.zhu_2017_coastal import Zhu2017ModelCoastal
+from gfail.models.jessee_2018 import Jessee2018Model
 
 
 MODEL_FACTORY = {
