@@ -1137,6 +1137,12 @@ def get_zoomextent(grid, propofmax=0.3):
     latmin = lats[row].min()
     latmax = lats[row].max()
 
+    # need to handle 180 crossing
+    if xmin > xmax:
+        xmin += 360.0
+    if lonmin > lonmax:
+        lonmin += 360.0
+
     boundaries1 = {}
 
     if xmin < lonmin:
