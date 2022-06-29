@@ -28,7 +28,8 @@ import argparse
 import traceback
 import time
 
-# matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 
 # stdlib imports
 # import urllib.request
@@ -213,42 +214,6 @@ def shakemap_over_land(landfile, grid):
             break
 
     return on_land
-
-
-def getnewbounds180(landfile, gdict):
-    """Adjust bounds that cross 180/-180 line to select side with more land
-    area
-
-    Args:
-        landfile (str): Path to global shapefile of land masses.
-        gdict: mapio geodict of current shakemap bounds
-
-    Returns:
-        set_bounds: string of new bounds like 'ymin, ymax, xmin, xmax'
-
-    """
-    # Split into two boxes
-
-    boxpos = (gdict.xmin, gdict.ymin, 180.0, gdict.ymax)
-    # boxpos = box(*boxpos)
-
-    boxneg = (-180.0, gdict.ymin, gdict.xmax, gdict.ymax)
-    # boxneg = box(*boxneg)
-
-    with fiona.open(landfile, "r") as shapefile:
-        tfeaturespos = shapefile.items(bbox=boxpos)
-        areapos = np.sum(
-            [shape(feature[1]["geometry"]).area for feature in tfeaturespos]
-        )
-        tfeaturesneg = shapefile.items(bbox=boxneg)
-        areaneg = np.sum(
-            [shape(feature[1]["geometry"]).area for feature in tfeaturesneg]
-        )
-    if areaneg > areapos:
-        set_bounds = "%s, %s, %s, %s" % (gdict.ymin, gdict.ymax, -180.0, gdict.xmax)
-    else:
-        set_bounds = "%s, %s, %s, %s" % (gdict.ymin, gdict.ymax, gdict.xmin, 180.0)
-    return set_bounds
 
 
 def connect_database(dbfile):
@@ -809,7 +774,7 @@ def process_shakemap(args, config):
     set_bounds = None
     sd = ShakeGrid.getFileGeoDict(gridfile, adjust="res")
     if (sd.ymin < -56.0000) or (sd.ymax > 84.0000):
-        msg = "Shakemap extends outside of latitude range of slope data. " "Exiting."
+        msg = "Shakemap extends outside of latitude range of slope data. "
         logging.info(msg)
         # Run just part of area if remaining area is larger than 1 deg
         if (sd.ymax + 56.0 > 1.0) and (84.0 - sd.ymin > 1.0):

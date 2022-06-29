@@ -23,7 +23,7 @@ from gfail.spatial import trim_ocean2
 import numpy as np
 
 
-def godt2008_2(
+def godt2008(
     shakefile,
     config,
     uncertfile=None,

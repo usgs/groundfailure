@@ -264,12 +264,15 @@ def parseConfigLayers(maplayers, config, keys=None):
             indx = indx[0]
             firstpo = plotorder.pop(indx)
             plotorder = [firstpo] + plotorder
-            firstlog = logscale.pop(indx)
-            logscale = [firstlog] + logscale
-            firstlim = lims.pop(indx)
-            lims = [firstlim] + lims
-            firstcol = colormaps.pop(indx)
-            colormaps = [firstcol] + colormaps
+            if logscale is not None and not isinstance(logscale, bool):
+                firstlog = logscale.pop(indx)
+                logscale = [firstlog] + logscale
+            if lims is not None:
+                firstlim = lims.pop(indx)
+                lims = [firstlim] + lims
+            if colormaps is not None:
+                firstcol = colormaps.pop(indx)
+                colormaps = [firstcol] + colormaps
 
     return plotorder, logscale, lims, colormaps, maskthreshes
 
@@ -2188,28 +2191,66 @@ def alert_rectangles(ax, bins):
         ax.add_patch(rect)
 
 
-def getFileType(filename):
+def correct_config_filepaths(input_path, config):
     """
-    Determine whether input file is a shapefile or a grid (ESRI or GMT).
+    Takes an input filepath name and pre-pends it to all file locations within
+    the config file. Individual locations are put into the config.  Don't have
+    to put entire filepath location for each layer. Works by looping over
+    config dictionary and subdictionary to fine locations named 'file'.
 
     Args:
-        filename (str): Path to candidate filename.
+        input_path (str): Path that needs to be appended to the front of all
+            the file names/paths in config.
+        config (ConfigObj): Object defining the model and its inputs.
 
     Returns:
-        str: 'shapefile', 'grid', or 'unknown'.
+        config dictionary with complete file paths.
+
     """
-    # TODO MOVE TO MAPIO.
-    if os.path.isdir(filename):
-        return "dir"
-    ftype = GMTGrid.getFileType(filename)
-    if ftype != "unknown":
-        return "gmt"
-    # Skip over ESRI header files
-    if filename.endswith(".hdr"):
-        return "unknown"
-    try:
-        GDALGrid.getFileGeoDict(filename)
-        return "esri"
-    except BaseException:
-        pass
-    return "unknown"
+
+    # Pull all other filepaths that need editing
+    for keys1 in config.keys():
+        outer = keys1
+        for keys2 in config[outer].keys():
+            second = keys2
+            if hasattr(config[outer][second], "keys") is False:
+                if second == "slopefile" or second == "file":
+                    path_to_correct = config[outer][second]
+                    config[outer][second] = os.path.join(input_path, path_to_correct)
+            else:
+                for keys3 in config[outer][second].keys():
+                    third = keys3
+                    if hasattr(config[outer][second][third], "keys") is False:
+                        if third == "file" or third == "filepath":
+                            path_to_correct = config[outer][second][third]
+                            config[outer][second][third] = os.path.join(
+                                input_path, path_to_correct
+                            )
+                    else:
+                        for keys4 in config[outer][second][third].keys():
+                            fourth = keys4
+                            if (
+                                hasattr(config[outer][second][third][fourth], "keys")
+                                is False
+                            ):
+                                if fourth == "file" or fourth == "filepath":
+                                    path_to_correct = config[outer][second][third][
+                                        fourth
+                                    ]
+                                    config[outer][second][third][fourth] = os.path.join(
+                                        input_path, path_to_correct
+                                    )
+                            else:
+                                for keys5 in config[outer][second][third][
+                                    fourth
+                                ].keys():
+                                    fifth = keys5
+                                    if fifth == "file" or fifth == "filepath":
+                                        path_to_correct = config[outer][second][third][
+                                            fourth
+                                        ][fifth]
+                                        config[outer][second][third][fourth][
+                                            fifth
+                                        ] = os.path.join(input_path, path_to_correct)
+
+    return config

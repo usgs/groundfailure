@@ -63,9 +63,9 @@ else
     echo "conda detected, installing $VENV environment..."
 fi
 
-echo "Installing mamba from conda-forge"
+# echo "Installing mamba from conda-forge"
 
-conda install "mamba<=0.23.3" -y -n base -c conda-forge
+# conda install "mamba<=0.23.3" -y -n base -c conda-forge
 
 # add source command to profile file if it isn't already there
 grep "/etc/profile.d/conda.sh" $prof
@@ -97,7 +97,7 @@ package_list=(
       "descartes>=1.1"
       "fiona>=1.8"
       "folium>=0.12"
-      "gdal>=3.1"
+      "gdal>=3.1,<3.5"
       "hdf5>=1.10"
       "impactutils>=0.8"
       "libcomcat>=2.0"
@@ -123,7 +123,8 @@ conda config --add channels 'conda-forge'
 conda config --set channel_priority flexible
 
 echo "*** Creating the $VENV virtual environment ***"
-mamba create -y -n $VENV ${package_list[*]}
+conda create -y -n $VENV ${package_list[*]}
+# mamba create -y -n $VENV ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
 # Clean up zip files we've downloaded

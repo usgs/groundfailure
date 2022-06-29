@@ -6,8 +6,7 @@ import os
 from configobj import ConfigObj
 
 
-from gfail.utilities import loadlayers
-from gfail.conf import correct_config_filepaths
+from gfail.utilities import loadlayers, correct_config_filepaths
 from gfail.webpage import hazdev
 
 

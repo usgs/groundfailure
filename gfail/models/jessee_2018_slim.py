@@ -8,40 +8,27 @@ from gfail.logbase import LogisticModelBase
 
 
 COEFFS = {
-    "b0": -6.30,  # intercept
+    "b0": 0.,  # intercept (already incorporated into X0)
     "b1": 1.65,  # log(pgv)
-    "b2": 0.06,  # arctan(slope)
-    "b3": 1,  # lithology set to 1.0 - coefficients are in glim file
-    "b4": 0.03,  # cti
-    "b5": 1.0,  # landcover
-    "b6": 0.01,  # log(pgv)*arctan(slope)
+    "b2": 1.,  # X0, all inputs without shaking
+    "b3": 0.01,  # log(pgv)*arctan(slope)
 }
 
 TERMS = {
     "b1": "np.log(pgv._data)",
-    "b2": "np.arctan(slope._data) * 180/np.pi",
-    "b3": "rock._data",
-    "b4": "cti._data",
-    "b5": "landcover._data",
-    "b6": "np.log(pgv._data) * np.arctan(slope._data) * 180/np.pi",
+    "b2": "X0._data",
+    "b3": "np.log(pgv._data) * np.arctan(slope._data) * 180/np.pi",
 }
 
 TERMLAYERS = {
     "b1": "pgv",
-    "b2": "slope",
-    "b3": "rock",
-    "b4": "cti",
-    "b5": "landcover",
-    "b6": "pgv, slope",
+    "b2": "X0",
+    "b3": "pgv, slope",
 }
 
 SHAKELAYERS = ["pgv"]
 
-# Jessee specific fixes
-OLD_UNCONSOLIDATED = -3.21
-NEW_UNCONSOLIDATED = -1.36
-
-CLIPS = {"cti": (0.0, 19.0), "pgv": (0.0, 211.0)}  # cm/s
+CLIPS = {"pgv": (0.0, 211.0)}  # cm/s
 
 ERROR_COEFFS = {"a": -7.592, "b": 5.237, "c": -3.042, "d": 4.035}
 
@@ -90,7 +77,7 @@ class Jessee2018Model(LogisticModelBase):
         return
 
     def calculate_coverage(self, P):
-        P = np.exp(-7.592 + 5.237 * P - 3.042 * P ** 2 + 4.035 * P ** 3)
+        P = np.exp(-7.592 + 5.237 * P - 3.042 * P**2 + 4.035 * P**3)
         return P
 
     def modify_slope(self, slope):
@@ -113,13 +100,13 @@ class Jessee2018Model(LogisticModelBase):
         varP **= 2
         del slope
         std_pgv = read(self.layers["stdpgv"])._data
-        varP *= std_pgv ** 2
+        varP *= std_pgv**2
         del std_pgv
         if "stddev" in self.layers:
             stddev = read(self.layers["stddev"])._data
         else:
             stddev = float(self.config["default_stddev"])
-        varP += stddev ** 2
+        varP += stddev**2
         del stddev
         X = read(self.layers["X"])._data
         varP *= (np.exp(-X) / (np.exp(-X) + 1) ** 2) ** 2
@@ -133,8 +120,8 @@ class Jessee2018Model(LogisticModelBase):
             d = ERROR_COEFFS["d"]
 
             std1 = (
-                np.exp(a + b * P + c * P ** 2.0 + d * P ** 3.0)
-                * (b + 2.0 * P * c + 3.0 * d * P ** 2.0)
+                np.exp(a + b * P + c * P**2.0 + d * P**3.0)
+                * (b + 2.0 * P * c + 3.0 * d * P**2.0)
             ) ** 2.0 * varP
             std1 = np.sqrt(std1)
             del P

@@ -15,8 +15,8 @@ import logging
 # third party imports
 
 from mapio.shake import getHeaderData
-from mapio.gdal import GDALGrid
-from mapio.gmt import GMTGrid
+from mapio.gdal import GDALGrid  #TODO replace these with read
+from mapio.reader import read, get_file_geodict
 from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
 from mapio.shake import ShakeGrid
@@ -24,24 +24,18 @@ from libcomcat.search import get_event_by_id
 
 # local imports
 
-from gfail.conf import correct_config_filepaths
-import gfail.logisticmodel as LM
-from gfail.godt import godt2008
-from gfail.godt2 import godt2008_2
 from gfail.webpage import hazdev, create_kmz
 from gfail.utilities import (
     get_event_comcat,
     parseConfigLayers,
     text_to_json,
     savelayers,
-    getFileType,
+    correct_config_filepaths
 )
 
-from gfail.zhu_2015 import Zhu2015Model
-from gfail.nowicki_2014 import Nowicki2014Model
-from gfail.zhu_2017 import Zhu2017Model
-from gfail.zhu_2017_coastal import Zhu2017ModelCoastal
-from gfail.jessee_2018 import Jessee2018Model
+from gfail import (Zhu2015Model, Nowicki2014Model,
+                   Zhu2017Model, Zhu2017ModelCoastal,
+                   Jessee2018Model, godt2008)
 
 
 MODEL_FACTORY = {
@@ -157,6 +151,7 @@ def run_gfail(args):
 
         # Check that shakemap bounds do not cross 180/-180 line
         sd = ShakeGrid.getFileGeoDict(shakefile)
+
         if not args.keep_shakemap_bounds:
             if args.set_bounds is None:
                 if sd.xmin > sd.xmax:
@@ -373,22 +368,8 @@ def run_gfail(args):
                 bounds2 = bounds
 
             modelfunc = conf[modelname]["funcname"]
-            if modelfunc == "LogisticModel":
-                t1 = time.time()
-                lm = LM.LogisticModel(
-                    shakefile,
-                    conf,
-                    uncertfile=uncertfile,
-                    saveinputs=args.save_inputs,
-                    bounds=bounds2,
-                    trimfile=trimfile,
-                )
 
-                maplayers = lm.calculate()
-                t2 = time.time()
-                logging.info(f"{modelname} Elapsed: {t2-t1:.1f} seconds")
-
-            elif modelfunc == "LogBase":
+            if modelfunc == "LogBase":
                 # newer object oriented approach to logistic models
                 model_class = MODEL_FACTORY[modelname]
                 t1 = time.time()
@@ -421,17 +402,9 @@ def run_gfail(args):
                 maplayers = model.calculate()
                 t2 = time.time()
                 logging.info(f"{modelname} Elapsed: {t2-t1:.1f} seconds")
+
             elif modelfunc == "godt2008":
                 maplayers = godt2008(
-                    shakefile,
-                    conf,
-                    uncertfile=uncertfile,
-                    saveinputs=args.save_inputs,
-                    bounds=bounds2,
-                    trimfile=trimfile,
-                )
-            elif modelfunc == "godt2008_2":
-                maplayers = godt2008_2(
                     shakefile,
                     conf,
                     uncertfile=uncertfile,
@@ -1004,11 +977,7 @@ def check_input_extents(config, shakefile=None, bounds=None):
     for item, value in config[modelname]["layers"].items():
         if "file" in value.keys():
             filelook = value["file"]
-            if getFileType(filelook) == "gmt":
-                tmpgd, _ = GMTGrid.getFileGeoDict(filelook)
-            else:
-                tmpgd, _ = GDALGrid.getFileGeoDict(filelook)
-            # See if tempgd contains evdict
+            tmpgd = get_file_geodict(filelook)
             contains = tmpgd.contains(evdict)
             if not contains:
                 notcovered.append(filelook)
