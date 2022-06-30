@@ -15,7 +15,7 @@ import logging
 # third party imports
 
 from mapio.shake import getHeaderData
-from mapio.gdal import GDALGrid  #TODO replace these with read
+from mapio.gdal import GDALGrid  # TODO replace these with read
 from mapio.reader import read, get_file_geodict
 from mapio.geodict import GeoDict
 from impactutils.io.cmd import get_command_output
@@ -30,12 +30,17 @@ from gfail.utilities import (
     parseConfigLayers,
     text_to_json,
     savelayers,
-    correct_config_filepaths
+    correct_config_filepaths,
 )
 
-from gfail import (Zhu2015Model, Nowicki2014Model,
-                   Zhu2017Model, Zhu2017ModelCoastal,
-                   Jessee2018Model, godt2008)
+from gfail import (
+    Zhu2015Model,
+    Nowicki2014Model,
+    Zhu2017Model,
+    Zhu2017ModelCoastal,
+    Jessee2018Model,
+    godt2008,
+)
 
 
 MODEL_FACTORY = {
@@ -149,38 +154,6 @@ def run_gfail(args):
         shake_file.close()
         filenames.append(shakename)
 
-        # Check that shakemap bounds do not cross 180/-180 line
-        sd = ShakeGrid.getFileGeoDict(shakefile)
-
-        if not args.keep_shakemap_bounds:
-            if args.set_bounds is None:
-                if sd.xmin > sd.xmax:
-                    print(
-                        "\nShakeMap crosses 180/-180 line, setting bounds so "
-                        "only side with more land area is run"
-                    )
-                    if sd.xmax + 180.0 > 180 - sd.xmin:
-                        set_bounds = "%s, %s, %s, %s" % (
-                            sd.ymin,
-                            sd.ymax,
-                            -180.0,
-                            sd.xmax,
-                        )
-                    else:
-                        set_bounds = "%s, %s, %s, %s" % (
-                            sd.ymin,
-                            sd.ymax,
-                            sd.xmin,
-                            180.0,
-                        )
-                    print("Bounds applied: %s" % set_bounds)
-                else:
-                    set_bounds = args.set_bounds
-            else:
-                set_bounds = args.set_bounds
-        else:  # we're using a logbase model version
-            set_bounds = "%s, %s, %s, %s" % (sd.ymin, sd.ymax, sd.xmin, sd.xmax)
-
         config = args.config
 
         if args.config_filepath is not None:
@@ -229,7 +202,16 @@ def run_gfail(args):
                 print("\t%s" % conf)
             print("\nContinuing...\n")
 
-        if set_bounds is not None:
+        if args.set_bounds is None:
+            sd = ShakeGrid.getFileGeoDict(shakefile)
+            bounds = {
+                "xmin": sd.xmin,
+                "xmax": sd.xmax,
+                "ymin": sd.ymin,
+                "ymax": sd.ymax,
+            }
+        else:
+            set_bounds = args.set_bounds
             if "zoom" in set_bounds:
                 temp = set_bounds.split(",")
                 print(
@@ -249,13 +231,11 @@ def run_gfail(args):
                     "ymin": latmin,
                     "ymax": latmax,
                 }
-            print(
-                "Applying bounds of lonmin %1.2f, lonmax %1.2f, "
-                "latmin %1.2f, latmax %1.2f"
-                % (bounds["xmin"], bounds["xmax"], bounds["ymin"], bounds["ymax"])
-            )
-        else:
-            bounds = None
+        print(
+            "Applying bounds of lonmin %1.2f, lonmax %1.2f, "
+            "latmin %1.2f, latmax %1.2f"
+            % (bounds["xmin"], bounds["xmax"], bounds["ymin"], bounds["ymax"])
+        )
 
         if args.make_webpage:
             results = []
