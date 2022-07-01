@@ -97,7 +97,6 @@ package_list=(
       "descartes>=1.1"
       "fiona>=1.8"
       "folium>=0.12"
-      "gdal>=3.1,<3.5"
       "hdf5>=1.10"
       "impactutils>=0.8"
       "libcomcat>=2.0"
@@ -118,12 +117,12 @@ if [ $developer == 1 ]; then
     echo ${package_list[*]}
 fi
 
-conda config --add channels 'defaults'
+# conda config --add channels 'defaults'
 conda config --add channels 'conda-forge'
-conda config --set channel_priority flexible
+conda config --set channel_priority strict
 
 echo "*** Creating the $VENV virtual environment ***"
-conda create -y -n $VENV ${package_list[*]}
+conda create -y -n $VENV ${package_list[*]} -c conda-forge
 # mamba create -y -n $VENV ${package_list[*]}
 
 # Bail out at this point if the conda create command fails.
