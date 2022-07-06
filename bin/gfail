@@ -23,13 +23,10 @@ if __name__ == "__main__":
     data_path = None
     output_filepath = None
     config_filepath = None
-    mapconfig = None
     popfile = None
-    web_template = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pelican", "theme"
-    )
     trimfile = None
     pdl_config = None
+    comcat_config = None
     log_filepath = None
     dbfile = None
 
@@ -42,16 +39,14 @@ if __name__ == "__main__":
                 output_filepath = D[key]
             elif key == "config_filepath":
                 config_filepath = D[key]
-            elif key == "mapconfig":
-                mapconfig = D[key]
-            elif key == "web_template":
-                web_template = D[key]
             elif key == "trimfile":
                 trimfile = D[key]
             elif key == "popfile":
                 popfile = D[key]
             elif key == "pdl_config":
                 pdl_config = D[key]
+            elif key == "comcat_config":
+                comcat_config = D[key]
             elif key == "log_filepath":
                 pdl_config = D[key]
             elif key == "dbfile":
@@ -98,14 +93,6 @@ if __name__ == "__main__":
         "in config are relative)",
     )
     parser.add_argument(
-        "-m",
-        "--mapconfig",
-        metavar="mapconfig",
-        nargs="?",
-        help="full file path to config file containing mapping options",
-        default=mapconfig,
-    )
-    parser.add_argument(
         "-pf",
         "--popfile",
         metavar="popfile",
@@ -120,14 +107,6 @@ if __name__ == "__main__":
         nargs="?",
         default=output_filepath,
         help="Filepath for output files, uses current directory if " "not specified",
-    )
-    parser.add_argument(
-        "-t",
-        "--web-template",
-        metavar="template",
-        nargs="?",
-        default=web_template,
-        help="location of directory containing pelican files and templates",
     )
     parser.add_argument(
         "-u",
@@ -154,6 +133,14 @@ if __name__ == "__main__":
         nargs="?",
         default=pdl_config,
         help="Location of config file for pdl (optional)",
+    )
+    parser.add_argument(
+        "-comcat",
+        "--comcat-config",
+        metavar="comcatconfig",
+        nargs="?",
+        default=comcat_config,
+        help="Location of config file for pdl for events older than 30 days (optional)",
     )
     parser.add_argument(
         "-log",
@@ -216,7 +203,7 @@ if __name__ == "__main__":
         metavar="gf_version",
         nargs="?",
         type=int,
-        help="Ground failure run version, default 1",
+        help="Manually set the version of the ground failure run to this value, default 1",
         default=1,
     )
 
@@ -288,19 +275,6 @@ if __name__ == "__main__":
     parser.add_argument("--property-alertlevel", default="unset")
     parser.add_argument("--eventsource", help="Comcat eventsource.", default="")
     parser.add_argument("--eventsourcecode", help="Comcat eventsourcecode.", default="")
-
-    # adding this option in since new model implementations
-    # don't crash on the 180 meridian
-    bhelp = (
-        "Preserve the bounds dictated by the ShakeMap. This is only "
-        'to used with the "logbase" versions of the models. In cases '
-        "where the ShakeMap crosses the 180 meridian, and a "
-        'non "logbase" version of the model is being run, this will '
-        "cause an error."
-    )
-    parser.add_argument(
-        "--keep-shakemap-bounds", help=bhelp, action="store_true", default=False
-    )
 
     pargs = parser.parse_args()
 

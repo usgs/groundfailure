@@ -354,8 +354,6 @@ def run_gfail(args):
                 model_class = MODEL_FACTORY[modelname]
                 t1 = time.time()
                 samplebounds = bounds2
-                if args.keep_shakemap_bounds:
-                    samplebounds = None
                 logging.info(f"Constructing model {modelname}...")
                 # try:
                 model = model_class(
@@ -804,6 +802,18 @@ def set_default_paths(args):
                 print(
                     "Path given for pdl config file does not exist: %s"
                     % args.pdl_config
+                )
+    if args.comcat_config is not None:
+        if args.comcat_config == "reset":
+            D.pop("comcat_config")
+        else:
+            # check that it's a valid path
+            if os.path.exists(args.comcat_config):
+                D.update({"comcat_config": args.comcat_config})
+            else:
+                print(
+                    "Path given for comcat config file does not exist: %s"
+                    % args.comcat_config
                 )
     if args.log_filepath is not None:
         if args.log_filepath == "reset":

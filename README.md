@@ -12,21 +12,19 @@
 
 ## Introduction
 
-This software is for calculating earthquake-induced ground failures (i.e.,
-landslide and liquefaction). These models are intended for regional
+This software provides spatial estimates of earthquake-induced ground failure hazard (i.e., landslide and liquefaction) along with qualitative hazard and population exposure-based alert levels. These models are intended for regional
 or global scale applications, and are intended to be distributed in
-near-real-time, triggered by the Shakemaps. 
+near-real-time by the USGS, triggered by the Shakemaps.
 
 ## Documentation
 
-Information about the methodology can be found on the 
+The methodology is detailed by [Allstadt and others (2015)](https://doi.org/10.1177/87552930211032685), and summarized on the 
 [Ground Failure Scientific Background webpage](https://earthquake.usgs.gov/data/ground-failure/background.php)
 and the corresponding [Ground Failure References webpage](https://earthquake.usgs.gov/data/ground-failure/references.php).
 
-The API docs can be found [here](http://usgs.github.io/groundfailure/). 
-Besides the API, there are five command-line programs:
+The software documentation can be found [here](http://usgs.github.io/groundfailure/). There are seven command-line programs, most non-operational users would only need to use `gfail`:
 
-`gfail` - runs ground failure models
+`gfail` - runs one or more ground failure models
 
 `callgf` - automation wrapper for gfail (A file called "autogf_models" that lists the models to run must be placed in
 the data_path directory.)
@@ -37,59 +35,43 @@ the data_path directory.)
 
 `create_png` - creates transparent png of model results required for web rendering
 
+`cleandb` - cleans up the database file created by callgf if, for example, a run is interrupted or stalls.
+
+`viewdb` - outputs summary information about the database created by callgf.
+
 Documentation for the use of these programs can be seen by calling them
 with the `-h` flag. 
 
 ## Installation and Dependencies
 
-1. If a current version of conda is not already installed, install Miniconda 
-    with Python 3.6 (or greater) following the directions provided on the 
-    [conda webpage.](https://conda.io/docs/user-guide/install/index.html). 
-    Anaconda will also work, but is a larger installation and is not necessary
-    unless you want to use it for other purposes. Take note of the folder name
-    where it is installed (e.g., miniconda or miniconda3)
+1. Clone the groundfailure repository in the location where you want it installed:
+    ```sh
+    cd Users/YourName
+    git clone https://github.com/usgs/groundfailure.git
+    ```
+    There will now be a folder called groundfailure in Users/YourName that contains all of the files.
 
-2. The current version of miniconda requires that you manually edit your .bash_profile.
-    Make the following changes, updating the path below with whatever folder miniconda was installed in:
-    * If the installation added a line that looks like this, delete it:
-        export PATH="/Users/YourName/miniconda3/bin:$PATH
-    * add this line:
-        . $HOME/miniconda3/etc/profile.d/conda.sh
-    * Save and exit and either close the terminal and open a new one or source
-        the .bash_profile ```source ~/.bash_profile```
-    * Type ```which conda``` in terminal to make sure conda is found.
+2. Navigate to the groundfailure folder in terminal. Run the install.sh script located in the main repository directory:
+    ```sh
+    cd groundfailure
+    bash install.sh
+    ```
+    This will take a while and will show numerous dependencies being installed. Note that this installation script will install miniconda or anaconda first if you do not already have it installed.
 
-3. Clone the groundfailure repository in the location where you want it installed:
-```sh
-cd Users/YourName
-git clone https://github.com/usgs/groundfailure.git
-```
-There will now be a folder called groundfailure in Users/YourName that contains
-all of the files.
-
-4. Run the install.sh script located in the main repository directory:
-```sh
-cd groundfailure
-bash install.sh
-```
-This will take a while and will show numerous dependencies being installed.
-
-5. The previous step installs a self-contained virtual environment called gf.
+3. The previous step installs a self-contained virtual environment called gf.
     To ensure the virtual environment was successfully installed,
     type ```conda activate gf```. You will need to activate the gf environment
     every time you want to run groundfailure.
 
-6. With the gf virtual environment active, type ```gfail -h``` to ensure gfail
+4. With the gf virtual environment active, type ```gfail -h``` to ensure gfail
     was correctly installed. If successful, you will see the help section of
     the gfail code.
 
 ### Updating
 
-To ensure all of your dependencies are up to date, reinstall completely starting
-at Step 3 above.
+To ensure all of your dependencies are up to date, reinstall completely starting at Step 2 above. The installation script will uninstall your current gf environment and then reinstall a new one.
 
-To update groundfailure to the current main branch without altering dependencies
-(if you have altered the main branch, you will first need to stash your changes):
+To update groundfailure to the current main branch without altering dependencies (if you have altered the main branch, you will first need to stash your changes):
 ```sh
 cd Users/YourName/groundfailure
 git pull
@@ -101,21 +83,19 @@ To uninstall, delete the virtual environment:
 ```sh
 conda remove --name gf --all
 ```
-And remove the groundfailure folder that was cloned in step 3.
+And remove the groundfailure folder that was cloned in step 1.
 
 ### Troubleshooting
 
-* Check step 2 from the installation steps above, make sure paths in .bash_profile are correct
-    and point to the actual location of miniconda on your machine.
+* Make sure miniconda or anaconda were properly installed and added to your .bash_profile, this should have been done by the installation script if you didn't already have a conda option installed.
+
+* Be sure you are in the gf conda environment.
 
 * Try opening a new terminal in case the updated .bash_profile was not sourced in the current terminal window.
 
-* Uninstall (or move) your current anaconda or conda installation and reinstall from scratch. 
-    Due to recent conda updates, older preexisting installations of anaconda or 
-    miniconda may not function with our installer.
+* Uninstall (or move) your current anaconda or conda installation and reinstall from scratch. Older preexisting installations of anaconda or miniconda may not function with our installer.
     
-* Ensure that miniconda is in your user directory or somewhere that does not
-    require admin permissions.
+* Ensure that miniconda is in your user directory or somewhere that does not require admin permissions.
 
 ### Releases
 
@@ -127,62 +107,71 @@ And remove the groundfailure folder that was cloned in step 3.
 The install.sh script installs this package and dependencies. It is
 regularly tested on OSX and Ubuntu. 
 
-Some functions of this program require the use of the USGS Product Distribution
-Layer (PDL). This must be installed separately. See the [PDL User Guide](https://usgs.github.io/pdl)
-for installation information.
+Some functions of this program require the use of the USGS Product Distribution Layer (PDL). This must be installed separately. See the [PDL User Guide](https://usgs.github.io/pdl) for installation information.
 
 ## Configuration
 
 For each model, there is a configuration file that describes the model
-parameters, default values, metadata/source details, input file locations,
-and display preferences. Default versions with relative file paths are found
-in the defaultconfigfiles folder of the
-[repository](https://github.com/usgs/groundfailure/tree/main/defaultconfigfiles).
-These can be edited but to avoid overwriting your changes each time you update
-the groundfailure codes, you should edit copies outside of the repository.
+type, input layer names, thresholds, metadata/source details, interpolation choices, and display preferences. Default model configuration files with relative file paths are found in the defaultconfigfiles folder of the
+[repository](https://github.com/usgs/groundfailure/tree/main/defaultconfigfiles). These can be edited but to avoid overwriting your changes each time you update the groundfailure codes, you should edit and use copies outside of the repository.
 
-Default options, such as the output directory, paths to input data files, paths
-to mapping files etc. can be specified using gfail, see below for details.
+Default options, such as the output directory, paths to input data files, paths to mapping files etc. can be specified using gfail, see below for details.
 
-### Using gfail to set default paths on system (gfail must be in system path)
+### Setting default paths on system 
 
-#### set default paths
+The `gfail` command lets you set paths to all the input files on each run, or you can set some default paths that will be used anytime that the paths are not explicitly specified. Most path options are used only for operational near-real-time use, only the data_path, configfilepath, and output_filepath and optionally the coastlines trimming file (trimfile) are needed for local runs. You can set these defaults either using `gfail`'s `--set-default-paths` flag as demonstrated below: 
 
 ```sh
 gfail --set-default-paths \
-    -d full/modelinput/data/path \
-    -o full/output/location/filepath \
-    -c full/filepath/to/model/config/files \
-    -md full/filepath/to/data/for/mapping
+    -d /Users/YourName/model_inputs \
+    -o /Users/YourName/outputs \
+    -c /Users/YourName/groundfailure/defaultconfigfiles/models \
+    -pf /Users/YourName/populationfile.flt \
+    -tr /Users/YourName/coastlinefile.shp \
+    -pdl /Users/YourName/ProductClient/config.ini \
+    -log /Users/YourName/logs \
+    -db /Users/YourName/events.db \
+```
+or alternatively, the user can instead manually create a text file called .gfail_defaults following the format example below and put that in their home directory, the outcome will be the same:
+
+```
+data_path = /Users/YourName/model_inputs
+config_filepath = /Users/YourName/groundfailure/defaultconfigfiles/models
+output_filepath = /Users/YourName/outputs
+trimfile = /Users/YourName/coastlinefile.shp
+popfile = /Users/YourName/populationfile.flt
+log_filepath = /Users/YourName/logs
+dbfile = /Users/YourName/events.db
+pdl_config = /Users/YourName/ProductClient/config.ini
+comcat_config = /Users/YourName/ProductClient/comcat.ini
+
 ```
 
-#### check default paths that are currently set
+#### Check default paths that are currently set
 
 ```sh
 gfail --list-default-paths
 ```
 
-#### clear all default paths
+#### Clear all default paths
 
 ```sh
 gfail --reset-default-paths
 ```
 
-#### after setting default paths, gfail can be run like this:
+#### After setting default paths, gfail can be run like this:
 
 ```sh
-gfail modelconfig.ini shakefile.xml -s -pd -pi
+gfail modelconfig.ini shakefile.xml --gis --kmz
 ```
 
-* the pd flag outputs static pdfs of model results
-* the pi flag creates interactive plots as html files
+* the --gis flag outputs geotiff files of the models
+* the --kmz flag creates stylized kmz files of the models
 * type gfail -h to see all options
 
 ### Model config file format
 
-The config file format is a modified version of the "INI" format.  It is
-described in detail
-[here](http://configobj.readthedocs.org/en/latest/configobj.html#config-files).
+The model config file format is a modified version of the "INI" format.  It is described in detail [here](http://configobj.readthedocs.org/en/latest/configobj.html#config-files).
 
 **Notes** 
 * References and other strings with commas within them need to be enclosed in
@@ -202,147 +191,115 @@ described in detail
   config file. See notebooks for details.
 
 ```ini
-[nowicki_2014_global]
-  # Detailed description of the model and references.
-  description = 'This is the original landslide model of Nowicki et al 2014 using PGA, Slope, Cohesion, and CTI based on global datasets.'
-  longref = """Nowicki, M.A., Wald, D.J., Hamburger, M.W., Hearne, Michael, and Thompson, E.M., 2014, Development of a 
-            globally applicable model for near real-time prediction of seismically induced landslides: Engineering 
-            Geology, v. 173, p. 54–65."""
-  shortref = 'Nowicki and others (2014)'
+[jessee_2018]
+  #Detailed description of the model, its inputs, etc.
+  description = 'This is the Nowicki Jessee Model, which uses lithology, and land cover.'
+  longref = 'Nowicki Jessee, M.A., Hamburger, H.W., Allstadt, K.E., Wald, D.J., Robeson, S.M., Tanyas, H., Hearne, M., Thompson, E.M., 2018, A Global Empirical Model for Near Real-time Assessment of Seismically Induced Landslides, J. Geophys. Res. Earth Surface, 123, 1835-1859'
+  shortref = 'Nowicki Jessee and others (2018)'
   
-  # Ground failure model type, pptions are landslide or liquefaction.
+  #which type of ground failure model is this? Options are landslide or liquefaction.
   gfetype = landslide
 
-  # The grid to which all other grids in this model will be resampled
-  baselayer = slope
+  #what is the grid to which all other grids in this model will be resampled?
+  baselayer = slope 
 
-  # Thresholds for filtering results, probabilities will be set to zero below
-  # slopemin, above slopemax using the slopefile defined
-  slopemin = 5. # in degrees
+  slopemin = 2. # in degrees
   slopemax = 90. # in degrees
-  slopefile = global_Verdin_slopes_resampled_degx100/slope_max.bil
-  slopemod = 'slope/100.'
-  # Slopemod indicates how the slopefile should be modified so that it is in
-  # degrees (use np.function for any functions)
+  slopefile = global_grad.tif
 
-  # groundfailure function corresponding to this model
-  funcname = LogisticModel
+  # Default standard deviation value to use if no map is available. Units are in logit space. 
+  default_stddev = 0.03
+
+  # Model's maximum probability, used for computing beta distribution
+  maxprob = 0.256
+
+  # Confidence interval probabilities for computing quantiles. 
+  # Note, +/- 1 std is 0.68, 2 std is 0.95. Comment out to turn off.
+  # conf_int_probabilities = 0.68, 0.95
+
+  # Location of code corresponding to this model
+  funcname = LogBase
 
   [[layers]]
     [[[slope]]]
-      file = global_Verdin_slopes_resampled_degx100/slope_max.bil
-      units = degrees*100
-      longref = """Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin, J., 2007, Development of a 
-                global slope dataset for estimation of landslide occurrence resulting from earthquakes: U.S. Geological 
-                Survey Open-File Report 2007–1188, 25p."""
-      shortref = 'Verdin et al. (2007)'
-    [[[friction]]]
-      file = global_friction_deg.flt
-      units = degrees
-      longref = """Godt, J.W., Sener, B., Verdin, K.L., Wald, D.J., Earle, P.S., Harp, E.L. and Jibson, R.W., 2008, 
-                   Rapid Assessment of Earthquake-induced Landsliding: Proceedings of the First World Landslide Forum, 
-                   United Nations University, Tokyo, Japan, p. 392-395."""
-      shortref = 'Godt and others (2008)'
-    [[[cti1]]] # Must use cti1 or else the cti in the word friction will get changed
+      file = global_grad.tif
+      units = gradient
+      longref = """Global Multi-resolution Terrain Elevation Data 2010 (GMTED2010) available at http://topotools.cr.usgs.gov/gmted_viewer/"""
+      shortref = 'GMTED2010'
+    [[[rock]]]
+      file = GLIM_replace.tif
+      units = lithology
+      longref = """Hartmann, Jens and Moosdorf, Nils, 2012, The new global lithological map database GLiM: A representation of rock properties at the Earth surface, G3, vol 13, no. 12., 37 p."""
+      shortref = 'Hartmann and Moosdorf (2012)'
+    [[[landcover]]]
+      file = globcover_replace.tif
+      units = none
+      longref = 'Moderate resolution imaging spectroradiometer (MODIS) land cover dataset, http://modis.gsfc.nasa.gov/'
+      shortref = 'MODIS land cover'
+    [[[cti]]]
       file = global_cti_fil.grd
       units = index
       longref = 'USGS HYDRO1k geographic database, available at https://lta.cr.usgs.gov/HYDRO1K'
       shortref = 'HYDRO1k'
+    [[[stddev]]]
+      file = jessee_standard_deviation.tif
+      units = none
+      longref = ''
+      shortref = ''
 
   [[interpolations]]
     slope = linear
-    friction = nearest
-    cti1 = linear
+    rock = nearest
+    landcover = nearest
+    cti = linear
+    stddev = linear
 
-  [[terms]]
-    # These terms must be named as b1-bN, where N is the number of coefficients
-    # in a logistic regression, which takes the form:
-    # 1/(1 + e^-eqn)
-    # where eqn is a linear equation of the form:
-    # b0 + b1*t1 + b2*t2 + ... + bN*tN
-    # where t1, t2, ... tN are the right hand side of the parameters below.
-    # The terms may include the names of layers and any of the following 
-    # ShakeMap macros: pga,pgv,mmi,MW
-    b1 = pga
-    b2 = 'slope / 100.'
-    # Divide slopes by 100 because Verdin dataset multiplies by 100
-    b3 = friction
-    b4 = cti1 * 100.
-    # Multiply by 100 because Anna used a layer representing CTI * 100 in her
-    # model.
-    b5 = 'pga * slope / 100.'
-    # Divide slopes by 100 because Verdin dataset multiplies by 100
-
-  [[coefficients]]
-    # These coefficients must be named as b1-bN, where N is the number of coefficients
-    # in a logistic regression, which takes the form:
-    # 1/(1 + e^-eqn)
-    # where eqn is a linear equation of the form:
-    # b0 + b1*t1 + b2*t2 + ... + bN*tN
-    # where t1, t2, ... tN are the right hand side of the parameters below.
-    # intercept
-    b0 = -3.6490
-    # pga
-    b1 = 0.0133
-    # slope
-    b2 = 0.0364
-    # friction
-    b3 = -0.0635
-    # cti
-    b4 = -0.0004
-    # pga*slope
-    b5 = 0.0019 
-
-  [[display_options]]
-    # Display preferences for mapping programs (not required)
+  [[display_options]]  # These only get used in mapping programs
     [[[lims]]]  # Optional
-      # Corresponding to different possible layer keys - don't need these, will
-      # just use defaults if missing, don't need full name of layer, just
-      # something that is part of it.
-      model = None
-      friction = None
-      pga = None
-      slope = None
-      cti1 = None
-
-    [[[colors]]]
-      # use matplotlib colormaps, starting with cm.
-      default = cm.jet
-      alpha = 0.7
-      # Corresponding to different possible layer keys - don't need these, will
-      # just use defaults if missing.
-      model = cm.jet
-      friction = cm.jet
-      pga = cm.jet
-      slope = cm.jet
-      cti1 = cm.jet
-
-    [[[logscale]]]
-      # Whether to use a log scale in figures for given layer.
-      # Corresponding to different possible layer keys - don't need these, will
-      # just use defaults if missing, don't need full name of layer, just
-      # something that is part of it.
-      model = False
-      friction = False
-      pga = False
-      slope = False
-      cti1 = False
-
-    [[[maskthresholds]]]
-      # Model result cells with values below this threshold will be masked in plots
       # Corresponding to different possible layer keys - don't need these, will just use defaults if missing,
       # don't need full name of layer, just something that is part of it
-      model = 0.05
-      friction = 0.
-      pga = None
+      model = 0.002, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5
+      pgv = None
       slope = None
-      cti1 = None
+      rock = None
+      landcover = None
+      cti = None
+
+    [[[colors]]]
+      default = cm.jet
+      alpha = 0.8
+      # Corresponding to different possible layer keys - don't need these, will just use defaults if missing
+      model = cm.CMRmap_r
+      pgv = cm.jet
+      slope = cm.gnuplot2
+      rock = cm.jet
+      landcover = cm.jet
+      cti = cm.jet
+
+    [[[logscale]]]
+      # Corresponding to different possible layer keys - don't need these, will just use defaults if missing,
+      # don't need full name of layer, just something that is part of it
+      model = True
+      pgv = False
+      slope = False
+      rock = False
+      cti = False
+      landcover = False
+
+    [[[maskthresholds]]]
+      # Corresponding to different possible layer keys - don't need these, will just use defaults if missing,
+      # don't need full name of layer, just something that is part of it
+      model = 0.002
+      pgv = None
+      slope = None
+      rock = None
+      cti = None
+      landcover = None
 ```
 
 ## API for Model Output
 
-Each model should output a single dictionary, which has keys that correspond to the names of the 
-input and output layers from the model.
+Each model should output a single dictionary, which has keys that correspond to the names of the input and output layers from the model.
 
 Each layer in the dictionary is itself a dictionary, with the following fields:
  - *description* A dictionary with the fields:
@@ -452,9 +409,7 @@ The extracted input data files are located with the notebooks in the [data folde
 ### Datasets for testing
 
 Test input datasets are included with the repository in order to run the [tests](https://github.com/usgs/groundfailure/tree/main/tests).
-Some tests used artificial datasets, but others use input datasets for a subsection
-of the area affected by the 1989 Loma Prieta, CA, earthquake. These extracted
-sections of the input datasets are located with the tests in the [data folder](https://github.com/usgs/groundfailure/tree/main/tests/data/loma_prieta).
+Some tests used artificial datasets, but others use input datasets for a subsection of the area affected by the 1989 Loma Prieta, CA, earthquake. These extracted sections of the input datasets are located with the tests in the [data folder](https://github.com/usgs/groundfailure/tree/main/tests/data/loma_prieta).
 The input layers for each model can be found in the [default config file](https://github.com/usgs/groundfailure/tree/main/defaultconfigfiles/models) for each model,
 as described above. Additional layers used in the tests were extracted from the global input layers defined below:
 
@@ -463,3 +418,6 @@ as described above. Additional layers used in the tests were extracted from the 
 * md30_gmted_gmt.grd: [GMTED2010 Terrain Elevation model](https://topotools.cr.usgs.gov/gmted_viewer)
 * gmted_global_hillshade.grd: Hillshade created from md30_gmted_gmt.grd
 * lspop2016_lp.flt: [LandScan (2016)™ High Resolution global Population Data Set](https://landscan.ornl.gov/)
+
+## References
+
