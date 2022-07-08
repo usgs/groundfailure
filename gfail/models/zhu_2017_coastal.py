@@ -65,6 +65,6 @@ class Zhu2017ModelCoastal(Zhu2017Model):
     def calculate_coverage(self, P):
         a = COV_COEFFS["a"]
         b = COV_COEFFS["b"]
-        c = COV_COEFFS["c"]        
+        c = COV_COEFFS["c"]
         P = a / (1 + b * np.exp(-c * P)) ** 2
         return P

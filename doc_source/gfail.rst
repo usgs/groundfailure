@@ -1,19 +1,22 @@
 gfail
 =============
 
+
+.. toctree::
+   :maxdepth: 12
+
+   gfail.models
+
 Submodules
 
 .. toctree::
    :maxdepth: 12
 
-   gfail.conf
    gfail.gfailrun
-   gfail.godt
-   gfail.logisticmodel
+   gfail.logbase
    gfail.pdl
    gfail.spatial
    gfail.stats
-   gfail.temphdf
    gfail.transfer
    gfail.utilities
    gfail.webpage

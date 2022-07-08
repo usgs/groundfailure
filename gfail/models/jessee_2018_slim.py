@@ -8,9 +8,9 @@ from gfail.logbase import LogisticModelBase
 
 
 COEFFS = {
-    "b0": 0.,  # intercept (already incorporated into X0)
+    "b0": 0.0,  # intercept (already incorporated into X0)
     "b1": 1.65,  # log(pgv)
-    "b2": 1.,  # X0, all inputs without shaking
+    "b2": 1.0,  # X0, all inputs without shaking
     "b3": 0.01,  # log(pgv)*arctan(slope)
 }
 

@@ -4,14 +4,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>gfail.gfailrun &#8212; groundfailure 0.1 documentation</title>
-    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
-    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
     <script src="../../_static/jquery.js"></script>
     <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
     <script src="../../_static/doctools.js"></script>
-    <script src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -38,24 +39,51 @@
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">tempfile</span>
 <span class="kn">import</span> <span class="nn">urllib</span>
-<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">json</span>
 <span class="kn">from</span> <span class="nn">argparse</span> <span class="kn">import</span> <span class="n">Namespace</span>
 <span class="kn">from</span> <span class="nn">zipfile</span> <span class="kn">import</span> <span class="n">ZipFile</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">logging</span>
 
-<span class="c1"># local imports</span>
+<span class="c1"># third party imports</span>
+
 <span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">getHeaderData</span>
-<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="kn">import</span> <span class="n">GDALGrid</span>
+<span class="kn">from</span> <span class="nn">mapio.gdal</span> <span class="kn">import</span> <span class="n">GDALGrid</span>  <span class="c1"># TODO replace these with read</span>
+<span class="kn">from</span> <span class="nn">mapio.reader</span> <span class="kn">import</span> <span class="n">read</span><span class="p">,</span> <span class="n">get_file_geodict</span>
+<span class="kn">from</span> <span class="nn">mapio.geodict</span> <span class="kn">import</span> <span class="n">GeoDict</span>
 <span class="kn">from</span> <span class="nn">impactutils.io.cmd</span> <span class="kn">import</span> <span class="n">get_command_output</span>
 <span class="kn">from</span> <span class="nn">mapio.shake</span> <span class="kn">import</span> <span class="n">ShakeGrid</span>
-<span class="kn">from</span> <span class="nn">gfail.conf</span> <span class="kn">import</span> <span class="n">correct_config_filepaths</span>
-<span class="kn">import</span> <span class="nn">gfail.logisticmodel</span> <span class="k">as</span> <span class="nn">LM</span>
-<span class="kn">from</span> <span class="nn">gfail.godt</span> <span class="kn">import</span> <span class="n">godt2008</span>
+<span class="kn">from</span> <span class="nn">libcomcat.search</span> <span class="kn">import</span> <span class="n">get_event_by_id</span>
+
+<span class="c1"># local imports</span>
+
 <span class="kn">from</span> <span class="nn">gfail.webpage</span> <span class="kn">import</span> <span class="n">hazdev</span><span class="p">,</span> <span class="n">create_kmz</span>
 <span class="kn">from</span> <span class="nn">gfail.utilities</span> <span class="kn">import</span> <span class="p">(</span>
-    <span class="n">get_event_comcat</span><span class="p">,</span> <span class="n">parseConfigLayers</span><span class="p">,</span>
-    <span class="n">text_to_json</span><span class="p">,</span> <span class="n">write_floats</span><span class="p">,</span>
-    <span class="n">savelayers</span><span class="p">)</span>
-<span class="kn">from</span> <span class="nn">libcomcat.search</span> <span class="kn">import</span> <span class="n">get_event_by_id</span>
+    <span class="n">get_event_comcat</span><span class="p">,</span>
+    <span class="n">parseConfigLayers</span><span class="p">,</span>
+    <span class="n">text_to_json</span><span class="p">,</span>
+    <span class="n">savelayers</span><span class="p">,</span>
+    <span class="n">correct_config_filepaths</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">gfail</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Zhu2015Model</span><span class="p">,</span>
+    <span class="n">Nowicki2014Model</span><span class="p">,</span>
+    <span class="n">Zhu2017Model</span><span class="p">,</span>
+    <span class="n">Zhu2017ModelCoastal</span><span class="p">,</span>
+    <span class="n">Jessee2018Model</span><span class="p">,</span>
+    <span class="n">godt2008</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="n">MODEL_FACTORY</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;zhu_2015&quot;</span><span class="p">:</span> <span class="n">Zhu2015Model</span><span class="p">,</span>
+    <span class="s2">&quot;zhu_2017_general&quot;</span><span class="p">:</span> <span class="n">Zhu2017Model</span><span class="p">,</span>
+    <span class="s2">&quot;zhu_2017_coastal&quot;</span><span class="p">:</span> <span class="n">Zhu2017ModelCoastal</span><span class="p">,</span>
+    <span class="s2">&quot;nowicki_2014_global&quot;</span><span class="p">:</span> <span class="n">Nowicki2014Model</span><span class="p">,</span>
+    <span class="s2">&quot;jessee_2018&quot;</span><span class="p">:</span> <span class="n">Jessee2018Model</span><span class="p">,</span>
+<span class="p">}</span>
 
 
 <div class="viewcode-block" id="run_gfail"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.run_gfail">[docs]</a><span class="k">def</span> <span class="nf">run_gfail</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
@@ -69,6 +97,9 @@
 <span class="sd">        list: Names of created files.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># if user asked for logging to stdout, set that up here</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">debug</span><span class="p">:</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
     <span class="c1"># TODO: ADD CONFIG VALIDATION STEP THAT MAKES SURE ALL THE FILES EXIST</span>
     <span class="n">filenames</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="c1"># If args is a dictionary, convert to a Namespace</span>
@@ -77,7 +108,7 @@
 
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set_default_paths</span><span class="p">:</span>
         <span class="n">set_default_paths</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;default paths set, continuing...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;default paths set, continuing...</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">list_default_paths</span><span class="p">:</span>
         <span class="n">list_default_paths</span><span class="p">()</span>
@@ -107,7 +138,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">outdir</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span>
 
-        <span class="k">if</span> <span class="p">(</span><span class="n">hdf5</span> <span class="ow">or</span> <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">hdf5</span> <span class="ow">or</span> <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">outdir</span><span class="p">):</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">outdir</span><span class="p">)</span>
 
@@ -119,9 +150,10 @@
                 <span class="n">shakefile</span> <span class="o">=</span> <span class="n">getGridURL</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
                 <span class="c1"># cleanup = True  # Be sure to delete it after</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span><span class="s1">&#39;Could not find &quot;</span><span class="si">%s</span><span class="s1">&quot; as a file or a valid url&#39;</span>
-                                <span class="o">%</span> <span class="p">(</span><span class="n">shakefile</span><span class="p">))</span>
-        <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
+                <span class="k">raise</span> <span class="ne">NameError</span><span class="p">(</span>
+                    <span class="s1">&#39;Could not find &quot;</span><span class="si">%s</span><span class="s1">&quot; as a file or a valid url&#39;</span> <span class="o">%</span> <span class="n">shakefile</span>
+                <span class="p">)</span>
+        <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;event_id&quot;</span><span class="p">]</span>
 
         <span class="c1"># Get entire path so won&#39;t break if running gfail with relative path</span>
         <span class="n">shakefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
@@ -156,45 +188,25 @@
         <span class="n">shake_file</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">shakename</span><span class="p">)</span>
 
-        <span class="c1"># Check that shakemap bounds do not cross 180/-180 line</span>
-
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">sd</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmin</span> <span class="o">&gt;</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmax</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">ShakeMap crosses 180/-180 line, setting bounds so only &#39;</span>
-                      <span class="s1">&#39;side with more area is run (temporary fix, too bad world &#39;</span>
-                      <span class="s1">&#39;is not flat)&#39;</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmax</span> <span class="o">+</span> <span class="mf">180.</span> <span class="o">&gt;</span> <span class="mi">180</span><span class="o">-</span><span class="n">sd</span><span class="o">.</span><span class="n">xmin</span><span class="p">:</span>
-                    <span class="n">set_bounds</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sd</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">ymax</span><span class="p">,</span> <span class="o">-</span><span class="mf">180.</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmax</span><span class="p">)</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">set_bounds</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">sd</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">ymax</span><span class="p">,</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmin</span><span class="p">,</span> <span class="mf">180.</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Bounds applied: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">set_bounds</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">set_bounds</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">set_bounds</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span>
-
         <span class="n">config</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">config</span>
 
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="c1"># only add config_filepath if full filepath not given and file</span>
             <span class="c1"># ext is .ini</span>
-            <span class="k">if</span> <span class="p">(</span><span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="ow">and</span>
-                    <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">config</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.ini&#39;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isabs</span><span class="p">(</span><span class="n">config</span><span class="p">)</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">config</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;.ini&quot;</span><span class="p">:</span>
                 <span class="n">config</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">config</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.ini&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">config</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;.ini&quot;</span><span class="p">:</span>
             <span class="n">temp</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
             <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
-                    <span class="s1">&#39;Could not find specified .ini file: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">config</span><span class="p">)</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Could not find specified .ini file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">config</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">temp</span> <span class="o">=</span> <span class="n">correct_config_filepaths</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
             <span class="n">configs</span> <span class="o">=</span> <span class="p">[</span><span class="n">temp</span><span class="p">]</span>
             <span class="n">conffail</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># input is a list of config files</span>
-            <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
             <span class="n">configlist</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
             <span class="n">configs</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="n">conffail</span> <span class="o">=</span> <span class="p">[]</span>
@@ -207,45 +219,57 @@
                     <span class="n">temp</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
                     <span class="k">if</span> <span class="n">temp</span><span class="p">:</span>
                         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                            <span class="n">temp</span> <span class="o">=</span> <span class="n">correct_config_filepaths</span><span class="p">(</span>
-                                <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
+                            <span class="n">temp</span> <span class="o">=</span> <span class="n">correct_config_filepaths</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">,</span> <span class="n">temp</span><span class="p">)</span>
                         <span class="n">configs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
                     <span class="k">else</span><span class="p">:</span>
                         <span class="n">conffail</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
-                <span class="k">except</span><span class="p">:</span>
+                <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
                     <span class="n">conffail</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">conf</span><span class="p">)</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Running the following models:&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Running the following models:&quot;</span><span class="p">)</span>
 
         <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">configs</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">conf</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">conf</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">conffail</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not find or read in the following config files:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Could not find or read in the following config files:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">conffail</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">conf</span><span class="p">)</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Continuing...</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">conf</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Continuing...</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
-        <span class="k">if</span> <span class="n">set_bounds</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">if</span> <span class="s1">&#39;zoom&#39;</span> <span class="ow">in</span> <span class="n">set_bounds</span><span class="p">:</span>
-                <span class="n">temp</span> <span class="o">=</span> <span class="n">set_bounds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Using </span><span class="si">%s</span><span class="s1"> threshold of </span><span class="si">%1.1f</span><span class="s1"> to cut model bounds&#39;</span>
-                      <span class="o">%</span> <span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())))</span>
-                <span class="n">bounds</span> <span class="o">=</span> <span class="n">get_bounds</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span>
-                                    <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sd</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+            <span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;xmin&quot;</span><span class="p">:</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmin</span><span class="p">,</span>
+                <span class="s2">&quot;xmax&quot;</span><span class="p">:</span> <span class="n">sd</span><span class="o">.</span><span class="n">xmax</span><span class="p">,</span>
+                <span class="s2">&quot;ymin&quot;</span><span class="p">:</span> <span class="n">sd</span><span class="o">.</span><span class="n">ymin</span><span class="p">,</span>
+                <span class="s2">&quot;ymax&quot;</span><span class="p">:</span> <span class="n">sd</span><span class="o">.</span><span class="n">ymax</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">set_bounds</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">set_bounds</span>
+            <span class="k">if</span> <span class="s2">&quot;zoom&quot;</span> <span class="ow">in</span> <span class="n">set_bounds</span><span class="p">:</span>
+                <span class="n">temp</span> <span class="o">=</span> <span class="n">set_bounds</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Using </span><span class="si">%s</span><span class="s2"> threshold of </span><span class="si">%1.1f</span><span class="s2"> to cut model bounds&quot;</span>
+                    <span class="o">%</span> <span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
+                <span class="p">)</span>
+                <span class="n">bounds</span> <span class="o">=</span> <span class="n">get_bounds</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="nb">float</span><span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()))</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">temp</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">set_bounds</span><span class="p">)</span>
                 <span class="n">latmin</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="n">latmax</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
                 <span class="n">lonmin</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
                 <span class="n">lonmax</span> <span class="o">=</span> <span class="n">temp</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
-                <span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;xmin&#39;</span><span class="p">:</span> <span class="n">lonmin</span><span class="p">,</span> <span class="s1">&#39;xmax&#39;</span><span class="p">:</span> <span class="n">lonmax</span><span class="p">,</span>
-                          <span class="s1">&#39;ymin&#39;</span><span class="p">:</span> <span class="n">latmin</span><span class="p">,</span> <span class="s1">&#39;ymax&#39;</span><span class="p">:</span> <span class="n">latmax</span><span class="p">}</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Applying bounds of lonmin </span><span class="si">%1.2f</span><span class="s1">, lonmax </span><span class="si">%1.2f</span><span class="s1">, &#39;</span>
-                  <span class="s1">&#39;latmin </span><span class="si">%1.2f</span><span class="s1">, latmax </span><span class="si">%1.2f</span><span class="s1">&#39;</span>
-                  <span class="o">%</span> <span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">],</span>
-                     <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]))</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">bounds</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="n">bounds</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s2">&quot;xmin&quot;</span><span class="p">:</span> <span class="n">lonmin</span><span class="p">,</span>
+                    <span class="s2">&quot;xmax&quot;</span><span class="p">:</span> <span class="n">lonmax</span><span class="p">,</span>
+                    <span class="s2">&quot;ymin&quot;</span><span class="p">:</span> <span class="n">latmin</span><span class="p">,</span>
+                    <span class="s2">&quot;ymax&quot;</span><span class="p">:</span> <span class="n">latmax</span><span class="p">,</span>
+                <span class="p">}</span>
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="s2">&quot;Applying bounds of lonmin </span><span class="si">%1.2f</span><span class="s2">, lonmax </span><span class="si">%1.2f</span><span class="s2">, &quot;</span>
+            <span class="s2">&quot;latmin </span><span class="si">%1.2f</span><span class="s2">, latmax </span><span class="si">%1.2f</span><span class="s2">&quot;</span>
+            <span class="o">%</span> <span class="p">(</span><span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;xmin&quot;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;xmax&quot;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;ymin&quot;</span><span class="p">],</span> <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;ymax&quot;</span><span class="p">])</span>
+        <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
             <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
@@ -253,12 +277,13 @@
         <span class="c1"># pre-read in ocean trimming file polygons so only do this step once</span>
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">):</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trimfile defined does not exist: </span><span class="si">%s</span><span class="se">\n</span><span class="s1">&#39;</span>
-                      <span class="s1">&#39;Ocean will not be trimmed.&#39;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;trimfile defined does not exist: </span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span>
+                    <span class="s2">&quot;Ocean will not be trimmed.&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span>
+                <span class="p">)</span>
                 <span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s1">&#39;.shp&#39;</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;trimfile must be a shapefile, &#39;</span>
-                      <span class="s1">&#39;ocean will not be trimmed&#39;</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;.shp&quot;</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;trimfile must be a shapefile, ocean will not be trimmed&quot;</span><span class="p">)</span>
                 <span class="n">trimfile</span> <span class="o">=</span> <span class="kc">None</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="n">trimfile</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span>
@@ -272,17 +297,21 @@
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.txt&#39;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;.txt&quot;</span><span class="p">:</span>
                     <span class="n">ffault</span> <span class="o">=</span> <span class="n">text_to_json</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)</span>
-                <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.json&#39;</span><span class="p">:</span>
+                <span class="k">elif</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;.json&quot;</span><span class="p">:</span>
                     <span class="n">ffault</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">finite_fault</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not read in finite fault, will &#39;</span>
-                          <span class="s1">&#39;try to download from comcat&#39;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="s2">&quot;Could not read in finite fault, will &quot;</span>
+                        <span class="s2">&quot;try to download from comcat&quot;</span>
+                    <span class="p">)</span>
                     <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
-            <span class="k">except</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Could not read in finite fault, will try to &#39;</span>
-                      <span class="s1">&#39;download from comcat&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Could not read in finite fault, will try to &quot;</span>
+                    <span class="s2">&quot;download from comcat&quot;</span>
+                <span class="p">)</span>
                 <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="k">if</span> <span class="n">ffault</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -291,11 +320,14 @@
                 <span class="n">returned_ev</span> <span class="o">=</span> <span class="n">get_event_comcat</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
                 <span class="k">if</span> <span class="n">returned_ev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="n">testjd</span><span class="p">,</span> <span class="n">detail</span><span class="p">,</span> <span class="n">temp</span> <span class="o">=</span> <span class="n">returned_ev</span>
-                    <span class="k">if</span> <span class="s1">&#39;faultfiles&#39;</span> <span class="ow">in</span> <span class="n">testjd</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;event_information&#39;</span><span class="p">]:</span>
-                        <span class="n">ffilename</span> <span class="o">=</span> <span class="n">testjd</span><span class="p">[</span><span class="s1">&#39;input&#39;</span><span class="p">][</span><span class="s1">&#39;event_information&#39;</span><span class="p">][</span><span class="s1">&#39;faultfiles&#39;</span><span class="p">]</span>
+                    <span class="n">evinfo</span> <span class="o">=</span> <span class="n">testjd</span><span class="p">[</span><span class="s2">&quot;input&quot;</span><span class="p">][</span><span class="s2">&quot;event_information&quot;</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="s2">&quot;faultfiles&quot;</span> <span class="ow">in</span> <span class="n">evinfo</span><span class="p">:</span>
+                        <span class="n">ffilename</span> <span class="o">=</span> <span class="n">evinfo</span><span class="p">[</span><span class="s2">&quot;faultfiles&quot;</span><span class="p">]</span>
                         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ffilename</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
                             <span class="c1"># Download the file</span>
-                            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span>
+                                <span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span>
+                            <span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                                 <span class="n">temp</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="n">ffilename</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
                                 <span class="n">ffault</span> <span class="o">=</span> <span class="n">text_to_json</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
                                 <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
@@ -303,105 +335,183 @@
                         <span class="k">else</span><span class="p">:</span>
                             <span class="n">point</span> <span class="o">=</span> <span class="kc">True</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to determine source type, unknown if finite&#39;</span>
-                          <span class="s1">&#39; fault or point source&#39;</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="s2">&quot;Unable to determine source type, unknown if finite&quot;</span>
+                        <span class="s2">&quot; fault or point source&quot;</span>
+                    <span class="p">)</span>
                     <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
                     <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
 
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to determine source type, unknown if finite&#39;</span>
-                      <span class="s1">&#39; fault or point source&#39;</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Unable to determine source type, unknown if finite&quot;</span>
+                    <span class="s2">&quot; fault or point source&quot;</span>
+                <span class="p">)</span>
                 <span class="n">ffault</span> <span class="o">=</span> <span class="kc">None</span>
                 <span class="n">point</span> <span class="o">=</span> <span class="kc">False</span>
 
         <span class="c1"># Loop over config files</span>
         <span class="k">for</span> <span class="n">conf</span> <span class="ow">in</span> <span class="n">configs</span><span class="p">:</span>
             <span class="n">modelname</span> <span class="o">=</span> <span class="n">conf</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Now running </span><span class="si">%s</span><span class="s1">:&#39;</span> <span class="o">%</span> <span class="n">modelname</span><span class="p">)</span>
-            <span class="n">modelfunc</span> <span class="o">=</span> <span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s1">&#39;funcname&#39;</span><span class="p">]</span>
-            <span class="k">if</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s1">&#39;LogisticModel&#39;</span><span class="p">:</span>
-                <span class="n">lm</span> <span class="o">=</span> <span class="n">LM</span><span class="o">.</span><span class="n">LogisticModel</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span>
-                                      <span class="n">uncertfile</span><span class="o">=</span><span class="n">uncertfile</span><span class="p">,</span>
-                                      <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
-                                      <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
-                                      <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">)</span>
-
-                <span class="n">maplayers</span> <span class="o">=</span> <span class="n">lm</span><span class="o">.</span><span class="n">calculate</span><span class="p">()</span>
-            <span class="k">elif</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s1">&#39;godt2008&#39;</span><span class="p">:</span>
-                <span class="n">maplayers</span> <span class="o">=</span> <span class="n">godt2008</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span>
-                                     <span class="n">uncertfile</span><span class="o">=</span><span class="n">uncertfile</span><span class="p">,</span>
-                                     <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
-                                     <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span><span class="p">,</span>
-                                     <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Now running </span><span class="si">%s</span><span class="s2">:&quot;</span> <span class="o">%</span> <span class="n">modelname</span><span class="p">)</span>
+            <span class="n">notcov</span><span class="p">,</span> <span class="n">newbnds</span> <span class="o">=</span> <span class="n">check_input_extents</span><span class="p">(</span>
+                <span class="n">conf</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="n">bounds</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">notcov</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">The following input layers do not cover&quot;</span>
+                    <span class="s2">&quot; the area of interest:</span><span class="se">\n\t</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="s2">&quot;</span><span class="se">\n\t</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">notcov</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">newbnds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Cannnot make bounds that work. Skipping to next model</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">continue</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">pnt</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">, </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                        <span class="n">newbnds</span><span class="p">[</span><span class="s2">&quot;xmin&quot;</span><span class="p">],</span>
+                        <span class="n">newbnds</span><span class="p">[</span><span class="s2">&quot;xmax&quot;</span><span class="p">],</span>
+                        <span class="n">newbnds</span><span class="p">[</span><span class="s2">&quot;ymin&quot;</span><span class="p">],</span>
+                        <span class="n">newbnds</span><span class="p">[</span><span class="s2">&quot;ymax&quot;</span><span class="p">],</span>
+                    <span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="s2">&quot;Running model for new bounds that are fully covered&quot;</span>
+                        <span class="s2">&quot; by input layer: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">pnt</span>
+                    <span class="p">)</span>
+                    <span class="n">bounds2</span> <span class="o">=</span> <span class="n">newbnds</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unknown model function specified in config for </span><span class="si">%s</span><span class="s1"> &#39;</span>
-                      <span class="s1">&#39;model, skipping to next config&#39;</span> <span class="o">%</span> <span class="n">modelfunc</span><span class="p">)</span>
+                <span class="n">bounds2</span> <span class="o">=</span> <span class="n">bounds</span>
+
+            <span class="n">modelfunc</span> <span class="o">=</span> <span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s2">&quot;funcname&quot;</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s2">&quot;LogBase&quot;</span><span class="p">:</span>
+                <span class="c1"># newer object oriented approach to logistic models</span>
+                <span class="n">model_class</span> <span class="o">=</span> <span class="n">MODEL_FACTORY</span><span class="p">[</span><span class="n">modelname</span><span class="p">]</span>
+                <span class="n">t1</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">samplebounds</span> <span class="o">=</span> <span class="n">bounds2</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Constructing model </span><span class="si">{</span><span class="n">modelname</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+                <span class="c1"># try:</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">model_class</span><span class="p">(</span>
+                    <span class="n">shakefile</span><span class="p">,</span>
+                    <span class="n">conf</span><span class="p">[</span><span class="n">modelname</span><span class="p">],</span>
+                    <span class="n">uncertfile</span><span class="o">=</span><span class="n">uncertfile</span><span class="p">,</span>
+                    <span class="n">bounds</span><span class="o">=</span><span class="n">samplebounds</span><span class="p">,</span>
+                    <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">,</span>
+                    <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># except Exception as e:</span>
+                <span class="c1">#     if str(e).find(&quot;Input geodict has no overlap&quot;):</span>
+                <span class="c1">#         msg = (</span>
+                <span class="c1">#             &quot;One or more of the input layers &quot;</span>
+                <span class="c1">#             f&quot;for {modelname} has NO overlap with &quot;</span>
+                <span class="c1">#             &quot;input ShakeMap. Skipping.&quot;</span>
+                <span class="c1">#         )</span>
+                <span class="c1">#         logging.info(msg)</span>
+                <span class="c1">#     else:</span>
+                <span class="c1">#         msg = f&quot;Unhandled exception for {modelname}: &#39;{str(e)}&#39;.&quot;</span>
+                <span class="c1">#         logging.warning(msg)</span>
+                <span class="c1">#     continue</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Calling </span><span class="si">{</span><span class="n">modelname</span><span class="si">}</span><span class="s2"> calculate...&quot;</span><span class="p">)</span>
+                <span class="n">maplayers</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">calculate</span><span class="p">()</span>
+                <span class="n">t2</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">modelname</span><span class="si">}</span><span class="s2"> Elapsed: </span><span class="si">{</span><span class="n">t2</span><span class="o">-</span><span class="n">t1</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2"> seconds&quot;</span><span class="p">)</span>
+
+            <span class="k">elif</span> <span class="n">modelfunc</span> <span class="o">==</span> <span class="s2">&quot;godt2008&quot;</span><span class="p">:</span>
+                <span class="n">maplayers</span> <span class="o">=</span> <span class="n">godt2008</span><span class="p">(</span>
+                    <span class="n">shakefile</span><span class="p">,</span>
+                    <span class="n">conf</span><span class="p">,</span>
+                    <span class="n">uncertfile</span><span class="o">=</span><span class="n">uncertfile</span><span class="p">,</span>
+                    <span class="n">saveinputs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">save_inputs</span><span class="p">,</span>
+                    <span class="n">bounds</span><span class="o">=</span><span class="n">bounds2</span><span class="p">,</span>
+                    <span class="n">trimfile</span><span class="o">=</span><span class="n">trimfile</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Unknown model function specified in config for </span><span class="si">%s</span><span class="s2"> &quot;</span>
+                    <span class="s2">&quot;model, skipping to next config&quot;</span> <span class="o">%</span> <span class="n">modelfunc</span>
+                <span class="p">)</span>
                 <span class="k">continue</span>
 
-            <span class="c1"># time1 = datetime.datetime.utcnow().strftime(&#39;%d%b%Y_%H%M&#39;)</span>
-            <span class="c1"># filename = (&#39;%s_%s_%s&#39; % (eventid, modelname, time1))</span>
-
             <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">appendname</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                <span class="n">filename</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">eventid</span><span class="p">,</span> <span class="n">modelname</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">appendname</span><span class="p">))</span>
+                <span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">eventid</span><span class="p">,</span> <span class="n">modelname</span><span class="p">,</span> <span class="n">args</span><span class="o">.</span><span class="n">appendname</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="n">filename</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">eventid</span><span class="p">,</span> <span class="n">modelname</span><span class="p">))</span>
+                <span class="n">filename</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">eventid</span><span class="p">,</span> <span class="n">modelname</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">hdf5</span><span class="p">:</span>
-                <span class="n">filenameh</span> <span class="o">=</span> <span class="n">filename</span> <span class="o">+</span> <span class="s1">&#39;.hdf5&#39;</span>
+                <span class="n">filenameh</span> <span class="o">=</span> <span class="n">filename</span> <span class="o">+</span> <span class="s2">&quot;.hdf5&quot;</span>
                 <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filenameh</span><span class="p">):</span>
                     <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filenameh</span><span class="p">)</span>
                 <span class="n">savelayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="n">filenameh</span><span class="p">))</span>
                 <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filenameh</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="n">gis</span> <span class="ow">or</span> <span class="n">kmz</span><span class="p">:</span>
-
                 <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">maplayers</span><span class="p">:</span>
-                    <span class="c1"># Get simplified name of key for file naming</span>
-                    <span class="n">RIDOF</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;[+-]?(?=\d*[.eE])(?=\.?\d)&#39;</span>\
-                            <span class="sa">r</span><span class="s1">&#39;\d*\.?\d*(?:[eE][+-]?\d+)?&#39;</span>
-                    <span class="n">OPERATORPAT</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;[\+\-\*\/]*&#39;</span>
-                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">OPERATORPAT</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
-                    <span class="c1"># remove floating point numbers</span>
-                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">RIDOF</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">keyS</span><span class="p">)</span>
-                    <span class="c1"># remove parentheses</span>
-                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s1">&#39;[()]*&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">keyS</span><span class="p">)</span>
-                    <span class="c1"># remove any blank spaces</span>
-                    <span class="n">keyS</span> <span class="o">=</span> <span class="n">keyS</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+                    <span class="c1"># Rename &#39;std&#39; key to &#39;beta_sigma&#39;</span>
+                    <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;std&quot;</span><span class="p">:</span>
+                        <span class="n">key_label</span> <span class="o">=</span> <span class="s2">&quot;beta_sigma&quot;</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">key_label</span> <span class="o">=</span> <span class="n">key</span>
                     <span class="k">if</span> <span class="n">gis</span><span class="p">:</span>
-                        <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.bil&#39;</span>
-                                             <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
-                        <span class="n">fileh</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.hdr&#39;</span>
-                                             <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
-                        <span class="n">fileg</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.tif&#39;</span>
-                                             <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
+                        <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                            <span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.bil&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">key_label</span><span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="n">fileh</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                            <span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.hdr&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">key_label</span><span class="p">)</span>
+                        <span class="p">)</span>
+                        <span class="n">fileg</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                            <span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.tif&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">key_label</span><span class="p">)</span>
+                        <span class="p">)</span>
 
-                        <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span>
-                            <span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
-                        <span class="n">cflags</span> <span class="o">=</span> <span class="s1">&#39;-co COMPRESS=DEFLATE -co predictor=2&#39;</span>
-                        <span class="n">srs</span> <span class="o">=</span> <span class="s1">&#39;-a_srs EPSG:4326&#39;</span>
-                        <span class="n">cmd</span> <span class="o">=</span> <span class="s1">&#39;gdal_translate </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1"> -of GTiff </span><span class="si">%s</span><span class="s1"> </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
-                            <span class="n">srs</span><span class="p">,</span> <span class="n">cflags</span><span class="p">,</span> <span class="n">filen</span><span class="p">,</span> <span class="n">fileg</span><span class="p">)</span>
+                        <span class="n">GDALGrid</span><span class="o">.</span><span class="n">copyFromGrid</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;grid&quot;</span><span class="p">])</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
+                        <span class="n">cflags</span> <span class="o">=</span> <span class="s2">&quot;-co COMPRESS=DEFLATE -co predictor=2&quot;</span>
+                        <span class="n">srs</span> <span class="o">=</span> <span class="s2">&quot;-a_srs EPSG:4326&quot;</span>
+                        <span class="n">cmd</span> <span class="o">=</span> <span class="s2">&quot;gdal_translate </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2"> -of GTiff </span><span class="si">%s</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span>
+                            <span class="n">srs</span><span class="p">,</span>
+                            <span class="n">cflags</span><span class="p">,</span>
+                            <span class="n">filen</span><span class="p">,</span>
+                            <span class="n">fileg</span><span class="p">,</span>
+                        <span class="p">)</span>
                         <span class="n">rc</span><span class="p">,</span> <span class="n">so</span><span class="p">,</span> <span class="n">se</span> <span class="o">=</span> <span class="n">get_command_output</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
                         <span class="c1"># Delete bil file and its header</span>
                         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filen</span><span class="p">)</span>
                         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">fileh</span><span class="p">)</span>
                         <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fileg</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">kmz</span><span class="p">:</span>
-                        <span class="n">plotorder</span><span class="p">,</span> <span class="n">logscale</span><span class="p">,</span> <span class="n">lims</span><span class="p">,</span> <span class="n">colormaps</span><span class="p">,</span> <span class="n">maskthresh</span> <span class="o">=</span> \
-                            <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">])</span>
-                        <span class="n">maxprob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s1">&#39;grid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">getData</span><span class="p">())</span>
+                    <span class="k">if</span> <span class="n">kmz</span> <span class="ow">and</span> <span class="p">(</span>
+                        <span class="ow">not</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;quantile&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">key</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;std&quot;</span><span class="p">)</span>
+                    <span class="p">):</span>
+                        <span class="p">(</span>
+                            <span class="n">plotorder</span><span class="p">,</span>
+                            <span class="n">logscale</span><span class="p">,</span>
+                            <span class="n">lims</span><span class="p">,</span>
+                            <span class="n">colormaps</span><span class="p">,</span>
+                            <span class="n">maskthresh</span><span class="p">,</span>
+                        <span class="p">)</span> <span class="o">=</span> <span class="n">parseConfigLayers</span><span class="p">(</span><span class="n">maplayers</span><span class="p">,</span> <span class="n">conf</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;model&quot;</span><span class="p">])</span>
+                        <span class="n">maxprob</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nanmax</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">][</span><span class="s2">&quot;grid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">getData</span><span class="p">())</span>
+                        <span class="k">if</span> <span class="n">key</span> <span class="o">==</span> <span class="s2">&quot;model&quot;</span><span class="p">:</span>
+                            <span class="n">qdict</span> <span class="o">=</span> <span class="p">{</span>
+                                <span class="n">k</span><span class="p">:</span> <span class="n">maplayers</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+                                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">maplayers</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+                                <span class="k">if</span> <span class="n">k</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;quantile&quot;</span><span class="p">)</span>
+                            <span class="p">}</span>
+                        <span class="k">else</span><span class="p">:</span>
+                            <span class="n">qdict</span> <span class="o">=</span> <span class="kc">None</span>
                         <span class="k">if</span> <span class="n">maskthresh</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-                            <span class="n">maskthresh</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.</span><span class="p">]</span>
+                            <span class="n">maskthresh</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">]</span>
                         <span class="k">if</span> <span class="n">maxprob</span> <span class="o">&gt;=</span> <span class="n">maskthresh</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
-                            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outfolder</span><span class="p">,</span> <span class="s1">&#39;</span><span class="si">%s</span><span class="s1">_</span><span class="si">%s</span><span class="s1">.kmz&#39;</span>
-                                                 <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">keyS</span><span class="p">))</span>
-                            <span class="n">filek</span> <span class="o">=</span> <span class="n">create_kmz</span><span class="p">(</span><span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">filen</span><span class="p">,</span>
-                                               <span class="n">mask</span><span class="o">=</span><span class="n">maskthresh</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
-                                               <span class="n">levels</span><span class="o">=</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                            <span class="n">filen</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                                <span class="n">outfolder</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">_</span><span class="si">%s</span><span class="s2">.kmz&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">key_label</span><span class="p">)</span>
+                            <span class="p">)</span>
+                            <span class="n">filek</span> <span class="o">=</span> <span class="n">create_kmz</span><span class="p">(</span>
+                                <span class="n">maplayers</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+                                <span class="n">filen</span><span class="p">,</span>
+                                <span class="n">mask</span><span class="o">=</span><span class="n">maskthresh</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                <span class="n">levels</span><span class="o">=</span><span class="n">lims</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                                <span class="n">qdict</span><span class="o">=</span><span class="n">qdict</span><span class="p">,</span>
+                            <span class="p">)</span>
                             <span class="n">filenames</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filek</span><span class="p">)</span>
                         <span class="k">else</span><span class="p">:</span>
-                            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No unmasked pixels present, skipping kmz &#39;</span>
-                                  <span class="s1">&#39;file creation&#39;</span><span class="p">)</span>
+                            <span class="nb">print</span><span class="p">(</span>
+                                <span class="s2">&quot;No unmasked pixels present, skipping kmz &quot;</span>
+                                <span class="s2">&quot;file creation&quot;</span>
+                            <span class="p">)</span>
 
             <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
                 <span class="c1"># Compile into list of results for later</span>
@@ -418,34 +528,41 @@
                 <span class="c1">#  filenames.append(filef)</span>
                 <span class="c1">#  filenames.append(filefh)</span>
 
-        <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s1">&#39;eventsource&#39;</span><span class="p">):</span>
-            <span class="n">args</span><span class="o">.</span><span class="n">eventsource</span> <span class="o">=</span> <span class="s1">&#39;us&#39;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s1">&#39;eventsourcecode&#39;</span><span class="p">):</span>
+        <span class="n">eventid</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;event_id&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;eventsource&quot;</span><span class="p">):</span>
+            <span class="n">args</span><span class="o">.</span><span class="n">eventsource</span> <span class="o">=</span> <span class="s2">&quot;us&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">args</span><span class="p">,</span> <span class="s2">&quot;eventsourcecode&quot;</span><span class="p">):</span>
             <span class="n">args</span><span class="o">.</span><span class="n">eventsourcecode</span> <span class="o">=</span> <span class="n">eventid</span>
 
         <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">make_webpage</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;No models were run. Cannot make webpages.&quot;</span><span class="p">)</span>
             <span class="n">outputs</span> <span class="o">=</span> <span class="n">hazdev</span><span class="p">(</span>
-                <span class="n">results</span><span class="p">,</span> <span class="n">configs</span><span class="p">,</span>
-                <span class="n">shakefile</span><span class="p">,</span> <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
+                <span class="n">results</span><span class="p">,</span>
+                <span class="n">configs</span><span class="p">,</span>
+                <span class="n">shakefile</span><span class="p">,</span>
+                <span class="n">outfolder</span><span class="o">=</span><span class="n">outfolder</span><span class="p">,</span>
                 <span class="n">pop_file</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">,</span>
                 <span class="n">pager_alert</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">property_alertlevel</span><span class="p">,</span>
                 <span class="n">eventsource</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">eventsource</span><span class="p">,</span>
                 <span class="n">eventsourcecode</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">eventsourcecode</span><span class="p">,</span>
-                <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">)</span>
+                <span class="n">point</span><span class="o">=</span><span class="n">point</span><span class="p">,</span>
+                <span class="n">gf_version</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">gf_version</span><span class="p">,</span>
+                <span class="n">pdlcall</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">pdlcall</span><span class="p">,</span>
+            <span class="p">)</span>
             <span class="n">filenames</span> <span class="o">=</span> <span class="n">filenames</span> <span class="o">+</span> <span class="n">outputs</span>
 
-<span class="c1">#        # create transparent png file</span>
-<span class="c1">#        outputs = create_png(outdir)</span>
-<span class="c1">#        filenames = filenames + outputs</span>
-<span class="c1">#</span>
-<span class="c1">#        # create info file</span>
-<span class="c1">#        infofile = create_info(outdir)</span>
-<span class="c1">#        filenames = filenames + infofile</span>
+        <span class="c1">#        # create transparent png file</span>
+        <span class="c1">#        outputs = create_png(outdir)</span>
+        <span class="c1">#        filenames = filenames + outputs</span>
+        <span class="c1">#</span>
+        <span class="c1">#        # create info file</span>
+        <span class="c1">#        infofile = create_info(outdir)</span>
+        <span class="c1">#        filenames = filenames + infofile</span>
 
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">Files created:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">Files created:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">filen</span> <span class="ow">in</span> <span class="n">filenames</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">filen</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">filen</span><span class="p">)</span>
 
         <span class="k">return</span> <span class="n">filenames</span></div>
 
@@ -460,78 +577,104 @@
 <span class="sd">        file object corresponding to the url.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">f</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="n">fh</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="k">with</span> <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">gridurl</span><span class="p">)</span> <span class="k">as</span> <span class="n">fh</span><span class="p">:</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">fh</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">(</span><span class="n">delete</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
                 <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
 
     <span class="k">return</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span></div>
 
 
-<div class="viewcode-block" id="getShakefiles"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.getShakefiles">[docs]</a><span class="k">def</span> <span class="nf">getShakefiles</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">outdir</span><span class="p">,</span> <span class="n">uncert</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                  <span class="n">source</span><span class="o">=</span><span class="s1">&#39;preferred&#39;</span><span class="p">):</span>
+<div class="viewcode-block" id="getShakefiles"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.getShakefiles">[docs]</a><span class="k">def</span> <span class="nf">getShakefiles</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">outdir</span><span class="p">,</span> <span class="n">uncert</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">&quot;preferred&quot;</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Download the shakemap grid.xml file and the </span>
+<span class="sd">    Download the shakemap grid.xml file and the</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        event event id or URL</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">shakefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s1">&#39;grid.xml&#39;</span><span class="p">)</span>
+    <span class="n">shakefile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s2">&quot;grid.xml&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">uncert</span><span class="p">:</span>
-        <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s1">&#39;uncertainty.xml&#39;</span><span class="p">)</span>
+        <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">outdir</span><span class="p">,</span> <span class="s2">&quot;uncertainty.xml&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">uncertfile</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">includeSuperseded</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">includeSuperseded</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="c1"># If args.event is a url to a shakemap, download from that url</span>
     <span class="k">if</span> <span class="n">isURL</span><span class="p">(</span><span class="n">event</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">source</span> <span class="o">!=</span> <span class="s1">&#39;preferred&#39;</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Cannot set shakemap version or source when URL of &#39;</span>
-                            <span class="s1">&#39;gridfile is provided&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">source</span> <span class="o">!=</span> <span class="s2">&quot;preferred&quot;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="s2">&quot;Cannot set shakemap version or source when URL &quot;</span>
+                <span class="s2">&quot;of gridfile is provided&quot;</span>
+            <span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="n">shakefile</span> <span class="o">=</span> <span class="n">getGridURL</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;Could not download shakemap file from provided &#39;</span>
-                            <span class="s1">&#39;URL: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span>
+                <span class="s2">&quot;Could not download shakemap file from provided URL: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">e</span>
+            <span class="p">)</span>
         <span class="c1"># Now get corresponding event detail</span>
-        <span class="n">event</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;event_id&#39;</span><span class="p">]</span>
-        <span class="n">version</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;shakemap_version&#39;</span><span class="p">]</span>
-        <span class="n">source</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s1">&#39;shakemap_originator&#39;</span><span class="p">]</span>
+        <span class="n">event</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;event_id&quot;</span><span class="p">]</span>
+        <span class="n">version</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;shakemap_version&quot;</span><span class="p">]</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;shakemap_originator&quot;</span><span class="p">]</span>
         <span class="k">try</span><span class="p">:</span>
-            <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-        <span class="k">except</span><span class="p">:</span>  <span class="c1"># Maybe originator is missing from event id, try another way</span>
+            <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="n">includeSuperseded</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+            <span class="c1"># Maybe originator is missing from event id, try another way</span>
+
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">temp</span> <span class="o">=</span> <span class="n">getHeaderData</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-                <span class="n">temp2</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">%s%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
-                    <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_originator&#39;</span><span class="p">],</span> <span class="n">temp</span><span class="p">[</span><span class="s1">&#39;shakemap_id&#39;</span><span class="p">])</span>
-                <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">temp2</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">temp2</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">temp</span><span class="p">[</span><span class="s2">&quot;shakemap_originator&quot;</span><span class="p">],</span> <span class="n">temp</span><span class="p">[</span><span class="s2">&quot;shakemap_id&quot;</span><span class="p">])</span>
+                <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">temp2</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="n">includeSuperseded</span><span class="p">)</span>
                 <span class="n">event</span> <span class="o">=</span> <span class="n">temp2</span>
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Could not get event detail for shakemap at provided URL: </span><span class="si">%s</span><span class="s1">&#39;</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Could not get event detail for shakemap at provided URL: </span><span class="si">%s</span><span class="s2">&quot;</span>
                 <span class="nb">print</span><span class="p">(</span><span class="n">msg</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
 
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">detail</span> <span class="o">=</span> <span class="n">get_event_by_id</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">includesuperseded</span><span class="o">=</span><span class="n">includeSuperseded</span><span class="p">)</span>
 
     <span class="c1"># Get most recent version</span>
     <span class="k">if</span> <span class="n">version</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>  <span class="c1"># Get current preferred</span>
-        <span class="n">shakemap</span> <span class="o">=</span> <span class="n">detail</span><span class="o">.</span><span class="n">getProducts</span><span class="p">(</span><span class="s1">&#39;shakemap&#39;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;grid.xml&#39;</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
+        <span class="n">shakemap</span> <span class="o">=</span> <span class="n">detail</span><span class="o">.</span><span class="n">getProducts</span><span class="p">(</span><span class="s2">&quot;shakemap&quot;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s2">&quot;grid.xml&quot;</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
     <span class="c1"># or get version requested</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">allversions</span> <span class="o">=</span> <span class="n">detail</span><span class="o">.</span><span class="n">getProducts</span><span class="p">(</span><span class="s1">&#39;shakemap&#39;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span>
-                                         <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
-        <span class="n">vers</span> <span class="o">=</span> <span class="p">[</span><span class="n">allv</span><span class="o">.</span><span class="n">version</span> <span class="k">for</span> <span class="n">allv</span> <span class="ow">in</span> <span class="n">allversions</span><span class="p">]</span>
+        <span class="n">allversions</span> <span class="o">=</span> <span class="n">detail</span><span class="o">.</span><span class="n">getProducts</span><span class="p">(</span><span class="s2">&quot;shakemap&quot;</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">)</span>
+        <span class="c1"># First try with properties, more reliable</span>
+        <span class="n">vers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">allv</span> <span class="ow">in</span> <span class="n">allversions</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s2">&quot;version&quot;</span> <span class="ow">in</span> <span class="n">allv</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+                <span class="n">vers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">allv</span><span class="p">[</span><span class="s2">&quot;version&quot;</span><span class="p">]))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">vers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="o">-</span><span class="mi">999</span><span class="p">)</span>
         <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vers</span><span class="p">)</span> <span class="o">==</span> <span class="n">version</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
-            <span class="n">msg</span> <span class="o">=</span> <span class="s1">&#39;Could not find version </span><span class="si">%d</span><span class="s1"> of Shakemap from source </span><span class="si">%s</span><span class="s1">&#39;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="c1"># Try using libcomcat version, less reliable...</span>
+            <span class="n">vers</span> <span class="o">=</span> <span class="p">[</span><span class="n">allv</span><span class="o">.</span><span class="n">version</span> <span class="k">for</span> <span class="n">allv</span> <span class="ow">in</span> <span class="n">allversions</span><span class="p">]</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">vers</span><span class="p">)</span> <span class="o">==</span> <span class="n">version</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="c1"># Check info.json to make sure it&#39;s right version</span>
+                <span class="n">infobytes</span><span class="p">,</span> <span class="n">url</span> <span class="o">=</span> <span class="n">allversions</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span><span class="o">.</span><span class="n">getContentBytes</span><span class="p">(</span><span class="s2">&quot;info.json&quot;</span><span class="p">)</span>
+                <span class="n">info</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">infobytes</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">info</span><span class="p">[</span><span class="s2">&quot;processing&quot;</span><span class="p">][</span><span class="s2">&quot;shakemap_versions&quot;</span><span class="p">][</span><span class="s2">&quot;map_version&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">version</span><span class="p">:</span>
+                    <span class="n">idx</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Could not find version </span><span class="si">%d</span><span class="s2"> of Shakemap from source </span><span class="si">%s</span><span class="s2">&quot;</span>
             <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="n">msg</span> <span class="o">%</span> <span class="p">(</span><span class="n">version</span><span class="p">,</span> <span class="n">source</span><span class="p">))</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Found more than one ShakeMap with matching source and version. </span><span class="se">\</span>
+<span class="s2">Choosing first one.&quot;</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
         <span class="n">shakemap</span> <span class="o">=</span> <span class="n">allversions</span><span class="p">[</span><span class="n">idx</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
-        <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;grid.xml&#39;</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
+        <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s2">&quot;grid.xml&quot;</span><span class="p">,</span> <span class="n">shakefile</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">uncert</span><span class="p">:</span>
         <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">getUncert</span><span class="p">(</span><span class="n">shakemap</span><span class="p">,</span> <span class="n">uncertfile</span><span class="p">)</span>
@@ -545,40 +688,41 @@
 <span class="sd">    shakemap</span>
 
 <span class="sd">    Args:</span>
-<span class="sd">        detail: libcomcat ShakeMap product class for the event and version</span>
+<span class="sd">        shakemap: libcomcat ShakeMap product class for the event and version</span>
 <span class="sd">        fname (str): file location name, if None, will create a temporary file</span>
 
 <span class="sd">    Returns:</span>
 <span class="sd">        file object corresponding to the url.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">grid_url</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getContentURL</span><span class="p">(</span><span class="s1">&#39;uncertainty.*&#39;</span><span class="p">)</span>
+    <span class="n">grid_url</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getContentURL</span><span class="p">(</span><span class="s2">&quot;uncertainty.*&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">grid_url</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="kc">None</span>
 
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">ext</span> <span class="o">=</span> <span class="n">grid_url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">grid_url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
         <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">basedir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="n">basedir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
-        <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="s1">&#39;uncertainty.xml&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;xml&#39;</span><span class="p">:</span>
-            <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;uncertainty.xml&#39;</span><span class="p">,</span> <span class="n">uncertfile</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s1">&#39;zip&#39;</span><span class="p">:</span>
-            <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="s1">&#39;uncertainty.xml.zip&#39;</span><span class="p">)</span>
-            <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s1">&#39;uncertainty.xml.zip&#39;</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
-            <span class="c1">#urllib.request.urlretrieve(grid_url, fname)</span>
-            <span class="k">with</span> <span class="n">ZipFile</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zip1</span><span class="p">:</span>
+        <span class="n">uncertfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="s2">&quot;uncertainty.xml&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s2">&quot;xml&quot;</span><span class="p">:</span>
+            <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s2">&quot;uncertainty.xml&quot;</span><span class="p">,</span> <span class="n">uncertfile</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="o">==</span> <span class="s2">&quot;zip&quot;</span><span class="p">:</span>
+            <span class="n">fname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="s2">&quot;uncertainty.xml.zip&quot;</span><span class="p">)</span>
+            <span class="n">shakemap</span><span class="o">.</span><span class="n">getContent</span><span class="p">(</span><span class="s2">&quot;uncertainty.xml.zip&quot;</span><span class="p">,</span> <span class="n">fname</span><span class="p">)</span>
+            <span class="c1"># urllib.request.urlretrieve(grid_url, fname)</span>
+            <span class="k">with</span> <span class="n">ZipFile</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">zip1</span><span class="p">:</span>
                 <span class="c1"># See if it&#39;s inside a file structure</span>
                 <span class="n">out</span> <span class="o">=</span> <span class="n">zip1</span><span class="o">.</span><span class="n">filelist</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
                 <span class="c1"># Extract all the contents of zip file in different directory</span>
                 <span class="n">zip1</span><span class="o">.</span><span class="n">extractall</span><span class="p">(</span><span class="n">basedir</span><span class="p">)</span>
-                <span class="c1"># move file uncertainty.xml file to base dir if it was in a weird subdir</span>
+                <span class="c1"># move file uncertainty.xml file to base dir if it was in a</span>
+                <span class="c1"># weird subdir</span>
                 <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">filename</span><span class="p">)):</span>
                     <span class="n">os</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">basedir</span><span class="p">,</span> <span class="n">out</span><span class="o">.</span><span class="n">filename</span><span class="p">),</span> <span class="n">uncertfile</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">uncertfile</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Unable to download uncertainty.xml: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Unable to download uncertainty.xml: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">uncertfile</span></div>
 
 
@@ -593,13 +737,13 @@
 <span class="sd">        bool: True if gridurl is a valid url, False otherwise.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">isURL</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_url</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">urllib</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">urlopen</span><span class="p">(</span><span class="n">gridurl</span><span class="p">)</span>
-        <span class="n">isURL</span> <span class="o">=</span> <span class="kc">True</span>
-    <span class="k">except</span><span class="p">:</span>
+        <span class="n">is_url</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
         <span class="k">pass</span>
-    <span class="k">return</span> <span class="n">isURL</span></div>
+    <span class="k">return</span> <span class="n">is_url</span></div>
 
 
 <div class="viewcode-block" id="set_default_paths"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.set_default_paths">[docs]</a><span class="k">def</span> <span class="nf">set_default_paths</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
@@ -616,98 +760,115 @@
 <span class="sd">        Updates .gfail_defaults file on users path, or creates new one if</span>
 <span class="sd">        file does not already exist.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.gfail_defaults&#39;</span><span class="p">)</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.gfail_defaults&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
         <span class="n">D</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="n">D</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_path&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;data_path&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;data_path&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">})</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;data_path&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for data_path does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Path given for data_path does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">data_path</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;output_filepath&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;output_filepath&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;output_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span><span class="p">})</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;output_filepath&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for output_filepath does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Path given for output_filepath does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span>
+                    <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">output_filepath</span>
+                <span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;config_filepath&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;config_filepath&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;config_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">})</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;config_filepath&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for config_filepath does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Path given for config_filepath does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span>
+                    <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">config_filepath</span>
+                <span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;popfile&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;popfile&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;popfile&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">})</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;popfile&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for population file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Path given for population file does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">popfile</span>
+                <span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;trim&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;trim&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path and that it&#39;s a shapefile</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">):</span>
                 <span class="n">filename4</span><span class="p">,</span> <span class="n">fileextension</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">fileextension</span> <span class="o">==</span> <span class="s1">&#39;.shp&#39;</span><span class="p">:</span>
-                    <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;trimfile&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">})</span>
+                <span class="k">if</span> <span class="n">fileextension</span> <span class="o">==</span> <span class="s2">&quot;.shp&quot;</span><span class="p">:</span>
+                    <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;trimfile&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">})</span>
                 <span class="k">else</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Ocean trimming file is not a shapefile: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                          <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Ocean trimming file is not a shapefile: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for ocean trimming file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Path given for ocean trimming file does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span>
+                    <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">trimfile</span>
+                <span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;pdl_config&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;pdl_config&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;pdl_config&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span><span class="p">})</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;pdl_config&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for pdl config file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Path given for pdl config file does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span>
+                    <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">pdl_config</span>
+                <span class="p">)</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">comcat_config</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">comcat_config</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;comcat_config&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># check that it&#39;s a valid path</span>
+            <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">comcat_config</span><span class="p">):</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;comcat_config&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">comcat_config</span><span class="p">})</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="s2">&quot;Path given for comcat config file does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span>
+                    <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">comcat_config</span>
+                <span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;log_filepath&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;log_filepath&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;log_filepath&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">})</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;log_filepath&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for log file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Path given for log file does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">log_filepath</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span> <span class="o">==</span> <span class="s1">&#39;reset&#39;</span><span class="p">:</span>
-            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;dbfile&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span> <span class="o">==</span> <span class="s2">&quot;reset&quot;</span><span class="p">:</span>
+            <span class="n">D</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;dbfile&quot;</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="c1"># check that it&#39;s a valid path (file itself doesnt have to exist)</span>
             <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">)):</span>
-                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s1">&#39;dbfile&#39;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">})</span>
+                <span class="n">D</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;dbfile&quot;</span><span class="p">:</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">})</span>
             <span class="k">else</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Path given for database file does not exist: </span><span class="si">%s</span><span class="s1">&#39;</span>
-                      <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">)</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Path given for database file does not exist: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">args</span><span class="o">.</span><span class="n">dbfile</span><span class="p">)</span>
 
-    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;New default paths set.</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;New default paths set.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
 
     <span class="k">if</span> <span class="n">D</span><span class="p">:</span>
         <span class="n">C</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">D</span><span class="p">)</span>
@@ -715,36 +876,36 @@
         <span class="n">C</span><span class="o">.</span><span class="n">write</span><span class="p">()</span>
         <span class="n">list_default_paths</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;no defaults set because no paths were input</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;no defaults set because no paths were input</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="list_default_paths"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.list_default_paths">[docs]</a><span class="k">def</span> <span class="nf">list_default_paths</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Lists all default paths currently set.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.gfail_defaults&#39;</span><span class="p">)</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.gfail_defaults&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
         <span class="n">D</span> <span class="o">=</span> <span class="n">ConfigObj</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Default paths currently set to:</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Default paths currently set to:</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">D</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\t</span><span class="si">%s</span><span class="s1"> = </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">D</span><span class="p">[</span><span class="n">key</span><span class="p">]))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="si">%s</span><span class="s2"> = </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">D</span><span class="p">[</span><span class="n">key</span><span class="p">]))</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No default paths currently set</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No default paths currently set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="reset_default_paths"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.reset_default_paths">[docs]</a><span class="k">def</span> <span class="nf">reset_default_paths</span><span class="p">():</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Clear default path file</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s1">&#39;~&#39;</span><span class="p">),</span> <span class="s1">&#39;.gfail_defaults&#39;</span><span class="p">)</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">),</span> <span class="s2">&quot;.gfail_defaults&quot;</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filename</span><span class="p">):</span>
         <span class="n">os</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">filename</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Default paths cleared</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Default paths cleared</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No default paths currently set</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span></div>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;No default paths currently set</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="get_bounds"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.get_bounds">[docs]</a><span class="k">def</span> <span class="nf">get_bounds</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">parameter</span><span class="o">=</span><span class="s1">&#39;pga&#39;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">2.0</span><span class="p">):</span>
+<div class="viewcode-block" id="get_bounds"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.get_bounds">[docs]</a><span class="k">def</span> <span class="nf">get_bounds</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">parameter</span><span class="o">=</span><span class="s2">&quot;pga&quot;</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">2.0</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the boundaries of the shakemap that include all areas with shaking</span>
 <span class="sd">    above the defined threshold.</span>
@@ -761,13 +922,13 @@
 <span class="sd">        dict: A dictionary with keys &#39;xmin&#39;, &#39;xmax&#39;, &#39;ymin&#39;, and &#39;ymax&#39; that</span>
 <span class="sd">        defines the boundaries in geographic coordinates.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">shakemap</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s1">&#39;res&#39;</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">parameter</span> <span class="o">==</span> <span class="s1">&#39;pga&#39;</span><span class="p">:</span>
-        <span class="n">vals</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s1">&#39;pga&#39;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">parameter</span> <span class="o">==</span> <span class="s1">&#39;pgv&#39;</span><span class="p">:</span>
-        <span class="n">vals</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s1">&#39;pgv&#39;</span><span class="p">)</span>
+    <span class="n">shakemap</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">shakefile</span><span class="p">,</span> <span class="n">adjust</span><span class="o">=</span><span class="s2">&quot;res&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">parameter</span> <span class="o">==</span> <span class="s2">&quot;pga&quot;</span><span class="p">:</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s2">&quot;pga&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">parameter</span> <span class="o">==</span> <span class="s2">&quot;pgv&quot;</span><span class="p">:</span>
+        <span class="n">vals</span> <span class="o">=</span> <span class="n">shakemap</span><span class="o">.</span><span class="n">getLayer</span><span class="p">(</span><span class="s2">&quot;pgv&quot;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s1">&#39;parameter not valid&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;parameter not valid&quot;</span><span class="p">)</span>
     <span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">ymax</span> <span class="o">=</span> <span class="n">vals</span><span class="o">.</span><span class="n">getBounds</span><span class="p">()</span>
     <span class="n">lons</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">xmin</span><span class="p">,</span> <span class="n">xmax</span><span class="p">,</span> <span class="n">vals</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">nx</span><span class="p">)</span>
     <span class="n">lats</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">ymax</span><span class="p">,</span> <span class="n">ymin</span><span class="p">,</span> <span class="n">vals</span><span class="o">.</span><span class="n">getGeoDict</span><span class="p">()</span><span class="o">.</span><span class="n">ny</span><span class="p">)</span>
@@ -778,26 +939,115 @@
     <span class="n">latmax</span> <span class="o">=</span> <span class="n">lats</span><span class="p">[</span><span class="n">row</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
 
     <span class="c1"># dummy fillers, only really care about bounds</span>
-    <span class="n">boundaries1</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;dx&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s1">&#39;dy&#39;</span><span class="p">:</span> <span class="mf">100.</span><span class="p">,</span> <span class="s1">&#39;nx&#39;</span><span class="p">:</span> <span class="mf">100.</span><span class="p">,</span> <span class="s1">&#39;ny&#39;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
+    <span class="n">boundaries1</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;dx&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span> <span class="s2">&quot;dy&quot;</span><span class="p">:</span> <span class="mf">100.0</span><span class="p">,</span> <span class="s2">&quot;nx&quot;</span><span class="p">:</span> <span class="mf">100.0</span><span class="p">,</span> <span class="s2">&quot;ny&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">}</span>
 
     <span class="k">if</span> <span class="n">xmin</span> <span class="o">&lt;</span> <span class="n">lonmin</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmin</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;xmin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmin</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmin</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;xmin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmin</span>
     <span class="k">if</span> <span class="n">xmax</span> <span class="o">&gt;</span> <span class="n">lonmax</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmax</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;xmax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lonmax</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;xmax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmax</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;xmax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xmax</span>
     <span class="k">if</span> <span class="n">ymin</span> <span class="o">&lt;</span> <span class="n">latmin</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmin</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;ymin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmin</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymin&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymin</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;ymin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymin</span>
     <span class="k">if</span> <span class="n">ymax</span> <span class="o">&gt;</span> <span class="n">latmax</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmax</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;ymax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">latmax</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">boundaries1</span><span class="p">[</span><span class="s1">&#39;ymax&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymax</span>
+        <span class="n">boundaries1</span><span class="p">[</span><span class="s2">&quot;ymax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ymax</span>
 
     <span class="k">return</span> <span class="n">boundaries1</span></div>
+
+
+<div class="viewcode-block" id="check_input_extents"><a class="viewcode-back" href="../../gfail.gfailrun.html#gfail.gfailrun.check_input_extents">[docs]</a><span class="k">def</span> <span class="nf">check_input_extents</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">shakefile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Make sure all input files exist and cover the extent desired</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config: configObj of a single model</span>
+<span class="sd">        shakefile: path to ShakeMap grid.xml file (used for bounds). If not</span>
+<span class="sd">            provided, bounds must be provided</span>
+<span class="sd">        bounds: dictionary of bounds with keys: &#39;xmin&#39;, &#39;xmax&#39;, &#39;ymin&#39;, &#39;ymax&#39;</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple containing:</span>
+<span class="sd">            notcovered: list of files that do not cover the entire area</span>
+<span class="sd">                defined by bounds or shakefile</span>
+<span class="sd">            newbounds: new dictionary of bounds of subarea of original</span>
+<span class="sd">                bounds or shakefile extent that is covered by all input files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">shakefile</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;Must define either a shakemap file or bounds&quot;</span><span class="p">)</span>
+    <span class="n">modelname</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Make dummy geodict to use</span>
+    <span class="k">if</span> <span class="n">bounds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">evdict</span> <span class="o">=</span> <span class="n">ShakeGrid</span><span class="o">.</span><span class="n">getFileGeoDict</span><span class="p">(</span><span class="n">shakefile</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">evdict</span> <span class="o">=</span> <span class="n">GeoDict</span><span class="o">.</span><span class="n">createDictFromBox</span><span class="p">(</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;xmin&quot;</span><span class="p">],</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;xmax&quot;</span><span class="p">],</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;ymin&quot;</span><span class="p">],</span>
+            <span class="n">bounds</span><span class="p">[</span><span class="s2">&quot;ymax&quot;</span><span class="p">],</span>
+            <span class="mf">0.00001</span><span class="p">,</span>
+            <span class="mf">0.00001</span><span class="p">,</span>
+            <span class="n">inside</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Check extents of all input layers</span>
+    <span class="n">notcovered</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">notcovgdicts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">newbounds</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">for</span> <span class="n">item</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">config</span><span class="p">[</span><span class="n">modelname</span><span class="p">][</span><span class="s2">&quot;layers&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="s2">&quot;file&quot;</span> <span class="ow">in</span> <span class="n">value</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">filelook</span> <span class="o">=</span> <span class="n">value</span><span class="p">[</span><span class="s2">&quot;file&quot;</span><span class="p">]</span>
+            <span class="n">tmpgd</span> <span class="o">=</span> <span class="n">get_file_geodict</span><span class="p">(</span><span class="n">filelook</span><span class="p">)</span>
+            <span class="n">contains</span> <span class="o">=</span> <span class="n">tmpgd</span><span class="o">.</span><span class="n">contains</span><span class="p">(</span><span class="n">evdict</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">contains</span><span class="p">:</span>
+                <span class="n">notcovered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">filelook</span><span class="p">)</span>
+                <span class="n">notcovgdicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tmpgd</span><span class="p">)</span>
+                <span class="c1"># print(filelook)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">notcovered</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="c1"># Figure out what bounds COULD be run</span>
+        <span class="n">xmins</span> <span class="o">=</span> <span class="p">[</span><span class="n">gd</span><span class="o">.</span><span class="n">xmin</span> <span class="k">for</span> <span class="n">gd</span> <span class="ow">in</span> <span class="n">notcovgdicts</span><span class="p">]</span>
+        <span class="n">xmaxs</span> <span class="o">=</span> <span class="p">[</span><span class="n">gd</span><span class="o">.</span><span class="n">xmax</span> <span class="k">for</span> <span class="n">gd</span> <span class="ow">in</span> <span class="n">notcovgdicts</span><span class="p">]</span>
+        <span class="n">ymins</span> <span class="o">=</span> <span class="p">[</span><span class="n">gd</span><span class="o">.</span><span class="n">ymin</span> <span class="k">for</span> <span class="n">gd</span> <span class="ow">in</span> <span class="n">notcovgdicts</span><span class="p">]</span>
+        <span class="n">ymaxs</span> <span class="o">=</span> <span class="p">[</span><span class="n">gd</span><span class="o">.</span><span class="n">ymax</span> <span class="k">for</span> <span class="n">gd</span> <span class="ow">in</span> <span class="n">notcovgdicts</span><span class="p">]</span>
+
+        <span class="c1"># Set in by a buffer of 0.05 degrees because mapio doesn&#39;t like</span>
+        <span class="c1"># when bounds are exactly the same for getboundswithin</span>
+        <span class="n">newbounds</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">xmin</span><span class="o">=</span><span class="n">evdict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">+</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">xmax</span><span class="o">=</span><span class="n">evdict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">-</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">ymin</span><span class="o">=</span><span class="n">evdict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">+</span> <span class="mf">0.05</span><span class="p">,</span>
+            <span class="n">ymax</span><span class="o">=</span><span class="n">evdict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">-</span> <span class="mf">0.05</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Which one is the problem?</span>
+        <span class="k">if</span> <span class="n">evdict</span><span class="o">.</span><span class="n">xmin</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">xmins</span><span class="p">):</span>
+            <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;xmin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">xmins</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.05</span>
+        <span class="k">if</span> <span class="n">evdict</span><span class="o">.</span><span class="n">xmax</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">xmaxs</span><span class="p">):</span>
+            <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;xmax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">xmaxs</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.05</span>
+        <span class="k">if</span> <span class="n">evdict</span><span class="o">.</span><span class="n">ymin</span> <span class="o">&lt;</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ymins</span><span class="p">):</span>
+            <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;ymin&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ymins</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.05</span>
+        <span class="k">if</span> <span class="n">evdict</span><span class="o">.</span><span class="n">ymax</span> <span class="o">&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">ymaxs</span><span class="p">):</span>
+            <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;ymax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">ymaxs</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.05</span>
+
+        <span class="c1"># See if this is a possible extent</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">GeoDict</span><span class="o">.</span><span class="n">createDictFromBox</span><span class="p">(</span>
+                <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;xmin&quot;</span><span class="p">],</span>
+                <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;xmax&quot;</span><span class="p">],</span>
+                <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;ymin&quot;</span><span class="p">],</span>
+                <span class="n">newbounds</span><span class="p">[</span><span class="s2">&quot;ymax&quot;</span><span class="p">],</span>
+                <span class="mf">0.00001</span><span class="p">,</span>
+                <span class="mf">0.00001</span><span class="p">,</span>
+                <span class="n">inside</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Cannot make new bounds that will work&quot;</span><span class="p">)</span>
+            <span class="n">newbounds</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">return</span> <span class="n">notcovered</span><span class="p">,</span> <span class="n">newbounds</span></div>
 </pre></div>
 
           </div>
@@ -816,7 +1066,7 @@
 
 
 <h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../gfail.html">gfail</a></li>
 </ul>
@@ -826,12 +1076,12 @@
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="../../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
     </div>
 </div>
-<script>$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
       <div class="clearer"></div>
