@@ -27,14 +27,12 @@ def test_zhu2015(tmpdir):
         -d %s/loma_prieta/model_inputs \
         -o [TMPOUT] \
         -c %s/defaultconfigfiles/models \
-        -md %s/loma_prieta/mapping_inputs
     """ % (
         datadir,
         upone,
-        datadir,
     )
 
-    trimfile = "%s/loma_prieta/mapping_inputs/ne_10m_ocean/ne_10m_ocean.shp" % datadir
+    trimfile = "%s/loma_prieta/ne_10m_ocean/ne_10m_ocean.shp" % datadir
 
     # Make a copy of current defaults
     default_file = os.path.join(os.path.expanduser("~"), ".gfail_defaults")
