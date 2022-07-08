@@ -43,7 +43,8 @@ NEW_UNCONSOLIDATED = -1.36
 
 CLIPS = {"cti": (0.0, 19.0), "pgv": (0.0, 211.0)}  # cm/s
 
-ERROR_COEFFS = {"a": -7.592, "b": 5.237, "c": -3.042, "d": 4.035}
+# Coefficients for conversion to coverage
+COV_COEFFS = {"a": -7.592, "b": 5.237, "c": -3.042, "d": 4.035}
 
 
 class Jessee2018Model(LogisticModelBase):
@@ -90,7 +91,11 @@ class Jessee2018Model(LogisticModelBase):
         return
 
     def calculate_coverage(self, P):
-        P = np.exp(-7.592 + 5.237 * P - 3.042 * P**2 + 4.035 * P**3)
+        a = COV_COEFFS["a"]
+        b = COV_COEFFS["b"]
+        c = COV_COEFFS["c"]
+        d = COV_COEFFS["d"]
+        P = np.exp(a + b * P + c * P**2 + d * P**3)
         return P
 
     def modify_slope(self, slope):
@@ -127,10 +132,10 @@ class Jessee2018Model(LogisticModelBase):
 
         if self.do_coverage:
             P = read(self.layers["P"])._data
-            a = ERROR_COEFFS["a"]
-            b = ERROR_COEFFS["b"]
-            c = ERROR_COEFFS["c"]
-            d = ERROR_COEFFS["d"]
+            a = COV_COEFFS["a"]
+            b = COV_COEFFS["b"]
+            c = COV_COEFFS["c"]
+            d = COV_COEFFS["d"]
 
             std1 = (
                 np.exp(a + b * P + c * P**2.0 + d * P**3.0)
