@@ -9,6 +9,7 @@
 | ubuntu-latest | 3.9  | [![Build Status](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_apis/build/status/usgs.groundfailure?branchName=main&jobName=groundfailure&configuration=groundfailure%20Linux_py39)](https://dev.azure.com/GHSC-ESI/USGS-groundfailure/_build/latest?definitionId=7&branchName=main) |
 
 # groundfailure
+Allstadt, K.E., Thompson, E.M., Hearne, M., Biegel, K., 2018, groundfailure v1.0: U.S. Geological Survey Software Release, https://doi.org/10.5066/P91G4NS4.
 
 ## Introduction
 
@@ -41,6 +42,8 @@ the data_path directory.)
 
 Documentation for the use of these programs can be seen by calling them
 with the `-h` flag. 
+
+Instead of the command line options, users can also run parts of the codes manually and interactively, for example with IPython or Jupyter notebooks. See the [notebook on manual runs](http://localhost:8889/notebooks/notebooks/Run_groundfailure_manually.ipynb) for examples on how to do so.
 
 ## Installation and Dependencies
 
@@ -119,20 +122,7 @@ Default options, such as the output directory, paths to input data files, paths 
 
 ### Setting default paths on system 
 
-The `gfail` command lets you set paths to all the input files on each run, or you can set some default paths that will be used anytime that the paths are not explicitly specified. Most path options are used only for operational near-real-time use, only the data_path, configfilepath, and output_filepath and optionally the coastlines trimming file (trimfile) are needed for local runs. You can set these defaults either using `gfail`'s `--set-default-paths` flag as demonstrated below: 
-
-```sh
-gfail --set-default-paths \
-    -d /Users/YourName/model_inputs \
-    -o /Users/YourName/outputs \
-    -c /Users/YourName/groundfailure/defaultconfigfiles/models \
-    -pf /Users/YourName/populationfile.flt \
-    -tr /Users/YourName/coastlinefile.shp \
-    -pdl /Users/YourName/ProductClient/config.ini \
-    -log /Users/YourName/logs \
-    -db /Users/YourName/events.db \
-```
-or alternatively, the user can instead manually create a text file called .gfail_defaults following the format example below and put that in their home directory, the outcome will be the same:
+The `gfail` command lets you set paths to all the input files on each run, or you can set some default paths that will be used anytime that the paths are not explicitly specified. Most path options are used only for operational near-real-time use, only the data_path, configfilepath, and output_filepath and optionally the coastlines trimming file (trimfile) are needed for local runs. You can set these defaults either using `gfail`'s `--set-default-paths` flag as demonstrated in the [commandline notebook](https://github.com/usgs/groundfailure/blob/main/notebooks/Run_groundfailure_commandline.ipynb). Alternatively, the user can manually create a text file called .gfail_defaults following the format example below and put that in their home directory, the outcome will be the same:
 
 ```
 data_path = /Users/YourName/model_inputs
@@ -147,18 +137,6 @@ comcat_config = /Users/YourName/ProductClient/comcat.ini
 
 ```
 
-#### Check default paths that are currently set
-
-```sh
-gfail --list-default-paths
-```
-
-#### Clear all default paths
-
-```sh
-gfail --reset-default-paths
-```
-
 #### After setting default paths, gfail can be run like this:
 
 ```sh
@@ -171,9 +149,9 @@ gfail modelconfig.ini shakefile.xml --gis --kmz
 
 ### Model config file format
 
-The model config file format is a modified version of the "INI" format.  It is described in detail [here](http://configobj.readthedocs.org/en/latest/configobj.html#config-files).
+The model config file format is a modified version of the "INI" format.  It is described in detail [here](http://configobj.readthedocs.org/en/latest/configobj.html#config-files). See any of the [default configuration files](https://github.com/usgs/groundfailure/tree/main/defaultconfigfiles/models) included with this software release for well-commented examples of the model config file format.
 
-**Notes** 
+**Useful notes about config file formats** 
 * References and other strings with commas within them need to be enclosed in
   quotes. Example:
   * 'Verdin, D.W., Godt, J., Funk, C., Pedreros, D., Worstell, B. and Verdin,
@@ -183,125 +161,14 @@ The model config file format is a modified version of the "INI" format.  It is d
 * Arrays should be not be enclosed in brackets and should be comma separated.
   Example:
   * model = 0, 0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 0.99, 1.
-* Files, filepaths, and folders being used for input layers should all be labeled
-  as 'file' in the config file regardless of actual structure.
-* If file paths in the config file are relative to a base folder on the users
-  system, and you are running models manually and/or not setting default paths in
-  gfail you will need to run correct_config_filepaths() after reading in the
-  config file. See notebooks for details.
+* Files, filepaths, and folders being used for input layers should all be labeled as 'file' in the config file regardless of actual structure.
+* If file paths in the config file are relative to a base data folder on the user's system, and you are running models manually and/or not setting default paths in gfail, you will need to run correct_config_filepaths() after reading in the config file. See the [notebook on manual runs](https://github.com/usgs/groundfailure/blob/main/notebooks/Run_groundfailure_manually.ipynb) for an example.
 
-```ini
-[jessee_2018]
-  #Detailed description of the model, its inputs, etc.
-  description = 'This is the Nowicki Jessee Model, which uses lithology, and land cover.'
-  longref = 'Nowicki Jessee, M.A., Hamburger, H.W., Allstadt, K.E., Wald, D.J., Robeson, S.M., Tanyas, H., Hearne, M., Thompson, E.M., 2018, A Global Empirical Model for Near Real-time Assessment of Seismically Induced Landslides, J. Geophys. Res. Earth Surface, 123, 1835-1859'
-  shortref = 'Nowicki Jessee and others (2018)'
-  
-  #which type of ground failure model is this? Options are landslide or liquefaction.
-  gfetype = landslide
+## Structure for Model Output
 
-  #what is the grid to which all other grids in this model will be resampled?
-  baselayer = slope 
+If run manually within python (e.g., [see manual notebook](https://github.com/usgs/groundfailure/blob/main/notebooks/Run_groundfailure_manually.ipynb)), each model outputs a single ordered dictionary, which has keys that correspond to the names of the input and output layers from the model (e.g., 'pga', 'slope', 'friction', 'cti1', 'model'). 'model' is the model output, all other names come from the names used in the model configuration file.
 
-  slopemin = 2. # in degrees
-  slopemax = 90. # in degrees
-  slopefile = global_grad.tif
-
-  # Default standard deviation value to use if no map is available. Units are in logit space. 
-  default_stddev = 0.03
-
-  # Model's maximum probability, used for computing beta distribution
-  maxprob = 0.256
-
-  # Confidence interval probabilities for computing quantiles. 
-  # Note, +/- 1 std is 0.68, 2 std is 0.95. Comment out to turn off.
-  # conf_int_probabilities = 0.68, 0.95
-
-  # Location of code corresponding to this model
-  funcname = LogBase
-
-  [[layers]]
-    [[[slope]]]
-      file = global_grad.tif
-      units = gradient
-      longref = """Global Multi-resolution Terrain Elevation Data 2010 (GMTED2010) available at http://topotools.cr.usgs.gov/gmted_viewer/"""
-      shortref = 'GMTED2010'
-    [[[rock]]]
-      file = GLIM_replace.tif
-      units = lithology
-      longref = """Hartmann, Jens and Moosdorf, Nils, 2012, The new global lithological map database GLiM: A representation of rock properties at the Earth surface, G3, vol 13, no. 12., 37 p."""
-      shortref = 'Hartmann and Moosdorf (2012)'
-    [[[landcover]]]
-      file = globcover_replace.tif
-      units = none
-      longref = 'Moderate resolution imaging spectroradiometer (MODIS) land cover dataset, http://modis.gsfc.nasa.gov/'
-      shortref = 'MODIS land cover'
-    [[[cti]]]
-      file = global_cti_fil.grd
-      units = index
-      longref = 'USGS HYDRO1k geographic database, available at https://lta.cr.usgs.gov/HYDRO1K'
-      shortref = 'HYDRO1k'
-    [[[stddev]]]
-      file = jessee_standard_deviation.tif
-      units = none
-      longref = ''
-      shortref = ''
-
-  [[interpolations]]
-    slope = linear
-    rock = nearest
-    landcover = nearest
-    cti = linear
-    stddev = linear
-
-  [[display_options]]  # These only get used in mapping programs
-    [[[lims]]]  # Optional
-      # Corresponding to different possible layer keys - don't need these, will just use defaults if missing,
-      # don't need full name of layer, just something that is part of it
-      model = 0.002, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5
-      pgv = None
-      slope = None
-      rock = None
-      landcover = None
-      cti = None
-
-    [[[colors]]]
-      default = cm.jet
-      alpha = 0.8
-      # Corresponding to different possible layer keys - don't need these, will just use defaults if missing
-      model = cm.CMRmap_r
-      pgv = cm.jet
-      slope = cm.gnuplot2
-      rock = cm.jet
-      landcover = cm.jet
-      cti = cm.jet
-
-    [[[logscale]]]
-      # Corresponding to different possible layer keys - don't need these, will just use defaults if missing,
-      # don't need full name of layer, just something that is part of it
-      model = True
-      pgv = False
-      slope = False
-      rock = False
-      cti = False
-      landcover = False
-
-    [[[maskthresholds]]]
-      # Corresponding to different possible layer keys - don't need these, will just use defaults if missing,
-      # don't need full name of layer, just something that is part of it
-      model = 0.002
-      pgv = None
-      slope = None
-      rock = None
-      cti = None
-      landcover = None
-```
-
-## API for Model Output
-
-Each model should output a single dictionary, which has keys that correspond to the names of the input and output layers from the model.
-
-Each layer in the dictionary is itself a dictionary, with the following fields:
+Each layer in the dictionary is itself a dictionary with some of the following fields:
  - *description* A dictionary with the fields:
 
    * *name* Short name, suitable for use as a plot title if necessary.
@@ -313,86 +180,13 @@ Each layer in the dictionary is itself a dictionary, with the following fields:
      * *coverage* Fractional coverage of groundfailure in a given cell (0 to 1).
      * *displacement* Distance material will move from or in given cell (unbounded).
 
-   * *parameters* (Not required for input layers) A dictionary of key/value pairs, where the values must be either numbers or strings.
+   * *parameters* (Model output only) A dictionary of key/value pairs, where the values must be either numbers or strings.
 
  - *type* Indicates whether this grid contains input data or output from a model.
 
  - *label* What will be written next to the colorbar for the data layer.
 
- - *grid* Input data or model output, in the form of a Grid2D object. 
-
-A template model function implementation is shown below.
-
-```py
-def failure_model():
-    geodict = GeoDict({
-        'xmin':0.5,'xmax':3.5,
-        'ymin':0.5,'ymax':3.5,
-        'dx':1.0,'dy':1.0,
-        'nx':4,'ny':4
-    })
-    pgrid = Grid2D(data = np.arange(0,16).reshape(4,4),geodict=geodict)
-    cgrid = Grid2D(data = np.arange(1,17).reshape(4,4),geodict=geodict)
-    sgrid = Grid2D(data = np.arange(2,18).reshape(4,4),geodict=geodict)
-    mgrid = Grid2D(data = np.arange(3,19).reshape(4,4),geodict=geodict)
-
-    modellayer = {
-        'description':{
-	    'name':'Nowicki 2014',
-            'longref':'Nowicki, A., 2014, A logistic regression landslide model: Failure Monthly, v. 2, p. 1-7.',
-            'units':'index',
-            'shakemap': '19940117123055_ver2'
-            'parameters':{
-	        'b0':1.045,
-                'b1':5.435
-	    }
-        },
-        'type':'output',
-        'label':'Relative Index Value',
-        'grid':pgrid,
-    }
-    
-    layer1 = {
-        'description':{
-	    'name':'Smith and Jones 1994',
-            'longref':'Smith J. and Jones, J., 1994, Holding on to things: Journal of Geophysical Sciences, v. 17,  p. 100-105',
-            'units':'kPa'
-	},
-        'type':'input',
-        'label':'cohesion (kPa)',
-        'grid':cgrid
-    }
-    
-    layer2 = {
-        'description':{
-	    'name':'Garfunkel and Oates 2001',
-            'longref':'Garfunkel, A., and Oates, J., 2001, I'm afraid to look down: Journal of Steepness, v. 8, p. 10-25',
-            'units':'degrees'
-	},
-        'type':'input',
-        'label':'slope (degrees)',
-        'grid':sgrid
-    }
-
-    layer3 = {
-        'description':{
-	    'units':'g'
-            'shakemap': '19940117123055_ver2'
-	},
-        'type':'input',
-        'label':'PGA (g)',
-        'grid':mgrid
-    }
-
-    output = {
-        'model':problayer,
-        'cohesion':layer1,
-        'slope':layer2,
-        'pga':layer3
-    }
-
-    return output
-```
+ - *grid* Input data or model output, in the form of a MapIO Grid2D object. 
 
 ## Sources of test datasets
 
@@ -421,3 +215,4 @@ as described above. Additional layers used in the tests were extracted from the 
 
 ## References
 
+Allstadt, K.E., Thompson, E.M., Jibson, R.W., Wald, D.J., Hearne, M., Hunter, E.J., Fee, J., Schovanec, H., Slosky, D., Haynie, K. L., 2021, The USGS ground failure product: near-real-time estimates of earthquake-triggered landslides and liquefaction, Earthquake Spectra, 38, 5-36, https://doi.org/10.1177%2F87552930211032685.
