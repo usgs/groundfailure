@@ -137,7 +137,7 @@ comcat_config = /Users/YourName/ProductClient/comcat.ini
 
 ```
 
-#### After setting default paths, gfail can be run like this:
+#### After setting default paths, gfail can be run from the command line like this:
 
 ```sh
 gfail modelconfig.ini shakefile.xml --gis --kmz
@@ -166,7 +166,7 @@ The model config file format is a modified version of the "INI" format.  It is d
 
 ## Structure for Model Output
 
-If run manually within python (e.g., [see manual notebook](https://github.com/usgs/groundfailure/blob/main/notebooks/Run_groundfailure_manually.ipynb)), each model outputs a single ordered dictionary, which has keys that correspond to the names of the input and output layers from the model (e.g., 'pga', 'slope', 'friction', 'cti1', 'model'). 'model' is the model output, all other names come from the names used in the model configuration file.
+If run manually within python (e.g., [see manual notebook](https://github.com/usgs/groundfailure/blob/main/notebooks/Run_groundfailure_manually.ipynb)), each model outputs a single ordered dictionary, which has keys that correspond to the names of the input and output layers from the model (e.g., 'pga', 'slope', 'friction', 'cti1', 'model'). Keys for the input layers will only be present if saveinputs=True was set when calling the model. The 'model' key is the model output, all other names of input layers come from the names used in the model configuration file.
 
 Each layer in the dictionary is itself a dictionary with some of the following fields:
  - *description* A dictionary with the fields:
