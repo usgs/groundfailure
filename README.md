@@ -70,6 +70,12 @@ Instead of the command line options, users can also run parts of the codes manua
     was correctly installed. If successful, you will see the help section of
     the gfail code.
 
+5. (optional) To excercise the code and run the unit tests, you can run this command
+   in the base of the repository:
+   ```
+   pytest .
+   ```
+
 ### Updating
 
 To ensure all of your dependencies are up to date, reinstall completely starting at Step 2 above. The installation script will uninstall your current gf environment and then reinstall a new one.
