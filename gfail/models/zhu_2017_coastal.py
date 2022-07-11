@@ -4,6 +4,9 @@ import numpy as np
 # local imports
 from gfail import Zhu2017Model
 
+# Coefficients for conversion to coverage
+COV_COEFFS = {"a": 0.4208, "b": 62.59, "c": 11.43}
+
 
 class Zhu2017ModelCoastal(Zhu2017Model):
 
@@ -60,5 +63,8 @@ class Zhu2017ModelCoastal(Zhu2017Model):
         )
 
     def calculate_coverage(self, P):
-        P = 0.4208 / (1 + 62.59 * np.exp(-11.43 * P)) ** 2
+        a = COV_COEFFS["a"]
+        b = COV_COEFFS["b"]
+        c = COV_COEFFS["c"]
+        P = a / (1 + b * np.exp(-c * P)) ** 2
         return P

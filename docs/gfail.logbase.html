@@ -1,0 +1,359 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gfail.logbase &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gfail.pdl" href="gfail.pdl.html" />
+    <link rel="prev" title="gfail.gfailrun" href="gfail.gfailrun.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.logbase">
+<span id="gfail-logbase"></span><h1>gfail.logbase<a class="headerlink" href="#module-gfail.logbase" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">gfail.logbase.</span></span><span class="sig-name descname"><span class="pre">LogisticModelBase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shakefile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trimfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slopefile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">saveinputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>TODO needs documentation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>object</strong> (<em>_type_</em>) – _description_</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>Exception</strong> – _description_</p></li>
+<li><p><strong>Exception</strong> – _description_</p></li>
+</ul>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>_description_</p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>_type_</p>
+</dd>
+</dl>
+<p>Initialize LogisticModelBase object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shakefile</strong> (<em>str</em>) – Path to ShakeMap grid.xml file.</p></li>
+<li><p><strong>config</strong> (<em>dict</em>) – Dict like object as a result of reading in “logbase”
+format INI files.</p></li>
+<li><p><strong>bounds</strong> (<em>dict</em>) – Fields are ‘xmin’, ‘xmax’, ‘ymin’, ‘ymax’.</p></li>
+<li><p><strong>uncertfile</strong> (<em>str</em>) – Path to ShakeMap uncertainty.xml file.</p></li>
+<li><p><strong>trimfile</strong> (<em>str</em>) – Path to shapefile to use for masking ocean pixels.</p></li>
+<li><p><strong>slopefile</strong> (<em>str</em>) – File containing slope data to be used for slope
+masking.</p></li>
+<li><p><strong>saveinputs</strong> (<em>bool</em>) – Save input layer grids with model output.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Notes: All input data grids are loaded in one at a time, and saved to
+a temporary folder that is deleted when the object is deleted. The
+file names loaded are stored in the self.layers dictionary.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.COEFFS">
+<span class="sig-name descname"><span class="pre">COEFFS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.COEFFS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.TERMS">
+<span class="sig-name descname"><span class="pre">TERMS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.TERMS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.TERMLAYERS">
+<span class="sig-name descname"><span class="pre">TERMLAYERS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.TERMLAYERS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.SHAKELAYERS">
+<span class="sig-name descname"><span class="pre">SHAKELAYERS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.SHAKELAYERS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.do_coverage">
+<span class="sig-name descname"><span class="pre">do_coverage</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.do_coverage" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.notes">
+<span class="sig-name descname"><span class="pre">notes</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.notes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.nonzero">
+<span class="sig-name descname"><span class="pre">nonzero</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.nonzero" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.slopemin">
+<span class="sig-name descname"><span class="pre">slopemin</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'none'</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.slopemin" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.slopemax">
+<span class="sig-name descname"><span class="pre">slopemax</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'none'</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.slopemax" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.slopefile">
+<span class="sig-name descname"><span class="pre">slopefile</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.slopefile" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.prob_units">
+<span class="sig-name descname"><span class="pre">prob_units</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#gfail.logbase.LogisticModelBase.prob_units" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.read_slope">
+<span class="sig-name descname"><span class="pre">read_slope</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.read_slope"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.read_slope" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.get_slope_non_zero">
+<span class="sig-name descname"><span class="pre">get_slope_non_zero</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.get_slope_non_zero"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.get_slope_non_zero" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.modify_slope">
+<span class="sig-name descname"><span class="pre">modify_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slope</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.modify_slope"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.modify_slope" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.set_slope_params">
+<span class="sig-name descname"><span class="pre">set_slope_params</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.set_slope_params"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.set_slope_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.get_units">
+<span class="sig-name descname"><span class="pre">get_units</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.get_units"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.get_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get units for an input layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>layer</strong> (<em>str</em>) – name of layer.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>units.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.validate_units">
+<span class="sig-name descname"><span class="pre">validate_units</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cmodel</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.validate_units"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.validate_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validate model units.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cmodel</strong> (<em>dict</em>) – Sub-dictionary from config for specific model.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Model units.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.validate_refs">
+<span class="sig-name descname"><span class="pre">validate_refs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cmodel</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.validate_refs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.validate_refs" title="Permalink to this definition">¶</a></dt>
+<dd><p>Validate references for models and layers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>cmodel</strong> (<em>dict</em>) – Sub-dictionary from config for specific model.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>(modelrefs, longrefs, shortrefs) where:</dt><dd><ul class="simple">
+<li><dl class="simple">
+<dt>modelrefs: dictionary of citation information for model</dt><dd><p>keys=’longref’, ‘shortref’</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>shortrefs: dictionary containing short reference for each</dt><dd><p>input layer</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>longrefs: dictionary containing full references for each</dt><dd><p>input layer</p>
+</dd>
+</dl>
+</li>
+</ul>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.save_uncertainty_layers">
+<span class="sig-name descname"><span class="pre">save_uncertainty_layers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.save_uncertainty_layers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.save_uncertainty_layers" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.pre_process">
+<span class="sig-name descname"><span class="pre">pre_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.pre_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.pre_process" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.get_sample_dict">
+<span class="sig-name descname"><span class="pre">get_sample_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.get_sample_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.get_sample_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.subdivide">
+<span class="sig-name descname"><span class="pre">subdivide</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.subdivide"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.subdivide" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.calculate">
+<span class="sig-name descname"><span class="pre">calculate</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.calculate"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.calculate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculate the probability, and sigma (if possible).</p>
+<blockquote>
+<div><dl>
+<dt>Returns:</dt><dd><dl>
+<dt>dict: Must contain at least one sub dictionary with</dt><dd><p>key “model”. That dictionary should look like:
+{‘grid’: Grid2D object contanining probability values,</p>
+<blockquote>
+<div><p>‘label’: String used for display label
+‘type’: ‘output’,
+‘description’: String description of model.</p>
+</div></blockquote>
+<p>}</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</div></blockquote>
+<p>This method uses an “accumulator” array, and loads in data layers
+from the temporary directory one <em>term</em> at a time. As some terms can
+be a combination of layers, this may mean that multiple grids are
+loaded into memory simultaneously, in addition to the accumulator grid.
+Layer grids are deleted from memory once they have been added to the
+accumulator array.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.get_description">
+<span class="sig-name descname"><span class="pre">get_description</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.get_description"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.get_description" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.calculate_coverage">
+<span class="sig-name descname"><span class="pre">calculate_coverage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.calculate_coverage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.calculate_coverage" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.calculate_uncertainty">
+<span class="sig-name descname"><span class="pre">calculate_uncertainty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.calculate_uncertainty"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.calculate_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.logbase.LogisticModelBase.modify_probability">
+<span class="sig-name descname"><span class="pre">modify_probability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/logbase.html#LogisticModelBase.modify_probability"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.logbase.LogisticModelBase.modify_probability" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="gfail.models.html">gfail.models</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">gfail.logbase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.transfer.html">gfail.transfer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

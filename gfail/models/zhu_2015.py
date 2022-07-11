@@ -32,8 +32,6 @@ CLIPS = {
     "pga": (0.0, 270.0),
 }  # cm/s
 
-ERROR_COEFFS = {"a": 0.4915, "b": 42.4, "c": 9.165}
-
 
 class Zhu2015Model(LogisticModelBase):
     def __init__(
@@ -76,7 +74,7 @@ class Zhu2015Model(LogisticModelBase):
         return slope
 
     def calculate_coverage(self, P):
-        P = 0.81 * P  # not %
+        P = 0.81 * P  # correction factor to coverage found in Zhu et al 2017 paper
         return P
 
     def modify_probability(self, P):

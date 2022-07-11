@@ -8,9 +8,9 @@ from gfail.logbase import LogisticModelBase
 
 
 COEFFS = {
-    "b0": 0.,  # intercept (already incorporated into X0)
+    "b0": 0.0,  # intercept (already incorporated into X0)
     "b1": 1.65,  # log(pgv)
-    "b2": 1.,  # X0, all inputs without shaking
+    "b2": 1.0,  # X0, all inputs without shaking
     "b3": 0.01,  # log(pgv)*arctan(slope)
 }
 
@@ -30,7 +30,8 @@ SHAKELAYERS = ["pgv"]
 
 CLIPS = {"pgv": (0.0, 211.0)}  # cm/s
 
-ERROR_COEFFS = {"a": -7.592, "b": 5.237, "c": -3.042, "d": 4.035}
+# Coefficients for conversion to coverage
+COV_COEFFS = {"a": -7.592, "b": 5.237, "c": -3.042, "d": 4.035}
 
 
 class Jessee2018Model(LogisticModelBase):
@@ -62,22 +63,17 @@ class Jessee2018Model(LogisticModelBase):
 
     def pre_process(self, key, grid):
         """Correct grids in model specific way."""
-        if key == "rock":
-            grid._data[grid._data <= OLD_UNCONSOLIDATED] = NEW_UNCONSOLIDATED
-            self.notes += (
-                "unconsolidated sediment coefficient "
-                f"changed to {NEW_UNCONSOLIDATED} (weaker) "
-                "from {OLD_UNCONSOLIDATED} to "
-                "better reflect that this "
-                "unit is not actually strong\n"
-            )
         if key in CLIPS:
             clipmin, clipmax = CLIPS[key]
             grid._data = np.clip(grid._data, clipmin, clipmax)
         return
 
     def calculate_coverage(self, P):
-        P = np.exp(-7.592 + 5.237 * P - 3.042 * P**2 + 4.035 * P**3)
+        a = COV_COEFFS["a"]
+        b = COV_COEFFS["b"]
+        c = COV_COEFFS["c"]
+        d = COV_COEFFS["d"]
+        P = np.exp(a + b * P + c * P**2 + d * P**3)
         return P
 
     def modify_slope(self, slope):
@@ -114,10 +110,10 @@ class Jessee2018Model(LogisticModelBase):
 
         if self.do_coverage:
             P = read(self.layers["P"])._data
-            a = ERROR_COEFFS["a"]
-            b = ERROR_COEFFS["b"]
-            c = ERROR_COEFFS["c"]
-            d = ERROR_COEFFS["d"]
+            a = COV_COEFFS["a"]
+            b = COV_COEFFS["b"]
+            c = COV_COEFFS["c"]
+            d = COV_COEFFS["d"]
 
             std1 = (
                 np.exp(a + b * P + c * P**2.0 + d * P**3.0)

@@ -1,0 +1,177 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>gfail.models.zhu_2017 &#8212; groundfailure 0.1 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="gfail.models.zhu_2017_coastal" href="gfail.models.zhu_2017_coastal.html" />
+    <link rel="prev" title="gfail.models.zhu_2015" href="gfail.models.zhu_2015.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-gfail.models.zhu_2017">
+<span id="gfail-models-zhu-2017"></span><h1>gfail.models.zhu_2017<a class="headerlink" href="#module-gfail.models.zhu_2017" title="Permalink to this heading">¶</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">gfail.models.zhu_2017.</span></span><span class="sig-name descname"><span class="pre">Zhu2017Model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shakefile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trimfile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slopefile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">saveinputs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/models/zhu_2017.html#Zhu2017Model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="gfail.logbase.html#gfail.logbase.LogisticModelBase" title="gfail.logbase.LogisticModelBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">LogisticModelBase</span></code></a></p>
+<p>Initialize LogisticModelBase object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>shakefile</strong> (<em>str</em>) – Path to ShakeMap grid.xml file.</p></li>
+<li><p><strong>config</strong> (<em>dict</em>) – Dict like object as a result of reading in “logbase”
+format INI files.</p></li>
+<li><p><strong>bounds</strong> (<em>dict</em>) – Fields are ‘xmin’, ‘xmax’, ‘ymin’, ‘ymax’.</p></li>
+<li><p><strong>uncertfile</strong> (<em>str</em>) – Path to ShakeMap uncertainty.xml file.</p></li>
+<li><p><strong>trimfile</strong> (<em>str</em>) – Path to shapefile to use for masking ocean pixels.</p></li>
+<li><p><strong>slopefile</strong> (<em>str</em>) – File containing slope data to be used for slope
+masking.</p></li>
+<li><p><strong>saveinputs</strong> (<em>bool</em>) – Save input layer grids with model output.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Notes: All input data grids are loaded in one at a time, and saved to
+a temporary folder that is deleted when the object is deleted. The
+file names loaded are stored in the self.layers dictionary.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.COEFFS">
+<span class="sig-name descname"><span class="pre">COEFFS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'b0':</span> <span class="pre">8.801,</span> <span class="pre">'b1':</span> <span class="pre">0.334,</span> <span class="pre">'b2':</span> <span class="pre">-1.918,</span> <span class="pre">'b3':</span> <span class="pre">0.0005408,</span> <span class="pre">'b4':</span> <span class="pre">-0.2054,</span> <span class="pre">'b5':</span> <span class="pre">-0.0333}</span></em><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.COEFFS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.TERMS">
+<span class="sig-name descname"><span class="pre">TERMS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'b1':</span> <span class="pre">'np.log(pgv._data*(1/(1+np.power(2.71828,-2*(MW-6)))))',</span> <span class="pre">'b2':</span> <span class="pre">'np.log(vs30._data)',</span> <span class="pre">'b3':</span> <span class="pre">'precip._data',</span> <span class="pre">'b4':</span> <span class="pre">'np.minimum(dc._data,</span> <span class="pre">dr._data)',</span> <span class="pre">'b5':</span> <span class="pre">'wtd._data'}</span></em><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.TERMS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.TERMLAYERS">
+<span class="sig-name descname"><span class="pre">TERMLAYERS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'b1':</span> <span class="pre">'pgv',</span> <span class="pre">'b2':</span> <span class="pre">'vs30',</span> <span class="pre">'b3':</span> <span class="pre">'precip',</span> <span class="pre">'b4':</span> <span class="pre">'dc,</span> <span class="pre">dr',</span> <span class="pre">'b5':</span> <span class="pre">'wtd'}</span></em><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.TERMLAYERS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.pre_process">
+<span class="sig-name descname"><span class="pre">pre_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/models/zhu_2017.html#Zhu2017Model.pre_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.pre_process" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.modify_slope">
+<span class="sig-name descname"><span class="pre">modify_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slope</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/models/zhu_2017.html#Zhu2017Model.modify_slope"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.modify_slope" title="Permalink to this definition">¶</a></dt>
+<dd><p>Perform modifications to slope to convert to degrees.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.calculate_coverage">
+<span class="sig-name descname"><span class="pre">calculate_coverage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/models/zhu_2017.html#Zhu2017Model.calculate_coverage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.calculate_coverage" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.calculate_uncertainty">
+<span class="sig-name descname"><span class="pre">calculate_uncertainty</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/models/zhu_2017.html#Zhu2017Model.calculate_uncertainty"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.calculate_uncertainty" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="gfail.models.zhu_2017.Zhu2017Model.modify_probability">
+<span class="sig-name descname"><span class="pre">modify_probability</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">P</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/gfail/models/zhu_2017.html#Zhu2017Model.modify_probability"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#gfail.models.zhu_2017.Zhu2017Model.modify_probability" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method should be implemented by child classes.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">groundfailure</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="gfail.html">gfail</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="gfail.models.html">gfail.models</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="gfail.models.godt.html">gfail.models.godt</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gfail.models.jessee_2018.html">gfail.models.jessee_2018</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gfail.models.jessee_2018_slim.html">gfail.models.jessee_2018_slim</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gfail.models.nowicki_2014.html">gfail.models.nowicki_2014</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gfail.models.zhu_2015.html">gfail.models.zhu_2015</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">gfail.models.zhu_2017</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gfail.models.zhu_2017_coastal.html">gfail.models.zhu_2017_coastal</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gfail.models.zhu_2017_slim.html">gfail.models.zhu_2017_slim</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.gfailrun.html">gfail.gfailrun</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.logbase.html">gfail.logbase</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.pdl.html">gfail.pdl</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.spatial.html">gfail.spatial</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.stats.html">gfail.stats</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.transfer.html">gfail.transfer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.utilities.html">gfail.utilities</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gfail.webpage.html">gfail.webpage</a></li>
+</ul>
+</li>
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

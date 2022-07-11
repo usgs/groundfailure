@@ -11,7 +11,8 @@ SHAKELAYERS = ["pgv", "pga"]
 
 CLIPS = {"pgv": (0.0, 150.0)}  # cm/s
 
-ERROR_COEFFS = {"a": 0.4915, "b": 42.4, "c": 9.165}
+# Coefficients for conversion to coverage
+COV_COEFFS = {"a": 0.4915, "b": 42.4, "c": 9.165}
 
 
 class Zhu2017Model(LogisticModelBase):
@@ -23,7 +24,7 @@ class Zhu2017Model(LogisticModelBase):
     COEFFS = {
         "b0": 0,
         "b1": 0.334,
-        "b2": 1.,
+        "b2": 1.0,
     }
 
     TERMLAYERS = {
@@ -71,7 +72,10 @@ class Zhu2017Model(LogisticModelBase):
         return slope
 
     def calculate_coverage(self, P):
-        P = 0.4915 / (1 + 42.40 * np.exp(-9.165 * P)) ** 2  # not %
+        a = COV_COEFFS["a"]
+        b = COV_COEFFS["b"]
+        c = COV_COEFFS["c"]
+        P = a / (1 + b * np.exp(-c * P)) ** 2
         return P
 
     def calculate_uncertainty(self):
@@ -88,9 +92,9 @@ class Zhu2017Model(LogisticModelBase):
         del X
         if self.do_coverage:
             P = read(self.layers["P"])._data
-            a = ERROR_COEFFS["a"]
-            b = ERROR_COEFFS["b"]
-            c = ERROR_COEFFS["c"]
+            a = COV_COEFFS["a"]
+            b = COV_COEFFS["b"]
+            c = COV_COEFFS["c"]
             std1 = (
                 (2 * a * b * c * np.exp(-c * P)) / ((1 + b * np.exp(-c * P)) ** 3.0)
             ) ** 2.0 * varP

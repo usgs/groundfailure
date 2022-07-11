@@ -86,6 +86,18 @@ USA = {
         71.6816, -138.8177,
         71.6816, -138.8177,
         71.5921, -167.0176""",
+    "PRVI": """5.0,
+        18.327718672381071, -68.097230996203834,
+        18.718778745407683, -67.170418623130757,
+        18.55062291400624, -65.219028858727981,
+        18.605371324229964, -64.953108009069879,
+        18.312076269460007, -64.59724334261567,
+        17.694201354077961, -64.323501291497038,
+        17.44392290734093, -64.698918961602587,
+        17.748949764301688, -67.334663853801942,
+        17.862357185479404, -68.062035589631435,
+        18.089172027834838, -68.187174812999956,
+        18.327718672381071, -68.097230996203834""",
 }
 
 
@@ -863,7 +875,6 @@ def process_shakemap(args, config):
         "gf_version": version,
         "pdlcall": not is_manual,
         "debug": args.debug,
-        "keep_shakemap_bounds": args.keep_shakemap_bounds,
     }
     if isinstance(pargs1, dict):
         pargs1 = argparse.Namespace(**pargs1)
@@ -1334,7 +1345,6 @@ def main(args, config, exitafter=True):
                     targs.property_alertlevel = "unset"
             targs.eventids = ",".join(detail["ids"][1:].split(","))
             targs.debug = args.debug
-            targs.keep_shakemap_bounds = args.keep_shakemap_bounds
             # Check if stopfile exists before proceeding
             isstopped(targs, config)
             process_shakemap(targs, config)
@@ -1517,16 +1527,6 @@ the data_path directory.
             "where 2 is in percent g"
         ),
         default=None,
-    )
-    bhelp = (
-        "Preserve the bounds dictated by the ShakeMap. This is only "
-        'to used with the "logbase" versions of the models. In cases '
-        "where the ShakeMap crosses the 180 meridian, and a "
-        'non "logbase" version of the model is being run, this will '
-        "cause an error."
-    )
-    argparser.add_argument(
-        "--keep-shakemap-bounds", help=bhelp, action="store_true", default=False
     )
 
     pargs, unknown = argparser.parse_known_args()
