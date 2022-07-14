@@ -558,7 +558,9 @@ def create_png(
     files = os.listdir(event_dir)
     if lsmodels is None:
         # Read in the "preferred" model for landslides
-        ls_mod_file = [f for f in files if "jessee_2018.hdf5" in f]
+        #ls_mod_file = [f for f in files if "jessee_2018.hdf5" in f]
+        ls_mod_file = [f for f in files if "jessee_2018" in f and '.hdf5' in f]  # generalize so it also works for slim version
+
         if len(ls_mod_file) == 1:
             ls_file = os.path.join(event_dir, ls_mod_file[0])
             ls_mod = loadlayers(ls_file)
@@ -578,6 +580,8 @@ def create_png(
 
             filen = os.path.join(event_dir, "%s.png" % filesnippet)
             plt.imsave(filen, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
+        elif len(ls_mod_file) > 1:
+            raise OSError('More than one version of the preferred landslide model was run')
         else:
             raise OSError(
                 "Preferred landslide model result (%s) not found." % ls_mod_file
@@ -586,14 +590,16 @@ def create_png(
         for lsm in lsmodels:
             # if lsm['preferred']:
             filesnippet = lsm["id"]
-
-            fsh = "%s.hdf5" % filesnippet
-            ls_mod_file = [f for f in files if fsh in f]
+            #fsh = "%s.hdf5" % filesnippet
+            #ls_mod_file = [f for f in files if fsh in f]
+            ls_mod_file = [f for f in files if filesnippet in f and '.hdf5' in f]  # generalize so it also works for slim version
             if len(ls_mod_file) == 1:
                 ls_file = os.path.join(event_dir, ls_mod_file[0])
                 ls_mod = loadlayers(ls_file)
+            elif len(ls_mod_file) > 1:
+                raise OSError('More than one version of the preferred landslide model was run')
             else:
-                raise OSError("Specified landslide model result (%s) not found." % fsh)
+                raise OSError("Specified landslide model result (%s*.hdf5) not found." % filesnippet)
 
             out = make_rgba(
                 ls_mod["model"]["grid"],
@@ -614,7 +620,9 @@ def create_png(
 
     if lqmodels is None:
         # read in preferred model for liquefaction if none specified
-        lq_mod_file = [f2 for f2 in files if "zhu_2017_general.hdf5" in f2]
+        #lq_mod_file = [f2 for f2 in files if "zhu_2017_general.hdf5" in f2]
+        lq_mod_file = [f2 for f2 in files if "zhu_2017_general" in f2 and '.hdf5' in f2]  # generalize so it also works for slim version
+
         if len(lq_mod_file) == 1:
             lq_file = os.path.join(event_dir, lq_mod_file[0])
             lq_mod = loadlayers(lq_file)
@@ -638,6 +646,8 @@ def create_png(
             filen = os.path.join(event_dir, "%s.png" % filesnippet)
             plt.imsave(filen, rgba_img, vmin=lmin, vmax=lmax, cmap=cmap)
             filenames.append(filen)
+        elif len(lq_mod_file) > 1:
+            raise OSError('More than one version of the preferred landslide model was run')
         else:
             raise OSError(
                 "Preferred liquefaction model result (%s) not found." % lq_mod_file
@@ -648,11 +658,14 @@ def create_png(
             filesnippet = lqm["id"]
             tempbins = DFBINS
             tempbins[0] = 0.005
-            fsh = "%s.hdf5" % filesnippet
-            lq_mod_file = [f2 for f2 in files if fsh in f2]
+            #fsh = "%s.hdf5" % filesnippet
+            #lq_mod_file = [f2 for f2 in files if fsh in f2]
+            lq_mod_file = [f2 for f2 in files if filesnippet in f2 and '.hdf5' in f2]
             if len(lq_mod_file) == 1:
                 lq_file = os.path.join(event_dir, lq_mod_file[0])
                 lq_mod = loadlayers(lq_file)
+            elif len(lq_mod_file) > 1:
+                raise OSError('More than one version of the preferred landslide model was run')
             else:
                 raise OSError(
                     "Specified liquefaction model result (%s) not found." % fsh

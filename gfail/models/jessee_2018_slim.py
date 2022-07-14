@@ -34,7 +34,7 @@ CLIPS = {"pgv": (0.0, 211.0)}  # cm/s
 COV_COEFFS = {"a": -7.592, "b": 5.237, "c": -3.042, "d": 4.035}
 
 
-class Jessee2018Model(LogisticModelBase):
+class Jessee2018ModelSlim(LogisticModelBase):
     def __init__(
         self,
         shakefile,
@@ -91,7 +91,7 @@ class Jessee2018Model(LogisticModelBase):
         slope = read(self.layers["slope"])._data
 
         varP = np.arctan(slope) * 180 / np.pi
-        varP *= self.COEFFS["b6"]
+        varP *= self.COEFFS["b3"]
         varP += self.COEFFS["b1"]
         varP **= 2
         del slope

@@ -102,7 +102,7 @@ class LogisticModelBase(object):
             method="linear",
             adjust="res",
         )
-        logging.info(f"Load shake elapsed: {timer() - start_shake:1.2f}")
+        #logging.info(f"Load shake elapsed: {timer() - start_shake:1.2f}")
         start_error = timer()
         if self.uncertfile is not None:
             self.error_grid = ShakeGrid.load(
@@ -115,7 +115,7 @@ class LogisticModelBase(object):
             )
         else:
             self.error_grid = None
-        logging.info(f"Load uncertainty elapsed: {timer() - start_error:1.2f}")
+        #logging.info(f"Load uncertainty elapsed: {timer() - start_error:1.2f}")
 
         logging.info("Loaded resampled ShakeMap.")
         self.shakedict = self.shake_grid.getShakeDict()
@@ -163,7 +163,7 @@ class LogisticModelBase(object):
             logging.info(f"Writing sampled layer {key}...")
             start_write = timer()
             write(grid, outfile, "netcdf")
-            logging.info(f"write {key} elapsed: {timer() - start_write:1.2f}")
+            #logging.info(f"write {key} elapsed: {timer() - start_write:1.2f}")
             self.layers[key] = outfile
 
         for key in self.SHAKELAYERS:
@@ -173,13 +173,13 @@ class LogisticModelBase(object):
             logging.info(f"Writing sampled layer {key}...")
             start_write = timer()
             write(shake_grid, outfile, "netcdf")
-            logging.info(f"write {key} elapsed: {timer() - start_write:1.2f}")
+            #logging.info(f"write {key} elapsed: {timer() - start_write:1.2f}")
 
             self.layers[key] = outfile
         if uncertfile is not None:
             start_write = timer()
             self.save_uncertainty_layers()
-            logging.info(f"write uncertainty elapsed: {timer() - start_write:1.2f}")
+            #logging.info(f"write uncertainty elapsed: {timer() - start_write:1.2f}")
 
         if "slope" not in config["layers"] and self.slopefile is not None:
             self.read_slope()
@@ -495,7 +495,7 @@ class LogisticModelBase(object):
                 raise Exception(msg)
             for layer in layers:
                 del globals()[layer]
-            logging.info(f"Read term elapsed: {timer() - start_term:1.2f}")
+            #logging.info(f"Read term elapsed: {timer() - start_term:1.2f}")
 
         logging.info("Calculating probability...")
         # save off the X grid for potential use by
@@ -505,14 +505,14 @@ class LogisticModelBase(object):
         grid = Grid2D(data=X, geodict=self.sampledict)
         start_writex = timer()
         write(grid, outfile, "netcdf")
-        logging.info(f"wite X elapsed: {timer() - start_writex:1.2f}")
+        #logging.info(f"write X elapsed: {timer() - start_writex:1.2f}")
         self.layers["X"] = outfile
         P = 1 / (1 + np.exp(-X))
         del X
 
         start_modify = timer()
         P = self.modify_probability(P)
-        logging.info(f"modify prob elapsed: {timer() - start_modify:1.2f}")
+        #logging.info(f"modify prob elapsed: {timer() - start_modify:1.2f}")
         # save off the intermediate P grid for potential use by
         # uncertainty calculations
         outfile = pathlib.Path(self.tempdir, "P.cdf")
@@ -520,21 +520,21 @@ class LogisticModelBase(object):
         grid = Grid2D(data=P, geodict=self.sampledict)
         start_writep = timer()
         write(grid, outfile, "netcdf")
-        logging.info(f"wite P elapsed: {timer() - start_writep:1.2f}")
+        #logging.info(f"wite P elapsed: {timer() - start_writep:1.2f}")
         self.layers["P"] = outfile
 
         sigma_grid = None
         if self.uncertfile is not None:
             start_uncertainty = timer()
             sigma_grid = self.calculate_uncertainty()
-            logging.info(f"uncertainty elapsed: {timer() - start_uncertainty:1.2f}")
+            #logging.info(f"uncertainty elapsed: {timer() - start_uncertainty:1.2f}")
 
         # because non-coverage P grid is used for uncertainty,
         # we cannot convert to areal coverage until that is complete.
         if self.do_coverage:
             start_coverage = timer()
             P = self.calculate_coverage(P)
-            logging.info(f"coverage elapsed: {timer() - start_coverage:1.2f}")
+            #logging.info(f"coverage elapsed: {timer() - start_coverage:1.2f}")
 
         # apply slope cutoffs
         if self.nonzero is not None:
@@ -552,7 +552,7 @@ class LogisticModelBase(object):
             p_grid = trim_ocean2(p_grid, self.trimfile)
             if sigma_grid is not None:
                 sigma_grid = trim_ocean2(sigma_grid, self.trimfile)
-            logging.info(f"trim elapsed: {timer() - start_trim:1.2f}")
+            #logging.info(f"trim elapsed: {timer() - start_trim:1.2f}")
 
         rdict["model"] = {
             "grid": p_grid,

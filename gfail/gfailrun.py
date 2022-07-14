@@ -40,6 +40,8 @@ from gfail import (
     Zhu2017ModelCoastal,
     Jessee2018Model,
     godt2008,
+    Zhu2017ModelSlim,
+    Jessee2018ModelSlim,
 )
 
 
@@ -49,6 +51,8 @@ MODEL_FACTORY = {
     "zhu_2017_coastal": Zhu2017ModelCoastal,
     "nowicki_2014_global": Nowicki2014Model,
     "jessee_2018": Jessee2018Model,
+    "zhu_2017_general_slim": Zhu2017ModelSlim,
+    "jessee_2018_slim": Jessee2018ModelSlim,
 }
 
 

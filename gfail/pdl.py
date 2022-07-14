@@ -331,6 +331,7 @@ def prepare_pdl_directory(event_dir):
         tfile = os.path.basename(src)
         if tfile.startswith(event_prefix):
             tfile = tfile[len(event_prefix) + 1 :]
+        tfile = tfile.replace('_slim', '') # get rid of 'slim' in names if present
         dst = os.path.join(pdl_dir, tfile)
         shutil.copy(src, dst)
 
@@ -350,6 +351,7 @@ def prepare_pdl_directory(event_dir):
         tfile = os.path.basename(src)
         if tfile.startswith(event_prefix):
             tfile = tfile[len(event_prefix) + 1 :]
+        tfile = tfile.replace('_slim', '') # get rid of 'slim' in names if present
         dst = os.path.join(pdl_dir, tfile)
         shutil.copy(src, dst)
 
@@ -359,6 +361,7 @@ def prepare_pdl_directory(event_dir):
     for i in range(len(png_files)):
         src = os.path.join(event_dir, png_files[i])
         tfile = os.path.basename(src)
+        tfile = tfile.replace('_slim', '') # get rid of 'slim' in names if present
         dst = os.path.join(pdl_dir, tfile)
         if os.path.exists(src):
             shutil.copy(src, dst)
@@ -376,6 +379,7 @@ def prepare_pdl_directory(event_dir):
         hfile = os.path.basename(src)
         if hfile.startswith(event_prefix):
             hfile = hfile[len(event_prefix) + 1 :]
+        hfile = hfile.replace('_slim', '') # get rid of 'slim' in names if present
         dst = os.path.join(pdl_dir, hfile)
         # Strip off event id prefix
 

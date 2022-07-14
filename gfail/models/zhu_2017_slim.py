@@ -15,7 +15,7 @@ CLIPS = {"pgv": (0.0, 150.0)}  # cm/s
 COV_COEFFS = {"a": 0.4915, "b": 42.4, "c": 9.165}
 
 
-class Zhu2017Model(LogisticModelBase):
+class Zhu2017ModelSlim(LogisticModelBase):
     TERMS = {
         "b1": "np.log(pgv._data*(1/(1+np.power(2.71828,-2*(MW-6)))))",
         "b2": "X0._data",
@@ -109,10 +109,6 @@ class Zhu2017Model(LogisticModelBase):
         return sigma
 
     def modify_probability(self, P):
-        if "vs30max" in self.config.keys():
-            vs30max = float(self.config["vs30max"])
-            vs30 = read(self.layers["vs30"])._data
-            P[vs30 > vs30max] = 0.0
 
         if "minpgv" in self.config.keys():
             minpgv = float(self.config["minpgv"])
