@@ -668,7 +668,7 @@ def create_png(
                 raise OSError('More than one version of the preferred landslide model was run')
             else:
                 raise OSError(
-                    "Specified liquefaction model result (%s) not found." % fsh
+                    "Specified liquefaction model result (%s) not found." % filesnippet
                 )
 
             out = make_rgba(
