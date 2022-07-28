@@ -81,5 +81,5 @@ class Zhu2015Model(LogisticModelBase):
         if "vs30max" in self.config.keys():
             vs30max = float(self.config["vs30max"])
             vs30 = read(self.layers["vs30"])._data
-            P[vs30 > vs30max] = 0.0
+            P[vs30 > vs30max] = np.nan
         return P

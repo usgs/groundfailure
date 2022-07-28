@@ -113,10 +113,10 @@ class Zhu2017ModelSlim(LogisticModelBase):
         if "minpgv" in self.config.keys():
             minpgv = float(self.config["minpgv"])
             pgv = read(self.layers["pgv"])._data
-            P[pgv < minpgv] = 0.0
+            P[pgv < minpgv] = np.nan
 
         if "minpga" in self.config.keys():
             minpga = float(self.config["minpga"])
             pga = read(self.layers["pga"])._data
-            P[pga < minpga] = 0.0
+            P[pga < minpga] = np.nan
         return P

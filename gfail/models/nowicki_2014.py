@@ -9,15 +9,15 @@ from gfail.logbase import LogisticModelBase
 COEFFS = {
     "b0": -3.6490,  # intercept
     "b1": 0.0133,  # log(pgv)
-    "b2": 0.0364,  # arctan(slope)
-    "b3": -0.0635,  # lithology set to 1.0 - coefficients are in glim file
+    "b2": 0.0364,  # slope (deg)
+    "b3": -0.0635,  # friction
     "b4": -0.0004,  # cti
-    "b5": 0.0019,  # landcover
+    "b5": 0.0019,  # interaction term
 }
 
 TERMS = {
     "b1": "pga._data",
-    "b2": "slope._data / 100",
+    "b2": "slope._data / 100", #input file is scaled up, scale back down
     "b3": "friction._data",
     "b4": "cti1._data * 100",
     "b5": "pga._data * slope._data / 100",
