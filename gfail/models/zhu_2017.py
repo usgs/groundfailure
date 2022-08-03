@@ -124,15 +124,15 @@ class Zhu2017Model(LogisticModelBase):
         if "vs30max" in self.config.keys():
             vs30max = float(self.config["vs30max"])
             vs30 = read(self.layers["vs30"])._data
-            P[vs30 > vs30max] = 0.0
+            P[vs30 > vs30max] = np.nan
 
         if "minpgv" in self.config.keys():
             minpgv = float(self.config["minpgv"])
             pgv = read(self.layers["pgv"])._data
-            P[pgv < minpgv] = 0.0
+            P[pgv < minpgv] = np.nan
 
         if "minpga" in self.config.keys():
             minpga = float(self.config["minpga"])
             pga = read(self.layers["pga"])._data
-            P[pga < minpga] = 0.0
+            P[pga < minpga] = np.nan
         return P
