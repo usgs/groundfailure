@@ -54,7 +54,7 @@ class Nowicki2014Model(LogisticModelBase):
         self.SHAKELAYERS = SHAKELAYERS
         self.do_coverage = True
 
-        self.prob_units = "Proportion of area affected"
+        self.prob_units = "Probability of any landslide"
 
         super().__init__(
             shakefile,

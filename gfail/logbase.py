@@ -28,19 +28,6 @@ SHAKE_LAYERS = []
 
 
 class LogisticModelBase(object):
-    """TODO needs documentation
-
-    Args:
-        object (_type_): _description_
-
-    Raises:
-        Exception: _description_
-        Exception: _description_
-
-    Returns:
-        _type_: _description_
-    """
-
     COEFFS = {}
     TERMS = {}
     TERMLAYERS = {}

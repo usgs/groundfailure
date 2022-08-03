@@ -7,33 +7,28 @@ from gfail.logbase import LogisticModelBase
 
 TERMS = {
     "b1": "np.log((pga._data/100.0)*(np.power(MW,2.56)/np.power(10,2.24)))",
-    "b2": "cti._data",
-    "b3": "np.log(vs30._data)",
+    "b2": "X0._data",
 }
 
 COEFFS = {
-    "b0": 24.10,
+    "b0": 0.,
     "b1": 2.067,
-    "b2": 0.355,
-    "b3": -4.784,
+    "b2": 1.,
 }
-
 
 TERMLAYERS = {
     "b1": "pga",
-    "b2": "cti",
-    "b3": "vs30",
+    "b2": "X0",
 }
 
 SHAKELAYERS = ["pga"]
 
 CLIPS = {
-    "cti": (0.0, 15.0),
     "pga": (0.0, 270.0),
 }
 
 
-class Zhu2015Model(LogisticModelBase):
+class Zhu2015ModelSlim(LogisticModelBase):
     def __init__(
         self,
         shakefile,
@@ -78,8 +73,4 @@ class Zhu2015Model(LogisticModelBase):
         return P
 
     def modify_probability(self, P):
-        if "vs30max" in self.config.keys():
-            vs30max = float(self.config["vs30max"])
-            vs30 = read(self.layers["vs30"])._data
-            P[vs30 > vs30max] = np.nan
         return P
