@@ -81,7 +81,7 @@ class Jessee2018Model(LogisticModelBase):
             self.notes += (
                 "unconsolidated sediment coefficient "
                 f"changed to {NEW_UNCONSOLIDATED} (weaker) "
-                "from {OLD_UNCONSOLIDATED} to "
+                f"from {OLD_UNCONSOLIDATED} to "
                 "better reflect that this "
                 "unit is not actually strong\n"
             )
