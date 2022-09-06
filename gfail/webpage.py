@@ -497,16 +497,16 @@ def hazdev(
         pngfiles = create_png(outfolder, lsmodels, lqmodels)
         filenames.append(pngfiles)
 
-    # If PAGER alert is pending, overwrite our alerts
-    if pager_alert == "pending":
-        for ls in lsmodels:
-            ls["alert"] = "pending"
-            ls["hazard_alert"]["color"] = "pending"
-            ls["population_alert"]["color"] = "pending"
-        for lq in lqmodels:
-            lq["alert"] = "pending"
-            lq["hazard_alert"]["color"] = "pending"
-            lq["population_alert"]["color"] = "pending"
+    # # If PAGER alert is pending, overwrite our alerts
+    # if pager_alert == "pending":
+    #     for ls in lsmodels:
+    #         ls["alert"] = "pending"
+    #         ls["hazard_alert"]["color"] = "pending"
+    #         ls["population_alert"]["color"] = "pending"
+    #     for lq in lqmodels:
+    #         lq["alert"] = "pending"
+    #         lq["hazard_alert"]["color"] = "pending"
+    #         lq["population_alert"]["color"] = "pending"
 
     # Create info.json
     infojson = create_info(

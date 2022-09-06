@@ -1301,7 +1301,7 @@ def main(args, config, exitafter=True):
 
     logging.info("Running process_shakemap")
 
-    if str(args.event) != "unset":
+    if str(args.event) != "unset":  # Manual run
         # For manual run, event is set (default is 'unset')
         # download the shakemap to a temporary directory
         try:
@@ -1358,10 +1358,10 @@ def main(args, config, exitafter=True):
             shutil.rmtree(tdir)
     else:
         # Called by pdl, do not process if pending
-        if args.property_alertlevel == "pending":
+        if str(args.property_alertlevel) == "pending":
             logging.info("PAGER alert is pending, exiting.")
             sys.exit(0)
-        if args.type == "losspager":
+        if str(args.type) == "losspager":
             # Check if stopfile exists before proceeding
             isstopped(args, config)
             process_shakemap(args, config)
