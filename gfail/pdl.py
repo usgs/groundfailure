@@ -404,6 +404,9 @@ def prepare_pdl_directory(event_dir):
     #     dst = os.path.join(pdl_dir, f2file)
     #     shutil.copy(src, dst)
 
+    # Get list of all files in pdl_dir
+    all_files2 = os.listdir(pdl_dir)
+
     # Make contents.xml
     contents = etree.Element("contents")
 
@@ -421,20 +424,24 @@ def prepare_pdl_directory(event_dir):
     etree.SubElement(j_tree, "format", href="info.json", type=json_mime)
 
     # Jessee section
-    jessee_tree = etree.SubElement(
-        contents,
-        "file",
-        title="Preferred Landslide Model (displayed)",
-        id="nowicki_jessee_2018",
-    )
-    file_caps = etree.SubElement(jessee_tree, "caption")
-    file_caps.text = "Nowicki Jessee and others (2018)"
-    etree.SubElement(jessee_tree, "format", href="jessee_2018_model.kmz", type=kmz_mime)
-    etree.SubElement(
-        jessee_tree, "format", href="jessee_2018_model.tif", type=gtif_mime
-    )
-    etree.SubElement(jessee_tree, "format", href="jessee_2018.hdf5", type=hdf_mime)
-    etree.SubElement(jessee_tree, "format", href="jessee_2018.png", type=png_mime)
+    file_base = "jessee_2018_model"
+    if len(glob.glob(os.path.join(pdl_dir, "%s*" % file_base))):
+        jessee_tree = etree.SubElement(
+            contents,
+            "file",
+            title="Preferred Landslide Model (displayed)",
+            id="nowicki_jessee_2018",
+        )
+        file_caps = etree.SubElement(jessee_tree, "caption")
+        file_caps.text = "Nowicki Jessee and others (2018) - kmz only produced if unmasked pixels are present"
+        if "jessee_2018_model.kmz" in all_files2:
+            # only include if it was produced, not produced if all masked
+            etree.SubElement(jessee_tree, "format", href="jessee_2018_model.kmz", type=kmz_mime)
+        etree.SubElement(
+            jessee_tree, "format", href="jessee_2018_model.tif", type=gtif_mime
+        )
+        etree.SubElement(jessee_tree, "format", href="jessee_2018.hdf5", type=hdf_mime)
+        etree.SubElement(jessee_tree, "format", href="jessee_2018.png", type=png_mime)
 
     # Does an uncertainty file exist?
     file_base = "jessee_2018_beta_sigma"
@@ -446,8 +453,8 @@ def prepare_pdl_directory(event_dir):
             id="nowicki_jessee_2018uncertainty",
         )
         file_caps = etree.SubElement(jessee_uncertainty_tree, "caption")
-        file_caps.text = "Nowicki Jessee and others (2018) uncertainty"
-        extensions = [".kmz", ".tif"]
+        file_caps.text = "Nowicki Jessee and others (2018) uncertainty - sigma for beta distribution"
+        extensions = [".tif",]
         for extension in extensions:
             mime_type = kmz_mime if "kmz" in extension else gtif_mime
             std_file = file_base + extension
@@ -457,24 +464,28 @@ def prepare_pdl_directory(event_dir):
                 )
 
     # Zhu 2017 section
-    zhu2017_tree = etree.SubElement(
-        contents,
-        "file",
-        title="Preferred Liquefaction Model (displayed)",
-        id="zhu_2017",
-    )
-    file_caps = etree.SubElement(zhu2017_tree, "caption")
-    file_caps.text = "Zhu and others (2017)"
-    etree.SubElement(
-        zhu2017_tree, "format", href="zhu_2017_general_model.kmz", type=kmz_mime
-    )
-    etree.SubElement(
-        zhu2017_tree, "format", href="zhu_2017_general_model.tif", type=gtif_mime
-    )
-    etree.SubElement(
-        zhu2017_tree, "format", href="zhu_2017_general.hdf5", type=hdf_mime
-    )
-    etree.SubElement(zhu2017_tree, "format", href="zhu_2017_general.png", type=png_mime)
+    file_base = "zhu_2017_general_model"
+    if len(glob.glob(os.path.join(pdl_dir, "%s*" % file_base))):
+        zhu2017_tree = etree.SubElement(
+            contents,
+            "file",
+            title="Preferred Liquefaction Model (displayed)",
+            id="zhu_2017",
+        )
+        file_caps = etree.SubElement(zhu2017_tree, "caption")
+        file_caps.text = "Zhu and others (2017) - kmz only produced if unmasked pixels are present"
+        if "zhu_2017_general_model.kmz" in all_files2:
+            # only include if it was produced, not produced if all masked
+            etree.SubElement(
+                zhu2017_tree, "format", href="zhu_2017_general_model.kmz", type=kmz_mime
+            )
+        etree.SubElement(
+            zhu2017_tree, "format", href="zhu_2017_general_model.tif", type=gtif_mime
+        )
+        etree.SubElement(
+            zhu2017_tree, "format", href="zhu_2017_general.hdf5", type=hdf_mime
+        )
+        etree.SubElement(zhu2017_tree, "format", href="zhu_2017_general.png", type=png_mime)
 
     # Does an uncertainty file exist?
     file_base = "zhu_2017_general_beta_sigma"
@@ -486,8 +497,8 @@ def prepare_pdl_directory(event_dir):
             id="zhu_2017uncertainty",
         )
         file_caps = etree.SubElement(zhu2017_uncertainty_tree, "caption")
-        file_caps.text = "Zhu and others (2017) uncertainty"
-        extensions = [".kmz", ".tif"]
+        file_caps.text = "Zhu and others (2017) uncertainty - sigma for beta distribution"
+        extensions = [".tif",]
         for extension in extensions:
             mime_type = kmz_mime if "kmz" in extension else gtif_mime
             std_file = file_base + extension
@@ -497,36 +508,50 @@ def prepare_pdl_directory(event_dir):
                 )
 
     # Godt section
-    godt_tree = etree.SubElement(
-        contents, "file", title="Alternative Landslide Model 1 (not displayed)"
-    )
-    file_caps = etree.SubElement(godt_tree, "caption")
-    file_caps.text = "Godt and others (2008)"
-    etree.SubElement(godt_tree, "format", href="godt_2008.hdf5", type=hdf_mime)
-    etree.SubElement(godt_tree, "format", href="godt_2008_model.tif", type=gtif_mime)
+    file_base = "godt_2008_model"
+    if len(glob.glob(os.path.join(pdl_dir, "%s*" % file_base))):
+        godt_tree = etree.SubElement(
+            contents, "file", title="Alternative Landslide Model 1 (not displayed)"
+        )
+        file_caps = etree.SubElement(godt_tree, "caption")
+        file_caps.text = "Godt and others (2008)"
+        if "godt_2008_model.kmz" in all_files2:
+            etree.SubElement(godt_tree, "format", href="godt_2008_model.kmz", type=kmz_mime)
+        etree.SubElement(godt_tree, "format", href="godt_2008.hdf5", type=hdf_mime)
+        etree.SubElement(godt_tree, "format", href="godt_2008_model.tif", type=gtif_mime)
 
     # Nowicki section
-    now_tree = etree.SubElement(
-        contents, "file", title="Alternative Landslide Model 2 (not displayed)"
-    )
-    file_caps = etree.SubElement(now_tree, "caption")
-    file_caps.text = "Nowicki and others (2014)"
-    etree.SubElement(now_tree, "format", href="nowicki_2014_global.hdf5", type=hdf_mime)
-    etree.SubElement(
-        now_tree, "format", href="nowicki_2014_global_model.tif", type=gtif_mime
-    )
+    file_base = "nowicki_2014_global_model"
+    if len(glob.glob(os.path.join(pdl_dir, "%s*" % file_base))):
+        now_tree = etree.SubElement(
+            contents, "file", title="Alternative Landslide Model 2 (not displayed)"
+        )
+        file_caps = etree.SubElement(now_tree, "caption")
+        file_caps.text = "Nowicki and others (2014)"
+        if "nowicki_2014_global_model.kmz" in all_files2:
+            # only include if it was produced, not produced if all masked
+            etree.SubElement(now_tree, "format", href="nowicki_2014_global_model.kmz", type=kmz_mime)
+        etree.SubElement(now_tree, "format", href="nowicki_2014_global.hdf5", type=hdf_mime)
+        etree.SubElement(
+            now_tree, "format", href="nowicki_2014_global_model.tif", type=gtif_mime
+        )
 
     # zhu 2015 section
-    zhu2015_tree = etree.SubElement(
-        contents,
-        "file",
-        title="Alternative Liquefaction Model (not displayed)",
-        id="zhu_2015",
-    )
-    file_caps = etree.SubElement(zhu2015_tree, "caption")
-    file_caps.text = "Zhu and others (2015)"
-    etree.SubElement(zhu2015_tree, "format", href="zhu_2015.hdf5", type=hdf_mime)
-    etree.SubElement(zhu2015_tree, "format", href="zhu_2015_model.tif", type=gtif_mime)
+    file_base = "zhu_2015_model"
+    if len(glob.glob(os.path.join(pdl_dir, "%s*" % file_base))):
+        zhu2015_tree = etree.SubElement(
+            contents,
+            "file",
+            title="Alternative Liquefaction Model (not displayed)",
+            id="zhu_2015",
+        )
+        file_caps = etree.SubElement(zhu2015_tree, "caption")
+        file_caps.text = "Zhu and others (2015)"
+        if "zhu_2015_model.kmz" in all_files2:
+            # only include if it was produced, not produced if all masked
+            etree.SubElement(zhu2015_tree, "format", href="zhu_2015_model.kmz", type=kmz_mime)
+        etree.SubElement(zhu2015_tree, "format", href="zhu_2015.hdf5", type=hdf_mime)
+        etree.SubElement(zhu2015_tree, "format", href="zhu_2015_model.tif", type=gtif_mime)
 
     # Copy over legend files
     #    data_dir = pkg_resources.resource_filename('gfail', 'data')
