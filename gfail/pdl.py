@@ -319,10 +319,7 @@ def prepare_pdl_directory(event_dir):
     # Get the event id prefix that is prepended to strip it off later
     all_files = os.listdir(event_dir)
     an_hdf_file = [f for f in all_files if f.endswith(".hdf5")][0]
-    idx = an_hdf_file.find("_201")
-    author = an_hdf_file[:idx].split("_")[-1]
-    idx2 = an_hdf_file.find(author)
-    event_prefix = an_hdf_file[: idx2 - 1]
+    event_prefix = an_hdf_file.split('_')[0]
 
     # Put geotif files into pdl directory
     geotif_files = [os.path.join(event_dir, a) for a in all_files if a.endswith(".tif")]
